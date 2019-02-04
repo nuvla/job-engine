@@ -1,0 +1,4 @@
+nuvla-api
+kazoo
+elasticsearch
+boto3

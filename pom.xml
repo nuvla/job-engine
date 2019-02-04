@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <groupId>sixsq.nuvla.job-engine</groupId>
+  <artifactId>job-engine</artifactId>
+  <packaging>pom</packaging>
+  <version>3.69-SNAPSHOT</version>
+  <name>job-engine</name>
+  <url>http://sixsq.com</url>
+
+  <parent>
+    <groupId>com.sixsq.slipstream</groupId>
+    <artifactId>SlipStreamCommunity</artifactId>
+    <version>3.69-SNAPSHOT</version>
+    <relativePath>../SlipStream/community</relativePath>
+  </parent>
+
+  <licenses>
+    <license>
+      <name>Apache License, Version 2.0</name>
+      <url>http://www.apache.org/licenses/LICENSE-2.0</url>
+    </license>
+  </licenses>
+
+  <modules>
+    <module>job</module>
+  </modules>
+
+  <profiles>
+    <profile>
+      <id>build-client-rpm</id>
+      <activation>
+        <file>
+          <exists>/usr/bin/rpmbuild</exists>
+        </file>
+      </activation>
+      <modules>
+        <module>rpm</module>
+      </modules>
+    </profile>
+    <profile>
+      <id>build-client-rpm-local</id>
+      <activation>
+        <file>
+          <exists>/usr/local/bin/rpmbuild</exists>
+        </file>
+      </activation>
+      <modules>
+        <module>rpm</module>
+      </modules>
+    </profile>
+  </profiles>
+
+  <scm>
+    <connection>${scm.read}/job-engine.git</connection>
+    <developerConnection>${scm.write}/job-engine.git</developerConnection>
+    <url>${scm.public}/job-engine</url>
+    <tag>HEAD</tag>
+  </scm>
+
+  <repositories>
+
+    <repository>
+      <releases>
+        <enabled>true</enabled>
+      </releases>
+      <snapshots>
+        <enabled>false</enabled>
+      </snapshots>
+      <id>slipstream.releases</id>
+      <name>SlipStream Releases</name>
+      <url>https://nexus.sixsq.com/content/repositories/releases-community-rhel7</url>
+    </repository>
+
+    <repository>
+      <releases>
+        <enabled>false</enabled>
+      </releases>
+      <snapshots>
+        <enabled>true</enabled>
+      </snapshots>
+      <id>slipstream.snapshots</id>
+      <name>SlipStream Snapshots</name>
+      <url>https://nexus.sixsq.com/content/repositories/snapshots-community-rhel7</url>
+    </repository>
+
+  </repositories>
+
+</project>

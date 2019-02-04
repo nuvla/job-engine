@@ -1,0 +1,18 @@
+[Unit]
+Description=Nuvla Job Executor
+After=syslog.target network-online.target
+
+[Service]
+EnvironmentFile=-/etc/default/nuvla-job-executor
+ExecStartPre=-/usr/bin/mkdir -p /var/log/nuvla/job/
+ExecStart=/bin/sh -c "/opt/nuvla/job/sbin/job_executor.py $DAEMON_ARGS 2>>/var/log/nuvla/job/executor.log 1>/dev/null"
+TimeoutStopSec=60
+RestartSec=5
+Restart=on-failure
+User=nuvla
+Group=nuvla
+StandardOutput=/dev/null
+StandardError=/dev/null
+
+[Install]
+WantedBy=multi-user.targe

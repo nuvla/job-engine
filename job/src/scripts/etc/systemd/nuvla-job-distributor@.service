@@ -1,0 +1,17 @@
+[Unit]
+Description=Nuvla Job Distributor On %I
+After=syslog.target network-online.target
+
+[Service]
+EnvironmentFile=-/etc/default/nuvla-job-distributor
+ExecStart=/bin/sh -c "/opt/nuvla/job/sbin/job_distributor_%i.py $DAEMON_ARGS 2>>/var/log/nuvla/job/distributor_%i.log  1>/dev/null"
+TimeoutStopSec=10
+RestartSec=5
+Restart=on-failure
+User=nuvla
+Group=nuvla
+StandardOutput=null
+StandardError=null
+
+[Install]
+WantedBy=multi-user.target
