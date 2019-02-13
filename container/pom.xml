@@ -1,0 +1,133 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <artifactId>container</artifactId>
+  <name>job-engine/container</name>
+  <packaging>pom</packaging>
+  <url>http://sixsq.com/</url>
+
+  <parent>
+    <groupId>sixsq.nuvla.job-engine</groupId>
+    <artifactId>job-engine</artifactId>
+    <version>3.69-SNAPSHOT</version>
+  </parent>
+
+  <build>
+    <plugins>
+
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-dependency-plugin</artifactId>
+
+        <executions>
+
+          <execution>
+            <id>copy-job</id>
+            <goals>
+              <goal>copy</goal>
+            </goals>
+            <configuration>
+              <artifactItems>
+                <artifactItem>
+                  <groupId>sixsq.nuvla.job-engine</groupId>
+                  <artifactId>job-engine-tarball</artifactId>
+                  <version>${project.version}</version>
+                  <classifier>bundle</classifier>
+                  <type>tar.gz</type>
+                </artifactItem>
+              </artifactItems>
+              <stripVersion>true</stripVersion>
+            </configuration>
+          </execution>
+
+          <execution>
+            <id>unpack-job</id>
+            <goals>
+              <goal>unpack</goal>
+            </goals>
+            <configuration>
+              <outputDirectory>${project.build.directory}/job/</outputDirectory>
+              <artifactItems>
+                <artifactItem>
+                  <groupId>sixsq.nuvla.job-engine</groupId>
+                  <artifactId>job-engine-tarball</artifactId>
+                  <version>${project.version}</version>
+                  <classifier>bundle</classifier>
+                  <type>tar.gz</type>
+                </artifactItem>
+              </artifactItems>
+            </configuration>
+          </execution>
+
+        </executions>
+      </plugin>
+
+      <plugin>
+        <groupId>io.fabric8</groupId>
+        <artifactId>docker-maven-plugin</artifactId>
+        <version>0.24.0</version>
+        <configuration>
+          <images>
+            <image>
+              <alias>job-engine</alias>
+              <name>nuvla/job-engine</name>
+              <build>
+                <from>python:2-alpine</from>
+                <optimise>true</optimise>
+                <assembly>
+                  <targetDir>/</targetDir>
+                  <inline>
+                    <fileSets>
+                      <fileset>
+                        <directory>${project.build.directory}/job/src/nuvla</directory>
+                        <outputDirectory>/usr/local/lib/python2.7/site-packages/nuvla</outputDirectory>
+                        <includes>
+                          <include>/**/*</include>
+                        </includes>
+                      </fileset>                      
+                      <fileset>
+                        <directory>/opt/nuvla/job/sbin</directory>
+                        <outputDirectory>${project.build.directory}/job/src/scripts/</outputDirectory>
+                        <includes>
+                          <include>*.py</include>
+                        </includes>
+                      </fileset>
+                    </fileSets>
+                  </inline>
+                </assembly>
+                <runCmds>
+                  <!-- need to add nuvla python library -->
+                  <!-- <runCmd>pip install -Iv nuvla-api</runCmd> -->
+                  <runCmd>pip install -Iv kazoo</runCmd>
+                  <runCmd>pip install -Iv elasticsearch</runCmd>
+                  <runCmd>pip install -Iv boto3</runCmd>
+                </runCmds>
+                <env>
+                  <ZK_HOST>zk</ZK_HOST>
+                  <ZK_PORT>2181</ZK_PORT>
+                  <API_HOST>api</API_HOST>
+                  <API_PORT>443</API_PORT>
+                </env>
+                <cmd>/opt/nuvla/job/sbin/job_executor.py</cmd>
+                <tags>${project.version}</tags>
+              </build>
+            </image>
+          </images>
+        </configuration>
+
+        <executions>
+          <execution>
+            <id>docker-build</id>
+            <phase>package</phase>
+            <goals>
+              <goal>build</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>      
+
+    </plugins>
+  </build>
+</project>

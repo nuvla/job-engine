@@ -26,32 +26,8 @@
 
   <modules>
     <module>job</module>
+    <module>container</module>
   </modules>
-
-  <profiles>
-    <profile>
-      <id>build-client-rpm</id>
-      <activation>
-        <file>
-          <exists>/usr/bin/rpmbuild</exists>
-        </file>
-      </activation>
-      <modules>
-        <module>rpm</module>
-      </modules>
-    </profile>
-    <profile>
-      <id>build-client-rpm-local</id>
-      <activation>
-        <file>
-          <exists>/usr/local/bin/rpmbuild</exists>
-        </file>
-      </activation>
-      <modules>
-        <module>rpm</module>
-      </modules>
-    </profile>
-  </profiles>
 
   <scm>
     <connection>${scm.read}/job-engine.git</connection>
