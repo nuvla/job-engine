@@ -21,7 +21,7 @@ class Base(object):
         self.args = None
         self._init_args_parser()
         self._kz = None
-        self.ss_api = None
+        self.api = None
         self.name = None
         self.stop_event = threading.Event()
 
@@ -34,20 +34,19 @@ class Base(object):
         parser = argparse.ArgumentParser(description='Process Nuvla jobs')
         required_args = parser.add_argument_group('required named arguments')
 
-        parser.add_argument('--zk-hosts', dest='zk_hosts',
-                            metavar='HOSTS', default='127.0.0.1:2181',
-                            help='Coma separated list of ZooKeeper hosts to connect (default: 127.0.0.1:2181)')
+        parser.add_argument('--zk-hosts', dest='zk_hosts', default=['127.0.0.1:2181'], nargs='+', metavar='HOST',
+                            help='ZooKeeper list of hosts [localhost:port]. (default: 127.0.0.1:2181)')
 
-        parser.add_argument('--ss-url', dest='ss_url',
-                            help='Nuvla endpoint to connect to (default: https://nuv.la)',
-                            default='https://nuv.la', metavar='URL')
+        parser.add_argument('--endpoint', dest='endpoint',
+                            help='Nuvla endpoint to connect to (default: https://nuvla.io)',
+                            default='https://nuvla.io', metavar='URL')
 
-        required_args.add_argument('--ss-user', dest='ss_user', help='Nuvla username',
+        required_args.add_argument('--user', dest='user', help='Nuvla username',
                                    metavar='USERNAME', required=True)
-        required_args.add_argument('--ss-pass', dest='ss_pass', help='Nuvla Password',
+        required_args.add_argument('--password', dest='password', help='Nuvla Password',
                                    metavar='PASSWORD', required=True)
 
-        parser.add_argument('--ss-insecure', dest='ss_insecure', default=False, action='store_true',
+        parser.add_argument('--insecure', dest='insecure', default=False, action='store_true',
                             help='Do not check Nuvla certificate')
 
         parser.add_argument('--name', dest='name', metavar='NAME', default=None, help='Base name for this process')
@@ -83,10 +82,10 @@ class Base(object):
     def execute(self):
         self.name = self.args.name if self.args.name is not None else names[int(random.uniform(1, len(names) - 1))]
 
-        self.ss_api = Api(endpoint=self.args.ss_url, insecure=self.args.ss_insecure, reauthenticate=True)
-        self.ss_api.login_internal(self.args.ss_user, self.args.ss_pass)
+        self.api = Api(endpoint=self.args.endpoint, insecure=self.args.insecure, reauthenticate=True)
+        self.api.login_internal(self.args.user, self.args.password)
 
-        self._kz = KazooClient(self.args.zk_hosts, connection_retry=KazooRetry(max_tries=-1),
+        self._kz = KazooClient(self.args.zk_hosts.join(','), connection_retry=KazooRetry(max_tries=-1),
                                command_retry=KazooRetry(max_tries=-1), timeout=30.0)
         self._kz.start()
 

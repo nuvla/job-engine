@@ -19,7 +19,7 @@ class Distributor(Base):
             for cimi_job in self.job_generator():
                 try:
                     logging.info('Distribute job: {}'.format(cimi_job))
-                    self.ss_api.cimi_add('jobs', cimi_job)
+                    self.api.cimi_add('jobs', cimi_job)
                 except:
                     logging.exception('Failed to distribute job: {}'.format(cimi_job))
                     time.sleep(0.1)

@@ -34,7 +34,7 @@ def kb_from_data_uuid(text):
 class DeploymentStopJob(object):
     def __init__(self, executor, job):
         self.job = job
-        self.ss_api = executor.ss_api
+        self.api = job.api
 
         self._deployment = None
         self._cloud_name = None
@@ -48,10 +48,10 @@ class DeploymentStopJob(object):
         self.handled_vms_instance_id = set([])
 
     def _get_deployment(self):
-        return self.ss_api.cimi_get(self.job['targetResource']['href']).json
+        return self.api.cimi_get(self.job['targetResource']['href']).json
 
     def _get_nuvla_configuration(self):
-        return self.ss_api.cimi_get('configuration/nuvla').json
+        return self.api.cimi_get('configuration/nuvla').json
 
     @property
     def deployment(self):
@@ -73,14 +73,14 @@ class DeploymentStopJob(object):
         api_key = None
         try:
             api_key = self.deployment['clientAPIKey']['href']
-            self.ss_api.cimi_delete(self.deployment['clientAPIKey']['href'])
+            self.api.cimi_delete(self.deployment['clientAPIKey']['href'])
         except Exception as e:
             logging.exception('Something went wrong during cleanup of api key {}: {}.'.format(api_key, e))
 
         filter_params = 'deployment/href="{}" and (name="instanceid" or name="credential.id")'.format(
             self.deployment['id'])
-        deployment_params = self.ss_api.cimi_search('deploymentParameters', filter=filter_params,
-                                                    select='nodeID,name,value').resources_list
+        deployment_params = self.api.cimi_search('deploymentParameters', filter=filter_params,
+                                                 select='nodeID,name,value').resources_list
 
         # Collect nodes info from params
         nodes_ids_cred_dict = defaultdict(dict)
@@ -92,9 +92,9 @@ class DeploymentStopJob(object):
         nodes_info.sort(key=key)
 
         for cloud_credential_id, group_of_nodes in groupby(nodes_info, key=key):
-            cloud_credential = self.ss_api.cimi_get(cloud_credential_id).json
+            cloud_credential = self.api.cimi_get(cloud_credential_id).json
             cloud_name = cloud_credential['connector']['href']
-            cloud_configuration = self.ss_api.cimi_get(cloud_name).json
+            cloud_configuration = self.api.cimi_get(cloud_name).json
             connector_instance, user_info = \
                 DeploymentStopJob.connector_instance_userinfo(cloud_configuration, cloud_credential)
             cred_instance_ids = [node['instanceid'] for node in group_of_nodes]
@@ -103,8 +103,8 @@ class DeploymentStopJob(object):
 
         id_state = 'deployment-parameter/{}'.format(
             kb_from_data_uuid(':'.join([self.deployment['id'], '', 'ss:state'])))
-        self.ss_api.cimi_edit(id_state, {'value': 'Done'})
-        self.ss_api.cimi_edit(self.deployment['id'], {'state': 'STOPPED'})
+        self.api.cimi_edit(id_state, {'value': 'Done'})
+        self.api.cimi_edit(self.deployment['id'], {'state': 'STOPPED'})
 
         return 0
 
