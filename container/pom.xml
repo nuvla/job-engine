@@ -11,7 +11,7 @@
   <parent>
     <groupId>sixsq.nuvla.job-engine</groupId>
     <artifactId>job-engine</artifactId>
-    <version>3.69-SNAPSHOT</version>
+    <version>0.0.1-SNAPSHOT</version>
   </parent>
 
   <build>
