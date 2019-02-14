@@ -65,68 +65,27 @@
       </plugin>
 
       <plugin>
-        <groupId>io.fabric8</groupId>
-        <artifactId>docker-maven-plugin</artifactId>
-        <version>0.24.0</version>
-        <configuration>
-          <images>
-            <image>
-              <alias>job-engine</alias>
-              <name>nuvla/job-engine</name>
-              <build>
-                <from>python:2-alpine</from>
-                <optimise>true</optimise>
-                <assembly>
-                  <targetDir>/</targetDir>
-                  <inline>
-                    <fileSets>
-                      <fileset>
-                        <directory>${project.build.directory}/job/src/nuvla</directory>
-                        <outputDirectory>/usr/local/lib/python2.7/site-packages/nuvla</outputDirectory>
-                        <includes>
-                          <include>/**/*</include>
-                        </includes>
-                      </fileset>                      
-                      <fileset>
-                        <directory>/opt/nuvla/job/sbin</directory>
-                        <outputDirectory>${project.build.directory}/job/src/scripts/</outputDirectory>
-                        <includes>
-                          <include>*.py</include>
-                        </includes>
-                      </fileset>
-                    </fileSets>
-                  </inline>
-                </assembly>
-                <runCmds>
-                  <!-- need to add nuvla python library -->
-                  <!-- <runCmd>pip install -Iv nuvla-api</runCmd> -->
-                  <runCmd>pip install -Iv kazoo</runCmd>
-                  <runCmd>pip install -Iv elasticsearch</runCmd>
-                  <runCmd>pip install -Iv boto3</runCmd>
-                </runCmds>
-                <env>
-                  <ZK_HOST>zk</ZK_HOST>
-                  <ZK_PORT>2181</ZK_PORT>
-                  <API_HOST>api</API_HOST>
-                  <API_PORT>443</API_PORT>
-                </env>
-                <cmd>/opt/nuvla/job/sbin/job_executor.py</cmd>
-                <tags>${project.version}</tags>
-              </build>
-            </image>
-          </images>
-        </configuration>
-
+        <groupId>com.spotify</groupId>
+        <artifactId>dockerfile-maven-plugin</artifactId>
+        <version>1.4.10</version>
         <executions>
           <execution>
-            <id>docker-build</id>
-            <phase>package</phase>
+            <id>default</id>
             <goals>
               <goal>build</goal>
+              <goal>push</goal>
             </goals>
           </execution>
         </executions>
-      </plugin>      
+        <configuration>
+          <repository>docker.io/nuvla/job-engine</repository>
+          <tag>${project.version}</tag>
+          <build>
+            <squash>true</squash>
+          </build>
+          <useMavenSettingsForAuth>true</useMavenSettingsForAuth>
+        </configuration>
+      </plugin>
 
     </plugins>
   </build>
