@@ -1,6 +1,0 @@
-/var/log/nuvla/job/*.log {
-    missingok
-    size 10M
-    copytruncate
-    rotate 5
-}

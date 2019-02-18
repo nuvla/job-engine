@@ -6,15 +6,14 @@
   <groupId>sixsq.nuvla.job-engine</groupId>
   <artifactId>job-engine</artifactId>
   <packaging>pom</packaging>
-  <version>3.69-SNAPSHOT</version>
+  <version>0.0.1-SNAPSHOT</version>
   <name>job-engine</name>
   <url>http://sixsq.com</url>
 
   <parent>
-    <groupId>com.sixsq.slipstream</groupId>
-    <artifactId>SlipStreamCommunity</artifactId>
-    <version>3.69-SNAPSHOT</version>
-    <relativePath>../SlipStream/community</relativePath>
+    <groupId>sixsq.nuvla.parent</groupId>
+    <artifactId>pom</artifactId>
+    <version>1.0.0</version>
   </parent>
 
   <licenses>
@@ -26,32 +25,8 @@
 
   <modules>
     <module>job</module>
+    <module>container</module>
   </modules>
-
-  <profiles>
-    <profile>
-      <id>build-client-rpm</id>
-      <activation>
-        <file>
-          <exists>/usr/bin/rpmbuild</exists>
-        </file>
-      </activation>
-      <modules>
-        <module>rpm</module>
-      </modules>
-    </profile>
-    <profile>
-      <id>build-client-rpm-local</id>
-      <activation>
-        <file>
-          <exists>/usr/local/bin/rpmbuild</exists>
-        </file>
-      </activation>
-      <modules>
-        <module>rpm</module>
-      </modules>
-    </profile>
-  </profiles>
 
   <scm>
     <connection>${scm.read}/job-engine.git</connection>
@@ -69,9 +44,9 @@
       <snapshots>
         <enabled>false</enabled>
       </snapshots>
-      <id>slipstream.releases</id>
-      <name>SlipStream Releases</name>
-      <url>https://nexus.sixsq.com/content/repositories/releases-community-rhel7</url>
+      <id>nuvla.releases</id>
+      <name>Nuvla Releases</name>
+      <url>https://nexus.sixsq.com/content/repositories/nuvla-releases</url>
     </repository>
 
     <repository>
@@ -81,9 +56,9 @@
       <snapshots>
         <enabled>true</enabled>
       </snapshots>
-      <id>slipstream.snapshots</id>
-      <name>SlipStream Snapshots</name>
-      <url>https://nexus.sixsq.com/content/repositories/snapshots-community-rhel7</url>
+      <id>nuvla.snapshots</id>
+      <name>Nuvla Snapshots</name>
+      <url>https://nexus.sixsq.com/content/repositories/nuvla-snapshots</url>
     </repository>
 
   </repositories>

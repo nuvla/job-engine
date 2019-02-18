@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <artifactId>container</artifactId>
+  <name>job-engine/container</name>
+  <packaging>pom</packaging>
+  <url>http://sixsq.com/</url>
+
+  <parent>
+    <groupId>sixsq.nuvla.job-engine</groupId>
+    <artifactId>job-engine</artifactId>
+    <version>0.0.1-SNAPSHOT</version>
+  </parent>
+
+  <build>
+    <plugins>
+
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-dependency-plugin</artifactId>
+
+        <executions>
+
+          <execution>
+            <id>copy-job</id>
+            <goals>
+              <goal>copy</goal>
+            </goals>
+            <configuration>
+              <artifactItems>
+                <artifactItem>
+                  <groupId>sixsq.nuvla.job-engine</groupId>
+                  <artifactId>job-engine-tarball</artifactId>
+                  <version>${project.version}</version>
+                  <classifier>bundle</classifier>
+                  <type>tar.gz</type>
+                </artifactItem>
+              </artifactItems>
+              <stripVersion>true</stripVersion>
+            </configuration>
+          </execution>
+
+          <execution>
+            <id>unpack-job</id>
+            <goals>
+              <goal>unpack</goal>
+            </goals>
+            <configuration>
+              <outputDirectory>${project.build.directory}/job/</outputDirectory>
+              <artifactItems>
+                <artifactItem>
+                  <groupId>sixsq.nuvla.job-engine</groupId>
+                  <artifactId>job-engine-tarball</artifactId>
+                  <version>${project.version}</version>
+                  <classifier>bundle</classifier>
+                  <type>tar.gz</type>
+                </artifactItem>
+              </artifactItems>
+            </configuration>
+          </execution>
+
+        </executions>
+      </plugin>
+
+      <plugin>
+        <groupId>com.spotify</groupId>
+        <artifactId>dockerfile-maven-plugin</artifactId>
+        <version>1.4.10</version>
+        <executions>
+          <execution>
+            <id>default</id>
+            <goals>
+              <goal>build</goal>
+              <goal>push</goal>
+            </goals>
+          </execution>
+        </executions>
+        <configuration>
+          <repository>docker.io/nuvla/job-engine</repository>
+          <tag>${project.version}</tag>
+          <build>
+            <squash>true</squash>
+          </build>
+          <useMavenSettingsForAuth>true</useMavenSettingsForAuth>
+        </configuration>
+      </plugin>
+
+    </plugins>
+  </build>
+</project>
