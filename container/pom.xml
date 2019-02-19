@@ -78,7 +78,7 @@
           </execution>
         </executions>
         <configuration>
-          <repository>docker.io/nuvla/job-engine</repository>
+          <repository>docker.io/nuvla/job</repository>
           <tag>${project.version}</tag>
           <build>
             <squash>true</squash>
