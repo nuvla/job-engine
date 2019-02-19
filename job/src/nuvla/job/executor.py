@@ -39,11 +39,11 @@ class Executor(Base):
         queue = self._kz.LockingQueue('/job')
         api_http_adapter = HTTPAdapter(pool_maxsize=self.args.number_of_thread,
                                        pool_connections=self.args.number_of_thread)
-        self.ss_api.session.mount('http://', api_http_adapter)
-        self.ss_api.session.mount('https://', api_http_adapter)
+        self.api.session.mount('http://', api_http_adapter)
+        self.api.session.mount('https://', api_http_adapter)
 
         while not self.stop_event.is_set():
-            job = Job(self.ss_api, queue)
+            job = Job(self.api, queue)
 
             if job.nothing_to_do:
                 continue

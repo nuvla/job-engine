@@ -1,18 +1,10 @@
-FROM python:2-alpine
+FROM python:3-alpine
 
-ADD target/job/src/nuvla /usr/local/lib/python2.7/site-packages/nuvla
-ADD target/job/src/scripts /opt/nuvla/job/sbin 
-      
-# need to add nuvla python library
-# RUN pip install -Iv nuvla-api
+ADD target/job /app/job
+ADD target/python-library /app/python-library
 
-RUN pip install -Iv kazoo
-RUN pip install -Iv elasticsearch
-RUN pip install -Iv boto3
+RUN pip install /app/python-library
+RUN pip install /app/job
+RUN chmod -R +x /app/job/src/scripts/
 
-ENV ZK_HOST=zk
-ENV ZK_PORT=2181
-ENV API_HOST=api
-ENV API_PORT=443
-
-ENTRYPOINT ["/opt/nuvla/job/sbin/job_executor.py"]
+ENTRYPOINT ["/app/job/src/scripts/job_executor.py"]

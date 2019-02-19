@@ -10,7 +10,7 @@ from ..actions import action
 class DummyTestActionJob(object):
     def __init__(self, executor, job):
         self.job = job
-        self.ss_api = job.ss_api
+        self.api = job.api
 
     @staticmethod
     def work_hard():
