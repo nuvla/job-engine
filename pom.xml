@@ -10,12 +10,6 @@
   <name>job-engine</name>
   <url>http://sixsq.com</url>
 
-  <parent>
-    <groupId>sixsq.nuvla.parent</groupId>
-    <artifactId>pom</artifactId>
-    <version>1.0.0</version>
-  </parent>
-
   <licenses>
     <license>
       <name>Apache License, Version 2.0</name>
@@ -35,6 +29,14 @@
     <tag>HEAD</tag>
   </scm>
 
+  <pluginRepositories>
+    <pluginRepository>
+      <id>clojars.org</id>
+      <name>Clojars Repository</name>
+      <url>http://clojars.org/repo</url>
+    </pluginRepository>
+  </pluginRepositories>
+  
   <repositories>
 
     <repository>
@@ -44,9 +46,9 @@
       <snapshots>
         <enabled>false</enabled>
       </snapshots>
-      <id>nuvla.releases</id>
+      <id>nuvla.releases.public</id>
       <name>Nuvla Releases</name>
-      <url>https://nexus.sixsq.com/content/repositories/nuvla-releases</url>
+      <url>https://sixsq-build-artifacts.s3.amazonaws.com/releases</url>
     </repository>
 
     <repository>
@@ -56,11 +58,46 @@
       <snapshots>
         <enabled>true</enabled>
       </snapshots>
-      <id>nuvla.snapshots</id>
+      <id>nuvla.snapshots.public</id>
       <name>Nuvla Snapshots</name>
-      <url>https://nexus.sixsq.com/content/repositories/nuvla-snapshots</url>
+      <url>https://sixsq-build-artifacts.s3.amazonaws.com/snapshots</url>
     </repository>
 
   </repositories>
 
+  <distributionManagement>
+    <repository>
+      <id>nuvla.releases</id>
+      <name>Nuvla Releases</name>
+      <url>s3p://sixsq-build-artifacts/snapshots</url>
+    </repository>
+
+    <snapshotRepository>
+      <id>nuvla.snapshots</id>
+      <name>Nuvla Snapshots</name>
+      <url>s3p://sixsq-build-artifacts/snapshots</url>
+    </snapshotRepository>
+  </distributionManagement>
+
+  <build>
+    
+    <extensions>
+      
+      <!-- provide build time details for modules and plugins -->
+      <extension>
+        <groupId>co.leantechniques</groupId>
+        <artifactId>maven-buildtime-extension</artifactId>
+        <version>3.0.3</version>
+      </extension>
+
+      <!-- allows use of S3 for artifacts -->
+      <extension>
+        <groupId>s3-wagon-private</groupId>
+        <artifactId>s3-wagon-private</artifactId>
+        <version>1.3.2</version>
+      </extension>
+
+    </extensions>
+    
+  </build>
 </project>
