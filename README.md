@@ -1,5 +1,7 @@
 # Nuvla Job Engine
 
+[![Build Status](https://travis-ci.com/nuvla/job-engine.svg?branch=master)](https://travis-ci.com/nuvla/job-engine)
+
 Nuvla job engine use cimi job resource and zookeeper as a locking
 queue. It's done in a way to be horizontally scalled on different nodes.
 

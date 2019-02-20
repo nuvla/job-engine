@@ -29,7 +29,7 @@ class Job(dict):
         self.queue = queue
         self.api = api
         try:
-            self.id = queue.get()
+            self.id = queue.get().decode()
             cimi_job = self.get_cimi_job(self.id)
             dict.__init__(self, cimi_job)
             if self.is_in_final_state():
@@ -58,7 +58,7 @@ class Job(dict):
         reason = None
         for attempt in range(max_attempt):
             try:
-                return self.api.cimi_get(job_uri).json
+                return self.api.get(job_uri).data
             except NuvlaError as e:
                 reason = e.reason
                 if e.response.status_code == 404:
@@ -134,25 +134,25 @@ class Job(dict):
 
     def _edit_job(self, attribute_name, attribute_value):
         try:
-            response = self.api.cimi_edit(self.id, {attribute_name: attribute_value})
+            response = self.api.edit(self.id, {attribute_name: attribute_value})
         except (NuvlaError, ConnectionError):
             retry_kazoo_queue_op(self.queue, 'release')
             reason = 'Failed to update attribute "{}" for {}! Put it back in queue.'.format(attribute_name, self.id)
             raise JobUpdateError(reason)
         else:
-            self.update(response.json)
+            self.update(response.data)
             self.consume_when_final_state()
 
     def _edit_job_multi(self, attributes):
         try:
-            response = self.api.cimi_edit(self.id, attributes)
+            response = self.api.edit(self.id, attributes)
         except (NuvlaError, ConnectionError):
             retry_kazoo_queue_op(self.queue, 'release')
             reason = 'Failed to update following attributes "{}" for {}! '.format(attributes, self.id) \
                      + 'Put it back in queue.'
             raise JobUpdateError(reason)
         else:
-            self.update(response.json)
+            self.update(response.data)
             self.consume_when_final_state()
 
     def __setitem(self, key, value):

@@ -37,16 +37,16 @@ class Base(object):
         parser.add_argument('--zk-hosts', dest='zk_hosts', default=['127.0.0.1:2181'], nargs='+', metavar='HOST',
                             help='ZooKeeper list of hosts [localhost:port]. (default: 127.0.0.1:2181)')
 
-        parser.add_argument('--endpoint', dest='endpoint',
+        parser.add_argument('--api-url', dest='api_url',
                             help='Nuvla endpoint to connect to (default: https://nuvla.io)',
                             default='https://nuvla.io', metavar='URL')
 
-        required_args.add_argument('--user', dest='user', help='Nuvla username',
+        required_args.add_argument('--api-user', dest='api_user', help='Nuvla username',
                                    metavar='USERNAME', required=True)
-        required_args.add_argument('--password', dest='password', help='Nuvla Password',
+        required_args.add_argument('--api-pass', dest='api_pass', help='Nuvla Password',
                                    metavar='PASSWORD', required=True)
 
-        parser.add_argument('--insecure', dest='insecure', default=False, action='store_true',
+        parser.add_argument('--api-insecure', dest='api_insecure', default=False, action='store_true',
                             help='Do not check Nuvla certificate')
 
         parser.add_argument('--name', dest='name', metavar='NAME', default=None, help='Base name for this process')
@@ -82,8 +82,8 @@ class Base(object):
     def execute(self):
         self.name = self.args.name if self.args.name is not None else names[int(random.uniform(1, len(names) - 1))]
 
-        self.api = Api(endpoint=self.args.endpoint, insecure=self.args.insecure, reauthenticate=True)
-        self.api.login_internal(self.args.user, self.args.password)
+        self.api = Api(endpoint=self.args.api_url, insecure=self.args.api_insecure, reauthenticate=True)
+        self.api.login_internal(self.args.api_user, self.args.api_pass)
 
         self._kz = KazooClient(self.args.zk_hosts.join(','), connection_retry=KazooRetry(max_tries=-1),
                                command_retry=KazooRetry(max_tries=-1), timeout=30.0)
