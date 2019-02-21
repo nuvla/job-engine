@@ -85,7 +85,7 @@ class Base(object):
         self.api = Api(endpoint=self.args.api_url, insecure=self.args.api_insecure, reauthenticate=True)
         self.api.login_internal(self.args.api_user, self.args.api_pass)
 
-        self._kz = KazooClient(self.args.zk_hosts.join(','), connection_retry=KazooRetry(max_tries=-1),
+        self._kz = KazooClient(','.join(self.args.zk_hosts), connection_retry=KazooRetry(max_tries=-1),
                                command_retry=KazooRetry(max_tries=-1), timeout=30.0)
         self._kz.start()
 
