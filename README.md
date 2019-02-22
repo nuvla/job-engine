@@ -23,7 +23,7 @@ Install the rpm of nuvla-job-engine
 
 Create a file `/etc/default/nuvla-job-executor` with following content:
 ```
-DAEMON_ARGS='--ss-url=https://<CIMI_ENDPOINT>:<CIMI_PORT> --ss-user=super --ss-pass=<SUPER_PASS> --zk-hosts=<ZOOKEEPER_ENDPOINT>:<ZOOKEEPER_PORT> --threads=8 --es-hosts-list=<ELASTICSEARCH_ENDPOINTS>'
+DAEMON_ARGS='--endpoint=https://<NUVLA_ENDPOINT>:<CIMI_PORT> --user=super --password=<SUPER_PASS> --zk-hosts=<ZOOKEEPER_ENDPOINT>:<ZOOKEEPER_PORT> --threads=8 --es-hosts-list=<ELASTICSEARCH_ENDPOINTS>'
 ```
 
 Start the service with `systemctl start nuvla-job-executor`
@@ -34,7 +34,7 @@ Install the rpm of nuvla-job-engine
 
 Create a file `/etc/default/nuvla-job-distributor` with following content:
 ```
-DAEMON_ARGS='--ss-url=https://<CIMI_ENDPOINT>:<CIMI_PORT> --ss-user=super --ss-pass=<SUPER_PASS> --zk-hosts=<ZOOKEEPER_ENDPOINT>:<ZOOKEEPER_PORT>'
+DAEMON_ARGS='--endpoint=https://<NUVLA_ENDPOINT>:<CIMI_PORT> --user=super --password=<SUPER_PASS> --zk-hosts=<ZOOKEEPER_ENDPOINT>:<ZOOKEEPER_PORT>'
 ```
 
 Start the service with `systemctl start nuvla-job-distributor@<DISTRIBUTOR_SCRIPT_FILENAME_LAST_PART>`

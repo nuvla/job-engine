@@ -34,9 +34,8 @@ class Base(object):
         parser = argparse.ArgumentParser(description='Process Nuvla jobs')
         required_args = parser.add_argument_group('required named arguments')
 
-        parser.add_argument('--zk-hosts', dest='zk_hosts',
-                            metavar='HOSTS', default='127.0.0.1:2181',
-                            help='Coma separated list of ZooKeeper hosts to connect (default: 127.0.0.1:2181)')
+        parser.add_argument('--zk-hosts', dest='zk_hosts', default=['127.0.0.1:2181'], nargs='+', metavar='HOST',
+                            help='ZooKeeper list of hosts [localhost:port]. (default: 127.0.0.1:2181)')
 
         parser.add_argument('--api-url', dest='api_url',
                             help='Nuvla endpoint to connect to (default: https://nuvla.io)',
@@ -86,7 +85,7 @@ class Base(object):
         self.api = Api(endpoint=self.args.api_url, insecure=self.args.api_insecure, reauthenticate=True)
         self.api.login_internal(self.args.api_user, self.args.api_pass)
 
-        self._kz = KazooClient(self.args.zk_hosts, connection_retry=KazooRetry(max_tries=-1),
+        self._kz = KazooClient(','.join(self.args.zk_hosts), connection_retry=KazooRetry(max_tries=-1),
                                command_retry=KazooRetry(max_tries=-1), timeout=30.0)
         self._kz.start()
 
