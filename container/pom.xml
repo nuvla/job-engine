@@ -140,9 +140,6 @@
         <configuration>
           <repository>docker.io/nuvla/job</repository>
           <tag>${docker-tag}</tag>
-          <build>
-            <squash>true</squash>
-          </build>
           <useMavenSettingsForAuth>true</useMavenSettingsForAuth>
         </configuration>
       </plugin>
