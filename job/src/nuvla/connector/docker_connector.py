@@ -1,33 +1,29 @@
 # -*- coding: utf-8 -*-
 
-from __future__ import print_function
-
+import re
 import logging
 import requests
-
-from .connector import Connector, should_connect
-
-import time
 from collections import defaultdict
 from tempfile import NamedTemporaryFile
-import re
-from exceptions import Exception, RuntimeError
+from connector import Connector, should_connect
 
 
 def tree():
     return defaultdict(tree)
 
 
+def instantiate_from_cimi(api_connector, api_credential):
+    return DockerConnector(api_connector, api_credential)
+
+
 class DockerConnector(Connector):
 
     def __init__(self, api_connector, api_credential):
-        super(DockerConnector, self).__init__(api_connector, api_credential)
-        self.api_connector = api_connector
-        self.api_credential = api_credential
+        super(Connector, self).__init__(api_connector, api_credential)
 
-        self.cert = api_credential.get('key').replace("\\n", "\n")  # FIXME
-        self.key = api_credential.get('secret').replace("\\n", "\n")  # FIXME
-        self.endpoint = api_connector.get('endpoint')  # FIXME
+        self.cert = api_credential.get('key').replace("\\n", "\n")
+        self.key = api_credential.get('secret').replace("\\n", "\n")
+        self.endpoint = api_connector.get('endpoint')
 
         self.docker_api = requests.Session()
         self.docker_api.verify = False
@@ -35,7 +31,7 @@ class DockerConnector(Connector):
 
     @property
     def connector_type(self):
-        return 'docker'
+        return 'Docker'
 
     def connect(self):
         logging.warn('Connecting with connector {} and credential {}'.format(self.api_connector['id'],
@@ -49,6 +45,90 @@ class DockerConnector(Connector):
     def clear_connection(self, connect_result):
         connect_result.close()
 
+    @should_connect
+    def start(self, api_deployment):
+        service_json = tree()
+        service_json['Name'] = 'service-test'  # FIXME
+        service_json['TaskTemplate']['ContainerSpec']['Image'] = "sixsq/docker-client:0.1"  # FIXME
+
+        working_dir = None  # FIXME
+        if working_dir:
+            service_json['TaskTemplate']['ContainerSpec']['Dir'] = working_dir
+
+        env = None  # FIXME
+        if env:
+            service_json['TaskTemplate']['ContainerSpec']['Env'] = env
+
+        cpu_ratio = None  # FIXME
+        if cpu_ratio:
+            cpu_ratio_nano_secs = int(float(cpu_ratio) * 1000000000)
+            service_json['TaskTemplate']['Resources']['Limits']['NanoCPUs'] = cpu_ratio_nano_secs
+            service_json['TaskTemplate']['Resources']['Reservations']['NanoCPUs'] = cpu_ratio_nano_secs
+
+        ram_giga_bytes = None  # FIXME
+        if ram_giga_bytes:
+            ram_bytes = int(float(ram_giga_bytes) * 1073741824)
+            service_json['TaskTemplate']['Resources']['Limits']['MemoryBytes'] = ram_bytes
+            service_json['TaskTemplate']['Resources']['Reservations']['MemoryBytes'] = ram_bytes
+
+        restart_policy = None  # FIXME
+        if restart_policy:
+            service_json['TaskTemplate']['RestartPolicy']['Condition'] = restart_policy
+
+        cmd = None  # FIXME
+        if cmd:
+            service_json['TaskTemplate']['ContainerSpec']['command'] = [cmd]
+
+        args = None  # FIXME
+        if args:
+            service_json['TaskTemplate']['ContainerSpec']['args'] = args
+
+        ports = []
+
+        ports_opt = []  # FIXME
+
+        mounts_opt = []  # FIXME
+
+        service_json['EndpointSpec']['Ports'] = DockerConnector.get_ports_mapping(ports, ports_opt)
+
+        service_json['TaskTemplate']['ContainerSpec']['Mounts'] = DockerConnector.get_mounts(mounts_opt)
+
+        vm = self.docker_api.post(self._get_full_url("services/create"), json=service_json).json()
+        # TODO: wait for IP before returning
+        return vm
+
+    @should_connect
+    def stop(self, ids):
+        for service_id in ids:
+            response = self.docker_api.delete(self._get_full_url("services/{}".format(service_id)))
+            if response.status_code != 200:
+                self.validate_action(response.json())
+
+    @should_connect
+    def list(self):
+        request_url = self._get_full_url("services")
+        services_list = self.docker_api.get(request_url).json()
+        if not isinstance(services_list, list):
+            self.validate_action(services_list)
+        return services_list
+
+    def extract_vm_id(self, vm):
+        return vm["ID"]
+
+    def extract_vm_ip(self, vm):
+        return re.search('(?:http.*://)?(?P<host>[^:/ ]+)', self.endpoint).group('host')
+
+    def extract_vm_state(self, vm):
+        return 'running'
+
+    def extract_vm_ports_mapping(self, vm):
+        published_ports_list = [":".join([str(pp.get("Protocol")),
+                                          str(pp.get('PublishedPort')),
+                                          str(pp.get('TargetPort'))])
+                                for pp in vm.get('Endpoint', {}).get('Ports', [])]
+
+        return " ".join(published_ports_list)
+
     def _get_full_url(self, action):
         return "{}/{}".format(self.endpoint, action)
 
@@ -57,7 +137,7 @@ class DockerConnector(Connector):
         """Takes the raw response from _start_container_in_docker
         and checks whether the service creation request was successful or not"""
         if len(response.keys()) == 1 and response.has_key("message"):
-            raise RuntimeError(response["message"])
+            raise Exception(response["message"])
 
     @staticmethod
     def get_container_os_preparation_script(ssh_pub_key=''):
@@ -168,60 +248,3 @@ class DockerConnector(Connector):
             mounts.append(mount_map)
         return mounts
 
-    def _vm_get_ip(self, vm):
-        return re.search('(?:http.*://)?(?P<host>[^:/ ]+)', self.endpoint).group('host')
-
-    def _vm_get_id(self, vm):
-        return vm["ID"]
-
-    def _vm_get_state(self, vm_instance):
-        return 'running'
-
-    def _vm_get_ip_from_list_instances(self, vm_instance):
-        return self._vm_get_ip(vm_instance)
-
-    def _vm_get_ports_mapping(self, vm_instance):
-        published_ports_list = [":".join([str(pp.get("Protocol")),
-                                          str(pp.get('PublishedPort')),
-                                          str(pp.get('TargetPort'))])
-                                for pp in vm_instance.get('Endpoint', {}).get('Ports', [])]
-
-        return " ".join(published_ports_list)
-
-    @should_connect
-    def start(self, api_deployment):
-        logging.warn('start docker')
-        service_name = "service-test"  # FIXME
-        service_json = tree()
-        service_json['Name'] = service_name
-        service_json['TaskTemplate']['ContainerSpec']['Image'] = "sixsq/docker-client:0.1"  # FIXME
-
-        args = ['node', 'ls']  # FIXME
-        if args:
-            service_json['TaskTemplate']['ContainerSpec']['args'] = args
-
-        ports = []
-
-        create_response = self.docker_api.post(self._get_full_url("services/create"), json=service_json).json()
-
-        self.validate_action(create_response)
-        vm_id = create_response['ID']
-        vm = self.docker_api.get(self._get_full_url("services/{}".format(vm_id))).json()
-        self.validate_action(vm)
-        return vm
-
-    @should_connect
-    def stop(self, ids):
-        logging.warn('stop docker')
-        for service_id in ids:
-            response = self.docker_api.delete(self._get_full_url("services/{}".format(service_id)))
-            if response.status_code != 200:
-                self.validate_action(response.json())
-
-    @should_connect
-    def list(self):
-        request_url = self._get_full_url("services")
-        services_list = self.docker_api.get(request_url).json()
-        if not isinstance(services_list, list):
-            self.validate_action(services_list)
-        return services_list
