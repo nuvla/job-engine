@@ -4,6 +4,7 @@ from __future__ import print_function
 
 import os
 import sys
+import uuid
 import random
 import warnings
 import logging
@@ -42,7 +43,7 @@ def override(func):
     return overrided_func
 
 
-def load_module(module_name):
+def load_py_module(module_name):
     namespace = ''
     name = module_name
     if name.find('.') != -1:
@@ -50,6 +51,13 @@ def load_module(module_name):
         namespace = '.'.join(name.split('.')[:-1])
 
     return __import__(name, fromlist=namespace)
+
+
+def from_data_uuid(text):
+    class NullNameSpace:
+        bytes = b''
+
+    return str(uuid.uuid3(NullNameSpace, text))
 
 
 def assure_path_exists(path):
@@ -65,15 +73,14 @@ def retry_kazoo_queue_op(queue, function_name):
 
 
 connector_classes = {
-    'azure': 'slipstream_azure.AzureClientCloud',
-    'cloudstack': 'slipstream_cloudstack.CloudStackClientCloud',
-    'cloudstackadvancedzone': 'slipstream_cloudstack.CloudStackAdvancedZoneClientCloud',
-    'ec2': 'slipstream_ec2.Ec2ClientCloud',
-    'exoscale': 'slipstream_exoscale.ExoscaleClientCloud',
-    'nuvlabox': 'slipstream_nuvlabox.NuvlaBoxClientCloud',
-    'opennebula': 'slipstream_opennebula.OpenNebulaClientCloud',
-    'openstack': 'slipstream_openstack.OpenStackClientCloud',
-    'otc': 'slipstream_otc.OpenTelekomClientCloud',
-    'softlayer': 'slipstream_nativesoftlayer.NativeSoftLayerClientCloud',
-    'docker': 'slipstream_docker.DockerClientCloud'
+    'docker': 'nuvla.connector.docker_connector'
 }
+
+
+def create_connector_instance(api_connector, api_credential):
+    connector_name = api_connector['cloudServiceType']
+    connector = load_py_module(connector_classes[connector_name])
+    if not hasattr(connector, 'instantiate_from_cimi'):
+        raise NotImplementedError('The connector "{}" is not compatible with the start_deployment job'
+                                  .format(api_connector['cloudServiceType']))
+    return connector.instantiate_from_cimi(api_connector, api_credential)
