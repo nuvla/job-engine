@@ -16,7 +16,7 @@ class DeploymentStartJob(object):
         self.api = job.api
 
         self._api_deployment = None
-        self._module = None
+        self._api_module = None
         self._cloud_name = None
         self._api_connector = None
         self._api_configuration_nuvla = None
@@ -26,17 +26,27 @@ class DeploymentStartJob(object):
         self._connector_instance = None
         self.deployment_owner = self.api_deployment['acl']['owner']['principal']
 
-    @property
-    def connector_instance(self):
-        if self._connector_instance is None:
-            self._connector_instance = create_connector_instance(self.api_connector, self.api_credential)
-        return self._connector_instance
+    @staticmethod
+    def connector_instance(api_connector, api_credential):
+        return create_connector_instance(api_connector, api_credential)
 
     @property
     def api_deployment(self):
         if self._api_deployment is None:
             self._api_deployment = self.api.get(self.job['targetResource']['href']).data
         return self._api_deployment
+
+    @property
+    def api_module(self):
+        if self._api_module is None:
+            self._api_module = self.api_deployment['module'].get('content', {})
+        return self._api_module
+
+    @property
+    def api_connector(self):
+        if self._api_connector is None:
+            self._api_connector = self.api.get(self.mo)
+        return self._api_connector
 
     @property
     def api_configuration_nuvla(self):
@@ -64,7 +74,7 @@ class DeploymentStartJob(object):
             parameter['description'] = param_description
         if param_value:
             parameter['value'] = param_value
-        return self.api.add('deploymentParameters', parameter)
+        return self.api.add('deployment-parameter', parameter)
 
     def __contruct_deployment_param_href(self, node_id, param_name):
         param_id = ':'.join(item or '' for item in [self.api_deployment['id'], node_id, param_name])
@@ -123,17 +133,16 @@ class DeploymentStartJob(object):
 
     def handle_deployment(self):
         node_instance_name = 'machine'  # FIXME
-        module_content = self.api_deployment['module'].get('content', {})
 
-        cpu = module_content.get('cpu')  # FIXME
-        ram = module_content.get('ram')
-        disk = module_content.get('disk')
-        network_type = module_content.get('networkType')
-        login_user = module_content.get('loginUser')
-        ports = module_content.get('ports', [])
-        mounts = module_content.get('mounts', [])
+        cpu = self.api_module.get('cpu')  # FIXME
+        ram = self.api_module.get('ram')
+        disk = self.api_module.get('disk')
+        network_type = self.api_module.get('networkType')
+        login_user = self.api_module.get('loginUser')
+        ports = self.api_module.get('ports', [])
+        mounts = self.api_module.get('mounts', [])
 
-        node_params = self.get_node_parameters(module_content)
+        node_params = self.get_node_parameters(self.api_module)
 
         self.create_deployment_parameters(node_instance_name, node_params.values(), ports)
 
@@ -141,7 +150,11 @@ class DeploymentStartJob(object):
         if cloud_credential_id is None:
             raise ValueError("Credential is not set!")
 
-        vm = self.connector_instance.start(self.api_deployment)
+        api_credential = self.api.get(cloud_credential_id).data
+        api_connector = self.api.get(api_credential['connector']['href']).data
+
+        connector_instance = DeploymentStartJob.connector_instance(api_connector, api_credential)
+        vm = connector_instance.start(self.api_deployment)
 
         self.set_deployment_parameter(param_name='instanceid',
                                       param_value=self.connector_instance.extract_vm_id(vm),

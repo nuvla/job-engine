@@ -19,7 +19,7 @@ def instantiate_from_cimi(api_connector, api_credential):
 class DockerConnector(Connector):
 
     def __init__(self, api_connector, api_credential):
-        super(Connector, self).__init__(api_connector, api_credential)
+        super(DockerConnector, self).__init__(api_connector, api_credential)
 
         self.cert = api_credential.get('key').replace("\\n", "\n")
         self.key = api_credential.get('secret').replace("\\n", "\n")
@@ -49,7 +49,7 @@ class DockerConnector(Connector):
     def start(self, api_deployment):
         service_json = tree()
         service_json['Name'] = 'service-test'  # FIXME
-        service_json['TaskTemplate']['ContainerSpec']['Image'] = "sixsq/docker-client:0.1"  # FIXME
+        service_json['TaskTemplate']['ContainerSpec']['Image'] = api_deployment['module']['content']['image']
 
         working_dir = None  # FIXME
         if working_dir:
