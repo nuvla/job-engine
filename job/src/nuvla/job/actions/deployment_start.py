@@ -2,7 +2,7 @@
 
 from __future__ import print_function
 
-from ..util import create_connector_instance, from_data_uuid
+from ..util import create_connector_instance
 
 from ..actions import action
 
@@ -15,54 +15,14 @@ class DeploymentStartJob(object):
         self.job = job
         self.api = job.api
 
-        self._api_deployment = None
-        self._api_module = None
-        self._cloud_name = None
-        self._api_connector = None
-        self._api_configuration_nuvla = None
-        self._api_user = None
-        self._user_params = None
-        self._connector_name = None
-        self._connector_instance = None
-        self.deployment_owner = self.api_deployment['acl']['owner']['principal']
-
     @staticmethod
     def connector_instance(api_connector, api_credential):
         return create_connector_instance(api_connector, api_credential)
 
-    @property
-    def api_deployment(self):
-        if self._api_deployment is None:
-            self._api_deployment = self.api.get(self.job['targetResource']['href']).data
-        return self._api_deployment
-
-    @property
-    def api_module(self):
-        if self._api_module is None:
-            self._api_module = self.api_deployment['module'].get('content', {})
-        return self._api_module
-
-    @property
-    def api_connector(self):
-        if self._api_connector is None:
-            self._api_connector = self.api.get(self.mo)
-        return self._api_connector
-
-    @property
-    def api_configuration_nuvla(self):
-        if self._api_configuration_nuvla is None:
-            self._api_configuration_nuvla = self.api.get('configuration/slipstream').data
-        return self._api_configuration_nuvla
-
-    @property
-    def user(self):
-        if self._api_user is None:
-            self._api_user = self.api.get('user/{}'.format(self.deployment_owner)).data
-        return self._api_user
-
-    def create_deployment_parameter(self, user, param_name, param_value=None, node_id=None, param_description=None):
+    def create_deployment_parameter(self, deployment_id, user, param_name, param_value=None, node_id=None,
+                                    param_description=None):
         parameter = {'name': param_name,
-                     'deployment': {'href': self.api_deployment['id']},
+                     'deployment': {'href': deployment_id},
                      'acl': {'owner': {'principal': 'ADMIN',
                                        'type': 'ROLE'},
                              'rules': [{'principal': user,
@@ -76,115 +36,74 @@ class DeploymentStartJob(object):
             parameter['value'] = param_value
         return self.api.add('deployment-parameter', parameter)
 
-    def __contruct_deployment_param_href(self, node_id, param_name):
-        param_id = ':'.join(item or '' for item in [self.api_deployment['id'], node_id, param_name])
-        return 'deployment-parameter/' + from_data_uuid(param_id)
-
-    def set_deployment_parameter(self, param_name, param_value, node_id=None):
-        deployment_parameter_href = self.__contruct_deployment_param_href(node_id, param_name)
-        self.api.edit(deployment_parameter_href, {'value': param_value})
-
-    @staticmethod
-    def get_node_parameters(module):
-        all_module_params_merged = {}
-        local_module = module
-        while local_module:
-            params = local_module.get('outputParameters', []) + local_module.get('inputParameters', [])
-            for param in params:
-                param_name = param['parameter']
-                if param_name in all_module_params_merged:
-                    param.update(all_module_params_merged[param_name])
-                all_module_params_merged[param_name] = param
-            local_module = local_module.get('parent', {}).get('content', None)
-        return all_module_params_merged
-
     @staticmethod
     def get_port_name_value(port_mapping):
         port_details = port_mapping.split(':')
         return '.'.join([port_details[0], port_details[2]]), port_details[1]
 
-    def create_deployment_parameters(self, node_name, node_params, ports):
-        # Global service params
-        deployment_owner = self.api_deployment['acl']['owner']['principal']
-        for param in self.api_deployment['outputParameters']:
-            self.create_deployment_parameter(user=deployment_owner,
-                                             param_name=param['parameter'],
-                                             param_value=param.get('value'),
-                                             node_id=None,
-                                             param_description=param['description'])
-
-        for param in node_params:
-            self.create_deployment_parameter(user=deployment_owner,
-                                             param_name=param['parameter'],
-                                             param_value=param.get('value'),
-                                             node_id=node_name,
-                                             param_description=param['description'])
-
-        for port_mapping in ports:
-            port_param_name, _ = self.get_port_name_value(port_mapping)
-            self.create_deployment_parameter(user=deployment_owner,
-                                             param_name=port_param_name,
-                                             node_id=node_name,
-                                             param_description='Published port')
-        self.create_deployment_parameter(user=deployment_owner,
-                                         param_name='tcp.22',
-                                         node_id=node_name,
-                                         param_description='Published port')
-
-    def handle_deployment(self):
+    def handle_deployment(self, api_deployment):
         node_instance_name = 'machine'  # FIXME
 
-        cpu = self.api_module.get('cpu')  # FIXME
-        ram = self.api_module.get('ram')
-        disk = self.api_module.get('disk')
-        network_type = self.api_module.get('networkType')
-        login_user = self.api_module.get('loginUser')
-        ports = self.api_module.get('ports', [])
-        mounts = self.api_module.get('mounts', [])
+        deployment_id = api_deployment['id']
 
-        node_params = self.get_node_parameters(self.api_module)
+        credential_id = api_deployment['credential-id']
+        if credential_id is None:
+            raise ValueError("Credential id is not set!")
 
-        self.create_deployment_parameters(node_instance_name, node_params.values(), ports)
+        api_credential = self.api.get(credential_id).data
 
-        cloud_credential_id = node_params['credential.id'].get('value')
-        if cloud_credential_id is None:
-            raise ValueError("Credential is not set!")
-
-        api_credential = self.api.get(cloud_credential_id).data
         api_connector = self.api.get(api_credential['connector']['href']).data
 
         connector_instance = DeploymentStartJob.connector_instance(api_connector, api_credential)
-        vm = connector_instance.start(self.api_deployment)
 
-        self.set_deployment_parameter(param_name='instanceid',
-                                      param_value=self.connector_instance.extract_vm_id(vm),
-                                      node_id=node_instance_name)
+        deployment_owner = api_deployment['acl']['owner']['principal']
 
-        self.set_deployment_parameter(param_name='hostname',
-                                      param_value=self.connector_instance.extract_vm_ip(vm),
-                                      node_id=node_instance_name)
+        vm = connector_instance.start(api_deployment)
 
-        ports_mapping = self.connector_instance.extract_vm_ports_mapping(vm)
+        self.create_deployment_parameter(
+            deployment_id=deployment_id,
+            user=deployment_owner,
+            param_name='instance-id',
+            param_value=connector_instance.extract_vm_id(vm),
+            param_description='Instance ID',
+            node_id=node_instance_name)
+
+        self.create_deployment_parameter(
+            deployment_id=deployment_id,
+            user=deployment_owner,
+            param_name='hostname',
+            param_value=connector_instance.extract_vm_ip(vm),
+            param_description='Hostname',
+            node_id=node_instance_name)
+
+        ports_mapping = connector_instance.extract_vm_ports_mapping(vm)
         if ports_mapping:
             for port_mapping in ports_mapping.split():
                 port_param_name, port_param_value = self.get_port_name_value(port_mapping)
-                self.set_deployment_parameter(param_name=port_param_name,
-                                              param_value=port_param_value,
-                                              node_id=node_instance_name)
+                self.create_deployment_parameter(
+                    deployment_id=deployment_id,
+                    user=deployment_owner,
+                    param_name=port_param_name,
+                    param_value=port_param_value,
+                    node_id=node_instance_name)
 
         self.api.edit(self.api_deployment['id'], {'state': 'STARTED'})
 
         return 0
 
     def start_deployment(self):
-        logging.info('Deployment start job started for {}.'.format(self.api_deployment.get('id')))
+        deployment_id = self.job['targetResource']['href']
+
+        api_deployment = self.api.get(deployment_id).data
+
+        logging.info('Deployment start job started for {}.'.format(deployment_id))
 
         self.job.set_progress(10)
 
         try:
-            self.handle_deployment()
+            self.handle_deployment(api_deployment)
         except:
-            self.api.edit(self.api_deployment['id'], {'state': 'ERROR'})
+            self.api.edit(deployment_id, {'state': 'ERROR'})
             raise
 
         return 10000

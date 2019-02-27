@@ -55,10 +55,12 @@ class DockerConnector(Connector):
         if working_dir:
             service_json['TaskTemplate']['ContainerSpec']['Dir'] = working_dir
 
-        env = None  # FIXME
+        env = ['NUVLA_DEPLOYMENT_ID={}'.format(api_deployment['id']),
+               'NUVLA_API_KEY={}'.format(api_deployment['api-credentials']['api-key']),
+               'NUVLA_API_SECRET={}'.format(api_deployment['api-credentials']['api-secret'])]
+
         if env:
             service_json['TaskTemplate']['ContainerSpec']['Env'] = env
-
         cpu_ratio = None  # FIXME
         if cpu_ratio:
             cpu_ratio_nano_secs = int(float(cpu_ratio) * 1000000000)
@@ -83,9 +85,9 @@ class DockerConnector(Connector):
         if args:
             service_json['TaskTemplate']['ContainerSpec']['args'] = args
 
-        ports = []
+        ports = []  # FIXME
 
-        ports_opt = []  # FIXME
+        ports_opt = ['tcp:22:22', 'tcp::60000']  # FIXME
 
         mounts_opt = []  # FIXME
 
@@ -93,8 +95,14 @@ class DockerConnector(Connector):
 
         service_json['TaskTemplate']['ContainerSpec']['Mounts'] = DockerConnector.get_mounts(mounts_opt)
 
-        vm = self.docker_api.post(self._get_full_url("services/create"), json=service_json).json()
-        # TODO: wait for IP before returning
+        response = self.docker_api.post(self._get_full_url("services/create"), json=service_json).json()
+
+        self.validate_action(response)
+
+        vm = self.docker_api.get(self._get_full_url('services/{}'.format(response['ID']))).json()
+
+        self.validate_action(vm)
+
         return vm
 
     @should_connect
@@ -113,7 +121,7 @@ class DockerConnector(Connector):
         return services_list
 
     def extract_vm_id(self, vm):
-        return vm["ID"]
+        return vm['ID']
 
     def extract_vm_ip(self, vm):
         return re.search('(?:http.*://)?(?P<host>[^:/ ]+)', self.endpoint).group('host')
@@ -138,36 +146,6 @@ class DockerConnector(Connector):
         and checks whether the service creation request was successful or not"""
         if len(response.keys()) == 1 and response.has_key("message"):
             raise Exception(response["message"])
-
-    @staticmethod
-    def get_container_os_preparation_script(ssh_pub_key=''):
-        centos_install_script = \
-            'yum clean all && yum install -y wget python openssh-server && ' + \
-            'mkdir -p /var/run/sshd && mkdir -p $HOME/.ssh/ && ' + \
-            'echo "{}" > $HOME/.ssh/authorized_keys && '.format(ssh_pub_key) + \
-            'sed -i "s/PermitRootLogin prohibit-password/PermitRootLogin yes/" /etc/ssh/sshd_config && ' + \
-            'ssh-keygen -t rsa -f /etc/ssh/ssh_host_rsa_key -N "" && ' + \
-            'ssh-keygen -f /etc/ssh/ssh_host_ed25519_key -N "" -t ed25519 && ' + \
-            'ssh-keygen -f /etc/ssh/ssh_host_ecdsa_key -N "" -t ecdsa && ' + \
-            '/usr/sbin/sshd'
-        ubuntu_install_script = \
-            'apt-get update && apt-get install -y wget python python-pkg-resources openssh-server && ' + \
-            'mkdir -p /var/run/sshd && mkdir -p $HOME/.ssh/ && ' + \
-            'echo "{}" > $HOME/.ssh/authorized_keys && '.format(ssh_pub_key) + \
-            'sed -i "s/PermitRootLogin prohibit-password/PermitRootLogin yes/" /etc/ssh/sshd_config && ' + \
-            '/usr/sbin/sshd'
-        alpine_install_script = \
-            'apk add wget python openssh && ' + \
-            'ssh-keygen -f /etc/ssh/ssh_host_rsa_key -N "" -t rsa && ' + \
-            'ssh-keygen -f /etc/ssh/ssh_host_dsa_key -N "" -t dsa && ' + \
-            'mkdir -p /var/run/sshd && mkdir -p $HOME/.ssh/ && ' + \
-            'echo "{}" > $HOME/.ssh/authorized_keys && '.format(ssh_pub_key) + \
-            'sed -i "s/PermitRootLogin prohibit-password/PermitRootLogin yes/" /etc/ssh/sshd_config && ' + \
-            '/usr/sbin/sshd'
-
-        return 'command -v yum; if [ $? -eq 0 ]; then {}; fi && '.format(centos_install_script) + \
-               'command -v apt-get; if [ $? -eq 0 ]; then {}; fi && '.format(ubuntu_install_script) + \
-               'command -v apk; if [ $? -eq 0 ]; then {}; fi'.format(alpine_install_script)
 
     @staticmethod
     def extend_ports_range(string_port):

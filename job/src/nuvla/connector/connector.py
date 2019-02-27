@@ -9,8 +9,9 @@ def should_connect(f):
     @wraps(f)
     def wrapper(self, *f_args, **f_kwargs):
         connect_result = self.connect()
-        f(self, *f_args, **f_kwargs)
+        result = f(self, *f_args, **f_kwargs)
         self.clear_connection(connect_result)
+        return result
 
     return wrapper
 
