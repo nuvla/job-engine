@@ -26,7 +26,7 @@ RUN apk add --no-cache ca-certificates curl
 RUN [ ! -e /etc/nsswitch.conf ] && echo 'hosts: files dns' > /etc/nsswitch.conf
 
 ENV DOCKER_CHANNEL stable
-ENV DOCKER_VERSION 18.09.1
+ENV DOCKER_VERSION 18.09.2
 
 RUN set -eux; \
 	\
@@ -58,6 +58,7 @@ RUN set -eux; \
 ADD https://raw.githubusercontent.com/docker-library/docker/65fab2cd767c10f22ee66afa919eda80dbdc8872/18.09/modprobe.sh /usr/local/bin/modprobe
 
 RUN curl -L https://github.com/docker/machine/releases/download/v0.16.0/docker-machine-$(uname -s)-$(uname -m) >/tmp/docker-machine && \
-            install /tmp/docker-machine /usr/local/bin/docker-machine
+            install /tmp/docker-machine /usr/local/bin/docker-machine &&\
+            pip install python-docker-machine
 
 ENTRYPOINT ["/app/job/src/scripts/job_executor.py"]
