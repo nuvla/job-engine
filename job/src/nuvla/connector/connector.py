@@ -3,15 +3,15 @@
 from __future__ import print_function
 from abc import abstractmethod, abstractproperty
 from functools import wraps
-import logging
 
 
 def should_connect(f):
     @wraps(f)
     def wrapper(self, *f_args, **f_kwargs):
         connect_result = self.connect()
-        f(self, *f_args, **f_kwargs)
+        result = f(self, *f_args, **f_kwargs)
         self.clear_connection(connect_result)
+        return result
 
     return wrapper
 
@@ -45,4 +45,20 @@ class Connector(object):
 
     @abstractmethod
     def list(self):
+        pass
+
+    @abstractmethod
+    def extract_vm_id(self, vm):
+        pass
+
+    @abstractmethod
+    def extract_vm_ip(self, vm):
+        pass
+
+    @abstractmethod
+    def extract_vm_ports_mapping(self, vm):
+        pass
+
+    @abstractmethod
+    def extract_vm_state(self, vm):
         pass
