@@ -18,9 +18,10 @@ def should_connect(f):
 
 class Connector(object):
 
-    def __init__(self, api_connector, api_credential):
+    def __init__(self, api_connector, api_credential, api_endpoint=None):
         self.api_connector = api_connector
         self.api_credential = api_credential
+        self.api_endpoint = api_endpoint
 
     @abstractproperty
     def connector_type(self):

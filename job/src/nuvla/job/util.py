@@ -77,10 +77,10 @@ connector_classes = {
 }
 
 
-def create_connector_instance(api_connector, api_credential):
+def create_connector_instance(api_connector, api_credential, api_endpoint):
     connector_name = api_connector['cloudServiceType']
     connector = load_py_module(connector_classes[connector_name])
     if not hasattr(connector, 'instantiate_from_cimi'):
         raise NotImplementedError('The connector "{}" is not compatible with the start_deployment job'
                                   .format(api_connector['cloudServiceType']))
-    return connector.instantiate_from_cimi(api_connector, api_credential)
+    return connector.instantiate_from_cimi(api_connector, api_credential, api_endpoint)

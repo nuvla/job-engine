@@ -12,14 +12,14 @@ def tree():
     return defaultdict(tree)
 
 
-def instantiate_from_cimi(api_connector, api_credential):
-    return DockerConnector(api_connector, api_credential)
+def instantiate_from_cimi(api_connector, api_credential, api_endpoint=None):
+    return DockerConnector(api_connector, api_credential, api_endpoint)
 
 
 class DockerConnector(Connector):
 
-    def __init__(self, api_connector, api_credential):
-        super(DockerConnector, self).__init__(api_connector, api_credential)
+    def __init__(self, api_connector, api_credential, api_endpoint=None):
+        super(DockerConnector, self).__init__(api_connector, api_credential, api_endpoint)
 
         self.cert = api_credential.get('key').replace("\\n", "\n")
         self.key = api_credential.get('secret').replace("\\n", "\n")
@@ -57,7 +57,8 @@ class DockerConnector(Connector):
 
         env = ['NUVLA_DEPLOYMENT_ID={}'.format(api_deployment['id']),
                'NUVLA_API_KEY={}'.format(api_deployment['api-credentials']['api-key']),
-               'NUVLA_API_SECRET={}'.format(api_deployment['api-credentials']['api-secret'])]
+               'NUVLA_API_SECRET={}'.format(api_deployment['api-credentials']['api-secret']),
+               'NUVLA_ENDPOINT={}'.format(self.api_endpoint)]
 
         if env:
             service_json['TaskTemplate']['ContainerSpec']['Env'] = env

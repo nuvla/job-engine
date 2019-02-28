@@ -16,8 +16,8 @@ class DeploymentStartJob(object):
         self.api = job.api
 
     @staticmethod
-    def connector_instance(api_connector, api_credential):
-        return create_connector_instance(api_connector, api_credential)
+    def connector_instance(api_connector, api_credential, api_endpoint):
+        return create_connector_instance(api_connector, api_credential, api_endpoint)
 
     def create_deployment_parameter(self, deployment_id, user, param_name, param_value=None, node_id=None,
                                     param_description=None):
@@ -54,7 +54,7 @@ class DeploymentStartJob(object):
 
         api_connector = self.api.get(api_credential['connector']['href']).data
 
-        connector_instance = DeploymentStartJob.connector_instance(api_connector, api_credential)
+        connector_instance = DeploymentStartJob.connector_instance(api_connector, api_credential, self.api.endpoint)
 
         deployment_owner = api_deployment['acl']['owner']['principal']
 

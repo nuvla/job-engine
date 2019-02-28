@@ -16,7 +16,7 @@ from exceptions import Exception, RuntimeError
 
 class DockerMachineConnector(Connector):
 
-    def __init__(self, api_infrastructure, api_credential):
+    def __init__(self, api_infrastructure, api_credential, api_endpoint=None):
         super(DockerMachineConnector, self).__init__(api_infrastructure, api_credential)
         self.api_infrastructure = self.api_connector
 
