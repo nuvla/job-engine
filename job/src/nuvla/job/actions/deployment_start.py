@@ -29,7 +29,7 @@ class DeploymentStartJob(object):
                                         'type': 'USER',
                                         'right': 'MODIFY'}]}}  # TODO not always allow modification
         if node_id:
-            parameter['nodeID'] = node_id
+            parameter['node-id'] = node_id
         if param_description:
             parameter['description'] = param_description
         if param_value:
