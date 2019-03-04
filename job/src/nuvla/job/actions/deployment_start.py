@@ -50,21 +50,27 @@ class DeploymentStartJob(object):
         if credential_id is None:
             raise ValueError("Credential id is not set!")
 
+        infrastructure_service_id = api_deployment['infrastructure-service-id']
+        if infrastructure_service_id is None:
+            raise ValueError("Infrastructure service id is not set!")
+
         api_credential = self.api.get(credential_id).data
 
-        api_connector = self.api.get(api_credential['connector']['href']).data
+        api_infrastructure_service = self.api.get(infrastructure_service_id).data
 
-        connector_instance = DeploymentStartJob.connector_instance(api_connector, api_credential, self.api.endpoint)
+        connector_instance = DeploymentStartJob.connector_instance(api_infrastructure_service,
+                                                                   api_credential,
+                                                                   self.api.endpoint)
 
         deployment_owner = api_deployment['acl']['owner']['principal']
 
-        vm = connector_instance.start(api_deployment)
+        container = connector_instance.start(api_deployment)
 
         self.create_deployment_parameter(
             deployment_id=deployment_id,
             user=deployment_owner,
             param_name='instance-id',
-            param_value=connector_instance.extract_vm_id(vm),
+            param_value=connector_instance.extract_vm_id(container),
             param_description='Instance ID',
             node_id=node_instance_name)
 
@@ -72,11 +78,11 @@ class DeploymentStartJob(object):
             deployment_id=deployment_id,
             user=deployment_owner,
             param_name='hostname',
-            param_value=connector_instance.extract_vm_ip(vm),
+            param_value=connector_instance.extract_vm_ip(container),
             param_description='Hostname',
             node_id=node_instance_name)
 
-        ports_mapping = connector_instance.extract_vm_ports_mapping(vm)
+        ports_mapping = connector_instance.extract_vm_ports_mapping(container)
         if ports_mapping:
             for port_mapping in ports_mapping.split():
                 port_param_name, port_param_value = self.get_port_name_value(port_mapping)
@@ -86,6 +92,13 @@ class DeploymentStartJob(object):
                     param_name=port_param_name,
                     param_value=port_param_value,
                     node_id=node_instance_name)
+
+        for output_param in api_deployment['module']['content']['output-parameters']:
+            self.create_deployment_parameter(deployment_id=deployment_id,
+                                             user=deployment_owner,
+                                             param_name=output_param['name'],
+                                             param_description=output_param.get('description'),
+                                             node_id=node_instance_name)
 
         self.api.edit(self.api_deployment['id'], {'state': 'STARTED'})
 

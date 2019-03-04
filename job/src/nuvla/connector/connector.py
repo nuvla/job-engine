@@ -18,8 +18,8 @@ def should_connect(f):
 
 class Connector(object):
 
-    def __init__(self, api_connector, api_credential, api_endpoint=None):
-        self.api_connector = api_connector
+    def __init__(self, api_infrastructure_service, api_credential, api_endpoint=None):
+        self.api_connector = api_infrastructure_service
         self.api_credential = api_credential
         self.api_endpoint = api_endpoint
 

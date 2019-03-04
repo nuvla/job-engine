@@ -17,19 +17,24 @@ class DeploymentStopJob(object):
         self.handled_vms_instance_id = set([])
 
     @staticmethod
-    def connector_instance(api_connector, api_credential, api_endpoint):
-        return create_connector_instance(api_connector, api_credential, api_endpoint)
+    def connector_instance(api_infrastructure_service, api_credential, api_endpoint):
+        return create_connector_instance(api_infrastructure_service, api_credential, api_endpoint)
 
     def handle_deployment(self, api_deployment):
         credential_id = api_deployment['credential-id']
         if credential_id is None:
             raise ValueError("Credential id is not set!")
 
+        infrastructure_service_id = api_deployment['infrastructure-service-id']
+        if infrastructure_service_id is None:
+            raise ValueError("Infrastructure service id is not set!")
+
         api_credential = self.api.get(credential_id).data
 
-        api_connector = self.api.get(api_credential['connector']['href']).data
+        api_infrastructure_service = self.api.get(infrastructure_service_id).data
 
-        connector_instance = DeploymentStopJob.connector_instance(api_connector, api_credential, self.api.endpoint)
+        connector_instance = DeploymentStopJob.connector_instance(api_infrastructure_service, api_credential,
+                                                                  self.api.endpoint)
 
         filter_params = 'deployment/href="{}" and name="instance-id"'.format(api_deployment['id'])
 

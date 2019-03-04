@@ -18,12 +18,12 @@ def instantiate_from_cimi(api_connector, api_credential, api_endpoint=None):
 
 class DockerConnector(Connector):
 
-    def __init__(self, api_connector, api_credential, api_endpoint=None):
-        super(DockerConnector, self).__init__(api_connector, api_credential, api_endpoint)
+    def __init__(self, api_infrastructure_service, api_credential, api_endpoint=None):
+        super(DockerConnector, self).__init__(api_infrastructure_service, api_credential, api_endpoint)
 
-        self.cert = api_credential.get('key').replace("\\n", "\n")
-        self.key = api_credential.get('secret').replace("\\n", "\n")
-        self.endpoint = api_connector.get('endpoint')
+        self.cert = api_credential.get('cert').replace("\\n", "\n")
+        self.key = api_credential.get('key').replace("\\n", "\n")
+        self.endpoint = api_infrastructure_service.get('endpoint')
 
         self.docker_api = requests.Session()
         self.docker_api.verify = False
