@@ -8,9 +8,14 @@ from functools import wraps
 def should_connect(f):
     @wraps(f)
     def wrapper(self, *f_args, **f_kwargs):
-        connect_result = self.connect()
-        result = f(self, *f_args, **f_kwargs)
-        self.clear_connection(connect_result)
+        connect_result = None
+        try:
+            connect_result = self.connect()
+            result = f(self, *f_args, **f_kwargs)
+        except Exception as e:
+            raise e
+        finally:
+            self.clear_connection(connect_result)
         return result
 
     return wrapper
@@ -18,10 +23,8 @@ def should_connect(f):
 
 class Connector(object):
 
-    def __init__(self, api_connector, api_credential, api_endpoint=None):
-        self.api_connector = api_connector
-        self.api_credential = api_credential
-        self.api_endpoint = api_endpoint
+    def __init__(self, **kwargs):
+        self.kwargs = kwargs
 
     @abstractproperty
     def connector_type(self):
@@ -36,7 +39,7 @@ class Connector(object):
 
     @abstractmethod
     @should_connect
-    def start(self, api_deployment):
+    def start(self, **kwargs):
         pass
 
     @abstractmethod

@@ -12,18 +12,21 @@ def tree():
     return defaultdict(tree)
 
 
-def instantiate_from_cimi(api_connector, api_credential, api_endpoint=None):
-    return DockerConnector(api_connector, api_credential, api_endpoint)
+def instantiate_from_cimi(api_infrastructure_service, api_credential):
+    return DockerConnector(cert=api_credential.get('cert').replace("\\n", "\n"),
+                           key=api_credential.get('key').replace("\\n", "\n"),
+                           endpoint=api_infrastructure_service.get('endpoint'))
 
 
 class DockerConnector(Connector):
 
-    def __init__(self, api_connector, api_credential, api_endpoint=None):
-        super(DockerConnector, self).__init__(api_connector, api_credential, api_endpoint)
+    def __init__(self, **kwargs):
+        super(DockerConnector, self).__init__(**kwargs)
 
-        self.cert = api_credential.get('key').replace("\\n", "\n")
-        self.key = api_credential.get('secret').replace("\\n", "\n")
-        self.endpoint = api_connector.get('endpoint')
+        # Mandatory kwargs
+        self.cert = self.kwargs['cert']
+        self.key = self.kwargs['key']
+        self.endpoint = self.kwargs['endpoint']
 
         self.docker_api = requests.Session()
         self.docker_api.verify = False
@@ -34,8 +37,7 @@ class DockerConnector(Connector):
         return 'Docker'
 
     def connect(self):
-        logging.warn('Connecting with connector {} and credential {}'.format(self.api_connector['id'],
-                                                                             self.api_credential['id']))
+        logging.info('Connecting to endpoint {}'.format(self.endpoint))
         auth_file = NamedTemporaryFile(bufsize=0, delete=True)
         auth_file.write(self.cert + '\n' + self.key)
         auth_file.flush()
@@ -46,51 +48,55 @@ class DockerConnector(Connector):
         connect_result.close()
 
     @should_connect
-    def start(self, api_deployment):
-        service_json = tree()
-        service_json['Name'] = 'service-test'  # FIXME
-        service_json['TaskTemplate']['ContainerSpec']['Image'] = api_deployment['module']['content']['image']
+    def start(self, **start_kwargs):
+        # Mandatory start_kwargs
+        image = start_kwargs['image']
 
-        working_dir = None  # FIXME
+        # Optional start_kwargs
+        service_name = start_kwargs.get('service_name')
+        env = start_kwargs.get('env')
+        mounts_opt = start_kwargs.get('mount_opt', [])
+        ports_opt = start_kwargs.get('ports_opt', [])
+        working_dir = start_kwargs.get('working_dir')
+        cpu_ratio = start_kwargs.get('cpu_ratio')
+        ram_giga_bytes = start_kwargs.get('ram_giga_bytes')
+        restart_policy = start_kwargs.get('restart_policy')
+        cmd = start_kwargs.get('cmd')
+        args = start_kwargs.get('args')
+
+        service_json = tree()
+
+        if service_name:
+            service_json['Name'] = service_name
+
+        service_json['TaskTemplate']['ContainerSpec']['Image'] = image
+
         if working_dir:
             service_json['TaskTemplate']['ContainerSpec']['Dir'] = working_dir
 
-        env = ['NUVLA_DEPLOYMENT_ID={}'.format(api_deployment['id']),
-               'NUVLA_API_KEY={}'.format(api_deployment['api-credentials']['api-key']),
-               'NUVLA_API_SECRET={}'.format(api_deployment['api-credentials']['api-secret']),
-               'NUVLA_ENDPOINT={}'.format(self.api_endpoint)]
-
         if env:
             service_json['TaskTemplate']['ContainerSpec']['Env'] = env
-        cpu_ratio = None  # FIXME
+
         if cpu_ratio:
             cpu_ratio_nano_secs = int(float(cpu_ratio) * 1000000000)
             service_json['TaskTemplate']['Resources']['Limits']['NanoCPUs'] = cpu_ratio_nano_secs
             service_json['TaskTemplate']['Resources']['Reservations']['NanoCPUs'] = cpu_ratio_nano_secs
 
-        ram_giga_bytes = None  # FIXME
         if ram_giga_bytes:
             ram_bytes = int(float(ram_giga_bytes) * 1073741824)
             service_json['TaskTemplate']['Resources']['Limits']['MemoryBytes'] = ram_bytes
             service_json['TaskTemplate']['Resources']['Reservations']['MemoryBytes'] = ram_bytes
 
-        restart_policy = None  # FIXME
         if restart_policy:
             service_json['TaskTemplate']['RestartPolicy']['Condition'] = restart_policy
 
-        cmd = None  # FIXME
         if cmd:
             service_json['TaskTemplate']['ContainerSpec']['command'] = [cmd]
 
-        args = None  # FIXME
         if args:
             service_json['TaskTemplate']['ContainerSpec']['args'] = args
 
-        ports = []  # FIXME
-
-        ports_opt = ['tcp:22:22', 'tcp::60000']  # FIXME
-
-        mounts_opt = []  # FIXME
+        ports = []
 
         service_json['EndpointSpec']['Ports'] = DockerConnector.get_ports_mapping(ports, ports_opt)
 
@@ -100,11 +106,11 @@ class DockerConnector(Connector):
 
         self.validate_action(response)
 
-        vm = self.docker_api.get(self._get_full_url('services/{}'.format(response['ID']))).json()
+        container = self.docker_api.get(self._get_full_url('services/{}'.format(response['ID']))).json()
 
-        self.validate_action(vm)
+        self.validate_action(container)
 
-        return vm
+        return container
 
     @should_connect
     def stop(self, ids):

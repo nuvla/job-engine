@@ -74,7 +74,7 @@ class DockerMachineConnector(Connector):
         pass
 
     @should_connect
-    def start(self, api_deployment):
+    def start(self, **kwargs):
         logging.info('start docker-machine')
 
         # TODO

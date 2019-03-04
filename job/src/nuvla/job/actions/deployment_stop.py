@@ -16,20 +16,20 @@ class DeploymentStopJob(object):
 
         self.handled_vms_instance_id = set([])
 
-    @staticmethod
-    def connector_instance(api_connector, api_credential, api_endpoint):
-        return create_connector_instance(api_connector, api_credential, api_endpoint)
-
     def handle_deployment(self, api_deployment):
         credential_id = api_deployment['credential-id']
         if credential_id is None:
             raise ValueError("Credential id is not set!")
 
+        infrastructure_service_id = api_deployment['infrastructure-service-id']
+        if infrastructure_service_id is None:
+            raise ValueError("Infrastructure service id is not set!")
+
         api_credential = self.api.get(credential_id).data
 
-        api_connector = self.api.get(api_credential['connector']['href']).data
+        api_infrastructure_service = self.api.get(infrastructure_service_id).data
 
-        connector_instance = DeploymentStopJob.connector_instance(api_connector, api_credential, self.api.endpoint)
+        connector_instance = create_connector_instance(api_infrastructure_service, api_credential)
 
         filter_params = 'deployment/href="{}" and name="instance-id"'.format(api_deployment['id'])
 
@@ -37,7 +37,7 @@ class DeploymentStopJob(object):
                                             select='node-id,name,value').resources
 
         instance_id = deployment_params[0].data['value']
-        logging.info('Stopping following VMs {} for {}.'.format(instance_id, api_credential.id))
+        logging.info('Stopping following VMs {} for {}.'.format(instance_id, api_credential['id']))
         connector_instance.stop([instance_id])
 
         self.api.edit(api_deployment['id'], {'state': 'STOPPED'})
