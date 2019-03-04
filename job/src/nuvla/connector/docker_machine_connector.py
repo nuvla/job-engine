@@ -63,17 +63,46 @@ class DockerMachineConnector(Connector):
         else:
             return "Stopped"
 
+    def install_swarm(self):
+        # TODO
+        # run the docker-machine ssh script to install Docker swarm
+        pass
+
+    def create_swarm_credential(self):
+        # TODO
+        # create a credential resource with the TLS credentials
+        pass
+
     @should_connect
     def start(self, api_deployment):
         logging.info('start docker-machine')
+
+        # TODO
+        arguments_string = "flatten --attr values from service credential"
+
+        self.machine.create(driver=self.driver, xarg=arguments_string)
+
+        # TODO
+        # get local config.json, extract all important attributes and base64 encode it
+
+        # TODO
+        # get machine TLS certificates from local folder
+
+        self.install_swarm()
+
+        self.create_swarm_credential()
+
+    def rebuild_docker_machine_env(self):
+        # TODO
+        # extract the config.json from the infrastructure service resource
+        # and rebuild the local .docker environment
         pass
 
     @should_connect
     def stop(self, ids):
-        # remember to retrieve config and certs from service resource
-        self.machine.rm(machine=self.machineBaseName)
-        pass
+        self.rebuild_docker_machine_env()
 
-    @should_connect
+        self.machine.rm(machine=self.machineBaseName)
+
     def list(self):
         self.machine.ls()
