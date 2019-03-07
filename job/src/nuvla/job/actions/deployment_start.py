@@ -83,7 +83,8 @@ class DeploymentStartJob(object):
         container = connector_instance.start(service_name=node_instance_name,
                                              image=api_deployment['module']['content']['image'],
                                              env=container_env,
-                                             mounts_opt=container_mounts_opt)
+                                             mounts_opt=container_mounts_opt,
+                                             ports_opt=api_deployment['module']['content']['ports'])
 
         deployment_owner = api_deployment['acl']['owner']['principal']
 
