@@ -14,12 +14,14 @@ LABEL git.build.time=${GIT_BUILD_TIME}
 LABEL travis.build.number=${TRAVIS_BUILD_NUMBER}
 LABEL travis.build.web.url=${TRAVIS_BUILD_WEB_URL}
 
-ADD target/job /app/job
-ADD target/python-library /app/python-library
+ADD target/job /target/job
+ADD target/python-library /target/python-library
 
-RUN pip install /app/python-library && \
-        pip install /app/job && \
-        chmod -R +x /app/job/src/scripts/
+RUN pip install /target/python-library && \
+        pip install /target/job && \
+        mv /target/job/src/scripts/ /app/ && \
+        chmod -R +x /app/ && \
+        rm -rf /target/
 
 # inherited from docker:18.09 Dockerfile
 RUN apk add --no-cache ca-certificates curl
@@ -61,4 +63,4 @@ RUN curl -L https://github.com/docker/machine/releases/download/v0.16.0/docker-m
             install /tmp/docker-machine /usr/local/bin/docker-machine &&\
             pip install python-docker-machine
 
-ENTRYPOINT ["/app/job/src/scripts/job_executor.py"]
+ENTRYPOINT ["/app/job_executor.py"]
