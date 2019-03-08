@@ -33,6 +33,7 @@ class Actions(object):
 
     @classmethod
     def register_action(cls, action_name, action):
+        logging.getLogger().setLevel(logging.INFO)
         logging.info('Action "{}" registered'.format(action_name))
         cls.actions[action_name] = action
 
