@@ -55,7 +55,7 @@ class DockerConnector(Connector):
         # Optional start_kwargs
         service_name = start_kwargs.get('service_name')
         env = start_kwargs.get('env')
-        mounts_opt = start_kwargs.get('mount_opt', [])
+        mounts_opt = start_kwargs.get('mounts_opt', [])
         ports_opt = start_kwargs.get('ports_opt', [])
         working_dir = start_kwargs.get('working_dir')
         cpu_ratio = start_kwargs.get('cpu_ratio')

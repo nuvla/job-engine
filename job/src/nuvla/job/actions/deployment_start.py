@@ -75,16 +75,11 @@ class DeploymentStartJob(object):
                          'NUVLA_API_SECRET={}'.format(api_deployment['api-credentials']['api-secret']),
                          'NUVLA_ENDPOINT={}'.format(self.api.endpoint)]
 
-        container_mounts_opt = None
-        data_records = api_deployment.get('data-records')
-        if data_records:
-            container_mounts_opt = self.get_mounts_from_data_records(data_records)
-
         container = connector_instance.start(service_name=node_instance_name,
                                              image=api_deployment['module']['content']['image'],
                                              env=container_env,
-                                             mounts_opt=container_mounts_opt,
-                                             ports_opt=api_deployment['module']['content']['ports'])
+                                             mounts_opt=api_deployment['module']['content'].get('mounts'),
+                                             ports_opt=api_deployment['module']['content'].get('ports'))
 
         deployment_owner = api_deployment['acl']['owner']['principal']
 
