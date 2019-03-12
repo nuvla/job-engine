@@ -5,7 +5,7 @@ import logging
 import requests
 from collections import defaultdict
 from tempfile import NamedTemporaryFile
-from connector import Connector, should_connect
+from .connector import Connector, should_connect
 
 
 def tree():
@@ -38,7 +38,7 @@ class DockerConnector(Connector):
 
     def connect(self):
         logging.info('Connecting to endpoint {}'.format(self.endpoint))
-        auth_file = NamedTemporaryFile(bufsize=0, delete=True)
+        auth_file = NamedTemporaryFile(delete=True)
         auth_file.write(self.cert + '\n' + self.key)
         auth_file.flush()
         self.docker_api.cert = auth_file.name
