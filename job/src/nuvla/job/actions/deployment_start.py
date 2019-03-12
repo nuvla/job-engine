@@ -38,21 +38,6 @@ class DeploymentStartJob(object):
         port_details = port_mapping.split(':')
         return '.'.join([port_details[0], port_details[2]]), port_details[1]
 
-    def get_mounts_from_data_records(self, data_records):
-        mounts_opt = set([])
-
-        count_limit = 10000
-        for i in range(int(ceil(len(data_records) / count_limit))):
-            ids = data_records[i * count_limit:(i + 1) * count_limit]
-            ids = map(lambda x: 'id={}'.format(x), ids)
-            result = self.api.search('data-record', filter=' or '.join(ids))
-            for data_record in result.resources:  # FIXME Hardcoded nfs and mount path
-                mount_str = 'type=volume,volume-opt=o=addr={},'.format(data_record.data['data:nfsIP']) + \
-                            'volume-opt=device=:{},'.format(data_record.data['data:nfsDevice']) + \
-                            'volume-opt=type=nfs,dst={}'.format('/gssc/data/nuvla' + data_record.data['data:nfsDevice'])
-                mounts_opt.add(mount_str)
-        return mounts_opt
-
     def handle_deployment(self, api_deployment):
         deployment_id = api_deployment['id']
         node_instance_name = deployment_id.split('/')[1]
