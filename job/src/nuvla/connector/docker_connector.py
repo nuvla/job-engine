@@ -153,8 +153,8 @@ class DockerConnector(Connector):
     def validate_action(response):
         """Takes the raw response from _start_container_in_docker
         and checks whether the service creation request was successful or not"""
-        if len(response.keys()) == 1 and response.has_key("message"):
-            raise Exception(response["message"])
+        if len(response.keys()) == 1 and 'message' in response:
+            raise Exception(response['message'])
 
     @staticmethod
     def extend_ports_range(string_port):
