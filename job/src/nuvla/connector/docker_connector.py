@@ -39,13 +39,15 @@ class DockerConnector(Connector):
     def connect(self):
         logging.info('Connecting to endpoint {}'.format(self.endpoint))
         auth_file = NamedTemporaryFile(delete=True)
-        auth_file.write(self.cert + '\n' + self.key)
+        auth_text = self.cert + '\n' + self.key
+        auth_file.write(auth_text.encode())
         auth_file.flush()
         self.docker_api.cert = auth_file.name
         return auth_file
 
     def clear_connection(self, connect_result):
-        connect_result.close()
+        if connect_result:
+            connect_result.close()
 
     @should_connect
     def start(self, **start_kwargs):
