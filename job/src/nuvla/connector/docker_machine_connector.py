@@ -100,11 +100,14 @@ class DockerMachineConnector(Connector):
     def flat_docker_machine_args(self):
         # Get the xargs for this driver, from the credential, and make a
         # flat string to pass to Docker Machine
-        cmd_xargs = ''
+        cmd_xargs = []
         for attribute in self.driver_xargs:
             value = self.driver_credential.get(attribute, None)
             if value:
-                cmd_xargs += "--{} {} ".format(attribute, value)
+                cmd_xargs.extend([
+                    "--{}".format(attribute),
+                    str(value)
+                ])
 
         return cmd_xargs
 
@@ -113,9 +116,8 @@ class DockerMachineConnector(Connector):
         logging.info('start docker-machine')
 
         cmd_xarguments = self.flat_docker_machine_args()
-        return cmd_xarguments
 
-        self.machine.create(driver=self.driver, xarg=cmd_xarguments)
+        self.machine.create(self.machineBaseName, driver=self.driver, xarg=cmd_xarguments)
 
         # TODO
         # get local config.json, extract all important attributes and base64 encode it
