@@ -1,8 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from __future__ import print_function
-
 import time
 from nuvla.job.base import main
 from nuvla.job.distributor import Distributor

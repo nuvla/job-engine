@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
 
-from __future__ import print_function
-
+import sys
 import logging
+import traceback
+from threading import Thread
 from elasticsearch import Elasticsearch
 from requests.adapters import HTTPAdapter
-from threading import Thread
 
 from .actions import get_action, ActionNotImplemented
 from .base import Base
@@ -55,16 +55,17 @@ class Executor(Base):
                 job.set_state('RUNNING')
                 return_code = action_instance.do_work()
             except ActionNotImplemented as e:
-                logging.exception('Action "{}" not implemented'.format(str(e)))
+                logging.error('Action "{}" not implemented'.format(str(e)))
                 # Consume not implemented action to avoid queue to be filled with not implemented actions
                 msg = 'Not implemented action'.format(job.id)
                 status_message = '{}: {}'.format(msg, str(e))
                 job.update_job(state='FAILED', status_message=status_message)
             except JobUpdateError as e:
-                logging.exception('{} update error: {}'.format(job.id, str(e)))
-            except Exception as e:
-                logging.exception('Failed to process {}.'.format(job.id))
-                status_message = '{}'.format(str(e))
+                logging.error('{} update error: {}'.format(job.id, str(e)))
+            except Exception as _:
+                logging.error('Failed to process {}.'.format(job.id))
+                ex_type, ex_msg, ex_tb = sys.exc_info()
+                status_message = ''.join(traceback.format_exception(etype=ex_type, value=ex_msg, tb=ex_tb))
                 job.update_job(state='FAILED', status_message=status_message)
             else:
                 job.update_job(state='SUCCESS', return_code=return_code)

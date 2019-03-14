@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 
-from __future__ import print_function
 from abc import abstractmethod, abstractproperty
 from functools import wraps
 
@@ -19,6 +18,12 @@ def should_connect(f):
         return result
 
     return wrapper
+
+
+class ConnectorError(Exception):
+    def __init__(self, reason):
+        super(ConnectorError, self).__init__(reason)
+        self.reason = reason
 
 
 class Connector(object):

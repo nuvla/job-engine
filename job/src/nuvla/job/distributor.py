@@ -1,7 +1,5 @@
 # -*- coding: utf-8 -*-
 
-from __future__ import print_function
-
 import time
 import logging
 
@@ -21,7 +19,7 @@ class Distributor(Base):
                     logging.info('Distribute job: {}'.format(cimi_job))
                     self.api.add('job', cimi_job)
                 except:
-                    logging.exception('Failed to distribute job: {}'.format(cimi_job))
+                    logging.error('Failed to distribute job: {}'.format(cimi_job))
                     time.sleep(0.1)
         logging.info('Distributor properly stopped.')
 
