@@ -1,16 +1,15 @@
 # -*- coding: utf-8 -*-
 
-from __future__ import print_function
-
-import argparse
-import logging
-import random
 import sys
-import threading
 import signal
+import random
+import logging
+import argparse
+import threading
+from nuvla.api import Api
 from functools import partial
 from kazoo.client import KazooClient, KazooRetry
-from nuvla.api import Api
+from requests.exceptions import ConnectionError
 
 names = ['Cartman', 'Kenny', 'Stan', 'Kyle', 'Butters', 'Token', 'Timmy', 'Wendy', 'M. Garrison', 'Chef',
          'Randy', 'Ike', 'Mr. Mackey', 'Mr. Slave', 'Tweek', 'Craig']
@@ -83,7 +82,13 @@ class Base(object):
         self.name = self.args.name if self.args.name is not None else names[int(random.uniform(1, len(names) - 1))]
 
         self.api = Api(endpoint=self.args.api_url, insecure=self.args.api_insecure, reauthenticate=True)
-        self.api.login_internal(self.args.api_user, self.args.api_pass)
+        try:
+            response = self.api.login_internal(self.args.api_user, self.args.api_pass)
+            if response.status_code == 403:
+                raise ConnectionError('Login with following user {} failed!'.format(self.args.api_user))
+        except ConnectionError as e:
+            logging.error('Unable to connect to Nuvla endpoint {}! {}'.format(self.api.endpoint, e))
+            exit(1)
 
         self._kz = KazooClient(','.join(self.args.zk_hosts), connection_retry=KazooRetry(max_tries=-1),
                                command_retry=KazooRetry(max_tries=-1), timeout=30.0)
