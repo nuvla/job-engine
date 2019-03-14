@@ -55,10 +55,12 @@ class DeploymentStartJob(object):
 
         connector_instance = create_connector_instance(api_infrastructure_service, api_credential)
 
+        base_uri = self.api.cloud_entry_point['base-uri']
+
         container_env = ['NUVLA_DEPLOYMENT_ID={}'.format(deployment_id),
                          'NUVLA_API_KEY={}'.format(api_deployment['api-credentials']['api-key']),
                          'NUVLA_API_SECRET={}'.format(api_deployment['api-credentials']['api-secret']),
-                         'NUVLA_ENDPOINT={}'.format(self.api.endpoint)]
+                         'NUVLA_ENDPOINT={}'.format(base_uri)]
 
         container = connector_instance.start(service_name=node_instance_name,
                                              image=api_deployment['module']['content']['image'],
