@@ -5,7 +5,7 @@ import logging
 import requests
 from collections import defaultdict
 from tempfile import NamedTemporaryFile
-from connector import Connector, should_connect
+from .connector import Connector, should_connect
 
 
 def tree():

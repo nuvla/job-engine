@@ -8,27 +8,51 @@ import machine as DockerMachine
 
 from .connector import Connector, should_connect
 
-import time
-from tempfile import NamedTemporaryFile
-import re
-from exceptions import Exception, RuntimeError
 
+def instantiate_from_cimi(api_infrastructure_service, api_credential):
+    return DockerMachineConnector(driver_credential=api_credential,
+                           driver=api_credential["type"].split("-")[-1],
+                           machineBaseName=api_infrastructure_service.get("name", api_infrastructure_service["id"].split('/')[1]))
 
 class DockerMachineConnector(Connector):
+    XARGS = {
+        "exoscale": [
+            "exoscale-api-secret-key",
+            "exoscale-api-key"
+        ],
+        "amazonec2": [
+            "amazonec2-access-key",
+            "amazonec2-secret-key"
+        ],
+        "azure": [
+            "azure-client-id",
+            "azure-client-secret",
+            "azure-subscription-id"
+        ],
+        "google": [
+            "project-id",
+            "private-key-id",
+            "private-key",
+            "client-email",
+            "client-id"
+        ]
+    }
 
-    def __init__(self, api_infrastructure_service, api_service_credential):
-        super(DockerMachineConnector, self).__init__(api_infrastructure_service, api_service_credential)
+    def __init__(self, **kwargs):
+        super(DockerMachineConnector, self).__init__(**kwargs)
 
-        self.state = api_infrastructure_service.get("state")
-        self.driver_credential = api_service_credential
-        self.driver = api_infrastructure_service.get("cloud-service")
+        self.driver = self.kwargs.get("driver")
 
+        if not self.driver in self.XARGS:
+            raise NotImplementedError('There are no Docker Machine arguments {} available for driver {}.'
+                                        .format(self.XARGS, self.driver))
+        else:
+            self.driver_xargs = self.XARGS[self.driver]
+
+        self.driver_credential = self.kwargs["driver_credential"]
+        self.machineBaseName = self.kwargs.get("machineBaseName").replace(" ", "-")
+        self.multiplicity = self.kwargs.get("multiplicity", 1)
         self.machine = DockerMachine.Machine()
-
-        # for now
-        self.machineBaseName = api_infrastructure_service.get("id")
-
-        self.multiplicity = api_infrastructure_service.get("multiplicity", 1)
 
     @property
     def connector_type(self):
@@ -38,7 +62,7 @@ class DockerMachineConnector(Connector):
         version = self.machine.version()
         logging.info("Initializing a local docker-machine. Version: %s" % version)
 
-    def clear_connection(self):
+    def clear_connection(self, connect_result):
         # the container where this job run will be terminated, thus no cleanup needed
         pass
 
@@ -73,14 +97,25 @@ class DockerMachineConnector(Connector):
         # create a credential resource with the TLS credentials
         pass
 
+    def flat_docker_machine_args(self):
+        # Get the xargs for this driver, from the credential, and make a
+        # flat string to pass to Docker Machine
+        cmd_xargs = ''
+        for attribute in self.driver_xargs:
+            value = self.driver_credential.get(attribute, None)
+            if value:
+                cmd_xargs += "--{} {} ".format(attribute, value)
+
+        return cmd_xargs
+
     @should_connect
     def start(self, **kwargs):
         logging.info('start docker-machine')
 
-        # TODO
-        arguments_string = "flatten --attr values from service credential"
+        cmd_xarguments = self.flat_docker_machine_args()
+        return cmd_xarguments
 
-        self.machine.create(driver=self.driver, xarg=arguments_string)
+        self.machine.create(driver=self.driver, xarg=cmd_xarguments)
 
         # TODO
         # get local config.json, extract all important attributes and base64 encode it

@@ -33,6 +33,10 @@ class DeploymentStartJob(object):
             parameter['value'] = param_value
         return self.api.add('deployment-parameter', parameter)
 
+    def create_docker_swarm_credential(self):
+        # create the credential resource with the TLS certs from the created swarm
+        pass
+
     @staticmethod
     def get_port_name_value(port_mapping):
         port_details = port_mapping.split(':')
@@ -55,43 +59,21 @@ class DeploymentStartJob(object):
 
     def handle_deployment(self, swarm):
         swarm_service_id = swarm['id']
-        if swarm.get("name", None):
-            machine_name = swarm["name"].replace(" ", "-")
-        else:
-            machine_name = swarm_service_id.split('/')[1]
-        machine_name = self.sanitize_name(swarm["name"])
-        # credential_id = api_deployment['credential-id']
-        # if credential_id is None:
-        #     raise ValueError("Credential id is not set!")
-        #
-        # infrastructure_service_id = api_deployment['infrastructure-service-id']
-        # if infrastructure_service_id is None:
-        #     raise ValueError("Infrastructure service id is not set!")
-        #
-        # api_credential = self.api.get(credential_id).data
-        #
-        # api_infrastructure_service = self.api.get(infrastructure_service_id).data
-        #
-        # connector_instance = create_connector_instance(api_infrastructure_service, api_credential)
-        #
-        # container_env = ['NUVLA_DEPLOYMENT_ID={}'.format(deployment_id),
-        #                  'NUVLA_API_KEY={}'.format(api_deployment['api-credentials']['api-key']),
-        #                  'NUVLA_API_SECRET={}'.format(api_deployment['api-credentials']['api-secret']),
-        #                  'NUVLA_ENDPOINT={}'.format(self.api.endpoint)]
-        #
-        # container_mounts_opt = None
-        # data_records = api_deployment.get('data-records')
-        # if data_records:
-        #     container_mounts_opt = self.get_mounts_from_data_records(data_records)
-        #
-        # container = connector_instance.start(service_name=node_instance_name,
-        #                                      image=api_deployment['module']['content']['image'],
-        #                                      env=container_env,
-        #                                      mounts_opt=container_mounts_opt,
-        #                                      ports_opt=api_deployment['module']['content']['ports'])
-        #
-        # deployment_owner = api_deployment['acl']['owner']['principal']
-        #
+
+        credential_id = swarm['management-credential-id']
+
+        api_credential = self.api.get(credential_id).data
+
+        connector_instance = create_connector_instance(swarm, api_credential)
+
+        new_swarm_cluster = connector_instance.start()
+
+        service_owner = swarm['acl']['owner']['principal']
+
+        logging.info(new_swarm_cluster)
+
+
+        self.create_docker_swarm_credential()
         # self.create_deployment_parameter(
         #     deployment_id=deployment_id,
         #     user=deployment_owner,
@@ -107,7 +89,7 @@ class DeploymentStartJob(object):
         #     param_value=connector_instance.extract_vm_ip(container),
         #     param_description='Hostname',
         #     node_id=node_instance_name)
-        #
+
         # ports_mapping = connector_instance.extract_vm_ports_mapping(container)
         # if ports_mapping:
         #     for port_mapping in ports_mapping.split():
@@ -136,7 +118,6 @@ class DeploymentStartJob(object):
         swarm_data = self.api.get(infra_service_id).data
 
         logging.info('Starting job for new Swarm infrastructure service {}'.format(infra_service_id))
-        logging.info(swarm_data)
 
         self.job.set_progress(10)
 

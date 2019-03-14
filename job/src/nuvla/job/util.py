@@ -73,14 +73,20 @@ def retry_kazoo_queue_op(queue, function_name):
 
 
 connector_classes = {
-    'swarm': 'nuvla.connector.docker_connector'
+    'swarm': 'nuvla.connector.docker_connector',
+    'create_swarm': 'nuvla.connector.docker_machine_connector'
 }
 
 
 def create_connector_instance(api_infrastructure_service, api_credential):
-    connector_name = api_infrastructure_service['type']
+    if api_infrastructure_service["state"].lower() == "STARTED":
+        connector_name = api_infrastructure_service['type']
+    else:
+        connector_name = "create_swarm"
+
     connector = load_py_module(connector_classes[connector_name])
+
     if not hasattr(connector, 'instantiate_from_cimi'):
-        raise NotImplementedError('The "{}" is not compatible with the start_deployment job'
+        raise NotImplementedError('The "{}" is not compatible with the job action'
                                   .format(api_infrastructure_service['type']))
     return connector.instantiate_from_cimi(api_infrastructure_service, api_credential)
