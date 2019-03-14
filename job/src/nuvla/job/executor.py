@@ -65,7 +65,7 @@ class Executor(Base):
             except Exception as _:
                 ex_type, ex_msg, ex_tb = sys.exc_info()
                 status_message = ''.join(traceback.format_exception(etype=ex_type, value=ex_msg, tb=ex_tb))
-                logging.error('Failed to process {}, with error:'.format(job.id, status_message))
+                logging.error('Failed to process {}, with error: {}'.format(job.id, status_message))
                 job.update_job(state='FAILED', status_message=status_message)
             else:
                 job.update_job(state='SUCCESS', return_code=return_code)
