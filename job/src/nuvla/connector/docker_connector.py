@@ -5,7 +5,7 @@ import logging
 import requests
 from collections import defaultdict
 from tempfile import NamedTemporaryFile
-from .connector import Connector, should_connect
+from .connector import Connector, ConnectorError, should_connect
 
 
 def tree():
@@ -154,7 +154,7 @@ class DockerConnector(Connector):
         """Takes the raw response from _start_container_in_docker
         and checks whether the service creation request was successful or not"""
         if len(response.keys()) == 1 and 'message' in response:
-            raise Exception(response['message'])
+            raise ConnectorError(response['message'])
 
     @staticmethod
     def extend_ports_range(string_port):
@@ -234,4 +234,3 @@ class DockerConnector(Connector):
                     mount_map['Consistency'] = v
             mounts.append(mount_map)
         return mounts
-

@@ -1,12 +1,9 @@
 # -*- coding: utf-8 -*-
 
-from __future__ import print_function
-
+import logging
 from nuvla.api import NuvlaError, ConnectionError
 
 from .util import wait, retry_kazoo_queue_op
-
-import logging
 
 
 class NonexistentJobError(Exception):
@@ -47,8 +44,8 @@ class Job(dict):
         except:
             timeout = 120
             retry_kazoo_queue_op(queue, "release")
-            logging.exception('Fatal error when trying to retrieve {}! Put it back in queue. '.format(self.id) +
-                              'Will go back to work after {}s.'.format(timeout))
+            logging.error('Fatal error when trying to retrieve {}! Put it back in queue. '.format(self.id) +
+                          'Will go back to work after {}s.'.format(timeout))
             wait(timeout)
             self.nothing_to_do = True
 
