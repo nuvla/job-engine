@@ -11,8 +11,9 @@ from .connector import Connector, should_connect
 
 def instantiate_from_cimi(api_infrastructure_service, api_credential):
     return DockerMachineConnector(driver_credential=api_credential,
-                           driver=api_credential["type"].split("-")[-1],
-                           machineBaseName=api_infrastructure_service.get("name", api_infrastructure_service["id"].split('/')[1]))
+                            driver=api_credential["type"].split("-")[-1],
+                            infrastructure_service_id=api_infrastructure_service["id"],
+                            machineBaseName=api_infrastructure_service.get("name", api_infrastructure_service["id"].split('/')[1]))
 
 class DockerMachineConnector(Connector):
     XARGS = {
@@ -49,8 +50,10 @@ class DockerMachineConnector(Connector):
         else:
             self.driver_xargs = self.XARGS[self.driver]
 
+        self.infrastructure_service_id = self.kwargs["infrastructure_service_id"]
         self.driver_credential = self.kwargs["driver_credential"]
         self.machineBaseName = self.kwargs.get("machineBaseName").replace(" ", "-")
+        self.local_conf_dir = "/root/.docker/machine/machines/{}".format(self.machineBaseName)
         self.multiplicity = self.kwargs.get("multiplicity", 1)
         self.machine = DockerMachine.Machine()
 
@@ -92,10 +95,41 @@ class DockerMachineConnector(Connector):
         # run the docker-machine ssh script to install Docker swarm
         pass
 
-    def create_swarm_credential(self):
-        # TODO
-        # create a credential resource with the TLS credentials
-        pass
+    @staticmethod
+    def load_file_content(path):
+        with open(path, 'r') as file:
+            content = file.read()
+
+        return content.replace('\n', '\\n')
+
+    def create_swarm_credential_payload(self, credential_owner):
+        ca_file = "{}/ca.pem".format(self.local_conf_dir)
+        cert_file = "{}/cert.pem".format(self.local_conf_dir)
+        key_file = "{}/key.pem".format(self.local_conf_dir)
+
+        payload = {
+            "template" : {
+                "method": "infrastructure-service-swarm",
+                "name": self.machineBaseName,
+                "description": "Swarm credential for infrastructure service %s" % self.machineBaseName,
+                "type": "infrastructure-service-swarm",
+                "resource-type": "credential-template",
+                "key": self.load_file_content(key_file),
+                "ca": self.load_file_content(ca_file),
+                "cert": self.load_file_content(cert_file),
+                "infrastructure-services": [
+                    self.infrastructure_service_id
+                ],
+                "acl": {"owner": {"principal": credential_owner,
+                                  "type": "USER"},
+                        "rules": [{"principal": credential_owner,
+                                   "type": "USER",
+                                   "right": "MODIFY"}]},
+                "href": "credential-template/infrastructure-service-swarm"
+            }
+        }
+
+        return payload
 
     def flat_docker_machine_args(self):
         # Get the xargs for this driver, from the credential, and make a
@@ -122,12 +156,9 @@ class DockerMachineConnector(Connector):
         # TODO
         # get local config.json, extract all important attributes and base64 encode it
 
-        # TODO
-        # get machine TLS certificates from local folder
-
         self.install_swarm()
 
-        self.create_swarm_credential()
+        return 1
 
     def rebuild_docker_machine_env(self):
         # TODO

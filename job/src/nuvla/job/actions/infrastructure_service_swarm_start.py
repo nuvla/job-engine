@@ -33,10 +33,6 @@ class DeploymentStartJob(object):
             parameter['value'] = param_value
         return self.api.add('deployment-parameter', parameter)
 
-    def create_docker_swarm_credential(self):
-        # create the credential resource with the TLS certs from the created swarm
-        pass
-
     @staticmethod
     def get_port_name_value(port_mapping):
         port_details = port_mapping.split(':')
@@ -68,12 +64,17 @@ class DeploymentStartJob(object):
 
         new_swarm_cluster = connector_instance.start()
 
+        self.job.set_progress(50)
+
         service_owner = swarm['acl']['owner']['principal']
 
-        logging.info(new_swarm_cluster)
+        self.api.add("credential", connector_instance.create_swarm_credential_payload(service_owner))
+
+        endpoint = "https://{}:2376".format(connector_instance._vm_get_ip())
+
+        self.api.edit(swarm_service_id, {"endpoint": endpoint, "state": "STARTING"})
 
 
-        self.create_docker_swarm_credential()
         # self.create_deployment_parameter(
         #     deployment_id=deployment_id,
         #     user=deployment_owner,
