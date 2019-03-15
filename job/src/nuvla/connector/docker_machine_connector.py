@@ -3,7 +3,7 @@
 from __future__ import print_function
 
 import logging
-import requests
+import shutil
 import machine as DockerMachine
 
 from .connector import Connector, should_connect
@@ -65,9 +65,9 @@ class DockerMachineConnector(Connector):
         version = self.machine.version()
         logging.info("Initializing a local docker-machine. Version: %s" % version)
 
-    def clear_connection(self, connect_result):
-        # the container where this job run will be terminated, thus no cleanup needed
-        pass
+    def clear_connection(self, connect_result=None):
+        shutil.rmtree(self.local_conf_dir)
+        return
 
     def _get_full_url(self):
         return self.machine.url(machine=self.machineBaseName)
