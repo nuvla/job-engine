@@ -11,7 +11,7 @@ from math import ceil
 
 
 @action('start_infrastructure_service_swarm')
-class DeploymentStartJob(object):
+class SwarmStartJob(object):
     def __init__(self, executor, job):
         self.job = job
         self.api = job.api
