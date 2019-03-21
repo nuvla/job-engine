@@ -5,7 +5,7 @@ import logging
 import requests
 from collections import defaultdict
 from tempfile import NamedTemporaryFile
-from .connector import Connector, should_connect
+from .connector import Connector, ConnectorError, should_connect
 
 
 def tree():
@@ -38,14 +38,16 @@ class DockerConnector(Connector):
 
     def connect(self):
         logging.info('Connecting to endpoint {}'.format(self.endpoint))
-        auth_file = NamedTemporaryFile(bufsize=0, delete=True)
-        auth_file.write(self.cert + '\n' + self.key)
+        auth_file = NamedTemporaryFile(delete=True)
+        auth_text = self.cert + '\n' + self.key
+        auth_file.write(auth_text.encode())
         auth_file.flush()
         self.docker_api.cert = auth_file.name
         return auth_file
 
     def clear_connection(self, connect_result):
-        connect_result.close()
+        if connect_result:
+            connect_result.close()
 
     @should_connect
     def start(self, **start_kwargs):
@@ -55,7 +57,7 @@ class DockerConnector(Connector):
         # Optional start_kwargs
         service_name = start_kwargs.get('service_name')
         env = start_kwargs.get('env')
-        mounts_opt = start_kwargs.get('mount_opt', [])
+        mounts_opt = start_kwargs.get('mounts_opt', [])
         ports_opt = start_kwargs.get('ports_opt', [])
         working_dir = start_kwargs.get('working_dir')
         cpu_ratio = start_kwargs.get('cpu_ratio')
@@ -151,8 +153,8 @@ class DockerConnector(Connector):
     def validate_action(response):
         """Takes the raw response from _start_container_in_docker
         and checks whether the service creation request was successful or not"""
-        if len(response.keys()) == 1 and response.has_key("message"):
-            raise Exception(response["message"])
+        if len(response.keys()) == 1 and 'message' in response:
+            raise ConnectorError(response['message'])
 
     @staticmethod
     def extend_ports_range(string_port):
@@ -232,4 +234,3 @@ class DockerConnector(Connector):
                     mount_map['Consistency'] = v
             mounts.append(mount_map)
         return mounts
-
