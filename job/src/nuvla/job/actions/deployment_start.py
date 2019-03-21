@@ -1,7 +1,5 @@
 # -*- coding: utf-8 -*-
 
-from __future__ import print_function
-
 from ..util import create_connector_instance
 
 from ..actions import action
@@ -38,21 +36,6 @@ class DeploymentStartJob(object):
         port_details = port_mapping.split(':')
         return '.'.join([port_details[0], port_details[2]]), port_details[1]
 
-    def get_mounts_from_data_records(self, data_records):
-        mounts_opt = set([])
-
-        count_limit = 10000
-        for i in range(int(ceil(len(data_records) / count_limit))):
-            ids = data_records[i * count_limit:(i + 1) * count_limit]
-            ids = map(lambda x: 'id={}'.format(x), ids)
-            result = self.api.search('data-record', filter=' or '.join(ids))
-            for data_record in result.resources:  # FIXME Hardcoded nfs and mount path
-                mount_str = 'type=volume,volume-opt=o=addr={},'.format(data_record.data['data:nfsIP']) + \
-                            'volume-opt=device=:{},'.format(data_record.data['data:nfsDevice']) + \
-                            'volume-opt=type=nfs,dst={}'.format('/gssc/data/nuvla' + data_record.data['data:nfsDevice'])
-                mounts_opt.add(mount_str)
-        return mounts_opt
-
     def handle_deployment(self, api_deployment):
         deployment_id = api_deployment['id']
         node_instance_name = deployment_id.split('/')[1]
@@ -73,18 +56,13 @@ class DeploymentStartJob(object):
         container_env = ['NUVLA_DEPLOYMENT_ID={}'.format(deployment_id),
                          'NUVLA_API_KEY={}'.format(api_deployment['api-credentials']['api-key']),
                          'NUVLA_API_SECRET={}'.format(api_deployment['api-credentials']['api-secret']),
-                         'NUVLA_ENDPOINT={}'.format(self.api.endpoint)]
-
-        container_mounts_opt = None
-        data_records = api_deployment.get('data-records')
-        if data_records:
-            container_mounts_opt = self.get_mounts_from_data_records(data_records)
+                         'NUVLA_ENDPOINT={}'.format(api_deployment['api-endpoint'])]
 
         container = connector_instance.start(service_name=node_instance_name,
                                              image=api_deployment['module']['content']['image'],
                                              env=container_env,
-                                             mounts_opt=container_mounts_opt,
-                                             ports_opt=api_deployment['module']['content']['ports'])
+                                             mounts_opt=api_deployment['module']['content'].get('mounts'),
+                                             ports_opt=api_deployment['module']['content'].get('ports'))
 
         deployment_owner = api_deployment['acl']['owner']['principal']
 
