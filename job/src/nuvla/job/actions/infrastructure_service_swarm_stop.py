@@ -10,7 +10,7 @@ import logging
 from math import ceil
 
 
-@action('start_infrastructure_service_swarm')
+@action('stop_infrastructure_service_swarm')
 class DeploymentStartJob(object):
     def __init__(self, executor, job):
         self.job = job
@@ -25,18 +25,27 @@ class DeploymentStartJob(object):
 
         connector_instance = create_connector_instance(swarm, api_credential)
 
-        new_coe = connector_instance.start()
+        nodes=swarm.get("nodes", [])
+        stop_coe = connector_instance.stop(nodes)
 
         self.job.set_progress(50)
 
-        self.api.add("credential", new_coe["credential"])
+        # self.api.add("credential", new_coe["credential"])
 
-        endpoint = "https://{}:2376".format(new_coe["ip"])
+        self.api.edit(swarm_service_id, {"state": "STOPPED"})
 
-        self.api.edit(swarm_service_id, {"endpoint": endpoint, "state": "STARTING", "nodes": [new_coe["node"]]})
+        self.job.set_progress(90)
 
-        self.job.set_progress(99)
-        self.api.edit(swarm_service_id, {'state': 'STARTED'})
+        filter = 'infrastructure-services="{}"'.format(swarm_service_id)
+        all_credentials = self.api.search("credential", filter=filter).resources
+
+        for cred in all_credentials:
+            if len(cred.data["infrastructure-services"]) == 1:
+                self.api.delete(cred.data["id"])
+
+        self.api.delete(swarm_service_id)
+
+        self.job.set_progress(100)
 
         return 0
 

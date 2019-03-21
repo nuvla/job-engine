@@ -4,6 +4,8 @@ from __future__ import print_function
 
 import logging
 import shutil
+import os
+import base64
 import machine as DockerMachine
 
 from .connector import Connector, should_connect
@@ -12,6 +14,7 @@ from .connector import Connector, should_connect
 def instantiate_from_cimi(api_infrastructure_service, api_credential):
     return DockerMachineConnector(driver_credential=api_credential,
                             driver=api_credential["type"].split("-")[-1],
+                            service_owner=api_infrastructure_service['acl']['owner']['principal'],
                             infrastructure_service_id=api_infrastructure_service["id"],
                             machineBaseName=api_infrastructure_service.get("name", api_infrastructure_service["id"].split('/')[1]))
 
@@ -39,6 +42,8 @@ class DockerMachineConnector(Connector):
         ]
     }
 
+    DOCKER_MACHINE_FOLDER = "/root/.docker/machine/machines"
+
     def __init__(self, **kwargs):
         super(DockerMachineConnector, self).__init__(**kwargs)
 
@@ -53,8 +58,9 @@ class DockerMachineConnector(Connector):
         self.infrastructure_service_id = self.kwargs["infrastructure_service_id"]
         self.driver_credential = self.kwargs["driver_credential"]
         self.machineBaseName = self.kwargs.get("machineBaseName").replace(" ", "-")
-        self.local_conf_dir = "/root/.docker/machine/machines/{}".format(self.machineBaseName)
+        self.local_conf_dir = "{}/{}".format(self.DOCKER_MACHINE_FOLDER, self.machineBaseName)
         self.multiplicity = self.kwargs.get("multiplicity", 1)
+        self.service_owner = self.kwargs["service_owner"]
         self.machine = DockerMachine.Machine()
 
     @property
@@ -65,8 +71,17 @@ class DockerMachineConnector(Connector):
         version = self.machine.version()
         logging.info("Initializing a local docker-machine. Version: %s" % version)
 
+    @staticmethod
+    def delete_folder(path):
+        shutil.rmtree(path)
+        return
+
     def clear_connection(self, connect_result=None):
-        shutil.rmtree(self.local_conf_dir)
+        try:
+            self.delete_folder(self.local_conf_dir)
+        except FileNotFoundError:
+            pass
+
         return
 
     def _get_full_url(self):
@@ -90,17 +105,29 @@ class DockerMachineConnector(Connector):
         else:
             return "Stopped"
 
+    def _get_node(self):
+        with open("{}/config.json".format(self.local_conf_dir), 'r') as file:
+            b64_content = base64.b64encode(file.read().encode('ascii'))
+
+        node = {
+            "machine-name": self.machineBaseName,
+            "machine-config-base64": b64_content.decode("ascii")
+        }
+
+        return node
+
     def install_swarm(self):
-        # TODO
-        # run the docker-machine ssh script to install Docker swarm
-        pass
+        command = "sudo docker swarm init --force-new-cluster --advertise-addr {}".format(self._vm_get_ip())
+        start_swarm = self.machine.ssh(self.machineBaseName, command)
+
+        return start_swarm
 
     @staticmethod
     def load_file_content(path):
         with open(path, 'r') as file:
             content = file.read()
 
-        return content.replace('\n', '\\n')
+        return content
 
     def create_swarm_credential_payload(self, credential_owner):
         ca_file = "{}/ca.pem".format(self.local_conf_dir)
@@ -153,24 +180,29 @@ class DockerMachineConnector(Connector):
 
         self.machine.create(self.machineBaseName, driver=self.driver, xarg=cmd_xarguments)
 
-        # TODO
-        # get local config.json, extract all important attributes and base64 encode it
-
         self.install_swarm()
 
-        return 1
+        new_coe = {
+            "credential": self.create_swarm_credential_payload(self.service_owner),
+            "ip": self._vm_get_ip(),
+            "node": self._get_node()
+        }
 
-    def rebuild_docker_machine_env(self):
-        # TODO
-        # extract the config.json from the infrastructure service resource
-        # and rebuild the local .docker environment
-        pass
+        return new_coe
 
     @should_connect
     def stop(self, ids):
-        self.rebuild_docker_machine_env()
+        stopped = []
+        for node in ids:
+            machine_folder = "{}/{}".format(self.DOCKER_MACHINE_FOLDER, node["machine-name"])
+            os.makedirs(machine_folder)
 
-        self.machine.rm(machine=self.machineBaseName)
+            with open("{}/config.json".format(machine_folder), 'w') as cfg:
+                cfg.write( base64.b64decode( node["machine-config-base64"].encode('ascii') ).decode('ascii') )
+
+            stopped.append(self.machine.rm(machine=self.machineBaseName, force=True))
+
+        return stopped
 
     def list(self):
         self.machine.ls()
