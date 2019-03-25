@@ -83,7 +83,7 @@ class Base(object):
 
         self.api = Api(endpoint=self.args.api_url, insecure=self.args.api_insecure, reauthenticate=True)
         try:
-            response = self.api.login_internal(self.args.api_user, self.args.api_pass)
+            response = self.api.login_password(self.args.api_user, self.args.api_pass)
             if response.status_code == 403:
                 raise ConnectionError('Login with following user {} failed!'.format(self.args.api_user))
         except ConnectionError as e:
