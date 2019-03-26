@@ -133,10 +133,10 @@ class DockerMachineConnector(Connector):
         key_file = "{}/key.pem".format(self.local_conf_dir)
 
         payload = {
+            "name": self.machineBaseName,
+            "description": "Swarm credential for infrastructure service %s" % self.machineBaseName,
             "template" : {
                 "method": "infrastructure-service-swarm",
-                "name": self.machineBaseName,
-                "description": "Swarm credential for infrastructure service %s" % self.machineBaseName,
                 "type": "infrastructure-service-swarm",
                 "resource-type": "credential-template",
                 "key": self.load_file_content(key_file),
