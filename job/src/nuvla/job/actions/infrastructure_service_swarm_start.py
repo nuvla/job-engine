@@ -41,7 +41,7 @@ class SwarmStartJob(object):
         return 0
 
     def start_deployment(self):
-        infra_service_id = self.job['targetResource']['href']
+        infra_service_id = self.job['target-resource']['href']
 
         swarm_data = self.api.get(infra_service_id).data
 

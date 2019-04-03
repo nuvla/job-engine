@@ -18,7 +18,7 @@ class CleanupJobsDistributor(Distributor):
     def job_generator(self):
         while True:
             job = {'action': CleanupJobsDistributor.ACTION_NAME,
-                   'targetResource': {'href': 'job'}}
+                   'target-resource': {'href': 'job'}}
             yield job
             time.sleep(self.collect_interval)
 
