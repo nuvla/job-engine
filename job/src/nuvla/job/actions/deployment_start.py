@@ -105,7 +105,7 @@ class DeploymentStartJob(object):
         return 0
 
     def start_deployment(self):
-        deployment_id = self.job['targetResource']['href']
+        deployment_id = self.job['target-resource']['href']
 
         api_deployment = self.api.get(deployment_id).data
 

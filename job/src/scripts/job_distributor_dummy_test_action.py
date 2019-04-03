@@ -18,7 +18,7 @@ class DummuTestActionsDistributor(Distributor):
     def job_generator(self):
         while True:
             job = {'action': DummuTestActionsDistributor.ACTION_NAME,
-                   'targetResource': {'href': 'dummy'}}
+                   'target-resource': {'href': 'dummy'}}
             yield job
             time.sleep(self.collect_interval)
 

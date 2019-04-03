@@ -79,13 +79,13 @@ class Job(dict):
         self._edit_job('progress', progress)
 
     def set_status_message(self, status_message):
-        self._edit_job('statusMessage', str(status_message))
+        self._edit_job('status-message', str(status_message))
 
     def set_return_code(self, return_code):
         if not isinstance(return_code, int):
             raise TypeError('return_code should be int not {}'.format(type(return_code)))
 
-        self._edit_job('returnCode', return_code)
+        self._edit_job('return-code', return_code)
 
     def set_state(self, state):
         states = ('QUEUED', 'RUNNING', 'FAILED', 'SUCCESS', 'STOPPING', 'STOPPED')
@@ -99,7 +99,7 @@ class Job(dict):
 
     def add_affected_resources(self, affected_resources):
         has_to_update = False
-        current_affected_resources_ids = [resource['href'] for resource in self.get('affectedResources', [])]
+        current_affected_resources_ids = [resource['href'] for resource in self.get('affected-resources', [])]
 
         for affected_resource in affected_resources:
             if affected_resource not in current_affected_resources_ids:
@@ -107,7 +107,7 @@ class Job(dict):
                 has_to_update = True
 
         if has_to_update:
-            self._edit_job('affectedResources', [{'href': id} for id in current_affected_resources_ids])
+            self._edit_job('affected-resources', [{'href': id} for id in current_affected_resources_ids])
 
     def update_job(self, state=None, return_code=None, status_message=None):
         attributes = {}
@@ -116,10 +116,10 @@ class Job(dict):
             attributes['state'] = state
 
         if return_code is not None:
-            attributes['returnCode'] = return_code
+            attributes['return-code'] = return_code
 
         if status_message is not None:
-            attributes['statusMessage'] = status_message
+            attributes['status-message'] = status_message
 
         if attributes:
             self._edit_job_multi(attributes)
