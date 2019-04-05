@@ -13,15 +13,12 @@ class DeploymentStartJob(object):
         self.job = job
         self.api = job.api
 
-    def create_deployment_parameter(self, deployment_id, user, param_name, param_value=None, node_id=None,
+    def create_deployment_parameter(self, deployment_id, user_id, param_name, param_value=None, node_id=None,
                                     param_description=None):
         parameter = {'name': param_name,
                      'deployment': {'href': deployment_id},
-                     'acl': {'owner': {'principal': 'ADMIN',
-                                       'type': 'ROLE'},
-                             'rules': [{'principal': user,
-                                        'type': 'USER',
-                                        'right': 'MODIFY'}]}}
+                     'acl': {'owners': ['group/nuvla-admin'],
+                             'edit-acl': [user_id]}}
         if node_id:
             parameter['node-id'] = node_id
         if param_description:
@@ -63,11 +60,11 @@ class DeploymentStartJob(object):
                                              mounts_opt=api_deployment['module']['content'].get('mounts'),
                                              ports_opt=api_deployment['module']['content'].get('ports'))
 
-        deployment_owner = api_deployment['acl']['owner']['principal']
+        deployment_owner = api_deployment['acl']['owners'][0]
 
         self.create_deployment_parameter(
             deployment_id=deployment_id,
-            user=deployment_owner,
+            user_id=deployment_owner,
             param_name='instance-id',
             param_value=connector_instance.extract_vm_id(container),
             param_description='Instance ID',
@@ -75,7 +72,7 @@ class DeploymentStartJob(object):
 
         self.create_deployment_parameter(
             deployment_id=deployment_id,
-            user=deployment_owner,
+            user_id=deployment_owner,
             param_name='hostname',
             param_value=connector_instance.extract_vm_ip(container),
             param_description='Hostname',
@@ -87,14 +84,14 @@ class DeploymentStartJob(object):
                 port_param_name, port_param_value = self.get_port_name_value(port_mapping)
                 self.create_deployment_parameter(
                     deployment_id=deployment_id,
-                    user=deployment_owner,
+                    user_id=deployment_owner,
                     param_name=port_param_name,
                     param_value=port_param_value,
                     node_id=node_instance_name)
 
         for output_param in api_deployment['module']['content'].get('output-parameters', []):
             self.create_deployment_parameter(deployment_id=deployment_id,
-                                             user=deployment_owner,
+                                             user_id=deployment_owner,
                                              param_name=output_param['name'],
                                              param_description=output_param.get('description'),
                                              node_id=node_instance_name)

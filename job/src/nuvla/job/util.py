@@ -77,7 +77,7 @@ connector_classes = {
 
 
 def create_connector_instance(api_infrastructure_service, api_credential):
-    if api_infrastructure_service["state"].lower() == "STARTED":
+    if api_infrastructure_service["state"] == "STARTED":
         connector_name = api_infrastructure_service['type']
     else:
         connector_name = "create_swarm"

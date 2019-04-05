@@ -170,20 +170,23 @@ class DockerConnector(Connector):
     @staticmethod
     def construct_mounts(mounts_opt):
         mounts = []
-        for mount_opt in mounts_opt:
-            mount_map = tree()
-            mount_map['Type'] = mount_opt['mount-type']
-            mount_map['ReadOnly'] = mount_opt.get('read-only', False)
-            mount_map['Source'] = mount_opt['source']
-            mount_map['Target'] = mount_opt['target']
-            volume_options = mount_opt.get('volume-options', [])
+        if mounts_opt:
+            for mount_opt in mounts_opt:
+                mount_map = tree()
+                mount_map['Type'] = mount_opt['mount-type']
+                mount_map['ReadOnly'] = mount_opt.get('read-only', False)
+                source = mount_opt.get('source')
+                if source:
+                    mount_map['Source'] = mount_opt['source']
+                mount_map['Target'] = mount_opt['target']
+                volume_options = mount_opt.get('volume-options', [])
 
-            for volume_option in volume_options:
-                k = volume_option['option-key']
-                v = volume_option['option-value']
-                mount_map['VolumeOptions']['DriverConfig']['Options'][k] = v
-            mounts.append(mount_map)
-        return mounts
+                for volume_option in volume_options:
+                    k = volume_option['option-key']
+                    v = volume_option['option-value']
+                    mount_map['VolumeOptions']['DriverConfig']['Options'][k] = v
+                mounts.append(mount_map)
+            return mounts
 
     @staticmethod
     def construct_image_name(image):
