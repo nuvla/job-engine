@@ -5,7 +5,6 @@ from ..util import create_connector_instance
 from ..actions import action
 
 import logging
-from math import ceil
 
 
 @action('start_deployment')
