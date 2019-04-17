@@ -17,7 +17,7 @@ class JobsCleanupJob(object):
         number_of_days_back = 7
         query_string = 'state:(SUCCESS OR FAILED) AND created:<now-{}d'.format(number_of_days_back)
         query_old_completed_jobs = {'query': {'query_string': {'query': query_string}}}
-        result = self.es.delete_by_query(index='nuvla-job', doc_type='_doc', body=query_old_completed_jobs)
+        result = self.es.delete_by_query(index='nuvla-job', body=query_old_completed_jobs)
 
         if result['timed_out'] or result['failures']:
             error_msg = 'Cleanup of completed jobs have some failures: {}.'.format(result)
