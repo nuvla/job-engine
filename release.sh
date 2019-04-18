@@ -8,14 +8,16 @@ PUSH_CHANGES=${1:-false}
 
 BRANCH=master
 
-if [ "${PUSH_CHANGES}" == "true" ]; then
+NEXT_RELEASE=NONE
+
+if [[ "${PUSH_CHANGES}" == "true" ]]; then
     TARGET=deploy
 else
     TARGET=install
 fi
 
 do_push() {
-    if [ "${PUSH_CHANGES}" == "true" ]; then
+    if [[ "${PUSH_CHANGES}" == "true" ]]; then
         echo "INFO: PUSHING changes."
         git push
     else
@@ -24,7 +26,7 @@ do_push() {
 }
 
 do_push_tag() {
-    if [ "${PUSH_CHANGES}" == "true" ]; then
+    if [[ "${PUSH_CHANGES}" == "true" ]]; then
         echo "INFO: PUSHING tag ${TAG_VERSION}."
         git push origin ${TAG_VERSION}
     else
@@ -61,7 +63,7 @@ do_update() {
 
 update_pom_versions() {
     v=$1
-    if [ "${v}" == "" ]; then
+    if [[ "${v}" == "" ]]; then
         echo "missing version for pom version update"
         exit 1
     fi
@@ -71,16 +73,6 @@ update_pom_versions() {
         -B \
         -DskipTests \
         versions:set -DnewVersion=${v} -DgenerateBackupPoms=false
-}
-
-update_project_versions() {
-    v=$1
-    if [ "${v}" == "" ]; then
-        echo "missing version for project.clj version update"
-        exit 1
-    fi
-    echo 'Updating project.clj versions to ' ${v}
-    find . -name project.clj -exec sed -i.bck "s/^(defproject sixsq.nuvla.server\/api-jar .*/(defproject sixsq.nuvla.server\/api-jar \"${v}\"/" {} \;
 }
 
 
@@ -107,7 +99,6 @@ echo ${NEXT_VERSION}
 #
 
 update_pom_versions ${TAG_VERSION}
-update_project_versions ${TAG_VERSION}
 
 #
 # tag release
@@ -120,7 +111,6 @@ do_tag
 #
 
 update_pom_versions ${NEXT_VERSION}
-update_project_versions ${NEXT_VERSION}
 
 #
 # update master to snapshot
