@@ -3,9 +3,10 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
 
-  <artifactId>container</artifactId>
-  <name>job-engine/container</name>
+  <artifactId>container-dep</artifactId>
   <packaging>pom</packaging>
+  <version>0.0.1-SNAPSHOT</version>
+  <name>job-engine/container</name>
   <url>http://sixsq.com/</url>
 
   <parent>
@@ -13,6 +14,13 @@
     <artifactId>job-engine</artifactId>
     <version>0.0.1-SNAPSHOT</version>
   </parent>
+
+  <licenses>
+    <license>
+      <name>Apache License, Version 2.0</name>
+      <url>http://www.apache.org/licenses/LICENSE-2.0</url>
+    </license>
+  </licenses>
 
   <profiles>
     <profile>
@@ -134,11 +142,10 @@
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-dependency-plugin</artifactId>
-
         <executions>
-
           <execution>
-            <id>copy-job</id>
+            <id>copy-code-dep</id>
+            <phase>prepare-package</phase>
             <goals>
               <goal>copy</goal>
             </goals>
@@ -146,7 +153,7 @@
               <artifactItems>
                 <artifactItem>
                   <groupId>sixsq.nuvla.job-engine</groupId>
-                  <artifactId>job-engine-tarball</artifactId>
+                  <artifactId>code-dep</artifactId>
                   <version>${project.version}</version>
                   <classifier>bundle</classifier>
                   <type>tar.gz</type>
@@ -157,7 +164,7 @@
           </execution>
 
           <execution>
-            <id>unpack-job</id>
+            <id>unpack-code-dep</id>
             <goals>
               <goal>unpack</goal>
             </goals>
@@ -166,45 +173,7 @@
               <artifactItems>
                 <artifactItem>
                   <groupId>sixsq.nuvla.job-engine</groupId>
-                  <artifactId>job-engine-tarball</artifactId>
-                  <version>${project.version}</version>
-                  <classifier>bundle</classifier>
-                  <type>tar.gz</type>
-                </artifactItem>
-              </artifactItems>
-            </configuration>
-          </execution>
-
-          <execution>
-            <id>copy-python-library</id>
-            <goals>
-              <goal>copy</goal>
-            </goals>
-            <configuration>
-              <artifactItems>
-                <artifactItem>
-                  <groupId>sixsq.nuvla.python-library</groupId>
-                  <artifactId>python-library-tarball</artifactId>
-                  <version>${project.version}</version>
-                  <classifier>bundle</classifier>
-                  <type>tar.gz</type>
-                </artifactItem>
-              </artifactItems>
-              <stripVersion>true</stripVersion>
-            </configuration>
-          </execution>
-
-          <execution>
-            <id>unpack-python-library</id>
-            <goals>
-              <goal>unpack</goal>
-            </goals>
-            <configuration>
-              <outputDirectory>${project.build.directory}/python-library/</outputDirectory>
-              <artifactItems>
-                <artifactItem>
-                  <groupId>sixsq.nuvla.python-library</groupId>
-                  <artifactId>python-library-tarball</artifactId>
+                  <artifactId>code-dep</artifactId>
                   <version>${project.version}</version>
                   <classifier>bundle</classifier>
                   <type>tar.gz</type>
@@ -246,4 +215,5 @@
 
     </plugins>
   </build>
+
 </project>
