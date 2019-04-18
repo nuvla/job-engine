@@ -1,84 +1,110 @@
 # Nuvla Job Engine
 
-[![Build Status](https://travis-ci.com/nuvla/job-engine.svg?branch=master)](https://travis-ci.com/nuvla/job-engine)
+[![Build Status](
+https://travis-ci.com/nuvla/job-engine.svg?branch=master)](
+https://travis-ci.com/nuvla/job-engine)
 
-Nuvla job engine use cimi job resource and zookeeper as a locking
-queue. It's done in a way to be horizontally scalled on different nodes.
+This repository contains the code and configuration for the Job engine, 
+packaged as a Docker container. 
 
-Facts:
+Nuvla job engine use cimi job resource and zookeeper as a locking queue. 
+It's done in a way to be horizontally scalled on different nodes.
 
-- Each action should be distributed by a standalone distributor
-- More than one distributor for the same action can be started on different nodes but one will be elected to distribute the job (action).
-- Executor load actions dynamically at his startup
-- Zookeeper is used as a Locking queue containing only job uuid in /job/entries
-- Running jobs are put in zookeeper under /job/taken
-- If executor is unable to communicate with CIMI, the job in running state is released (put back in zookeeper queue).
-- The action implementation should take care if necessary to continue the execution or to make the cleanup of a unfinshed running job
-- If connection is lost with zookeeper /job/taken (executing jobs) will be released because this is ephemeral nodes.
-- Stopping the executor will try to make a proper shuttdown by waiting 2 minutes before killing the process. Each thread that terminate his running action will not take a new one.
+## Artifacts
 
-## Run the nuvla job executor
+ - `nuvla/job:<version>`. A Docker container that can be obtained from
+   the [nuvla/job repository](
+   https://cloud.docker.com/u/nuvla/repository/docker/nuvla/job)
+   in Docker Hub. The tags indicate the release number.
 
-Install the rpm of nuvla-job-engine
+## Release Process
 
-Create a file `/etc/default/nuvla-job-executor` with following content:
-```
-DAEMON_ARGS='--endpoint=https://<NUVLA_ENDPOINT>:<CIMI_PORT> --user=super --password=<SUPER_PASS> --zk-hosts=<ZOOKEEPER_ENDPOINT>:<ZOOKEEPER_PORT> --threads=8 --es-hosts-list=<ELASTICSEARCH_ENDPOINTS>'
-```
+**Before** creating the release:
 
-Start the service with `systemctl start nuvla-job-executor`
+ - Decide what semantic version to use for this release and change the
+   version, if necessary, in `code/project.clj` and all the `pom.xml`
+   files.  (It should still have the "-SNAPSHOT" suffix.)
 
-## Run the nuvla job distributors
+ - Update the `CHANGELOG.md` file.
 
-Install the rpm of nuvla-job-engine
+ - Push all changes to GitHub, including the updates to
+   `CHANGELOG.md`.
 
-Create a file `/etc/default/nuvla-job-distributor` with following content:
-```
-DAEMON_ARGS='--endpoint=https://<NUVLA_ENDPOINT>:<CIMI_PORT> --user=super --password=<SUPER_PASS> --zk-hosts=<ZOOKEEPER_ENDPOINT>:<ZOOKEEPER_PORT>'
-```
+Again, be sure to set the version **before** tagging the release.
 
-Start the service with `systemctl start nuvla-job-distributor@<DISTRIBUTOR_SCRIPT_FILENAME_LAST_PART>`
+Check that everything builds correctly with:
 
-*e.g systemctl start nuvla-job-distributor@jobs_cleanup.service*
+    mvn clean install
 
-## Implement new actions
+To tag the code with the release version and to update the master
+branch to the next snapshot version, run the command:
 
-To implement new actions to be executed by job executor, you have to
-create a class equivalent to actions/dummy_test_action.py. You have to
-restart the job executor to force it reload implemented actions.
+    ./release.sh true
 
-To create a new action distributor, which will create a cimi job every
-x time. Create a class equivalent to
-scripts/job_distributor_dummy_test_action.py.
+If you want to test what will happen with the release, leave off the
+"true" argument and the changes will only be made locally.
+
+When the tag is pushed to GitHub, Travis CI will build the repository,
+create the container, and push it to Docker Hub.  Check the Travis
+build and ensure that the new container version appears in the Docker
+Hub. 
+
+## Contributing
+
+### Source Code Changes
+
+To contribute code to this repository, please follow these steps:
+
+ 1. Create a branch from master with a descriptive, kebab-cased name
+    to hold all your changes.
+
+ 2. Follow the developer guidelines concerning formatting, etc. when
+    modifying the code.
+   
+ 3. Once the changes are ready to be reviewed, create a GitHub pull
+    request.  With the pull request, provide a description of the
+    changes and links to any relevant issues (in this repository or
+    others). 
+   
+ 4. Ensure that the triggered CI checks all pass.  These are triggered
+    automatically with the results shown directly in the pull request.
+
+ 5. Once the checks pass, assign the pull request to the repository
+    coordinator (who may then assign it to someone else).
+
+ 6. Interact with the reviewer to address any comments.
+
+When the reviewer is happy with the pull request, he/she will "squash
+& merge" the pull request and delete the corresponding branch.
 
 
-## Logging
+### Code Formatting
 
-Check `/var/log/nuvla/log/` folder.
+The bulk of the code in this repository is written in Python.
 
-## Debugging
+The formatting follows the coding style in defined in PEP 8.
 
-You can get a trace-back of all running threads using tools like `https://pyrasite.readthedocs.io`
 
-0. `pip install pyrasite`
+### Job engine behavior
 
-1. Get python process PID of the executor e.g.
+ - Each action should be distributed by a standalone distributor
+ - More than one distributor for the same action can be started but only
+   one will be elected to distribute the job
+ - Executor load actions dynamically at startup time
+ - Zookeeper is used as a Locking queue containing only job uuid in 
+   /job/entries
+ - Running jobs are put in zookeeper under /job/taken
+ - If executor is unable to communicate with CIMI, the job in running 
+   state is released (put back in zookeeper queue).
+ - The action implementation should take care to continue or to make the 
+   cleanup of a running interrupted job
+ - If the connection break with zookeeper, job in exection will be 
+   released automatically. This is because /job/taken entries 
+   are ephemeral nodes.
+ - Stopping the executor will try to make a proper shuttdown by waiting 
+   2 minutes before killing the process. Each thread that terminate his 
+   running action will not take a new one.
 
-2. Connect to nuvla bash session: `su - nuvla`
-
-3. pyrasite-shell <PID>
-
-4. print traceback with entering code below into pyrasite repl
-```
-import sys
-import threading
-import traceback
-
-for th in threading.enumerate():
-    print(th)
-    traceback.print_stack(sys._current_frames()[th.ident])
-    print()
-```
 
 ## Copyright
 

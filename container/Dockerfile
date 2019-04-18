@@ -15,13 +15,11 @@ LABEL travis.build.number=${TRAVIS_BUILD_NUMBER}
 LABEL travis.build.web.url=${TRAVIS_BUILD_WEB_URL}
 
 ADD target/job /target/job
-ADD target/python-library /target/python-library
 
-RUN pip install /target/python-library && \
-        pip install /target/job && \
-        mv /target/job/src/scripts/ /app/ && \
-        chmod -R +x /app/ && \
-        rm -rf /target/
+RUN pip install /target/job && \
+    mv /target/job/src/scripts/ /app/ && \
+    chmod -R +x /app/ && \
+    rm -rf /target/
 
 # inherited from docker:18.09 Dockerfile
 RUN apk add --no-cache ca-certificates curl
