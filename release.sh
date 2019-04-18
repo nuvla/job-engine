@@ -8,8 +8,6 @@ PUSH_CHANGES=${1:-false}
 
 BRANCH=master
 
-NEXT_RELEASE=NONE
-
 if [[ "${PUSH_CHANGES}" == "true" ]]; then
     TARGET=deploy
 else
