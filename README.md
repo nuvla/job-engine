@@ -13,8 +13,7 @@ It's done in a way to be horizontally scalled on different nodes.
 ## Artifacts
 
  - `nuvla/job:<version>`. A Docker container that can be obtained from
-   the [nuvla/job repository](
-   https://cloud.docker.com/u/nuvla/repository/docker/nuvla/job)
+   the [nuvla/job repository](https://hub.docker.com/r/nuvla/job)
    in Docker Hub. The tags indicate the release number.
 
 ## Release Process
