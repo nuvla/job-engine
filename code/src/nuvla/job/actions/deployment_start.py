@@ -39,11 +39,9 @@ class DeploymentStartJob(object):
         if credential_id is None:
             raise ValueError("Credential id is not set!")
 
-        infrastructure_service_id = api_deployment['infrastructure-service-id']
-        if infrastructure_service_id is None:
-            raise ValueError("Infrastructure service id is not set!")
-
         api_credential = self.api.get(credential_id).data
+
+        infrastructure_service_id = api_credential['parent']
 
         api_infrastructure_service = self.api.get(infrastructure_service_id).data
 
