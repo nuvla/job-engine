@@ -68,23 +68,3 @@ def retry_kazoo_queue_op(queue, function_name):
     while not getattr(queue, function_name)():
         random_wait(0.1, 5)
         logging.warn('Retrying {} on {}.'.format(function_name, queue.get()))
-
-
-connector_classes = {
-    'swarm': 'nuvla.connector.docker_connector',
-    'create_swarm': 'nuvla.connector.docker_machine_connector'
-}
-
-
-def create_connector_instance(api_infrastructure_service, api_credential):
-    if api_infrastructure_service["state"] == "STARTED":
-        connector_name = api_infrastructure_service['type']
-    else:
-        connector_name = "create_swarm"
-
-    connector = load_py_module(connector_classes[connector_name])
-
-    if not hasattr(connector, 'instantiate_from_cimi'):
-        raise NotImplementedError('The "{}" is not compatible with the job action'
-                                  .format(api_infrastructure_service['type']))
-    return connector.instantiate_from_cimi(api_infrastructure_service, api_credential)
