@@ -1,8 +1,7 @@
 # -*- coding: utf-8 -*-
 
-from ..util import create_connector_instance
-
 from ..actions import action
+from .util.deployment import *
 
 import logging
 
@@ -33,17 +32,12 @@ class DeploymentStartJob(object):
         return '.'.join([port_details[0], port_details[2]]), port_details[1]
 
     def handle_deployment(self, api_deployment):
+
         deployment_id = api_deployment['id']
-        node_instance_name = deployment_id.split('/')[1]
-        credential_id = api_deployment['credential-id']
-        if credential_id is None:
-            raise ValueError("Credential id is not set!")
 
-        api_credential = self.api.get(credential_id).data
+        api_credential = get_credential(self.api, api_deployment)
 
-        infrastructure_service_id = api_credential['parent']
-
-        api_infrastructure_service = self.api.get(infrastructure_service_id).data
+        api_infrastructure_service = get_infrastructure_service(self.api, api_credential)
 
         connector_instance = create_connector_instance(api_infrastructure_service, api_credential)
 
@@ -51,6 +45,8 @@ class DeploymentStartJob(object):
                          'NUVLA_API_KEY={}'.format(api_deployment['api-credentials']['api-key']),
                          'NUVLA_API_SECRET={}'.format(api_deployment['api-credentials']['api-secret']),
                          'NUVLA_ENDPOINT={}'.format(api_deployment['api-endpoint'])]
+
+        node_instance_name = deployment_id.split('/')[1]
 
         container = connector_instance.start(service_name=node_instance_name,
                                              image=api_deployment['module']['content']['image'],
@@ -96,8 +92,6 @@ class DeploymentStartJob(object):
 
         self.api.edit(api_deployment['id'], {'state': 'STARTED'})
 
-        return 0
-
     def start_deployment(self):
         deployment_id = self.job['target-resource']['href']
 
@@ -110,10 +104,13 @@ class DeploymentStartJob(object):
         try:
             self.handle_deployment(api_deployment)
         except:
-            self.api.edit(deployment_id, {'state': 'ERROR'})
+            try:
+                self.api.edit(deployment_id, {'state': 'ERROR'})
+            except:
+                pass
             raise
 
-        return 10000
+        return 0
 
     def do_work(self):
         self.start_deployment()

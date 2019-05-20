@@ -28,7 +28,7 @@ class JobsCleanupJob(object):
             logging.info(msg)
             self.job.set_status_message(msg)
 
-        return 10000
+        return 0
 
     def do_work(self):
         self.cleanup_jobs()

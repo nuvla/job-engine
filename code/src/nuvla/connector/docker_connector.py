@@ -116,7 +116,7 @@ class DockerConnector(Connector):
     def stop(self, ids):
         for service_id in ids:
             response = self.docker_api.delete(self._get_full_url("services/{}".format(service_id)))
-            if response.status_code != 200:
+            if response.status_code not in {200, 404}:
                 self.validate_action(response.json())
 
     @should_connect

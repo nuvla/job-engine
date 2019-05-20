@@ -2,12 +2,11 @@
 
 from __future__ import print_function
 
-from ..util import create_connector_instance
+from nuvla.connector import docker_machine_connector
 
 from ..actions import action
 
 import logging
-from math import ceil
 
 
 @action('stop_infrastructure_service_swarm')
@@ -23,7 +22,7 @@ class SwarmStopJob(object):
 
         api_credential = self.api.get(credential_id).data
 
-        connector_instance = create_connector_instance(swarm, api_credential)
+        connector_instance = docker_machine_connector.instantiate_from_cimi(swarm, api_credential)
 
         nodes=swarm.get("nodes", [])
         stop_coe = connector_instance.stop(nodes)
@@ -47,8 +46,6 @@ class SwarmStopJob(object):
 
         self.job.set_progress(100)
 
-        return 0
-
     def start_deployment(self):
         infra_service_id = self.job['target-resource']['href']
 
@@ -64,7 +61,7 @@ class SwarmStopJob(object):
             self.api.edit(infra_service_id, {'state': 'ERROR'})
             raise
 
-        return 10000
+        return 0
 
     def do_work(self):
         self.start_deployment()
