@@ -2,54 +2,52 @@
 
 import logging
 
-from ..util import create_connector_instance
+from nuvla.connector import connector_factory
+from .deployment import DeploymentJob
 from ..actions import action
 
+action_name = 'stop_deployment'
 
-@action('stop_deployment')
-class DeploymentStopJob(object):
-    def __init__(self, executor, job):
-        self.job = job
-        self.api = job.api
+log = logging.getLogger(action_name)
 
-        self.handled_vms_instance_id = set([])
+@action(action_name)
+class DeploymentStopJob(DeploymentJob):
+    def __init__(self, _, job):
+        super().__init__(job)
 
-    def handle_deployment(self, api_deployment):
-        credential_id = api_deployment['credential-id']
-        if credential_id is None:
-            raise ValueError("Credential id is not set!")
+    def handle_deployment(self, deployment):
+        credential_id = deployment['credential-id']
 
-        api_credential = self.api.get(credential_id).data
+        connector = connector_factory(self.api, credential_id)
 
-        infrastructure_service_id = api_credential['parent']
-
-        api_infrastructure_service = self.api.get(infrastructure_service_id).data
-
-        connector_instance = create_connector_instance(api_infrastructure_service, api_credential)
-
-        filter_params = 'deployment/href="{}" and name="instance-id"'.format(api_deployment['id'])
+        filter_params = 'deployment/href="{}" and name="instance-id"'.format(deployment['id'])
 
         deployment_params = self.api.search('deployment-parameter', filter=filter_params,
                                             select='node-id,name,value').resources
 
+        api_credential = self.api.get(credential_id).data
+
         instance_id = deployment_params[0].data['value']
-        logging.info('Stopping following VMs {} for {}.'.format(instance_id, api_credential['id']))
-        connector_instance.stop([instance_id])
-
-        self.api.edit(api_deployment['id'], {'state': 'STOPPED'})
-
-        return 0
+        log.info('Stopping instances {} for creds {}.'.format(instance_id, api_credential['id']))
+        connector.stop([instance_id])
 
     def stop_deployment(self):
         deployment_id = self.job['target-resource']['href']
 
-        api_deployment = self.api.get(deployment_id).data
+        log.info('Job started for {}.'.format(deployment_id))
 
-        logging.info('Deployment stop job started for {}.'.format(deployment_id))
+        deployment = self.api_dpl.get_json(deployment_id)
 
         self.job.set_progress(10)
 
-        self.handle_deployment(api_deployment)
+        try:
+            self.handle_deployment(deployment)
+        except Exception as ex:
+            log.error('Failed to stop deployment {0}: {1}'.format(deployment_id, ex))
+            self.api_dpl.set_state_error(deployment_id)
+            raise
+
+        self.api_dpl.set_state_stopped(deployment_id)
 
         return 10000
 

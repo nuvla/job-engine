@@ -25,25 +25,28 @@ class Job(dict):
         self.id = None
         self.queue = queue
         self.api = api
+        self._init()
+
+    def _init(self):
         try:
-            self.id = queue.get().decode()
+            self.id = self.queue.get().decode()
             cimi_job = self.get_cimi_job(self.id)
             dict.__init__(self, cimi_job)
             if self.is_in_final_state():
-                retry_kazoo_queue_op(queue, "consume")
+                retry_kazoo_queue_op(self.queue, "consume")
                 logging.warning('Newly retrieved {} already in final state! Removed from queue.'.format(self.id))
                 self.nothing_to_do = True
             elif self.get('state') == 'RUNNING':
                 # could happen when updating job and cimi server is down! let job actions decide what to do with it.
                 logging.warning('Newly retrieved {} in running state!'.format(self.id))
         except NonexistentJobError as e:
-            retry_kazoo_queue_op(queue, "consume")
+            retry_kazoo_queue_op(self.queue, "consume")
             logging.warning('Newly retrieved {} does not exist in cimi; '.format(self.id) +
                             'Message: {}; Removed from queue: success.'.format(e.reason))
             self.nothing_to_do = True
         except:
             timeout = 120
-            retry_kazoo_queue_op(queue, "release")
+            retry_kazoo_queue_op(self.queue, "release")
             logging.error('Fatal error when trying to retrieve {}! Put it back in queue. '.format(self.id) +
                           'Will go back to work after {}s.'.format(timeout))
             wait(timeout)

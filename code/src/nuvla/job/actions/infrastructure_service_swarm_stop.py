@@ -1,36 +1,27 @@
 # -*- coding: utf-8 -*-
 
 from __future__ import print_function
-
-from ..util import create_connector_instance
-
-from ..actions import action
-
 import logging
-from math import ceil
+
+from nuvla.connector import connector_factory
+from ..actions import action
 
 
 @action('stop_infrastructure_service_swarm')
 class SwarmStopJob(object):
-    def __init__(self, executor, job):
+    def __init__(self, _, job):
         self.job = job
         self.api = job.api
 
     def handle_deployment(self, swarm):
-        swarm_service_id = swarm['id']
-
-        credential_id = swarm['management-credential-id']
-
-        api_credential = self.api.get(credential_id).data
-
-        connector_instance = create_connector_instance(swarm, api_credential)
+        connector_instance = connector_factory(self.api, swarm.get('management-credential-id'))
 
         nodes=swarm.get("nodes", [])
-        stop_coe = connector_instance.stop(nodes)
+        connector_instance.stop(nodes)
 
         self.job.set_progress(50)
 
-        # self.api.add("credential", new_coe["credential"])
+        swarm_service_id = swarm['id']
 
         self.api.edit(swarm_service_id, {"state": "STOPPED"})
 
