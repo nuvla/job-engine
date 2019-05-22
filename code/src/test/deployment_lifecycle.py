@@ -60,10 +60,12 @@ def main():
     job = job_create(nuvla, deployment_id)
 
     DeploymentStartJob(None, job).do_work()
+
     time_stop = time.time() + 10
     while not all_replicas_running(nuvla_dpl, deployment_id, desired_replicas) and time.time() < time_stop:
         DeploymentStateJob(None, job).do_work()
         time.sleep(1)
+
     DeploymentStopJob(None, job).do_work()
 
     nuvla_dpl.delete(deployment_id)
