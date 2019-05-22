@@ -8,7 +8,7 @@ import time
 from nuvla.job.actions.deployment_start import DeploymentStartJob
 from nuvla.job.actions.deployment_state import DeploymentStateJob
 from nuvla.job.actions.deployment_stop import DeploymentStopJob
-from nuvla.job.actions.deployment import DeploymentJob, Deployment
+from nuvla.job.actions.deployment import DeploymentJob, Deployment, Credential
 from nuvla.job.job import Job
 from nuvla.api.api import Api
 
@@ -37,10 +37,12 @@ def main():
     username = os.environ['NUVLA_USERNAME']
     password = os.environ['NUVLA_PASSWORD']
 
-    desired_replicas = 1
-    if len(sys.argv) < 2:
-        raise SystemExit('Usage: {} <module URI>'.format(sys.argv[0]))
+    if len(sys.argv) < 3:
+        raise SystemExit('Usage: {} <module URI> <infra service URI>'.format(sys.argv[0]))
     module = sys.argv[1]
+    infra_service = sys.argv[2]
+
+    desired_replicas = 1
 
     nuvla = Api(endpoint=nuvla_endpoint, insecure=True)
     nuvla.login_password(username, password)
@@ -48,6 +50,12 @@ def main():
     nuvla_dpl = Deployment(nuvla)
     deployment = nuvla_dpl.create(module)
     deployment_id = deployment['id']
+
+    nuvla_creds = Credential(nuvla)
+    creds = nuvla_creds.find(infra_service)
+    if len(creds) < 1:
+        raise SystemExit('No creds for infra service {}.'.format(infra_service))
+    nuvla_dpl.set_infra_cred_id(deployment_id, creds[0].id)
 
     job = job_create(nuvla, deployment_id)
 

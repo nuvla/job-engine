@@ -33,34 +33,43 @@ class Deployment():
     def __init__(self, nuvla):
         self.nuvla = nuvla
 
-    def get_json(self, resource_id):
+    def get(self, resource_id):
+        """
+        Returns deployment identified by `resource_id` as dictionary.
+        :param resource_id: str
+        :return: dict
+        """
         return self.nuvla.get(resource_id).data
 
-    def create(self, module_id, infra_cred_id=None, as_json=True):
+    def create(self, module_id, infra_cred_id=None):
+        """
+        Returns deployment created from `module_id` as dictionary.
+        Sets `infra_cred_id` infrastructure credentials on the deployment, if given.
+
+        :param module_id: str, resource URI
+        :param infra_cred_id: str, resource URI
+        :return: dict
+        """
         module = {"module": {"href": module_id}}
 
         res = self.nuvla.add('deployment', module)
         if res.data['status'] != 201:
             raise Exception('ERROR: Failed to create deployment.')
         deployment_id = res.data['resource-id']
-        deployment = self.nuvla.get(deployment_id).data
+        deployment = self.get(deployment_id)
 
-        if not infra_cred_id:
-            filters = "type='infrastructure-service-swarm'"
-            creds = self.nuvla.search('credential', filter=filters, select="id")
-            if creds.count < 1:
-                raise Exception('ERROR: Failed to find infra creds {0}.'.format(filters))
-            infra_cred_id = creds.resources[0].id
-
-        deployment.update({"credential-id": infra_cred_id})
+        if infra_cred_id:
+            deployment.update({"credential-id": infra_cred_id})
         try:
-            deployment = self.nuvla.edit(deployment_id, deployment)
+            return self.nuvla.edit(deployment_id, deployment).data
         except Exception as ex:
             raise Exception('ERROR: Failed to edit {0}: {1}'.format(deployment_id, ex))
-        if as_json:
-            return deployment.data
-        else:
-            return deployment
+
+    def set_infra_cred_id(self, resource_id, infra_cred_id):
+        try:
+            return self.nuvla.edit(resource_id, {"credential-id": infra_cred_id}).data
+        except Exception as ex:
+            raise Exception('ERROR: Failed to edit {0}: {1}'.format(resource_id, ex))
 
     def deployment_delete(self, resource_id):
         self.nuvla.delete(resource_id)
@@ -116,3 +125,17 @@ class Deployment():
         self.nuvla.delete(resource_id)
 
 
+class Credential():
+
+    def __init__(self, nuvla):
+        self.nuvla = nuvla
+
+    def find(self, infra_service_id):
+        """
+        Returns list of credentials for `infra_service_id` infrastructure service.
+        :param infra_service_id: str, URI
+        :return: list
+        """
+        filters = "parent='{}'".format(infra_service_id)
+        creds = self.nuvla.search('credential', filter=filters, select="id")
+        return creds.resources

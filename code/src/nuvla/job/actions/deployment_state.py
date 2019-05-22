@@ -30,7 +30,7 @@ class DeploymentStateJob(DeploymentJob):
 
         log.info('Job started for {}.'.format(deployment_id))
 
-        deployment = self.api_dpl.get_json(deployment_id)
+        deployment = self.api_dpl.get(deployment_id)
 
         self.job.set_progress(10)
 

@@ -57,6 +57,4 @@ def assure_path_exists(path):
 def retry_kazoo_queue_op(queue, function_name):
     while not getattr(queue, function_name)():
         random_wait(0.1, 5)
-        logging.warn('Retrying {} on {}.'.format(function_name, queue.get()))
-
-
+        logging.warning('retry_kazoo_queue_op: Retrying {} on {}.'.format(function_name, queue.get()))

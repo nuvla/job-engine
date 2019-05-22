@@ -100,7 +100,7 @@ class DeploymentStartJob(DeploymentJob):
 
         log.info('Job started for {}.'.format(deployment_id))
 
-        deployment = self.api_dpl.get_json(deployment_id)
+        deployment = self.api_dpl.get(deployment_id)
 
         self.job.set_progress(10)
 
@@ -108,12 +108,15 @@ class DeploymentStartJob(DeploymentJob):
             self.handle_deployment(deployment)
         except Exception as ex:
             log.error('Failed to start deployment {0}: {1}'.format(deployment_id, ex))
-            self.api_dpl.set_state_error(deployment_id)
-            raise
+            try:
+                self.api_dpl.set_state_error(deployment_id)
+            except Exception as ex:
+                log.error('Failed to set error state for {0}: {1}'.format(deployment_id, ex))
+                raise
 
         self.api_dpl.set_state_started(deployment_id)
 
-        return 10000
+        return 0
 
     def do_work(self):
         self.start_deployment()

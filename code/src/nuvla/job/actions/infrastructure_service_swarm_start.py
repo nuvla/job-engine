@@ -48,7 +48,7 @@ class SwarmStartJob(object):
             self.api.edit(infra_service_id, {'state': 'ERROR'})
             raise
 
-        return 10000
+        return 0
 
     def do_work(self):
         self.start_deployment()

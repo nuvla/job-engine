@@ -16,3 +16,4 @@ class DummyTestActionJob(object):
 
     def do_work(self):
         self.work_hard()
+        return 0

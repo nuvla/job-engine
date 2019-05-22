@@ -16,7 +16,7 @@ class DeploymentStopJob(DeploymentJob):
         super().__init__(job)
 
     def handle_deployment(self, deployment):
-        credential_id = deployment['credential-id']
+        credential_id = deployment.get('credential-id')
 
         connector = connector_factory(self.api, credential_id)
 
@@ -25,18 +25,23 @@ class DeploymentStopJob(DeploymentJob):
         deployment_params = self.api.search('deployment-parameter', filter=filter_params,
                                             select='node-id,name,value').resources
 
-        api_credential = self.api.get(credential_id).data
-
-        instance_id = deployment_params[0].data['value']
-        log.info('Stopping instances {} for creds {}.'.format(instance_id, api_credential['id']))
-        connector.stop([instance_id])
+        if len(deployment_params) > 0:
+            service_id = deployment_params[0].data.get('value')
+            logging.info('Stopping service {} for {}.'.format(service_id, credential_id))
+            if service_id is not None:
+                connector.stop([service_id])
+            else:
+                self.job.set_status_message("Deployment parameter {} doesn't have a value!"
+                                            .format(deployment_params[0].data.get('id')))
+        else:
+            self.job.set_status_message('No deployment parameters with containers ids found!')
 
     def stop_deployment(self):
         deployment_id = self.job['target-resource']['href']
 
         log.info('Job started for {}.'.format(deployment_id))
 
-        deployment = self.api_dpl.get_json(deployment_id)
+        deployment = self.api_dpl.get(deployment_id)
 
         self.job.set_progress(10)
 
@@ -49,7 +54,7 @@ class DeploymentStopJob(DeploymentJob):
 
         self.api_dpl.set_state_stopped(deployment_id)
 
-        return 10000
+        return 0
 
     def do_work(self):
         self.stop_deployment()

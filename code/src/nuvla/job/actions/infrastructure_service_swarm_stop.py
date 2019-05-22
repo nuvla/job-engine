@@ -38,8 +38,6 @@ class SwarmStopJob(object):
 
         self.job.set_progress(100)
 
-        return 0
-
     def start_deployment(self):
         infra_service_id = self.job['target-resource']['href']
 
@@ -55,7 +53,7 @@ class SwarmStopJob(object):
             self.api.edit(infra_service_id, {'state': 'ERROR'})
             raise
 
-        return 10000
+        return 0
 
     def do_work(self):
         self.start_deployment()
