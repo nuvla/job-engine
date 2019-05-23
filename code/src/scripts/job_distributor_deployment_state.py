@@ -11,8 +11,13 @@ class DeploymentStateJobsDistributor(Distributor):
     ACTION_NAME = 'deployment_state'
 
     def __init__(self):
+        self.collect_interval = 10
         super().__init__()
-        self.collect_interval = 10.0
+        self.collect_interval = self.args.interval
+
+    def _set_command_specific_options(self, parser):
+        parser.add_argument('--interval', dest='interval', metavar='INTERVAL', default=self.collect_interval,
+            help='Jobs distribution interval in seconds (default: {})'.format(self.collect_interval))
 
     def active_deployments(self):
         return map(lambda x: x.id,
