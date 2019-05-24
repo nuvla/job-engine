@@ -4,6 +4,7 @@
 
 ### Added
 
+  - Nuvlabox delete job
   - Deployment state job
 
 ### Changed
