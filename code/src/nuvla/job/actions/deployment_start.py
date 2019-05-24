@@ -46,6 +46,13 @@ class DeploymentStartJob(object):
                          'NUVLA_API_SECRET={}'.format(api_deployment['api-credentials']['api-secret']),
                          'NUVLA_ENDPOINT={}'.format(api_deployment['api-endpoint'])]
 
+        for env_var in api_deployment['module']['content'].get('environmental-variables', []):
+            env_var_name = env_var['name']
+            env_var_value = env_var.get('value')
+            if env_var_value is not None:
+                env_var_def = "{}='{}'".format(env_var_name, env_var_value)
+                container_env.append(env_var_def)
+
         node_instance_name = deployment_id.split('/')[1]
 
         container = connector_instance.start(service_name=node_instance_name,
