@@ -2,8 +2,13 @@
 
 ## [Unreleased]
 
+### Added
+
+  - Deployment state job
+
 ### Changed
 
+  - Deployment code reorganization
   - Release script fix
   - move reusable parts in util directory for actions 
   - connector docker, stop container, if service not found should not return an error 
