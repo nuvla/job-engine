@@ -6,6 +6,9 @@ from nuvla.api import NuvlaError, ConnectionError
 from .util import wait, retry_kazoo_queue_op
 
 
+log = logging.getLogger('job')
+
+
 class NonexistentJobError(Exception):
     def __init__(self, reason):
         super(NonexistentJobError, self).__init__(reason)
@@ -25,26 +28,29 @@ class Job(dict):
         self.id = None
         self.queue = queue
         self.api = api
+        self._init()
+
+    def _init(self):
         try:
-            self.id = queue.get().decode()
+            self.id = self.queue.get().decode()
             cimi_job = self.get_cimi_job(self.id)
             dict.__init__(self, cimi_job)
             if self.is_in_final_state():
-                retry_kazoo_queue_op(queue, "consume")
-                logging.warning('Newly retrieved {} already in final state! Removed from queue.'.format(self.id))
+                retry_kazoo_queue_op(self.queue, "consume")
+                log.warning('Newly retrieved {} already in final state! Removed from queue.'.format(self.id))
                 self.nothing_to_do = True
             elif self.get('state') == 'RUNNING':
                 # could happen when updating job and cimi server is down! let job actions decide what to do with it.
-                logging.warning('Newly retrieved {} in running state!'.format(self.id))
+                log.warning('Newly retrieved {} in running state!'.format(self.id))
         except NonexistentJobError as e:
-            retry_kazoo_queue_op(queue, "consume")
-            logging.warning('Newly retrieved {} does not exist in cimi; '.format(self.id) +
+            retry_kazoo_queue_op(self.queue, "consume")
+            log.warning('Newly retrieved {} does not exist in cimi; '.format(self.id) +
                             'Message: {}; Removed from queue: success.'.format(e.reason))
             self.nothing_to_do = True
         except:
             timeout = 120
-            retry_kazoo_queue_op(queue, "release")
-            logging.error('Fatal error when trying to retrieve {}! Put it back in queue. '.format(self.id) +
+            retry_kazoo_queue_op(self.queue, "release")
+            log.error('Fatal error when trying to retrieve {}! Put it back in queue. '.format(self.id) +
                           'Will go back to work after {}s.'.format(timeout))
             wait(timeout)
             self.nothing_to_do = True
@@ -59,7 +65,7 @@ class Job(dict):
             except NuvlaError as e:
                 reason = e.reason
                 if e.response.status_code == 404:
-                    logging.warning(
+                    log.warning(
                         'Retrieve of {} failed. Attempt: {} Will retry in {}s.'.format(job_uri, attempt, wait_time))
                     wait(wait_time)
                 else:
@@ -127,7 +133,7 @@ class Job(dict):
     def consume_when_final_state(self):
         if self.is_in_final_state():
             retry_kazoo_queue_op(self.queue, 'consume')
-            logging.info('Great, {} is now in final state; Removed from queue.'.format(self.id))
+            log.info('Great, {} is now in final state; Removed from queue.'.format(self.id))
 
     def _edit_job(self, attribute_name, attribute_value):
         try:

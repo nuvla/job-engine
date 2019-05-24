@@ -2,12 +2,10 @@
 
 from __future__ import print_function
 
-from nuvla.connector import docker_machine_connector
-
-from ..actions import action
-
 import logging
-from math import ceil
+
+from nuvla.connector import connector_factory, docker_machine_connector
+from ..actions import action
 
 
 @action('start_infrastructure_service_swarm')
@@ -17,13 +15,8 @@ class SwarmStartJob(object):
         self.api = job.api
 
     def handle_deployment(self, swarm):
-        swarm_service_id = swarm['id']
-
-        credential_id = swarm['management-credential-id']
-
-        api_credential = self.api.get(credential_id).data
-
-        connector_instance = docker_machine_connector.instantiate_from_cimi(swarm, api_credential)
+        connector_instance = connector_factory(docker_machine_connector, self.api,
+                                               swarm.get('management-credential-id'))
 
         new_coe = connector_instance.start()
 
@@ -32,6 +25,8 @@ class SwarmStartJob(object):
         self.api.add("credential", new_coe["credential"])
 
         endpoint = "https://{}:2376".format(new_coe["ip"])
+
+        swarm_service_id = swarm['id']
 
         self.api.edit(swarm_service_id, {"endpoint": endpoint, "state": "STARTING", "nodes": [new_coe["node"]]})
 

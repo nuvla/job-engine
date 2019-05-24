@@ -2,41 +2,35 @@
 
 from __future__ import print_function
 
-from nuvla.connector import docker_machine_connector
-
-from ..actions import action
-
 import logging
+
+from nuvla.connector import connector_factory, docker_machine_connector
+from ..actions import action
 
 
 @action('stop_infrastructure_service_swarm')
 class SwarmStopJob(object):
-    def __init__(self, executor, job):
+    def __init__(self, _, job):
         self.job = job
         self.api = job.api
 
     def handle_deployment(self, swarm):
-        swarm_service_id = swarm['id']
+        connector_instance = connector_factory(docker_machine_connector, self.api,
+                                               swarm.get('management-credential-id'))
 
-        credential_id = swarm['management-credential-id']
-
-        api_credential = self.api.get(credential_id).data
-
-        connector_instance = docker_machine_connector.instantiate_from_cimi(swarm, api_credential)
-
-        nodes=swarm.get("nodes", [])
-        stop_coe = connector_instance.stop(nodes)
+        nodes = swarm.get("nodes", [])
+        connector_instance.stop(nodes)
 
         self.job.set_progress(50)
 
-        # self.api.add("credential", new_coe["credential"])
+        swarm_service_id = swarm['id']
 
         self.api.edit(swarm_service_id, {"state": "STOPPED"})
 
         self.job.set_progress(90)
 
-        filter = 'infrastructure-services="{}"'.format(swarm_service_id)
-        all_credentials = self.api.search("credential", filter=filter).resources
+        filter_services = 'infrastructure-services="{}"'.format(swarm_service_id)
+        all_credentials = self.api.search("credential", filter=filter_services).resources
 
         for cred in all_credentials:
             if len(cred.data["infrastructure-services"]) == 1:

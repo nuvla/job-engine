@@ -24,7 +24,7 @@ class DummuTestActionsDistributor(Distributor):
 
     @override
     def _get_jobs_type(self):
-        return 'dummy_test_action'
+        return DummuTestActionsDistributor.ACTION_NAME
 
 
 if __name__ == '__main__':

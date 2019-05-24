@@ -41,16 +41,6 @@ def override(func):
     return overrided_func
 
 
-def load_py_module(module_name):
-    namespace = ''
-    name = module_name
-    if name.find('.') != -1:
-        # There's a namespace so we take it into account
-        namespace = '.'.join(name.split('.')[:-1])
-
-    return __import__(name, fromlist=namespace)
-
-
 def from_data_uuid(text):
     class NullNameSpace:
         bytes = b''
@@ -67,4 +57,4 @@ def assure_path_exists(path):
 def retry_kazoo_queue_op(queue, function_name):
     while not getattr(queue, function_name)():
         random_wait(0.1, 5)
-        logging.warn('Retrying {} on {}.'.format(function_name, queue.get()))
+        logging.warning('retry_kazoo_queue_op: Retrying {} on {}.'.format(function_name, queue.get()))
