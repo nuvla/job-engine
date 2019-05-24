@@ -2,23 +2,26 @@
 
 import logging
 
-from nuvla.connector import connector_factory
-from .deployment import DeploymentJob
+from nuvla.connector import connector_factory, docker_connector
+from .deployment import Deployment
 from ..actions import action
 
 action_name = 'stop_deployment'
 
 log = logging.getLogger(action_name)
 
+
 @action(action_name)
-class DeploymentStopJob(DeploymentJob):
-    def __init__(self, _, job):
-        super().__init__(job)
+class DeploymentStopJob(object):
+    def __init__(self, executor, job):
+        self.job = job
+        self.api = job.api
+        self.api_dpl = Deployment(self.api)
 
     def handle_deployment(self, deployment):
         credential_id = deployment.get('credential-id')
 
-        connector = connector_factory(self.api, credential_id)
+        connector = connector_factory(docker_connector, self.api, credential_id)
 
         filter_params = 'deployment/href="{}" and name="instance-id"'.format(deployment['id'])
 

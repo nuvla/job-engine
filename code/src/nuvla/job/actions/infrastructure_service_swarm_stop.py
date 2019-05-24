@@ -1,9 +1,10 @@
 # -*- coding: utf-8 -*-
 
 from __future__ import print_function
+
 import logging
 
-from nuvla.connector import connector_factory
+from nuvla.connector import connector_factory, docker_machine_connector
 from ..actions import action
 
 
@@ -14,9 +15,10 @@ class SwarmStopJob(object):
         self.api = job.api
 
     def handle_deployment(self, swarm):
-        connector_instance = connector_factory(self.api, swarm.get('management-credential-id'))
+        connector_instance = connector_factory(docker_machine_connector, self.api,
+                                               swarm.get('management-credential-id'))
 
-        nodes=swarm.get("nodes", [])
+        nodes = swarm.get("nodes", [])
         connector_instance.stop(nodes)
 
         self.job.set_progress(50)
@@ -27,8 +29,8 @@ class SwarmStopJob(object):
 
         self.job.set_progress(90)
 
-        filter = 'infrastructure-services="{}"'.format(swarm_service_id)
-        all_credentials = self.api.search("credential", filter=filter).resources
+        filter_services = 'infrastructure-services="{}"'.format(swarm_service_id)
+        all_credentials = self.api.search("credential", filter=filter_services).resources
 
         for cred in all_credentials:
             if len(cred.data["infrastructure-services"]) == 1:

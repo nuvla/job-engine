@@ -2,18 +2,21 @@
 
 import logging
 
-from nuvla.connector import connector_factory
-from .deployment import DeploymentJob
+from nuvla.connector import connector_factory, docker_connector
+from .deployment import Deployment, DeploymentParameter
 from ..actions import action
 
 action_name = 'start_deployment'
 
 log = logging.getLogger(action_name)
 
+
 @action(action_name)
-class DeploymentStartJob(DeploymentJob):
-    def __init__(self, _, job):
-        super().__init__(job)
+class DeploymentStartJob(object):
+    def __init__(self, executor, job):
+        self.job = job
+        self.api = job.api
+        self.api_dpl = Deployment(self.api)
 
     @staticmethod
     def get_port_name_value(port_mapping):
@@ -26,7 +29,7 @@ class DeploymentStartJob(DeploymentJob):
                                              param_value, node_id, param_description)
 
     def handle_deployment(self, deployment):
-        connector = connector_factory(self.api, deployment.get('credential-id'))
+        connector = connector_factory(docker_connector, self.api, deployment.get('credential-id'))
 
         deployment_id = deployment['id']
         node_instance_name = self.api_dpl.uuid(deployment_id)
@@ -37,6 +40,13 @@ class DeploymentStartJob(DeploymentJob):
                          'NUVLA_API_SECRET={}'.format(deployment['api-credentials']['api-secret']),
                          'NUVLA_ENDPOINT={}'.format(deployment['api-endpoint'])]
 
+        for env_var in deployment['module']['content'].get('environmental-variables', []):
+            env_var_name = env_var['name']
+            env_var_value = env_var.get('value')
+            if env_var_value is not None:
+                env_var_def = "{}='{}'".format(env_var_name, env_var_value)
+                container_env.append(env_var_def)
+
         service = connector.start(service_name=node_instance_name,
                                   image=deployment['module']['content']['image'],
                                   env=container_env,
@@ -46,17 +56,17 @@ class DeploymentStartJob(DeploymentJob):
         self.create_deployment_parameter(
             deployment_id=deployment_id,
             user_id=deployment_owner,
-            param_name='instance-id',
+            param_name=DeploymentParameter.SERVICE_ID['name'],
             param_value=connector.extract_vm_id(service),
-            param_description='Instance ID',
+            param_description=DeploymentParameter.SERVICE_ID['description'],
             node_id=node_instance_name)
 
         self.create_deployment_parameter(
             deployment_id=deployment_id,
             user_id=deployment_owner,
-            param_name='hostname',
+            param_name=DeploymentParameter.HOSTNAME['name'],
             param_value=connector.extract_vm_ip(service),
-            param_description='Hostname',
+            param_description=DeploymentParameter.HOSTNAME['description'],
             node_id=node_instance_name)
 
         # FIXME: get number of desired replicas of Replicated service from deployment. 1 for now.
@@ -64,17 +74,17 @@ class DeploymentStartJob(DeploymentJob):
         self.create_deployment_parameter(
             deployment_id=deployment_id,
             user_id=deployment_owner,
-            param_name=self.DPARAM_REPLICAS_DESIRED['name'],
+            param_name=DeploymentParameter.REPLICAS_DESIRED['name'],
             param_value=str(desired),
-            param_description=self.DPARAM_REPLICAS_DESIRED['description'],
+            param_description=DeploymentParameter.REPLICAS_DESIRED['description'],
             node_id=node_instance_name)
 
         self.create_deployment_parameter(
             deployment_id=deployment_id,
             user_id=deployment_owner,
-            param_name='replicas.running',
+            param_name=DeploymentParameter.REPLICAS_RUNNING['name'],
             param_value="0",
-            param_description='Number of running replicas.',
+            param_description=DeploymentParameter.REPLICAS_RUNNING['description'],
             node_id=node_instance_name)
 
         ports_mapping = connector.extract_vm_ports_mapping(service)
@@ -106,6 +116,7 @@ class DeploymentStartJob(DeploymentJob):
 
         try:
             self.handle_deployment(deployment)
+            self.api_dpl.set_state_started(deployment_id)
         except Exception as ex:
             log.error('Failed to start deployment {0}: {1}'.format(deployment_id, ex))
             try:
@@ -113,8 +124,6 @@ class DeploymentStartJob(DeploymentJob):
             except Exception as ex:
                 log.error('Failed to set error state for {0}: {1}'.format(deployment_id, ex))
                 raise
-
-        self.api_dpl.set_state_started(deployment_id)
 
         return 0
 

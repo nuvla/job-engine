@@ -12,6 +12,7 @@ from .connector import Connector, ConnectorError, should_connect
 
 log = logging.getLogger('docker_connector')
 
+
 def tree():
     return defaultdict(tree)
 

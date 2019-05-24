@@ -1,26 +1,13 @@
 # -*- coding: utf-8 -*-
-
-class DeploymentJob(object):
-
-    DPARAM_REPLICAS_DESIRED = {'name': 'replicas.desired',
-                               'description': 'Desired number of replicas.'}
-    DPARAM_REPLICAS_RUNNING = {'name': 'replicas.running',
-                               'description': 'Number of running replicas.'}
-
-    def __init__(self, job):
-        self.job = job
-        self.api = job.api
-        self.api_dpl = Deployment(self.api)
-
-
 # FIXME: this should go to nuvla.api.deployment module.
+
 
 class ResourceNotFound(Exception):
     pass
 
 
-class Deployment():
-    "Stateless interface to Nuvla module deployment."
+class Deployment(object):
+    """Stateless interface to Nuvla module deployment."""
 
     STATE_STARTED = 'STARTED'
     STATE_STOPPED = 'STOPPED'
@@ -125,7 +112,21 @@ class Deployment():
         self.nuvla.delete(resource_id)
 
 
-class Credential():
+class DeploymentParameter(object):
+    REPLICAS_DESIRED = {'name': 'replicas.desired',
+                        'description': 'Desired number of replicas.'}
+
+    REPLICAS_RUNNING = {'name': 'replicas.running',
+                        'description': 'Number of running replicas.'}
+
+    SERVICE_ID = {'name': 'service-id',
+                  'description': 'Docker service ID.'}
+
+    HOSTNAME = {'name': 'hostname',
+                'description': 'Hostname or IP to access the service.'}
+
+
+class Credential(object):
 
     def __init__(self, nuvla):
         self.nuvla = nuvla

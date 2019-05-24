@@ -2,28 +2,31 @@
 
 import logging
 
-from nuvla.connector import connector_factory
-from .deployment import DeploymentJob
+from nuvla.connector import connector_factory, docker_connector
+from .deployment import Deployment, DeploymentParameter
 from ..actions import action
 
 action_name = 'deployment_state'
 
 log = logging.getLogger(action_name)
 
-@action(action_name)
-class DeploymentStateJob(DeploymentJob):
 
-    def __init__(self, _, job):
-        super().__init__(job)
+@action(action_name)
+class DeploymentStateJob(object):
+
+    def __init__(self, executor, job):
+        self.job = job
+        self.api = job.api
+        self.api_dpl = Deployment(self.api)
 
     def handle_deployment(self, deployment):
-        connector = connector_factory(self.api, deployment.get('credential-id'))
+        connector = connector_factory(docker_connector, self.api, deployment.get('credential-id'))
         did = deployment['id']
         # FIXME: at the moment deployment UUID is the service name.
         sname = self.api_dpl.uuid(did)
         running, desired = connector.service_replicas_running(sname)
-        self.api_dpl.set_parameter(did, sname, self.DPARAM_REPLICAS_DESIRED['name'], str(desired))
-        self.api_dpl.set_parameter(did, sname, self.DPARAM_REPLICAS_RUNNING['name'], str(running))
+        self.api_dpl.set_parameter(did, sname, DeploymentParameter.REPLICAS_DESIRED['name'], str(desired))
+        self.api_dpl.set_parameter(did, sname, DeploymentParameter.REPLICAS_RUNNING['name'], str(running))
 
     def do_work(self):
         deployment_id = self.job['target-resource']['href']
@@ -40,4 +43,4 @@ class DeploymentStateJob(DeploymentJob):
             log.error('Failed to obtain deployment state {0}: {1}'.format(deployment_id, ex))
             raise
 
-        return 10000
+        return 0

@@ -8,7 +8,7 @@ import time
 from nuvla.job.actions.deployment_start import DeploymentStartJob
 from nuvla.job.actions.deployment_state import DeploymentStateJob
 from nuvla.job.actions.deployment_stop import DeploymentStopJob
-from nuvla.job.actions.deployment import DeploymentJob, Deployment, Credential
+from nuvla.job.actions.deployment import Deployment, DeploymentParameter, Credential
 from nuvla.job.job import Job
 from nuvla.api.api import Api
 
@@ -28,7 +28,7 @@ def all_replicas_running(nuvla_dpl, deployment_id, desired):
     log.info('Checking replicas.')
     node_name = nuvla_dpl.uuid(deployment_id)
     val = nuvla_dpl.get_parameter(deployment_id, node_name,
-                                  DeploymentJob.DPARAM_REPLICAS_RUNNING['name'])
+                                  DeploymentParameter.REPLICAS_RUNNING['name'])
     return int(val) == desired
 
 
