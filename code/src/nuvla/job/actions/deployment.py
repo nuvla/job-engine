@@ -120,7 +120,7 @@ class DeploymentParameter(object):
                         'description': 'Number of running replicas.'}
 
     SERVICE_ID = {'name': 'service-id',
-                  'description': 'Docker service ID.'}
+                  'description': 'Container service ID.'}
 
     HOSTNAME = {'name': 'hostname',
                 'description': 'Hostname or IP to access the service.'}

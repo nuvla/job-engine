@@ -23,7 +23,7 @@ class DeploymentStopJob(object):
 
         connector = connector_factory(docker_connector, self.api, credential_id)
 
-        filter_params = 'deployment/href="{}" and name="instance-id"'.format(deployment['id'])
+        filter_params = 'deployment/href="{}" and name="service-id"'.format(deployment['id'])
 
         deployment_params = self.api.search('deployment-parameter', filter=filter_params,
                                             select='node-id,name,value').resources
@@ -53,11 +53,10 @@ class DeploymentStopJob(object):
         except Exception as ex:
             log.error('Failed to stop deployment {0}: {1}'.format(deployment_id, ex))
             self.api_dpl.set_state_error(deployment_id)
-            raise
+            raise ex
 
         self.api_dpl.set_state_stopped(deployment_id)
 
-        return 0
-
     def do_work(self):
         self.stop_deployment()
+        return 0

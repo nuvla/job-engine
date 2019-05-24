@@ -116,16 +116,16 @@ class DeploymentStartJob(object):
 
         try:
             self.handle_deployment(deployment)
-            self.api_dpl.set_state_started(deployment_id)
         except Exception as ex:
             log.error('Failed to start deployment {0}: {1}'.format(deployment_id, ex))
             try:
                 self.api_dpl.set_state_error(deployment_id)
             except Exception as ex:
                 log.error('Failed to set error state for {0}: {1}'.format(deployment_id, ex))
-                raise
+                raise ex
 
-        return 0
+        self.api_dpl.set_state_started(deployment_id)
 
     def do_work(self):
         self.start_deployment()
+        return 0
