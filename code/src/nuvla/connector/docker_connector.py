@@ -1,11 +1,16 @@
 # -*- coding: utf-8 -*-
 
 import re
+import json
 import logging
 import requests
 from collections import defaultdict
 from tempfile import NamedTemporaryFile
+
 from .connector import Connector, ConnectorError, should_connect
+
+
+log = logging.getLogger('docker_connector')
 
 
 def tree():
@@ -16,6 +21,20 @@ def instantiate_from_cimi(api_infrastructure_service, api_credential):
     return DockerConnector(cert=api_credential.get('cert').replace("\\n", "\n"),
                            key=api_credential.get('key').replace("\\n", "\n"),
                            endpoint=api_infrastructure_service.get('endpoint'))
+
+
+def convert_filters(filters):
+    result = {}
+    for k, v in filters.items():
+        if isinstance(v, bool):
+            v = 'true' if v else 'false'
+        if not isinstance(v, list):
+            v = [v, ]
+        result[k] = [
+            str(item) if not isinstance(item, str) else item
+            for item in v
+        ]
+    return json.dumps(result)
 
 
 class DockerConnector(Connector):
@@ -37,7 +56,7 @@ class DockerConnector(Connector):
         return 'Docker'
 
     def connect(self):
-        logging.info('Connecting to endpoint {}'.format(self.endpoint))
+        log.info('Connecting to endpoint {}'.format(self.endpoint))
         auth_file = NamedTemporaryFile(delete=True)
         auth_text = self.cert + '\n' + self.key
         auth_file.write(auth_text.encode())
@@ -106,11 +125,11 @@ class DockerConnector(Connector):
 
         self.validate_action(response)
 
-        container = self.docker_api.get(self._get_full_url('services/{}'.format(response['ID']))).json()
+        service = self.docker_api.get(self._get_full_url('services/{}'.format(response['ID']))).json()
 
-        self.validate_action(container)
+        self.validate_action(service)
 
-        return container
+        return service
 
     @should_connect
     def stop(self, ids):
@@ -120,12 +139,91 @@ class DockerConnector(Connector):
                 self.validate_action(response.json())
 
     @should_connect
-    def list(self):
+    def list(self, filters=None):
+        """
+        Returns list of services with optional `filters` applied.
+
+        :param filters:
+            id=<service id>
+            label=<service label>
+            mode=["replicated"|"global"]
+            name=<service name>
+        :return: list of services
+        """
         request_url = self._get_full_url("services")
-        services_list = self.docker_api.get(request_url).json()
+        params = {'filters': convert_filters(filters) if filters else None}
+        services_list = self.docker_api.get(request_url, params=params).json()
         if not isinstance(services_list, list):
             self.validate_action(services_list)
         return services_list
+
+    @should_connect
+    def service_tasks(self, filters=None):
+        """
+        Returns list of tasks with optional `filters` applied.
+
+        :param filters:
+            desired-state=(running | shutdown | accepted)
+            id=<task id>
+            label=key or label="key=value"
+            name=<task name>
+            node=<node id or name>
+            service=<service name>
+        :return: list
+        """
+        params = {'filters': convert_filters(filters) if filters else None}
+        return self.docker_api.get(self._get_full_url("tasks"), params=params).json()
+
+    @should_connect
+    def service_replicas(self, sname, tasks_filters=None):
+        """
+        Returns number of running and desired replicas of `sname` service as two-tuple
+        (#running, #desired).
+        Returns (-1, -1) in case `sname` service is not found.
+        Returns (#running, -1), in case `sname` service is not in Replicated or Global
+        mode.
+        -1 indicates an error.
+
+        :param sname: str, service name.
+        :param tasks_filters: dict, see `service_tasks()`->`filters` for dict spec.
+        :return: (int, int)
+        """
+        running = -1
+        desired = -1
+        services = self.list(filters={"name": sname})
+        if len(services) != 1:
+            return running, desired
+        mode = services[0]['Spec']['Mode']
+        if 'Replicated' in mode:
+            desired = mode['Replicated']['Replicas']
+        elif 'Global' in mode:
+            desired = len(self.nodes_list_active())
+        if tasks_filters:
+            tasks_filters.update({'service': sname})
+        else:
+            tasks_filters = {'service': sname}
+        tasks = self.service_tasks(filters=tasks_filters)
+        return len(tasks), desired
+
+    def service_replicas_running(self, sname):
+        return self.service_replicas(sname, tasks_filters={'desired-state': 'running'})
+
+    @should_connect
+    def nodes_list(self, availability=None):
+        """
+        Returns list of nodes.
+
+        :param availability: str
+        :return: list
+        """
+        nodes = self.docker_api.get(self._get_full_url("nodes")).json()
+        if availability:
+            return list(filter(lambda x: x.get('Spec', {}).get('Availability') == availability, nodes))
+        else:
+            return nodes
+
+    def nodes_list_active(self):
+        return self.nodes_list(availability='active')
 
     def extract_vm_id(self, vm):
         return vm['ID']

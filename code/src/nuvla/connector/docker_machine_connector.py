@@ -1,20 +1,24 @@
 # -*- coding: utf-8 -*-
 
-import logging
-import shutil
-import os
 import base64
+import logging
+import os
+import shutil
+
 import machine as DockerMachine
 
 from .connector import Connector, should_connect
 
 
 def instantiate_from_cimi(api_infrastructure_service, api_credential):
-    return DockerMachineConnector(driver_credential=api_credential,
-                            driver=api_credential["type"].split("-")[-1],
-                            service_owner=api_infrastructure_service['acl']['owner']['principal'],
-                            infrastructure_service_id=api_infrastructure_service["id"],
-                            machineBaseName=api_infrastructure_service.get("name", api_infrastructure_service["id"].split('/')[1]))
+    return DockerMachineConnector(
+        driver_credential=api_credential,
+        driver=api_credential["subtype"].split("-")[-1],
+        service_owner=api_infrastructure_service['acl']['owner']['principal'],
+        infrastructure_service_id=api_infrastructure_service["id"],
+        machineBaseName=api_infrastructure_service.get("name",
+                                                       api_infrastructure_service["id"].split('/')[1]))
+
 
 class DockerMachineConnector(Connector):
     XARGS = {
@@ -49,7 +53,7 @@ class DockerMachineConnector(Connector):
 
         if not self.driver in self.XARGS:
             raise NotImplementedError('There are no Docker Machine arguments {} available for driver {}.'
-                                        .format(self.XARGS, self.driver))
+                                      .format(self.XARGS, self.driver))
         else:
             self.driver_xargs = self.XARGS[self.driver]
 
@@ -135,9 +139,9 @@ class DockerMachineConnector(Connector):
         payload = {
             "name": self.machineBaseName,
             "description": "Swarm credential for infrastructure service %s" % self.machineBaseName,
-            "template" : {
+            "template": {
                 "method": "infrastructure-service-swarm",
-                "type": "infrastructure-service-swarm",
+                "subtype": "infrastructure-service-swarm",
                 "resource-type": "credential-template",
                 "key": self.load_file_content(key_file),
                 "ca": self.load_file_content(ca_file),
@@ -145,11 +149,7 @@ class DockerMachineConnector(Connector):
                 "infrastructure-services": [
                     self.infrastructure_service_id
                 ],
-                "acl": {"owner": {"principal": credential_owner,
-                                  "type": "USER"},
-                        "rules": [{"principal": credential_owner,
-                                   "type": "USER",
-                                   "right": "MODIFY"}]},
+                "acl": {"owners": [credential_owner]},
                 "href": "credential-template/infrastructure-service-swarm"
             }
         }
@@ -196,7 +196,7 @@ class DockerMachineConnector(Connector):
             os.makedirs(machine_folder)
 
             with open("{}/config.json".format(machine_folder), 'w') as cfg:
-                cfg.write( base64.b64decode( node["machine-config-base64"].encode('ascii') ).decode('ascii') )
+                cfg.write(base64.b64decode(node["machine-config-base64"].encode('ascii')).decode('ascii'))
 
             stopped.append(self.machine.rm(machine=self.machineBaseName, force=True))
 

@@ -24,7 +24,7 @@ class CleanupJobsDistributor(Distributor):
 
     @override
     def _get_jobs_type(self):
-        return 'cleanup_jobs'
+        return CleanupJobsDistributor.ACTION_NAME
 
 
 if __name__ == '__main__':
