@@ -51,7 +51,9 @@ class DeploymentStartJob(object):
                                   image=deployment['module']['content']['image'],
                                   env=container_env,
                                   mounts_opt=deployment['module']['content'].get('mounts'),
-                                  ports_opt=deployment['module']['content'].get('ports'))
+                                  ports_opt=deployment['module']['content'].get('ports'),
+                                  cpus=deployment['module']['content'].get('cpus'),
+                                  memory=deployment['module']['content'].get('memory'))
 
         self.create_deployment_parameter(
             deployment_id=deployment_id,

@@ -13,6 +13,15 @@ from .connector import Connector, ConnectorError, should_connect
 log = logging.getLogger('docker_connector')
 
 
+bytes_per_mib = 1048576
+
+
+as_nanos = 1000000000
+
+
+tolerance = 1.1  # 10% leeway on resource requirements
+
+
 def tree():
     return defaultdict(tree)
 
@@ -79,12 +88,16 @@ class DockerConnector(Connector):
         mounts_opt = start_kwargs.get('mounts_opt', [])
         ports_opt = start_kwargs.get('ports_opt', [])
         working_dir = start_kwargs.get('working_dir')
-        cpu_ratio = start_kwargs.get('cpu_ratio')
-        ram_giga_bytes = start_kwargs.get('ram_giga_bytes')
+        cpus = start_kwargs.get('cpus')
+        memory = start_kwargs.get('memory')
         restart_policy = start_kwargs.get('restart_policy')
         cmd = start_kwargs.get('cmd')
         args = start_kwargs.get('args')
 
+        #
+        # The fields that are supported by the Docker API are documented here:
+        # https://docs.docker.com/engine/api/v1.24/#39-services
+        #
         service_json = tree()
 
         if service_name:
@@ -98,15 +111,17 @@ class DockerConnector(Connector):
         if env:
             service_json['TaskTemplate']['ContainerSpec']['Env'] = env
 
-        if cpu_ratio:
-            cpu_ratio_nano_secs = int(float(cpu_ratio) * 1000000000)
-            service_json['TaskTemplate']['Resources']['Limits']['NanoCPUs'] = cpu_ratio_nano_secs
-            service_json['TaskTemplate']['Resources']['Reservations']['NanoCPUs'] = cpu_ratio_nano_secs
+        if cpus:
+            nano_cpus_soft = int(float(cpus) * as_nanos)
+            nano_cpus_hard = int(float(cpus) * as_nanos * tolerance)
+            service_json['TaskTemplate']['Resources']['Limits']['NanoCPUs'] = nano_cpus_hard
+            service_json['TaskTemplate']['Resources']['Reservations']['NanoCPUs'] = nano_cpus_soft
 
-        if ram_giga_bytes:
-            ram_bytes = int(float(ram_giga_bytes) * 1073741824)
-            service_json['TaskTemplate']['Resources']['Limits']['MemoryBytes'] = ram_bytes
-            service_json['TaskTemplate']['Resources']['Reservations']['MemoryBytes'] = ram_bytes
+        if memory:
+            ram_bytes_soft = int(float(memory) * bytes_per_mib)
+            ram_bytes_hard = int(float(memory) * bytes_per_mib * tolerance)
+            service_json['TaskTemplate']['Resources']['Limits']['MemoryBytes'] = ram_bytes_hard
+            service_json['TaskTemplate']['Resources']['Reservations']['MemoryBytes'] = ram_bytes_soft
 
         if restart_policy:
             service_json['TaskTemplate']['RestartPolicy']['Condition'] = restart_policy
