@@ -4,6 +4,7 @@
 
 ### Added
 
+  - Start containers using cpus and memory values, if provided
   - Nuvlabox delete job
   - Deployment state job
 
