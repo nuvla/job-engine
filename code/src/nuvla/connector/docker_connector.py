@@ -16,8 +16,8 @@ Service is a set of tasks. Service doesn't have a state, but tasks do.
        task state
       /    |    \
 running shutdown accepted <- DesiredState
-         /    \
-    shutdown failed       <- Status.State
+        /   |   \
+ shutdown failed rejected <- Status.State
 
 Single replica task spawns a new container.
     
