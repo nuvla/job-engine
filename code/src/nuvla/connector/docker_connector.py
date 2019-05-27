@@ -1,14 +1,14 @@
 # -*- coding: utf-8 -*-
 
-import re
 import json
 import logging
-import requests
+import re
 from collections import defaultdict
 from tempfile import NamedTemporaryFile
 
-from .connector import Connector, ConnectorError, should_connect
+import requests
 
+from .connector import Connector, ConnectorError, should_connect
 
 """
 Service is a set of tasks. Service doesn't have a state, but tasks do.
@@ -26,12 +26,9 @@ Single replica task spawns a new container.
 
 log = logging.getLogger('docker_connector')
 
-
 bytes_per_mib = 1048576
 
-
 as_nanos = 1000000000
-
 
 tolerance = 1.1  # 10% leeway on resource requirements
 
@@ -104,13 +101,16 @@ class DockerConnector(Connector):
         working_dir = start_kwargs.get('working_dir')
         cpus = start_kwargs.get('cpus')
         memory = start_kwargs.get('memory')
-        restart_policy = start_kwargs.get('restart_policy')
         cmd = start_kwargs.get('cmd')
         args = start_kwargs.get('args')
+        restart_policy_condition = start_kwargs.get('restart_policy_condition')
+        restart_policy_delay = start_kwargs.get('restart_policy_delay')
+        restart_policy_max_attempts = start_kwargs.get('restart_policy_max_attempts')
+        restart_policy_window = start_kwargs.get('restart_policy_window')
 
         #
         # The fields that are supported by the Docker API are documented here:
-        # https://docs.docker.com/engine/api/v1.24/#39-services
+        # https://docs.docker.com/engine/api/v1.37/#39-services
         #
         service_json = tree()
 
@@ -137,8 +137,17 @@ class DockerConnector(Connector):
             service_json['TaskTemplate']['Resources']['Limits']['MemoryBytes'] = ram_bytes_hard
             service_json['TaskTemplate']['Resources']['Reservations']['MemoryBytes'] = ram_bytes_soft
 
-        if restart_policy:
-            service_json['TaskTemplate']['RestartPolicy']['Condition'] = restart_policy
+        if restart_policy_condition:
+            service_json['TaskTemplate']['RestartPolicy']['Condition'] = restart_policy_condition
+
+        if restart_policy_delay:
+            service_json['TaskTemplate']['RestartPolicy']['Delay'] = restart_policy_delay
+
+        if restart_policy_max_attempts:
+            service_json['TaskTemplate']['RestartPolicy']['MaxAttempts'] = restart_policy_max_attempts
+
+        if restart_policy_window:
+            service_json['TaskTemplate']['RestartPolicy']['Window'] = restart_policy_window
 
         if cmd:
             service_json['TaskTemplate']['ContainerSpec']['command'] = [cmd]
