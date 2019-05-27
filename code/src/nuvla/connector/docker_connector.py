@@ -10,6 +10,20 @@ from tempfile import NamedTemporaryFile
 from .connector import Connector, ConnectorError, should_connect
 
 
+"""
+Service is a set of tasks. Service doesn't have a state, but tasks do.
+
+       task state
+      /    |    \
+running shutdown accepted <- DesiredState
+         /    \
+    shutdown failed       <- Status.State
+
+Single replica task spawns a new container.
+    
+"""
+
+
 log = logging.getLogger('docker_connector')
 
 
@@ -188,25 +202,37 @@ class DockerConnector(Connector):
         :param tasks_filters: dict, see `service_tasks()`->`filters` for dict spec.
         :return: (int, int)
         """
-        running = -1
-        desired = -1
+        desired = self.service_replicas_desired(sname)
+        if desired < 0:
+            return -1, -1
+        running = self.service_replicas_running(sname)
+        return running, desired
+
+    def service_replicas_desired(self, sname):
+        """
+        Returns number of desired replicas of `sname` service.
+        Returns -1 in case `sname` service is not found.
+        Returns -1 in case `sname` service is not in Replicated or Global mode.
+        -1 indicates an error.
+
+        :param sname: str, service name.
+        :param tasks_filters: dict, see `service_tasks()`->`filters` for dict spec.
+        :return: int
+        """
         services = self.list(filters={"name": sname})
         if len(services) != 1:
-            return running, desired
+            return -1
         mode = services[0]['Spec']['Mode']
         if 'Replicated' in mode:
-            desired = mode['Replicated']['Replicas']
+            return mode['Replicated']['Replicas']
         elif 'Global' in mode:
-            desired = len(self.nodes_list_active())
-        if tasks_filters:
-            tasks_filters.update({'service': sname})
+            return len(self.nodes_list_active())
         else:
-            tasks_filters = {'service': sname}
-        tasks = self.service_tasks(filters=tasks_filters)
-        return len(tasks), desired
+            return -1
 
     def service_replicas_running(self, sname):
-        return self.service_replicas(sname, tasks_filters={'desired-state': 'running'})
+        return self.service_tasks(filters={'service': sname,
+                                           'desired-state': 'running'})
 
     @should_connect
     def nodes_list(self, availability=None):
