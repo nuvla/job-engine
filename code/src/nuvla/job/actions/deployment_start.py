@@ -56,7 +56,7 @@ class DeploymentStartJob(object):
                                   mounts_opt=module_content.get('mounts'),
                                   ports_opt=module_content.get('ports'),
                                   cpu_ratio=module_content.get('cpus'),
-                                  ram_MiB=module_content.get('memory'),
+                                  memory=module_content.get('memory'),
                                   restart_policy_condition=restart_policy.get('condition'),
                                   restart_policy_delay=restart_policy.get('delay'),
                                   restart_policy_max_attempts=restart_policy.get('max-attempts'),
