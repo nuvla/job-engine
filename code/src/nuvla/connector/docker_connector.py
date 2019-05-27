@@ -23,7 +23,6 @@ Single replica task spawns a new container.
     
 """
 
-
 log = logging.getLogger('docker_connector')
 
 bytes_per_mib = 1048576
