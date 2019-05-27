@@ -34,24 +34,33 @@ class DeploymentStartJob(object):
         deployment_id = deployment['id']
         node_instance_name = self.api_dpl.uuid(deployment_id)
         deployment_owner = deployment['acl']['owners'][0]
+        module_content = deployment['module']['content']
 
         container_env = ['NUVLA_DEPLOYMENT_ID={}'.format(deployment_id),
                          'NUVLA_API_KEY={}'.format(deployment['api-credentials']['api-key']),
                          'NUVLA_API_SECRET={}'.format(deployment['api-credentials']['api-secret']),
                          'NUVLA_ENDPOINT={}'.format(deployment['api-endpoint'])]
 
-        for env_var in deployment['module']['content'].get('environmental-variables', []):
+        for env_var in module_content.get('environmental-variables', []):
             env_var_name = env_var['name']
             env_var_value = env_var.get('value')
             if env_var_value is not None:
                 env_var_def = "{}='{}'".format(env_var_name, env_var_value)
                 container_env.append(env_var_def)
 
+        restart_policy = module_content.get('restart-policy', {})
+
         service = connector.start(service_name=node_instance_name,
-                                  image=deployment['module']['content']['image'],
+                                  image=module_content['image'],
                                   env=container_env,
-                                  mounts_opt=deployment['module']['content'].get('mounts'),
-                                  ports_opt=deployment['module']['content'].get('ports'))
+                                  mounts_opt=module_content.get('mounts'),
+                                  ports_opt=module_content.get('ports'),
+                                  cpu_ratio=module_content.get('cpus'),
+                                  ram_MiB=module_content.get('memory'),
+                                  restart_policy_condition=restart_policy.get('condition'),
+                                  restart_policy_delay=restart_policy.get('delay'),
+                                  restart_policy_max_attempts=restart_policy.get('max-attempts'),
+                                  restart_policy_window=restart_policy.get('window'))
 
         self.create_deployment_parameter(
             deployment_id=deployment_id,
@@ -98,7 +107,7 @@ class DeploymentStartJob(object):
                     param_value=port_param_value,
                     node_id=node_instance_name)
 
-        for output_param in deployment['module']['content'].get('output-parameters', []):
+        for output_param in module_content.get('output-parameters', []):
             self.create_deployment_parameter(deployment_id=deployment_id,
                                              user_id=deployment_owner,
                                              param_name=output_param['name'],

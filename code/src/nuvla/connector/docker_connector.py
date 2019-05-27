@@ -79,9 +79,12 @@ class DockerConnector(Connector):
         mounts_opt = start_kwargs.get('mounts_opt', [])
         ports_opt = start_kwargs.get('ports_opt', [])
         working_dir = start_kwargs.get('working_dir')
-        cpu_ratio = start_kwargs.get('cpu_ratio')
-        ram_giga_bytes = start_kwargs.get('ram_giga_bytes')
-        restart_policy = start_kwargs.get('restart_policy')
+        cpus = start_kwargs.get('cpus')
+        ram_MiB = start_kwargs.get('ram_MiB')
+        restart_policy_condition = start_kwargs.get('restart_policy_condition')
+        restart_policy_delay = start_kwargs.get('restart_policy_delay')
+        restart_policy_max_attempts = start_kwargs.get('restart_policy_max_attempts')
+        restart_policy_window = start_kwargs.get('restart_policy_window')
         cmd = start_kwargs.get('cmd')
         args = start_kwargs.get('args')
 
@@ -98,18 +101,27 @@ class DockerConnector(Connector):
         if env:
             service_json['TaskTemplate']['ContainerSpec']['Env'] = env
 
-        if cpu_ratio:
-            cpu_ratio_nano_secs = int(float(cpu_ratio) * 1000000000)
+        if cpus:
+            cpu_ratio_nano_secs = int(float(cpus) * 1000000000)
             service_json['TaskTemplate']['Resources']['Limits']['NanoCPUs'] = cpu_ratio_nano_secs
             service_json['TaskTemplate']['Resources']['Reservations']['NanoCPUs'] = cpu_ratio_nano_secs
 
-        if ram_giga_bytes:
-            ram_bytes = int(float(ram_giga_bytes) * 1073741824)
+        if ram_MiB:
+            ram_bytes = int(float(ram_MiB) * 1048576)
             service_json['TaskTemplate']['Resources']['Limits']['MemoryBytes'] = ram_bytes
             service_json['TaskTemplate']['Resources']['Reservations']['MemoryBytes'] = ram_bytes
 
-        if restart_policy:
-            service_json['TaskTemplate']['RestartPolicy']['Condition'] = restart_policy
+        if restart_policy_condition:
+            service_json['TaskTemplate']['RestartPolicy']['Condition'] = restart_policy_condition
+
+        if restart_policy_delay:
+            service_json['TaskTemplate']['RestartPolicy']['Delay'] = restart_policy_delay
+
+        if restart_policy_max_attempts:
+            service_json['TaskTemplate']['RestartPolicy']['MaxAttempts'] = restart_policy_max_attempts
+
+        if restart_policy_window:
+            service_json['TaskTemplate']['RestartPolicy']['Window'] = restart_policy_window
 
         if cmd:
             service_json['TaskTemplate']['ContainerSpec']['command'] = [cmd]

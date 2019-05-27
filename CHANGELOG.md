@@ -4,7 +4,9 @@
 
 ### Added
 
-  - Nuvlabox delete job
+  - Update start deployment options to support restart policy conditions, 
+    cpu, ram
+  - Nuvlabox delete job (wip)
   - Deployment state job
 
 ### Changed
