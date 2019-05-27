@@ -203,7 +203,6 @@ class DockerConnector(Connector):
         params = {'filters': convert_filters(filters) if filters else None}
         return self.docker_api.get(self._get_full_url("tasks"), params=params).json()
 
-    @should_connect
     def service_replicas(self, sname, tasks_filters=None):
         """
         Returns number of running and desired replicas of `sname` service as two-tuple
