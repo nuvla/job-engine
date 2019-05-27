@@ -96,6 +96,46 @@ class DeploymentStartJob(object):
             param_description=DeploymentParameter.REPLICAS_RUNNING['description'],
             node_id=node_instance_name)
 
+        self.create_deployment_parameter(
+            deployment_id=deployment_id,
+            user_id=deployment_owner,
+            param_name=DeploymentParameter.RESTART_EXIT_CODE['name'],
+            param_value="",
+            param_description=DeploymentParameter.RESTART_EXIT_CODE['description'],
+            node_id=node_instance_name)
+
+        self.create_deployment_parameter(
+            deployment_id=deployment_id,
+            user_id=deployment_owner,
+            param_name=DeploymentParameter.RESTART_ERR_MSG['name'],
+            param_value="",
+            param_description=DeploymentParameter.RESTART_ERR_MSG['description'],
+            node_id=node_instance_name)
+
+        self.create_deployment_parameter(
+            deployment_id=deployment_id,
+            user_id=deployment_owner,
+            param_name=DeploymentParameter.RESTART_TIMESTAMP['name'],
+            param_value="",
+            param_description=DeploymentParameter.RESTART_TIMESTAMP['description'],
+            node_id=node_instance_name)
+
+        self.create_deployment_parameter(
+            deployment_id=deployment_id,
+            user_id=deployment_owner,
+            param_name=DeploymentParameter.RESTART_NUMBER['name'],
+            param_value="",
+            param_description=DeploymentParameter.RESTART_NUMBER['description'],
+            node_id=node_instance_name)
+
+        self.create_deployment_parameter(
+            deployment_id=deployment_id,
+            user_id=deployment_owner,
+            param_name=DeploymentParameter.CHECK_TIMESTAMP['name'],
+            param_value="",
+            param_description=DeploymentParameter.CHECK_TIMESTAMP['description'],
+            node_id=node_instance_name)
+
         ports_mapping = connector.extract_vm_ports_mapping(service)
         if ports_mapping:
             for port_mapping in ports_mapping.split():
