@@ -52,8 +52,12 @@ class DeploymentStopJob(object):
             self.handle_deployment(deployment)
         except Exception as ex:
             log.error('Failed to stop deployment {0}: {1}'.format(deployment_id, ex))
-            self.api_dpl.set_state_error(deployment_id)
-            raise ex
+            try:
+                self.api_dpl.set_state_error(deployment_id)
+                return -1
+            except Exception as ex:
+                log.error('Failed to set error state for {0}: {1}'.format(deployment_id, ex))
+                raise ex
 
         self.api_dpl.set_state_stopped(deployment_id)
 

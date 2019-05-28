@@ -4,12 +4,13 @@
 
 ### Added
 
-  - Start containers using cpus and memory values, if provided
-  - Nuvlabox delete job
+  - Nuvlabox delete job (wip)
   - Deployment state job
 
 ### Changed
 
+  - Update start deployment options to support restart policy conditions, 
+    cpu, ram
   - Deployment code reorganization
   - Release script fix
   - move reusable parts in util directory for actions 
