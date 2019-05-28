@@ -95,15 +95,15 @@ class NuvlaBoxDeleteJob(object):
         if nuvlabox.get('state') == 'DECOMMISSIONING':
             self.delete_status(nuvlabox_id)
 
-            self.job.set_process(20)
+            self.job.set_progress(20)
 
             self.delete_infra_service_group(nuvlabox_id)
 
-            self.job.set_process(30)
+            self.job.set_progress(30)
 
             self.delete_api_key(nuvlabox_id)
 
-            self.job.set_process(40)
+            self.job.set_progress(40)
 
         return 0
 
