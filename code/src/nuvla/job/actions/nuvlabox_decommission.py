@@ -98,7 +98,7 @@ class NuvlaBoxDeleteJob(object):
     def delete_nuvlabox(self):
         nuvlabox_id = self.job['target-resource']['href']
 
-        logging.info('NuvlaBox delete job started for {}.'.format(nuvlabox_id))
+        logging.info('NuvlaBox decommission job started for {}.'.format(nuvlabox_id))
 
         nuvlabox = self.api.get(nuvlabox_id).data
 
@@ -119,11 +119,6 @@ class NuvlaBoxDeleteJob(object):
             self.delete_api_key(nuvlabox_id)
 
             self.job.set_progress(40)
-
-            try:
-                self.api.delete(nuvlabox_id)
-            except:
-                logging.warning('problem deleting resource {}.'.format(nuvlabox_id))
 
         return 0
 
