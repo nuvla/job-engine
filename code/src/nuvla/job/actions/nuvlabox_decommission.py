@@ -5,7 +5,7 @@ import logging
 from ..actions import action
 
 
-@action('delete_nuvlabox')
+@action('decommission_nuvlabox')
 class NuvlaBoxDeleteJob(object):
     def __init__(self, executor, job):
         self.job = job
@@ -40,12 +40,15 @@ class NuvlaBoxDeleteJob(object):
         credential_type = credential.get('type')
         credential_id = credential.id
 
-        if credential_type == 'swarm':
-            self.delete_swarm_credential(credential_id)
-        elif credential_type == 's3':
-            self.delete_s3_credential(credential_id)
-        else:
-            self.api.delete(credential_id)
+        try:
+            if credential_type == 'swarm':
+                self.delete_swarm_credential(credential_id)
+            elif credential_type == 's3':
+                self.delete_s3_credential(credential_id)
+            else:
+                self.api.delete(credential_id)
+        except Exception:
+            logging.warning('problem deleting resource {}.'.format(credential_id))
 
     def delete_service(self, service_id):
         credentials = self.api.search('credential',
@@ -55,7 +58,10 @@ class NuvlaBoxDeleteJob(object):
         for credential in credentials:
             self.delete_credential(credential)
 
-        self.api.delete(service_id)
+        try:
+            self.api.delete(service_id)
+        except Exception:
+            logging.warning('problem deleting resource {}.'.format(service_id))
 
     def delete_infra_service_group(self, nuvlabox_id):
         infra_service_groups = self.api.search('infrastructure-service-group',
@@ -66,19 +72,28 @@ class NuvlaBoxDeleteJob(object):
 
             infra_service_group_id = infra_service_group.id
 
-            service_hrefs = infra_service_group.data.get('infrastructure-services')
+            isg = self.api.get(infra_service_group_id).data
+
+            service_hrefs = isg.get('infrastructure-services')
             for service_href in service_hrefs:
                 service_id = service_href.get('href')
                 self.delete_service(service_id)
 
-            self.api.delete(infra_service_group_id)
+            try:
+                self.api.delete(infra_service_group_id)
+            except Exception:
+                logging.warning('problem deleting resource {}.'.format(infra_service_group_id))
 
     def delete_status(self, nuvlabox_id):
         entries = self.api.search('nuvlabox-status',
                                   filter='parent="{}"'.format(nuvlabox_id),
                                   select='id').resources
         for entry in entries:
-            self.api.delete(entry.id)
+            entry_id = entry.id
+            try:
+                self.api.delete(entry.id)
+            except Exception:
+                logging.warning('problem deleting resource {}.'.format(entry_id))
 
     def delete_nuvlabox(self):
         nuvlabox_id = self.job['target-resource']['href']
@@ -104,6 +119,11 @@ class NuvlaBoxDeleteJob(object):
             self.delete_api_key(nuvlabox_id)
 
             self.job.set_progress(40)
+
+            try:
+                self.api.delete(nuvlabox_id)
+            except:
+                logging.warning('problem deleting resource {}.'.format(nuvlabox_id))
 
         return 0
 
