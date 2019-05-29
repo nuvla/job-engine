@@ -169,6 +169,7 @@ class DeploymentStartJob(object):
             log.error('Failed to start deployment {0}: {1}'.format(deployment_id, ex))
             try:
                 self.api_dpl.set_state_error(deployment_id)
+                self.job.set_status_message(str(ex))
                 return -1
             except Exception as ex:
                 log.error('Failed to set error state for {0}: {1}'.format(deployment_id, ex))
@@ -177,5 +178,5 @@ class DeploymentStartJob(object):
         self.api_dpl.set_state_started(deployment_id)
 
     def do_work(self):
-        self.start_deployment()
-        return 0
+        return_code = self.start_deployment()
+        return return_code or 0
