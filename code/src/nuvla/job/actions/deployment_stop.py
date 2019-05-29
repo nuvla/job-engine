@@ -62,5 +62,5 @@ class DeploymentStopJob(object):
         self.api_dpl.set_state_stopped(deployment_id)
 
     def do_work(self):
-        self.stop_deployment()
-        return 0
+        return_code = self.stop_deployment()
+        return return_code or 0
