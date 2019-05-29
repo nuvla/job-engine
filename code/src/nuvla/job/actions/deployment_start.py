@@ -45,7 +45,7 @@ class DeploymentStartJob(object):
             env_var_name = env_var['name']
             env_var_value = env_var.get('value')
             if env_var_value is not None:
-                env_var_def = "{}='{}'".format(env_var_name, env_var_value)
+                env_var_def = "{}={}".format(env_var_name, env_var_value)
                 container_env.append(env_var_def)
 
         restart_policy = module_content.get('restart-policy', {})
