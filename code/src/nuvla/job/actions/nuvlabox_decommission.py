@@ -22,8 +22,7 @@ class NuvlaBoxDeleteJob(object):
 
     # FIXME: This will currently leave orphan data-object and data-record resources!
     def delete_s3_credential(self, credential_id):
-        # remove all data objects with credential
-        # remove all data records with credential
+        # remove all data objects and records with credential
 
         self.api.delete(credential_id)
 
@@ -39,7 +38,7 @@ class NuvlaBoxDeleteJob(object):
     def delete_credential(self, credential):
 
         credential_type = credential.get('subtype')
-        credential_id = credential.id
+        credential_id = credential.get('id')
 
         try:
             if credential_type == 'swarm':
