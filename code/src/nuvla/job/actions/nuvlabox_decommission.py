@@ -38,7 +38,7 @@ class NuvlaBoxDeleteJob(object):
 
     def delete_credential(self, credential):
 
-        credential_type = credential.get('type')
+        credential_type = credential.get('subtype')
         credential_id = credential.id
 
         try:
@@ -54,11 +54,11 @@ class NuvlaBoxDeleteJob(object):
 
     def delete_service(self, service_id):
         credentials = self.api.search('credential',
-                                         filter='parent="{}"'.format(service_id),
-                                         select='id').resources
+                                      filter='parent="{}"'.format(service_id),
+                                      select='id, subtype').resources
 
         for credential in credentials:
-            self.delete_credential(credential)
+            self.delete_credential(credential.data)
 
         try:
             self.api.delete(service_id)
