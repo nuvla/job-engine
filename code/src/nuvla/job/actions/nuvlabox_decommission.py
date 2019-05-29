@@ -10,6 +10,7 @@ class NuvlaBoxDeleteJob(object):
     def __init__(self, executor, job):
         self.job = job
         self.api = job.api
+        self.error = 0
 
     def delete_api_key(self, nuvlabox_id):
         credentials = self.api.search('credential',
@@ -48,6 +49,7 @@ class NuvlaBoxDeleteJob(object):
             else:
                 self.api.delete(credential_id)
         except Exception:
+            self.error += 1
             logging.warning('problem deleting resource {}.'.format(credential_id))
 
     def delete_service(self, service_id):
@@ -61,6 +63,7 @@ class NuvlaBoxDeleteJob(object):
         try:
             self.api.delete(service_id)
         except Exception:
+            self.error += 1
             logging.warning('problem deleting resource {}.'.format(service_id))
 
     def delete_infra_service_group(self, nuvlabox_id):
@@ -82,6 +85,7 @@ class NuvlaBoxDeleteJob(object):
             try:
                 self.api.delete(infra_service_group_id)
             except Exception:
+                self.error += 1
                 logging.warning('problem deleting resource {}.'.format(infra_service_group_id))
 
     def delete_status(self, nuvlabox_id):
@@ -93,12 +97,13 @@ class NuvlaBoxDeleteJob(object):
             try:
                 self.api.delete(entry.id)
             except Exception:
+                self.error += 1
                 logging.warning('problem deleting resource {}.'.format(entry_id))
 
     def delete_nuvlabox(self):
         nuvlabox_id = self.job['target-resource']['href']
 
-        logging.info('NuvlaBox delete job started for {}.'.format(nuvlabox_id))
+        logging.info('NuvlaBox decommission job started for {}.'.format(nuvlabox_id))
 
         nuvlabox = self.api.get(nuvlabox_id).data
 
@@ -120,12 +125,14 @@ class NuvlaBoxDeleteJob(object):
 
             self.job.set_progress(40)
 
-            try:
-                self.api.delete(nuvlabox_id)
-            except:
-                logging.warning('problem deleting resource {}.'.format(nuvlabox_id))
+            if self.error == 0:
+                try:
+                    self.api.edit(nuvlabox_id, {"state": "DECOMMISSIONED"})
+                except Exception:
+                    self.error += 1
+                    logging.warning('problem updating nuvlabox resource: {}'.format(nuvlabox_id))
 
-        return 0
+        return self.error
 
     def do_work(self):
         self.delete_nuvlabox()
