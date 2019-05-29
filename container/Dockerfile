@@ -58,7 +58,6 @@ RUN set -eux; \
 ADD https://raw.githubusercontent.com/docker-library/docker/65fab2cd767c10f22ee66afa919eda80dbdc8872/18.09/modprobe.sh /usr/local/bin/modprobe
 
 RUN curl -L https://github.com/docker/machine/releases/download/v0.16.0/docker-machine-$(uname -s)-$(uname -m) >/tmp/docker-machine && \
-            install /tmp/docker-machine /usr/local/bin/docker-machine &&\
-            pip install python-docker-machine
+            install /tmp/docker-machine /usr/local/bin/docker-machine
 
 ENTRYPOINT ["/app/job_executor.py"]
