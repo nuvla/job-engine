@@ -90,7 +90,8 @@ class DeploymentStateJob(object):
         try:
             self.handle_deployment(deployment)
         except Exception as ex:
+            self.job.set_status_message(str(ex))
             log.error('Failed to obtain deployment state {0}: {1}'.format(deployment_id, ex))
-            raise
+            return 1
 
         return 0
