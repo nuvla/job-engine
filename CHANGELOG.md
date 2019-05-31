@@ -9,6 +9,7 @@
 
 ### Changed
 
+  - Deployment stop - delete credential on stop
   - Update start deployment options to support restart policy conditions, 
     cpu, ram
   - Deployment code reorganization

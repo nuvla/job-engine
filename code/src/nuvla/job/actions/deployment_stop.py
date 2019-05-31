@@ -3,6 +3,7 @@
 import logging
 
 from nuvla.connector import connector_factory, docker_connector
+from nuvla.api import NuvlaError, ConnectionError
 from .deployment import Deployment
 from ..actions import action
 
@@ -18,12 +19,23 @@ class DeploymentStopJob(object):
         self.api = job.api
         self.api_dpl = Deployment(self.api)
 
+    def try_delete_deployment_credentials(self, deployment_id):
+        credentials = self.api.search('credential', filter="parent='{}'".format(deployment_id),
+                                      select='id, parent').resources
+        for credential in credentials:
+            try:
+                self.api.delete(credential.data['id'])
+            except (NuvlaError, ConnectionError):
+                pass
+
     def handle_deployment(self, deployment):
+        deployment_id = deployment['id']
+
         credential_id = deployment.get('credential-id')
 
         connector = connector_factory(docker_connector, self.api, credential_id)
 
-        filter_params = 'deployment/href="{}" and name="service-id"'.format(deployment['id'])
+        filter_params = 'deployment/href="{}" and name="service-id"'.format(deployment_id)
 
         deployment_params = self.api.search('deployment-parameter', filter=filter_params,
                                             select='node-id,name,value').resources
@@ -37,7 +49,9 @@ class DeploymentStopJob(object):
                 self.job.set_status_message("Deployment parameter {} doesn't have a value!"
                                             .format(deployment_params[0].data.get('id')))
         else:
-            self.job.set_status_message('No deployment parameters with containers ids found!')
+            self.job.set_status_message('No deployment parameters with service ID found!')
+
+        self.try_delete_deployment_credentials(deployment_id)
 
     def stop_deployment(self):
         deployment_id = self.job['target-resource']['href']
