@@ -12,7 +12,7 @@ class DeploymentStateJobsDistributor(Distributor):
 
     def __init__(self):
         self.collect_interval = 10
-        super().__init__()
+        super(Distributor, self).__init__()
         self.collect_interval = self.args.interval
 
     def _set_command_specific_options(self, parser):
