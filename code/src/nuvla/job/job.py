@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 
 import logging
+
 from nuvla.api import NuvlaError, ConnectionError
 
 from .util import wait, retry_kazoo_queue_op
-
 
 log = logging.getLogger('job')
 
@@ -45,13 +45,14 @@ class Job(dict):
         except NonexistentJobError as e:
             retry_kazoo_queue_op(self.queue, "consume")
             log.warning('Newly retrieved {} does not exist in cimi; '.format(self.id) +
-                            'Message: {}; Removed from queue: success.'.format(e.reason))
+                        'Message: {}; Removed from queue: success.'.format(e.reason))
             self.nothing_to_do = True
-        except:
+        except Exception as e:
             timeout = 30
             retry_kazoo_queue_op(self.queue, "release")
             log.error('Fatal error when trying to retrieve {}! Put it back in queue. '.format(self.id) +
-                          'Will go back to work after {}s.'.format(timeout))
+                      'Will go back to work after {}s.'.format(timeout))
+            log.error(e)
             wait(timeout)
             self.nothing_to_do = True
 
