@@ -9,6 +9,8 @@
 
 ### Changed
 
+  - Reduce the sleep time to 30 seconds after an error when contacting
+    the Nuvla server
   - Deployment stop - delete credential on stop
   - Update start deployment options to support restart policy conditions, 
     cpu, ram

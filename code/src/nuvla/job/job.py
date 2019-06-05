@@ -48,7 +48,7 @@ class Job(dict):
                             'Message: {}; Removed from queue: success.'.format(e.reason))
             self.nothing_to_do = True
         except:
-            timeout = 120
+            timeout = 30
             retry_kazoo_queue_op(self.queue, "release")
             log.error('Fatal error when trying to retrieve {}! Put it back in queue. '.format(self.id) +
                           'Will go back to work after {}s.'.format(timeout))
