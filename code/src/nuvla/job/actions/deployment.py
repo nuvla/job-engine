@@ -17,6 +17,11 @@ class Deployment(object):
     def uuid(resource_id):
         return resource_id.split('/')[1]
 
+    @staticmethod
+    def get_port_name_value(port_mapping):
+        port_details = port_mapping.split(':')
+        return '.'.join([port_details[0], port_details[2]]), port_details[1]
+
     def __init__(self, nuvla):
         self.nuvla = nuvla
 
@@ -95,6 +100,13 @@ class Deployment(object):
         except ResourceNotFound:
             return None
         return param.data.get('value')
+
+    def update_port_parameters(self, deployment_id, ports_mapping):
+        if ports_mapping:
+            for port_mapping in ports_mapping.split():
+                port_param_name, port_param_value = self.get_port_name_value(port_mapping)
+                self.set_parameter(deployment_id, self.uuid(deployment_id),
+                                   port_param_name, port_param_value)
 
     def set_state(self, resource_id, state):
         self.nuvla.edit(resource_id, {'state': state})

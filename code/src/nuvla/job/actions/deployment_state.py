@@ -78,6 +78,10 @@ class DeploymentStateJob(object):
                                        DeploymentParameter.RESTART_ERR_MSG['name'],
                                        t_rejected[0].get('Status', {}).get('Err', ''))
 
+        # update any port mappings that are available
+        ports_mapping = connector.extract_vm_ports_mapping(sname)
+        self.api_dpl.update_port_parameters(did, ports_mapping)
+
     def do_work(self):
         deployment_id = self.job['target-resource']['href']
 
