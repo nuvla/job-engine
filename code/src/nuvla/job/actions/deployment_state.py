@@ -79,8 +79,10 @@ class DeploymentStateJob(object):
                                        t_rejected[0].get('Status', {}).get('Err', ''))
 
         # update any port mappings that are available
-        ports_mapping = connector.extract_vm_ports_mapping(sname)
-        self.api_dpl.update_port_parameters(did, ports_mapping)
+        services = connector.list(filters={"name": sname})
+        if services:
+            ports_mapping = connector.extract_vm_ports_mapping(services[0])
+            self.api_dpl.update_port_parameters(did, ports_mapping)
 
     def do_work(self):
         deployment_id = self.job['target-resource']['href']
@@ -96,6 +98,7 @@ class DeploymentStateJob(object):
         except Exception as ex:
             self.job.set_status_message(str(ex))
             log.error('Failed to obtain deployment state {0}: {1}'.format(deployment_id, ex))
+            log.exception(ex)
             return 1
 
         return 0
