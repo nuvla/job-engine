@@ -18,11 +18,6 @@ class DeploymentStartJob(object):
         self.api = job.api
         self.api_dpl = Deployment(self.api)
 
-    @staticmethod
-    def get_port_name_value(port_mapping):
-        port_details = port_mapping.split(':')
-        return '.'.join([port_details[0], port_details[2]]), port_details[1]
-
     def create_deployment_parameter(self, deployment_id, user_id, param_name,
                                     param_value=None, node_id=None, param_description=None):
         return self.api_dpl.create_parameter(deployment_id, user_id, param_name,
@@ -50,11 +45,24 @@ class DeploymentStartJob(object):
 
         restart_policy = module_content.get('restart-policy', {})
 
+        # create deployment parameters (with empty values) for all port mappings
+        module_ports = module_content.get('ports')
+        for port in (module_ports or []):
+            target_port = port.get('target-port')
+            protocol = port.get('protocol', 'tcp')
+            if target_port is not None:
+                self.create_deployment_parameter(
+                    deployment_id=deployment_id,
+                    user_id=deployment_owner,
+                    param_name="{}.{}".format(protocol, str(target_port)),
+                    param_description="mapping for {} port {}".format(protocol, str(target_port)),
+                    node_id=node_instance_name)
+
         service = connector.start(service_name=node_instance_name,
                                   image=module_content['image'],
                                   env=container_env,
                                   mounts_opt=module_content.get('mounts'),
-                                  ports_opt=module_content.get('ports'),
+                                  ports_opt=module_ports,
                                   cpu_ratio=module_content.get('cpus'),
                                   memory=module_content.get('memory'),
                                   restart_policy_condition=restart_policy.get('condition'),
@@ -136,16 +144,9 @@ class DeploymentStartJob(object):
             param_description=DeploymentParameter.CHECK_TIMESTAMP['description'],
             node_id=node_instance_name)
 
+        # immediately update any port mappings that are already available
         ports_mapping = connector.extract_vm_ports_mapping(service)
-        if ports_mapping:
-            for port_mapping in ports_mapping.split():
-                port_param_name, port_param_value = self.get_port_name_value(port_mapping)
-                self.create_deployment_parameter(
-                    deployment_id=deployment_id,
-                    user_id=deployment_owner,
-                    param_name=port_param_name,
-                    param_value=port_param_value,
-                    node_id=node_instance_name)
+        self.api_dpl.update_port_parameters(deployment_id, ports_mapping)
 
         for output_param in module_content.get('output-parameters', []):
             self.create_deployment_parameter(deployment_id=deployment_id,

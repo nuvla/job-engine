@@ -52,7 +52,7 @@ class Job(dict):
             retry_kazoo_queue_op(self.queue, "release")
             log.error('Fatal error when trying to retrieve {}! Put it back in queue. '.format(self.id) +
                       'Will go back to work after {}s.'.format(timeout))
-            log.error(e)
+            log.exception(e)
             wait(timeout)
             self.nothing_to_do = True
 
