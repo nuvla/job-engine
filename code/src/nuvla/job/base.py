@@ -41,12 +41,15 @@ class Base(object):
                             default='https://nuvla.io', metavar='URL')
 
         required_args.add_argument('--api-user', dest='api_user', help='Nuvla username',
-                                   metavar='USERNAME', required=True)
+                                   metavar='USERNAME')
         required_args.add_argument('--api-pass', dest='api_pass', help='Nuvla Password',
-                                   metavar='PASSWORD', required=True)
+                                   metavar='PASSWORD')
 
         parser.add_argument('--api-insecure', dest='api_insecure', default=False, action='store_true',
                             help='Do not check Nuvla certificate')
+
+        parser.add_argument('--api-authn-header', dest='api_authn_header', default=None,
+                            help='Set header for internal authentication')
 
         parser.add_argument('--name', dest='name', metavar='NAME', default=None, help='Base name for this process')
 
@@ -81,11 +84,14 @@ class Base(object):
     def execute(self):
         self.name = self.args.name if self.args.name is not None else names[int(random.uniform(1, len(names) - 1))]
 
-        self.api = Api(endpoint=self.args.api_url, insecure=self.args.api_insecure, reauthenticate=True)
+        reauthenticate = self.args.api_authn_header is None  # true unless header authentication is used
+        self.api = Api(endpoint=self.args.api_url, insecure=self.args.api_insecure,
+                       reauthenticate=reauthenticate, authn_header=self.args.api_authn_header)
         try:
-            response = self.api.login_password(self.args.api_user, self.args.api_pass)
-            if response.status_code == 403:
-                raise ConnectionError('Login with following user {} failed!'.format(self.args.api_user))
+            if self.args.api_authn_header is None:
+                response = self.api.login_password(self.args.api_user, self.args.api_pass)
+                if response.status_code == 403:
+                    raise ConnectionError('Login with following user {} failed!'.format(self.args.api_user))
         except ConnectionError as e:
             logging.error('Unable to connect to Nuvla endpoint {}! {}'.format(self.api.endpoint, e))
             exit(1)

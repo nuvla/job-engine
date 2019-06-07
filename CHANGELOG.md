@@ -1,10 +1,11 @@
 # Changelog
 
-## [Unreleased]
+## [2.1.0] - 2019-06-07
 
 ### Added
 
-  - Nuvlabox delete job (wip)
+  - Allow authentication with server via request headers
+  - Nuvlabox delete job
   - Deployment state job
 
 ### Changed
@@ -27,4 +28,3 @@
 
   - first release of job container
 
- 
