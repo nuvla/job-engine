@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+
+  - Executor is now mono-threaded. Use multiple executors to run 
+    multiple jobs in parallel.
+
 ## [2.1.0] - 2019-06-07
 
 ### Added

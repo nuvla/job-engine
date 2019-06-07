@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 
-import sys
 import logging
+import sys
 import traceback
-from threading import Thread
+
 from elasticsearch import Elasticsearch
 from requests.adapters import HTTPAdapter
 
@@ -11,6 +11,8 @@ from .actions import get_action, ActionNotImplemented
 from .base import Base
 from .job import Job, JobUpdateError
 from .util import override
+
+CONNECTION_POOL_SIZE = 4
 
 
 class Executor(Base):
@@ -20,8 +22,6 @@ class Executor(Base):
 
     @override
     def _set_command_specific_options(self, parser):
-        parser.add_argument('--threads', dest='number_of_thread', default=1,
-                            metavar='#', type=int, help='Number of worker threads to start (default: 1)')
         parser.add_argument('--es-hosts', dest='es_hosts', default=['localhost'], nargs='+', metavar='HOST',
                             help='Elasticsearch list of hosts [localhost:[port]] (default: [localhost])')
 
@@ -37,8 +37,8 @@ class Executor(Base):
 
     def _process_jobs(self):
         queue = self._kz.LockingQueue('/job')
-        api_http_adapter = HTTPAdapter(pool_maxsize=self.args.number_of_thread,
-                                       pool_connections=self.args.number_of_thread)
+        api_http_adapter = HTTPAdapter(pool_maxsize=CONNECTION_POOL_SIZE,
+                                       pool_connections=CONNECTION_POOL_SIZE)
         self.api.session.mount('http://', api_http_adapter)
         self.api.session.mount('https://', api_http_adapter)
 
@@ -70,13 +70,10 @@ class Executor(Base):
             else:
                 job.update_job(state='SUCCESS', return_code=return_code)
                 logging.info('Successfully finished {}.'.format(job.id))
-        logging.info('Thread properly stopped.')
+        logging.info('Executor {} properly stopped.'.format(self.name))
 
     @override
     def do_work(self):
         logging.info('I am executor {}.'.format(self.name))
         self.es = Elasticsearch(self.args.es_hosts)
-        for i in range(1, self.args.number_of_thread + 1):
-            th_name = 'job_processor_{}_{}'.format(self.name, i)
-            th = Thread(target=self._process_jobs, name=th_name)
-            th.start()
+        self._process_jobs()

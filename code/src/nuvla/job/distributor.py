@@ -31,8 +31,8 @@ class Distributor(Base):
 
     # ----- METHOD THAT CAN/SHOULD BE IMPLEMENTED IN DISTRIBUTOR SUBCLASS -----
     def job_generator(self):
-        """This is a generator function that produces a sequence of Job(s) to be added to SSCLJ server.
-        This function must be override by the user subclass.
+        """This is a generator function that produces a sequence of Job(s) to be added to the nuvla server.
+        This function must be overridden by the user subclass.
         """
         raise NotImplementedError()
 

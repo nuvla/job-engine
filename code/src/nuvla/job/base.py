@@ -1,14 +1,15 @@
 # -*- coding: utf-8 -*-
 
-import sys
-import signal
-import random
-import logging
 import argparse
+import logging
+import random
+import signal
+import sys
 import threading
-from nuvla.api import Api
 from functools import partial
+
 from kazoo.client import KazooClient, KazooRetry
+from nuvla.api import Api
 from requests.exceptions import ConnectionError
 
 names = ['Cartman', 'Kenny', 'Stan', 'Kyle', 'Butters', 'Token', 'Timmy', 'Wendy', 'M. Garrison', 'Chef',

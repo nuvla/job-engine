@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
 
-import os
-import sys
-import uuid
-import random
-import warnings
 import logging
+import os
+import random
+import sys
 import threading
+import uuid
+import warnings
 
 PY2 = sys.version_info[0] == 2
 
