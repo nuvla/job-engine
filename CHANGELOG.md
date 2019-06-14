@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Added
+
+  - add script to restore zookeeper jobs from elasticsearch
+
 ### Changed
 
   - Executor is now mono-threaded. Use multiple executors to run 
