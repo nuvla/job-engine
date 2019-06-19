@@ -35,7 +35,7 @@ class DeploymentStopJob(object):
 
         connector = connector_factory(docker_connector, self.api, credential_id)
 
-        filter_params = 'deployment/href="{}" and name="service-id"'.format(deployment_id)
+        filter_params = 'parent="{}" and name="service-id"'.format(deployment_id)
 
         deployment_params = self.api.search('deployment-parameter', filter=filter_params,
                                             select='node-id,name,value').resources
