@@ -8,6 +8,7 @@
 
 ### Changed
 
+  - Deployment parameter - field deployment/href renamed parent
   - Executor is now mono-threaded. Use multiple executors to run 
     multiple jobs in parallel.
 

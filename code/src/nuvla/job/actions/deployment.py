@@ -69,7 +69,7 @@ class Deployment(object):
     def create_parameter(self, resource_id, user_id, param_name, param_value=None,
                          node_id=None, param_description=None):
         parameter = {'name': param_name,
-                     'deployment': {'href': resource_id},
+                     'parent': resource_id,
                      'acl': {'owners': ['group/nuvla-admin'],
                              'edit-acl': [user_id]}}
         if node_id:
@@ -87,8 +87,7 @@ class Deployment(object):
         return self.nuvla.edit(param.id, {'value': value})
 
     def _get_parameter(self, resource_id, node_name, name, select=None):
-        filters = "deployment/href='{0}' and node-id='{1}' and name='{2}'".format(
-            resource_id, node_name, name)
+        filters = "parent='{0}' and node-id='{1}' and name='{2}'".format(resource_id, node_name, name)
         res = self.nuvla.search("deployment-parameter", filter=filters, select=select)
         if res.count < 1:
             raise ResourceNotFound('Deployment parameter "{0}" not found.'.format(filters))
