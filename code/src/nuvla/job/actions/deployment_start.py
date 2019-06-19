@@ -24,7 +24,7 @@ class DeploymentStartJob(object):
                                              param_value, node_id, param_description)
 
     def handle_deployment(self, deployment):
-        connector = connector_factory(docker_connector, self.api, deployment.get('credential-id'))
+        connector = connector_factory(docker_connector, self.api, deployment.get('parent'))
 
         deployment_id = deployment['id']
         node_instance_name = self.api_dpl.uuid(deployment_id)

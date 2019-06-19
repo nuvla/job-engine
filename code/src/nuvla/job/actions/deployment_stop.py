@@ -31,7 +31,7 @@ class DeploymentStopJob(object):
     def handle_deployment(self, deployment):
         deployment_id = deployment['id']
 
-        credential_id = deployment.get('credential-id')
+        credential_id = deployment.get('parent')
 
         connector = connector_factory(docker_connector, self.api, credential_id)
 

@@ -25,7 +25,7 @@ class DeploymentStateJob(object):
         self.api_dpl = Deployment(self.api)
 
     def handle_deployment(self, deployment):
-        connector = connector_factory(docker_connector, self.api, deployment.get('credential-id'))
+        connector = connector_factory(docker_connector, self.api, deployment.get('parent'))
         did = deployment['id']
         # FIXME: at the moment deployment UUID is the service name.
         sname = self.api_dpl.uuid(did)
