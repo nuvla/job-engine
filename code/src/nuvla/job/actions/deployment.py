@@ -51,7 +51,7 @@ class Deployment(object):
         deployment = self.get(deployment_id)
 
         if infra_cred_id:
-            deployment.update({"credential-id": infra_cred_id})
+            deployment.update({'parent': infra_cred_id})
         try:
             return self.nuvla.edit(deployment_id, deployment).data
         except Exception as ex:
@@ -59,7 +59,7 @@ class Deployment(object):
 
     def set_infra_cred_id(self, resource_id, infra_cred_id):
         try:
-            return self.nuvla.edit(resource_id, {"credential-id": infra_cred_id}).data
+            return self.nuvla.edit(resource_id, {'parent': infra_cred_id}).data
         except Exception as ex:
             raise Exception('ERROR: Failed to edit {0}: {1}'.format(resource_id, ex))
 
