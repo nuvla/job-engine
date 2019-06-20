@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## [2.2.0] - 2019-06-20
+
 ### Added
 
   - add script to restore zookeeper jobs from elasticsearch
