@@ -65,13 +65,16 @@ class DockerConnector(Connector):
         """
         Returns image id and digest as two-tuple.
 
-        :param sname: json, service
+        :param service: dict, docker service
         :return: tuple, (image id, digest)
         """
         image, digest = '', ''
         if service:
-            img = service.attrs['Spec']['TaskTemplate']['ContainerSpec']['Image']
-            image, digest = img.split('@')
+            img = service['Spec']['TaskTemplate']['ContainerSpec']['Image']
+            parts = img.split('@')
+            image = parts[0]
+            if len(parts) > 1:
+                digest = parts[1]
         return image, digest
 
     @staticmethod

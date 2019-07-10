@@ -6,8 +6,6 @@ from nuvla.job.base import main
 from nuvla.job.distributor import Distributor
 from nuvla.job.util import override
 
-from nuvla.job.actions.nuvla import Module
-
 
 class ServiceImageStateJobsDistributor(Distributor):
     ACTION_NAME = 'component_image_state'
@@ -24,14 +22,12 @@ class ServiceImageStateJobsDistributor(Distributor):
                             default=self.collect_interval, type=int, help=hmsg)
 
     def user_components(self):
-        module = Module(self.api)
-        resp = module.find(filter="subtype='component'", select='id,operations')
+        resp = self.api.search('module', filter="subtype='component'", select='id,operations')
+
         components = []
         for r in resp.resources:
-            if hasattr(r, 'operations'):
-                for op in r.operations:
-                    if op.get('rel', '') == 'edit':
-                        components.append(r.id)
+            if hasattr(r, 'operations') and 'edit' in r.operations:
+                    components.append(r.id)
         return components
 
     def job_exists(self, job):

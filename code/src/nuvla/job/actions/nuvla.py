@@ -198,7 +198,7 @@ class Callback:
     def __init__(self, nuvla):
         self.nuvla = nuvla
 
-    def create(self, action_name, target_resource, data=None, expires=None):
+    def create(self, action_name, target_resource, data=None, expires=None, acl=None):
         """
         :param action_name: name of the action
         :param target_resource: resource id
@@ -208,12 +208,14 @@ class Callback:
         """
 
         callback = {"action": action_name,
-              "target-resource": target_resource}
+              "target-resource": {'href': target_resource}}
 
         if data:
             callback.update({"data": data})
         if expires:
             callback.update({"expires": expires})
+        if acl:
+            callback.update({"acl": acl})
 
         resource_id = check_created(self.nuvla.add(self.resource, callback),
                                     'Failed to create callback.')
@@ -228,8 +230,8 @@ class Notification:
         self.nuvla = nuvla
 
     def create(self, message, category, content_unique_id,
-               target_resource=None, not_before=None, expires=None,
-               callback_id=None, callback_msg=None):
+               target_resource=None, not_before=None, expiry=None,
+               callback_id=None, callback_msg=None, acl=None):
 
         notification = {'message': message,
                         'category': category,
@@ -239,12 +241,14 @@ class Notification:
             notification.update({'target-resource': target_resource})
         if not_before:
             notification.update({'not-before': not_before})
-        if expires:
-            notification.update({'expires': expires})
+        if expiry:
+            notification.update({'expiry': expiry})
         if callback_id:
             notification.update({'callback': callback_id})
         if callback_msg:
             notification.update({'callback-msg': callback_msg})
+        if acl:
+            notification.update({'acl': acl})
 
         return check_created(self.nuvla.add(self.resource, notification),
                              'Failed to create notification.')
@@ -255,7 +259,7 @@ class Notification:
         if resp.count < 1:
             return None
         else:
-            return list(resp.resourses)[0]
+            return list(resp.resources)[0]
 
     def exists_with_content_unique_id(self, content_unique_id):
         return self.find_by_content_unique_id(content_unique_id) is not None
@@ -269,7 +273,7 @@ class Module:
         self.nuvla = nuvla
 
     def find(self, **kvargs):
-        return self.nuvla.search(self.resource, kvargs)
+        return self.nuvla.search(self.resource, **kvargs)
 
     def get(self, resource_id):
         """

@@ -2,19 +2,16 @@
 
 import logging
 
-from nuvla.connector import connector_factory, docker_connector
 from nuvla.connector.registry import (new_image_semantic_tag,
-                                      new_image_timestamp,
                                       image_dict_to_str,
                                       is_semantic_version)
 from nuvla.connector.utils import (unique_id,
-                                   utc_from_now_iso,
-                                   timestr2dtime)
-from .nuvla import Deployment, Callback, Notification
+                                   utc_from_now_iso)
+from .nuvla import Module, Callback, Notification
 from ..actions import action
 
 
-action_name = 'service_image_state'
+action_name = 'component_image_state'
 
 log = logging.getLogger(action_name)
 
@@ -22,23 +19,21 @@ EXPIRY_FROM_NOW_SEC = 24 * 3600
 
 
 @action(action_name)
-class ServiceImageState(object):
+class ComponentImageState(object):
 
     def __init__(self, _, job):
         self.job = job
         self.api = job.api
-        self.api_dpl = Deployment(self.api)
+        self.api_module = Module(self.api)
 
-    def check_new_image(self, image, c_changed_at):
-
-        if is_semantic_version(image.get('tag')):
+    def check_new_image(self, image):
+        if is_semantic_version(image.get('tag', '')):
             return new_image_semantic_tag(image)
         else:
-            return new_image_timestamp(image, timestr2dtime(c_changed_at))
+            return None
 
     def handle_component(self, component):
-        new_image = self.check_new_image(component['content']['image'],
-                                         component['content']['updated'])
+        new_image = self.check_new_image(component['content']['image'])
         if not new_image:
             return
 
@@ -53,17 +48,19 @@ class ServiceImageState(object):
                 component_id, new_image_str))
             return
 
-        expires = utc_from_now_iso(EXPIRY_FROM_NOW_SEC)
+        expiry = utc_from_now_iso(EXPIRY_FROM_NOW_SEC)
+        acl = component.get('acl', None)
 
         callback = Callback(self.api)
         data = {'content':
                     {'image': new_image}}
-        callback_id = callback.create('component-update', component_id, data=data, expires=expires)
+        callback_id = callback.create('module-update', component_id, data=data, expires=expiry, acl=acl)
 
         msg = 'Newer image available for component {0}: {1}'.format(
             component_id, new_image_str)
-        notification_id = notification.create(msg, action_name, notif_unique_id,
-                                              expires=expires, target_resource=component_id, callback_id=callback_id)
+        notification_id = notification.create(msg, 'module-update', notif_unique_id,
+                                              expiry=expiry, target_resource=component_id,
+                                              callback_id=callback_id, acl=acl)
 
         log.info('Created notification {0} with callback {1} for {2}'.format(
             notification_id, callback_id, component_id))

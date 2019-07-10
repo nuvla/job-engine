@@ -33,7 +33,7 @@ class ServiceImageState(object):
 
         image = image_str_to_dict(caas.service_image_digest(service)[0])
 
-        if is_semantic_version(image.get('tag')):
+        if is_semantic_version(image.get('tag', '')):
             return new_image_semantic_tag(image)
         else:
             s_changed_at = caas.service_get_last_timestamp(service)
@@ -59,16 +59,19 @@ class ServiceImageState(object):
                 deployment_id, new_image_str))
             return
 
-        expires = utc_from_now_iso(EXPIRY_FROM_NOW_SEC)
+        expiry = utc_from_now_iso(EXPIRY_FROM_NOW_SEC)
+        acl = deployment.get('acl', None)
 
         callback = Callback(self.api)
         data = {'image': new_image}
-        callback_id = callback.create('deployment-update', deployment_id, data=data, expires=expires)
+        callback_id = callback.create('deployment-update', deployment_id, data=data,
+                                      expires=expiry, acl=acl)
 
         msg = 'Newer image available for deployment {0}: {1}'.format(
             deployment_id, new_image_str)
-        notification_id = notification.create(msg, action_name, notif_unique_id,
-                expires=expires, target_resource=deployment_id, callback_id=callback_id)
+        notification_id = notification.create(msg, 'deployment-update', notif_unique_id,
+                                              expiry=expiry, target_resource=deployment_id,
+                                              callback_id=callback_id, acl=acl)
 
         log.info('Created notification {0} with callback {1} for {2}'.format(
             notification_id, callback_id, deployment_id))

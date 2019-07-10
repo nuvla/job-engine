@@ -10,17 +10,17 @@ DEFAULT_REGISTRY = 'registry-1.docker.io'
 DEFAULT_TAG = 'latest'
 
 
-def image_str_to_dict(image):
+def image_str_to_dict(image_s):
     registry = ''
 
-    parts = image.split('/', 1)
+    parts = image_s.split('/', 1)
     if len(parts) > 1:
         if '.' in parts[0] or ':' in parts[0]:
             # highly likely this is a DNS name in the form example.com[:123]
             registry = parts[0]
             repo_tag = parts[1].split(':')
         else:
-            repo_tag = image.split(':')
+            repo_tag = image_s.split(':')
     else:
         repo_tag = parts[0].split(':')
     repository = repo_tag[0]
@@ -34,22 +34,22 @@ def image_str_to_dict(image):
             'tag': tag}
 
 
-def image_dict_to_str(image):
-    tag = image.get('tag')
-    registry = image.get('registry')
-    repository = image.get('repository')
+def image_dict_to_str(image_d):
+    tag = image_d.get('tag')
+    registry = image_d.get('registry')
+    repository = image_d.get('repository')
 
-    image_name = image.get('image-name', repository)
+    image_s = image_d.get('image-name', repository)
     if tag:
-        image_name = ':'.join([image_name, tag])
+        image_s = ':'.join([image_s, tag])
 
-    if 'image-name' in image and 'repository' in image:
-        image_name = '/'.join([repository, image_name])
+    if 'image-name' in image_d and 'repository' in image_d:
+        image_s = '/'.join([repository, image_s])
 
     if registry:
-        image_name = '/'.join([registry, image_name])
+        image_s = '/'.join([registry, image_s])
 
-    return image_name
+    return image_s
 
 
 def versiontuple(v):
@@ -57,6 +57,10 @@ def versiontuple(v):
 
 
 def is_semantic_version(ver):
+    """
+    :param ver: string
+    :return: boolean
+    """
     try:
         versiontuple(ver)
         return True
@@ -70,8 +74,10 @@ def list_tags(image):
     :return: dict, image tags
     """
     repo = image.get('repository')
+    if 'image-name' in image and not repo.endswith(image.get('image-name')):
+        repo = repo + '/' + image.get('image-name')
     headers = authn_header(repo)
-    url = '{registry}/v2/{repo}/tags/list'.format(
+    url = 'https://{registry}/v2/{repo}/tags/list'.format(
         registry=(image.get('registry') or DEFAULT_REGISTRY), repo=repo)
     response = requests.get(url, headers=headers, json=True)
     if not response.status_code == requests.codes.ok:
@@ -115,8 +121,9 @@ def new_image_semantic_tag(image):
     if len(img_tags) == 0:
         raise Exception('No semantically versioned tags in the registry for semantically versioned running image.')
     last_ver = sorted(img_tags)[-1]
-    if last_ver > ver_running:
-        new_image = image.udpate({'tag': '.'.join(map(str, last_ver))})
+    if tuple(last_ver) > tuple(ver_running):
+        image.update({'tag': '.'.join(map(str, last_ver))})
+        new_image = image
     return new_image
 
 

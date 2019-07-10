@@ -1,6 +1,10 @@
 import unittest
+from mock import Mock
 
-from nuvla.connector.registry import image_str_to_dict, image_dict_to_str
+import nuvla.connector.registry
+from nuvla.connector.registry import (image_str_to_dict,
+                                      image_dict_to_str,
+                                      new_image_semantic_tag)
 
 
 class TestRegistry(unittest.TestCase):
@@ -50,6 +54,11 @@ class TestRegistry(unittest.TestCase):
                                    'tag': ''})
         assert image == 'repo/name'
 
+        image = image_dict_to_str({'image-name': 'name',
+                                   'repository': 'repo',
+                                   'tag': '0.0.1'})
+        assert image == 'repo/name:0.0.1'
+
         image = image_dict_to_str({'registry': '',
                                    'repository': 'repo',
                                    'tag': ''})
@@ -69,3 +78,9 @@ class TestRegistry(unittest.TestCase):
                                    'repository': 'repo/name',
                                    'tag': '1.2.3'})
         assert image == 'registry.com/repo/name:1.2.3'
+
+    def test_new_image_semantic_tag(self):
+        nuvla.connector.registry.list_tags = Mock(return_value={'tags': ['0.0.1', '0.0.2']})
+        image = new_image_semantic_tag({'tag': '0.0.1'})
+        assert image is not None
+        assert image['tag'] == '0.0.2'
