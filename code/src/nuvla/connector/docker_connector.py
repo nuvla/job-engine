@@ -9,6 +9,8 @@ from tempfile import NamedTemporaryFile
 import requests
 
 from .connector import Connector, ConnectorError, should_connect
+from .registry import image_dict_to_str
+from .utils import timestr2dtime
 
 """
 Service is a set of tasks. Service doesn't have a state, but tasks do.
@@ -57,6 +59,26 @@ def convert_filters(filters):
 
 
 class DockerConnector(Connector):
+
+    @staticmethod
+    def service_image_digest(service):
+        """
+        Returns image id and digest as two-tuple.
+
+        :param sname: json, service
+        :return: tuple, (image id, digest)
+        """
+        image, digest = '', ''
+        if service:
+            img = service.attrs['Spec']['TaskTemplate']['ContainerSpec']['Image']
+            image, digest = img.split('@')
+        return image, digest
+
+    @staticmethod
+    def service_get_last_timestamp(service):
+        s_created_at = timestr2dtime(service.attrs['CreatedAt'])
+        s_updated_at = timestr2dtime(service.attrs['UpdatedAt'])
+        return s_created_at > s_updated_at and s_created_at or s_updated_at
 
     def __init__(self, **kwargs):
         super(DockerConnector, self).__init__(**kwargs)
@@ -116,7 +138,7 @@ class DockerConnector(Connector):
         if service_name:
             service_json['Name'] = service_name
 
-        service_json['TaskTemplate']['ContainerSpec']['Image'] = DockerConnector.construct_image_name(image)
+        service_json['TaskTemplate']['ContainerSpec']['Image'] = image_dict_to_str(image)
 
         if working_dir:
             service_json['TaskTemplate']['ContainerSpec']['Dir'] = working_dir
@@ -193,6 +215,13 @@ class DockerConnector(Connector):
         if not isinstance(services_list, list):
             self.validate_action(services_list)
         return services_list
+
+    def service_get(self, sname):
+        services = self.list(filters={'name': sname})
+        if len(services) >= 1:
+            return services[0]
+        else:
+            return {}
 
     @should_connect
     def service_tasks(self, filters=None):
@@ -328,21 +357,3 @@ class DockerConnector(Connector):
                 mount_map['VolumeOptions']['DriverConfig']['Options'] = m_opt.get('volume-options', [])
                 mounts.append(mount_map)
         return mounts
-
-    @staticmethod
-    def construct_image_name(image):
-        tag = image.get('tag')
-        registry = image.get('registry')
-        repository = image.get('repository')
-
-        image_name = image['image-name']
-        if tag:
-            image_name = ':'.join([image_name, tag])
-
-        if repository:
-            image_name = '/'.join([repository, image_name])
-
-        if registry:
-            image_name = '/'.join([registry, image_name])
-
-        return image_name

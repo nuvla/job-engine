@@ -4,7 +4,7 @@ import logging
 from datetime import datetime
 
 from nuvla.connector import connector_factory, docker_connector
-from .deployment import Deployment, DeploymentParameter
+from .nuvla import Deployment, DeploymentParameter
 from ..actions import action
 
 action_name = 'deployment_state'
