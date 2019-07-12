@@ -1,11 +1,13 @@
 # -*- coding: utf-8 -*-
 
 import logging
+import subprocess
 
 from nuvla.connector import connector_factory, docker_connector
 from nuvla.api import NuvlaError, ConnectionError
 from .deployment import Deployment
 from ..actions import action
+from ..util import wait
 
 action_name = 'stop_deployment'
 
@@ -28,7 +30,7 @@ class DeploymentStopJob(object):
             except (NuvlaError, ConnectionError):
                 pass
 
-    def handle_deployment(self, deployment):
+    def stop_component(self, deployment):
         deployment_id = deployment['id']
 
         credential_id = deployment.get('parent')
@@ -51,7 +53,18 @@ class DeploymentStopJob(object):
         else:
             self.job.set_status_message('No deployment parameters with service ID found!')
 
-        self.try_delete_deployment_credentials(deployment_id)
+    def stop_application(self, deployment):
+        deployment_id = deployment['id']
+        deployment_uuid = Deployment.uuid(deployment_id)
+        with subprocess.Popen(
+                ['docker', 'stack', 'rm',deployment_uuid],
+                stdout=subprocess.PIPE, stderr=subprocess.STDOUT) as proc:
+            while proc.poll() is None:
+                stdout_stderr = proc.stdout.read().decode('utf-8')
+                self.job.set_status_message(stdout_stderr)
+                wait(1)
+            if proc.returncode != 0:
+                raise Exception(stdout_stderr)
 
     def stop_deployment(self):
         deployment_id = self.job['target-resource']['href']
@@ -63,7 +76,11 @@ class DeploymentStopJob(object):
         self.job.set_progress(10)
 
         try:
-            self.handle_deployment(deployment)
+            if Deployment.is_component(deployment):
+                self.stop_component(deployment)
+            elif Deployment.is_application(deployment):
+                self.stop_application(deployment)
+            self.try_delete_deployment_credentials(deployment_id)
         except Exception as ex:
             log.error('Failed to stop deployment {0}: {1}'.format(deployment_id, ex))
             try:
@@ -75,7 +92,7 @@ class DeploymentStopJob(object):
                 raise ex
 
         self.api_dpl.set_state_stopped(deployment_id)
+        return 0
 
     def do_work(self):
-        return_code = self.stop_deployment()
-        return return_code or 0
+        return self.stop_deployment()

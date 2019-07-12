@@ -94,7 +94,8 @@ class DeploymentStateJob(object):
         self.job.set_progress(10)
 
         try:
-            self.handle_deployment(deployment)
+            if deployment['module']['subtype'] == 'component':
+                self.handle_deployment(deployment)
         except Exception as ex:
             self.job.set_status_message(str(ex))
             log.error('Failed to obtain deployment state {0}: {1}'.format(deployment_id, ex))

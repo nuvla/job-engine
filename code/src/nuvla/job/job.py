@@ -24,6 +24,7 @@ class JobUpdateError(Exception):
 class Job(dict):
 
     def __init__(self, api, queue):
+        super(Job, self).__init__()
         self.nothing_to_do = False
         self.id = None
         self.queue = queue
@@ -37,10 +38,12 @@ class Job(dict):
             dict.__init__(self, cimi_job)
             if self.is_in_final_state():
                 retry_kazoo_queue_op(self.queue, "consume")
-                log.warning('Newly retrieved {} already in final state! Removed from queue.'.format(self.id))
+                log.warning('Newly retrieved {} already in final state! Removed from queue.'
+                            .format(self.id))
                 self.nothing_to_do = True
             elif self.get('state') == 'RUNNING':
-                # could happen when updating job and cimi server is down! let job actions decide what to do with it.
+                # could happen when updating job and cimi server is down!
+                # let job actions decide what to do with it.
                 log.warning('Newly retrieved {} in running state!'.format(self.id))
         except NonexistentJobError as e:
             retry_kazoo_queue_op(self.queue, "consume")
@@ -50,8 +53,9 @@ class Job(dict):
         except Exception as e:
             timeout = 30
             retry_kazoo_queue_op(self.queue, "release")
-            log.error('Fatal error when trying to retrieve {}! Put it back in queue. '.format(self.id) +
-                      'Will go back to work after {}s.'.format(timeout))
+            log.error(
+                'Fatal error when trying to retrieve {}! Put it back in queue. '.format(self.id) +
+                'Will go back to work after {}s.'.format(timeout))
             log.exception(e)
             wait(timeout)
             self.nothing_to_do = True
@@ -66,8 +70,8 @@ class Job(dict):
             except NuvlaError as e:
                 reason = e.reason
                 if e.response.status_code == 404:
-                    log.warning(
-                        'Retrieve of {} failed. Attempt: {} Will retry in {}s.'.format(job_uri, attempt, wait_time))
+                    log.warning('Retrieve of {} failed. Attempt: {} Will retry in {}s.'
+                                .format(job_uri, attempt, wait_time))
                     wait(wait_time)
                 else:
                     raise e
@@ -106,7 +110,8 @@ class Job(dict):
 
     def add_affected_resources(self, affected_resources):
         has_to_update = False
-        current_affected_resources_ids = [resource['href'] for resource in self.get('affected-resources', [])]
+        current_affected_resources_ids = [resource['href'] for resource in
+                                          self.get('affected-resources', [])]
 
         for affected_resource in affected_resources:
             if affected_resource not in current_affected_resources_ids:
@@ -114,7 +119,8 @@ class Job(dict):
                 has_to_update = True
 
         if has_to_update:
-            self._edit_job('affected-resources', [{'href': id} for id in current_affected_resources_ids])
+            self._edit_job('affected-resources',
+                           [{'href': id} for id in current_affected_resources_ids])
 
     def update_job(self, state=None, return_code=None, status_message=None):
         attributes = {}
@@ -141,7 +147,8 @@ class Job(dict):
             response = self.api.edit(self.id, {attribute_name: attribute_value})
         except (NuvlaError, ConnectionError):
             retry_kazoo_queue_op(self.queue, 'release')
-            reason = 'Failed to update attribute "{}" for {}! Put it back in queue.'.format(attribute_name, self.id)
+            reason = 'Failed to update attribute "{}" for {}! Put it back in queue.'.format(
+                attribute_name, self.id)
             raise JobUpdateError(reason)
         else:
             self.update(response.data)
@@ -152,7 +159,8 @@ class Job(dict):
             response = self.api.edit(self.id, attributes)
         except (NuvlaError, ConnectionError):
             retry_kazoo_queue_op(self.queue, 'release')
-            reason = 'Failed to update following attributes "{}" for {}! '.format(attributes, self.id) \
+            reason = 'Failed to update following attributes "{}" for {}! ' \
+                         .format(attributes, self.id) \
                      + 'Put it back in queue.'
             raise JobUpdateError(reason)
         else:

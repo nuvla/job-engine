@@ -17,6 +17,19 @@ class Deployment(object):
     def uuid(resource_id):
         return resource_id.split('/')[1]
 
+
+    @staticmethod
+    def subtype(deployment):
+        return deployment['module']['subtype']
+
+    @staticmethod
+    def is_component(deployment):
+        return Deployment.subtype(deployment) == 'component'
+
+    @staticmethod
+    def is_application(deployment):
+        return Deployment.subtype(deployment) == 'application'
+
     @staticmethod
     def get_port_name_value(port_mapping):
         port_details = port_mapping.split(':')

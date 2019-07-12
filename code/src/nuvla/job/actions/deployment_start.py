@@ -1,10 +1,13 @@
 # -*- coding: utf-8 -*-
 
 import logging
+import tempfile
+import subprocess
 
 from nuvla.connector import connector_factory, docker_connector
 from .deployment import Deployment, DeploymentParameter
 from ..actions import action
+from ..util import wait
 
 action_name = 'start_deployment'
 
@@ -23,7 +26,7 @@ class DeploymentStartJob(object):
         return self.api_dpl.create_parameter(deployment_id, user_id, param_name,
                                              param_value, node_id, param_description)
 
-    def handle_deployment(self, deployment):
+    def start_component(self, deployment):
         connector = connector_factory(docker_connector, self.api, deployment.get('parent'))
 
         deployment_id = deployment['id']
@@ -155,6 +158,28 @@ class DeploymentStartJob(object):
                                              param_description=output_param.get('description'),
                                              node_id=node_instance_name)
 
+    def start_application(self, deployment):
+        deployment_id = deployment['id']
+        deployment_uuid = Deployment.uuid(deployment_id)
+        with tempfile.NamedTemporaryFile() as compose_file:
+            compose_file.write(deployment['module']['content']['docker-compose'].encode())
+            compose_file.flush()
+            with subprocess.Popen(
+                    ['docker', 'stack', 'deploy', '-c', compose_file.name, deployment_uuid],
+                    stdout=subprocess.PIPE, stderr=subprocess.STDOUT) as proc:
+                while proc.poll() is None:
+                    stdout_stderr = proc.stdout.read().decode('utf-8')
+                    self.job.set_status_message(stdout_stderr)
+                    wait(1)
+                if proc.returncode != 0:
+                    raise Exception(stdout_stderr)
+
+    def handle_deployment(self, deployment):
+        if Deployment.is_component(deployment):
+            return self.start_component(deployment)
+        elif Deployment.is_application(deployment):
+            return self.start_application(deployment)
+
     def start_deployment(self):
         deployment_id = self.job['target-resource']['href']
 
@@ -167,9 +192,9 @@ class DeploymentStartJob(object):
         try:
             self.handle_deployment(deployment)
         except Exception as ex:
-            log.error('Failed to start deployment {0}: {1}'.format(deployment_id, ex))
+            log.error('Failed to start {0}: {1}'.format(deployment_id, ex))
             try:
-                self.job.set_status_message(str(ex))
+                self.job.set_status_message(repr(ex))
                 self.api_dpl.set_state_error(deployment_id)
                 return 1
             except Exception as ex:
@@ -177,7 +202,7 @@ class DeploymentStartJob(object):
                 raise ex
 
         self.api_dpl.set_state_started(deployment_id)
+        return 0
 
     def do_work(self):
-        return_code = self.start_deployment()
-        return return_code or 0
+        return self.start_deployment()
