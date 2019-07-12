@@ -1,13 +1,10 @@
 # -*- coding: utf-8 -*-
 
 import logging
-import tempfile
-import subprocess
 
-from nuvla.connector import connector_factory, docker_connector
+from nuvla.connector import connector_factory, docker_connector, docker_cli_connector
 from .deployment import Deployment, DeploymentParameter
 from ..actions import action
-from ..util import wait
 
 action_name = 'start_deployment'
 
@@ -160,19 +157,16 @@ class DeploymentStartJob(object):
 
     def start_application(self, deployment):
         deployment_id = deployment['id']
+
         deployment_uuid = Deployment.uuid(deployment_id)
-        with tempfile.NamedTemporaryFile() as compose_file:
-            compose_file.write(deployment['module']['content']['docker-compose'].encode())
-            compose_file.flush()
-            with subprocess.Popen(
-                    ['docker', 'stack', 'deploy', '-c', compose_file.name, deployment_uuid],
-                    stdout=subprocess.PIPE, stderr=subprocess.STDOUT) as proc:
-                while proc.poll() is None:
-                    stdout_stderr = proc.stdout.read().decode('utf-8')
-                    self.job.set_status_message(stdout_stderr)
-                    wait(1)
-                if proc.returncode != 0:
-                    raise Exception(stdout_stderr)
+
+        connector = connector_factory(docker_cli_connector, self.api, deployment.get('parent'))
+
+        docker_compose = deployment['module']['content']['docker-compose']
+
+        result = connector.start(docker_compose=docker_compose, stack_name=deployment_uuid)
+
+        self.job.set_status_message(result.stdout.decode('UTF-8'))
 
     def handle_deployment(self, deployment):
         if Deployment.is_component(deployment):

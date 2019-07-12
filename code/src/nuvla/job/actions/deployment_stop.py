@@ -1,13 +1,11 @@
 # -*- coding: utf-8 -*-
 
 import logging
-import subprocess
 
-from nuvla.connector import connector_factory, docker_connector
+from nuvla.connector import connector_factory, docker_connector, docker_cli_connector
 from nuvla.api import NuvlaError, ConnectionError
 from .deployment import Deployment
 from ..actions import action
-from ..util import wait
 
 action_name = 'stop_deployment'
 
@@ -55,16 +53,14 @@ class DeploymentStopJob(object):
 
     def stop_application(self, deployment):
         deployment_id = deployment['id']
+
         deployment_uuid = Deployment.uuid(deployment_id)
-        with subprocess.Popen(
-                ['docker', 'stack', 'rm',deployment_uuid],
-                stdout=subprocess.PIPE, stderr=subprocess.STDOUT) as proc:
-            while proc.poll() is None:
-                stdout_stderr = proc.stdout.read().decode('utf-8')
-                self.job.set_status_message(stdout_stderr)
-                wait(1)
-            if proc.returncode != 0:
-                raise Exception(stdout_stderr)
+
+        connector = connector_factory(docker_cli_connector, self.api, deployment.get('parent'))
+
+        result = connector.stop([deployment_uuid])
+
+        self.job.set_status_message(result.stdout.decode('UTF-8'))
 
     def stop_deployment(self):
         deployment_id = self.job['target-resource']['href']
