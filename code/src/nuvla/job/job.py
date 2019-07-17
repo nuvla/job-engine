@@ -140,7 +140,7 @@ class Job(dict):
     def consume_when_final_state(self):
         if self.is_in_final_state():
             retry_kazoo_queue_op(self.queue, 'consume')
-            log.info('Great, {} is now in final state; Removed from queue.'.format(self.id))
+            log.info('Reached final state: {} removed from queue.'.format(self.id))
 
     def _edit_job(self, attribute_name, attribute_value):
         try:

@@ -11,6 +11,24 @@ action_name = 'start_deployment'
 log = logging.getLogger(action_name)
 
 
+def get_module_content(deployment):
+    return deployment['module']['content']
+
+
+def get_env(deployment):
+    env_variables = {'NUVLA_DEPLOYMENT_ID': deployment['id'],
+                     'NUVLA_API_KEY': deployment['api-credentials']['api-key'],
+                     'NUVLA_API_SECRET': deployment['api-credentials']['api-secret'],
+                     'NUVLA_ENDPOINT': deployment['api-endpoint']}
+
+    module_content = get_module_content(deployment)
+
+    for env_var in module_content.get('environmental-variables', []):
+        env_variables[env_var['name']] = env_var.get('value')
+
+    return env_variables
+
+
 @action(action_name)
 class DeploymentStartJob(object):
     def __init__(self, executor, job):
@@ -29,19 +47,7 @@ class DeploymentStartJob(object):
         deployment_id = deployment['id']
         node_instance_name = self.api_dpl.uuid(deployment_id)
         deployment_owner = deployment['acl']['owners'][0]
-        module_content = deployment['module']['content']
-
-        container_env = ['NUVLA_DEPLOYMENT_ID={}'.format(deployment_id),
-                         'NUVLA_API_KEY={}'.format(deployment['api-credentials']['api-key']),
-                         'NUVLA_API_SECRET={}'.format(deployment['api-credentials']['api-secret']),
-                         'NUVLA_ENDPOINT={}'.format(deployment['api-endpoint'])]
-
-        for env_var in module_content.get('environmental-variables', []):
-            env_var_name = env_var['name']
-            env_var_value = env_var.get('value')
-            if env_var_value is not None:
-                env_var_def = "{}={}".format(env_var_name, env_var_value)
-                container_env.append(env_var_def)
+        module_content = get_module_content(deployment)
 
         restart_policy = module_content.get('restart-policy', {})
 
@@ -60,7 +66,7 @@ class DeploymentStartJob(object):
 
         service = connector.start(service_name=node_instance_name,
                                   image=module_content['image'],
-                                  env=container_env,
+                                  env=get_env(deployment),
                                   mounts_opt=module_content.get('mounts'),
                                   ports_opt=module_ports,
                                   cpu_ratio=module_content.get('cpus'),
@@ -162,9 +168,13 @@ class DeploymentStartJob(object):
 
         connector = connector_factory(docker_cli_connector, self.api, deployment.get('parent'))
 
-        docker_compose = deployment['module']['content']['docker-compose']
+        module_content = get_module_content(deployment)
 
-        result = connector.start(docker_compose=docker_compose, stack_name=deployment_uuid)
+        docker_compose = module_content['docker-compose']
+
+        result = connector.start(docker_compose=docker_compose,
+                                 stack_name=deployment_uuid,
+                                 env=get_env(deployment))
 
         self.job.set_status_message(result.stdout.decode('UTF-8'))
 

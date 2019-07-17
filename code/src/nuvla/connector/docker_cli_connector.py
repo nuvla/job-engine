@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
-
-from subprocess import run, PIPE, STDOUT
 import logging
+import os
+from subprocess import run, PIPE, STDOUT
 from tempfile import NamedTemporaryFile
 
 from .connector import Connector, ConnectorError, should_connect
@@ -15,8 +15,16 @@ def instantiate_from_cimi(api_infrastructure_service, api_credential):
                               endpoint=api_infrastructure_service.get('endpoint'))
 
 
-def execute_cmd(cmd):
-    result = run(cmd, stdout=PIPE, stderr=STDOUT)
+def append_os_env(env):
+    final_env = os.environ.copy()
+    if env:
+        final_env.update(env)
+    return final_env
+
+
+def execute_cmd(cmd, **kwargs):
+    env = append_os_env(kwargs.get('env'))
+    result = run(cmd, stdout=PIPE, stderr=STDOUT, env=env)
     if result.returncode == 0:
         return result
     else:
@@ -58,16 +66,17 @@ class DockerCliConnector(Connector):
                 '--tlskey', self.cert_key_file.name] + list_cmd
 
     @should_connect
-    def start(self, **start_kwargs):
+    def start(self, **kwargs):
         # Mandatory start_kwargs
-        docker_compose = start_kwargs['docker_compose']
-        stack_name = start_kwargs['stack_name']
+        docker_compose = kwargs['docker_compose']
+        stack_name = kwargs['stack_name']
+        env = kwargs['env']
 
         with NamedTemporaryFile() as compose_file:
             compose_file.write(docker_compose.encode())
             compose_file.flush()
             cmd = self.build_cmd_line(['stack', 'deploy', '-c', compose_file.name, stack_name])
-            return execute_cmd(cmd)
+            return execute_cmd(cmd, env=env)
 
     @should_connect
     def stop(self, ids):
