@@ -11,26 +11,18 @@ action_name = 'start_deployment'
 log = logging.getLogger(action_name)
 
 
-def get_module_content(deployment):
-    return deployment['module']['content']
-
-
 def get_env(deployment):
     env_variables = {'NUVLA_DEPLOYMENT_ID': deployment['id'],
                      'NUVLA_API_KEY': deployment['api-credentials']['api-key'],
                      'NUVLA_API_SECRET': deployment['api-credentials']['api-secret'],
                      'NUVLA_ENDPOINT': deployment['api-endpoint']}
 
-    module_content = get_module_content(deployment)
+    module_content = Deployment.module_content(deployment)
 
     for env_var in module_content.get('environmental-variables', []):
         env_variables[env_var['name']] = env_var.get('value')
 
     return env_variables
-
-
-def get_deployment_owner(deployment):
-    return deployment['acl']['owners'][0]
 
 
 def application_params_update(api_dpl, deployment, services):
@@ -39,8 +31,8 @@ def application_params_update(api_dpl, deployment, services):
             node_id = service['node-id']
             for key, value in service.items():
                 api_dpl.set_parameter_create_if_needed(
-                    resource_id=deployment['id'],
-                    user_id=get_deployment_owner(deployment),
+                    resource_id=Deployment.id(deployment),
+                    user_id=Deployment.owner(deployment),
                     node_id=node_id,
                     param_name='{}.{}'.format(node_id, key),
                     param_value=value)
@@ -58,13 +50,21 @@ class DeploymentStartJob(object):
         return self.api_dpl.create_parameter(deployment_id, user_id, param_name,
                                              param_value, node_id, param_description)
 
+    def create_user_output_params(self, deployment):
+        module_content = Deployment.module_content(deployment)
+        for output_param in module_content.get('output-parameters', []):
+            self.create_deployment_parameter(deployment_id=Deployment.id(deployment),
+                                             user_id=Deployment.owner(deployment),
+                                             param_name=output_param['name'],
+                                             param_description=output_param.get('description'))
+
     def start_component(self, deployment):
         connector = connector_factory(docker_connector, self.api, deployment.get('parent'))
 
-        deployment_id = deployment['id']
-        node_instance_name = self.api_dpl.uuid(deployment_id)
-        deployment_owner = get_deployment_owner(deployment)
-        module_content = get_module_content(deployment)
+        deployment_id = Deployment.id(deployment)
+        node_instance_name = self.api_dpl.uuid(deployment)
+        deployment_owner = Deployment.owner(deployment)
+        module_content = Deployment.module_content(deployment)
 
         restart_policy = module_content.get('restart-policy', {})
 
@@ -171,28 +171,19 @@ class DeploymentStartJob(object):
         ports_mapping = connector.extract_vm_ports_mapping(service)
         self.api_dpl.update_port_parameters(deployment_id, ports_mapping)
 
-        for output_param in module_content.get('output-parameters', []):
-            self.create_deployment_parameter(deployment_id=deployment_id,
-                                             user_id=deployment_owner,
-                                             param_name=output_param['name'],
-                                             param_description=output_param.get('description'),
-                                             node_id=node_instance_name)
-
     def start_application(self, deployment):
-        deployment_id = deployment['id']
-
-        deployment_uuid = Deployment.uuid(deployment_id)
+        deployment_id = Deployment.id(deployment)
 
         connector = connector_factory(docker_cli_connector, self.api, deployment.get('parent'))
 
-        module_content = get_module_content(deployment)
+        module_content = Deployment.module_content(deployment)
 
-        deployment_owner = get_deployment_owner(deployment)
+        deployment_owner = Deployment.owner(deployment)
 
         docker_compose = module_content['docker-compose']
 
         result, services = connector.start(docker_compose=docker_compose,
-                                           stack_name=deployment_uuid,
+                                           stack_name=Deployment.uuid(deployment),
                                            env=get_env(deployment))
 
         self.job.set_status_message(result.stdout.decode('UTF-8'))
@@ -207,10 +198,13 @@ class DeploymentStartJob(object):
         application_params_update(self.api_dpl, deployment, services)
 
     def handle_deployment(self, deployment):
+
         if Deployment.is_component(deployment):
-            return self.start_component(deployment)
+            self.start_component(deployment)
         elif Deployment.is_application(deployment):
-            return self.start_application(deployment)
+            self.start_application(deployment)
+
+        self.create_user_output_params(deployment)
 
     def start_deployment(self):
         deployment_id = self.job['target-resource']['href']

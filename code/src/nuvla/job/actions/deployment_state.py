@@ -27,9 +27,9 @@ class DeploymentStateJob(object):
 
     def get_component_state(self, deployment):
         connector = connector_factory(docker_connector, self.api, deployment.get('parent'))
-        did = deployment['id']
+        did = Deployment.id(deployment)
         # FIXME: at the moment deployment UUID is the service name.
-        sname = self.api_dpl.uuid(did)
+        sname = self.api_dpl.uuid(deployment)
 
         desired = connector.service_replicas_desired(sname)
 
@@ -81,12 +81,12 @@ class DeploymentStateJob(object):
         services = connector.list(filters={"name": sname})
         if services:
             ports_mapping = connector.extract_vm_ports_mapping(services[0])
-            self.api_dpl.update_port_parameters(did, ports_mapping)
+            self.api_dpl.update_port_parameters(deployment, ports_mapping)
 
     def get_application_state(self, deployment):
         connector = connector_factory(docker_cli_connector, self.api,
                                       deployment.get('parent'))
-        stack_name = Deployment.uuid(deployment['id'])
+        stack_name = Deployment.uuid(deployment)
         services = connector.stack_services(stack_name)
         application_params_update(self.api_dpl, deployment, services)
 
@@ -100,10 +100,9 @@ class DeploymentStateJob(object):
         self.job.set_progress(10)
 
         try:
-            subtype = deployment['module']['subtype']
-            if subtype == 'component':
+            if Deployment.is_component(deployment):
                 self.get_component_state(deployment)
-            elif subtype == 'application':
+            elif Deployment.is_application(deployment):
                 self.get_application_state(deployment)
         except Exception as ex:
             self.job.set_status_message(str(ex))

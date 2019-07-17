@@ -14,12 +14,16 @@ class Deployment(object):
     STATE_ERROR = 'ERROR'
 
     @staticmethod
-    def uuid(resource_id):
-        return resource_id.split('/')[1]
+    def id(deployment):
+        return deployment['id']
+
+    @staticmethod
+    def uuid(deployment):
+        return Deployment.id(deployment).split('/')[1]
 
     @staticmethod
     def subtype(deployment):
-        return deployment['module']['subtype']
+        return Deployment.module(deployment)['subtype']
 
     @staticmethod
     def is_component(deployment):
@@ -28,6 +32,18 @@ class Deployment(object):
     @staticmethod
     def is_application(deployment):
         return Deployment.subtype(deployment) == 'application'
+
+    @staticmethod
+    def module(deployment):
+        return deployment['module']
+
+    @staticmethod
+    def module_content(deployment):
+        return Deployment.module(deployment)['content']
+
+    @staticmethod
+    def owner(deployment):
+        return deployment['acl']['owners'][0]
 
     @staticmethod
     def get_port_name_value(port_mapping):
@@ -120,11 +136,11 @@ class Deployment(object):
             return None
         return param.data.get('value')
 
-    def update_port_parameters(self, deployment_id, ports_mapping):
+    def update_port_parameters(self, deployment, ports_mapping):
         if ports_mapping:
             for port_mapping in ports_mapping.split():
                 port_param_name, port_param_value = self.get_port_name_value(port_mapping)
-                self.set_parameter(deployment_id, self.uuid(deployment_id),
+                self.set_parameter(Deployment.id(deployment), Deployment.uuid(deployment),
                                    port_param_name, port_param_value)
 
     def set_state(self, resource_id, state):

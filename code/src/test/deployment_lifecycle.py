@@ -12,7 +12,6 @@ from nuvla.job.actions.deployment import Deployment, DeploymentParameter, Creden
 from nuvla.job.job import Job
 from nuvla.api.api import Api
 
-
 log = logging.getLogger('test')
 
 
@@ -24,10 +23,10 @@ def job_create(nuvla, deployment_id):
     return job
 
 
-def all_replicas_running(nuvla_dpl, deployment_id, desired):
+def all_replicas_running(nuvla_dpl, deployment, desired):
     log.info('Checking replicas.')
-    node_name = nuvla_dpl.uuid(deployment_id)
-    val = nuvla_dpl.get_parameter(deployment_id, node_name,
+    node_name = nuvla_dpl.uuid(deployment)
+    val = nuvla_dpl.get_parameter(Deployment.id(deployment), node_name,
                                   DeploymentParameter.REPLICAS_RUNNING['name'])
     return int(val) == desired
 
@@ -49,7 +48,7 @@ def main():
 
     nuvla_dpl = Deployment(nuvla)
     deployment = nuvla_dpl.create(module)
-    deployment_id = deployment['id']
+    deployment_id = Deployment.id(deployment)
 
     nuvla_creds = Credential(nuvla)
     creds = nuvla_creds.find(infra_service)
@@ -62,7 +61,8 @@ def main():
     DeploymentStartJob(None, job).do_work()
 
     time_stop = time.time() + 10
-    while not all_replicas_running(nuvla_dpl, deployment_id, desired_replicas) and time.time() < time_stop:
+    while not all_replicas_running(nuvla_dpl, deployment, desired_replicas) \
+            and time.time() < time_stop:
         DeploymentStateJob(None, job).do_work()
         time.sleep(1)
 

@@ -29,7 +29,7 @@ class DeploymentStopJob(object):
                 pass
 
     def stop_component(self, deployment):
-        deployment_id = deployment['id']
+        deployment_id = Deployment.id(deployment)
 
         credential_id = deployment.get('parent')
 
@@ -52,9 +52,8 @@ class DeploymentStopJob(object):
             self.job.set_status_message('No deployment parameters with service ID found!')
 
     def stop_application(self, deployment):
-        deployment_id = deployment['id']
 
-        deployment_uuid = Deployment.uuid(deployment_id)
+        deployment_uuid = Deployment.uuid(deployment)
 
         connector = connector_factory(docker_cli_connector, self.api, deployment.get('parent'))
 
