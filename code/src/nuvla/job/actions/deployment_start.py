@@ -29,6 +29,23 @@ def get_env(deployment):
     return env_variables
 
 
+def get_deployment_owner(deployment):
+    return deployment['acl']['owners'][0]
+
+
+def application_params_update(api_dpl, deployment, services):
+    if services:
+        for service in services:
+            node_id = service['node-id']
+            for key, value in service.items():
+                api_dpl.set_parameter_create_if_needed(
+                    resource_id=deployment['id'],
+                    user_id=get_deployment_owner(deployment),
+                    node_id=node_id,
+                    param_name='{}.{}'.format(node_id, key),
+                    param_value=value)
+
+
 @action(action_name)
 class DeploymentStartJob(object):
     def __init__(self, executor, job):
@@ -46,7 +63,7 @@ class DeploymentStartJob(object):
 
         deployment_id = deployment['id']
         node_instance_name = self.api_dpl.uuid(deployment_id)
-        deployment_owner = deployment['acl']['owners'][0]
+        deployment_owner = get_deployment_owner(deployment)
         module_content = get_module_content(deployment)
 
         restart_policy = module_content.get('restart-policy', {})
@@ -170,13 +187,24 @@ class DeploymentStartJob(object):
 
         module_content = get_module_content(deployment)
 
+        deployment_owner = get_deployment_owner(deployment)
+
         docker_compose = module_content['docker-compose']
 
-        result = connector.start(docker_compose=docker_compose,
-                                 stack_name=deployment_uuid,
-                                 env=get_env(deployment))
+        result, services = connector.start(docker_compose=docker_compose,
+                                           stack_name=deployment_uuid,
+                                           env=get_env(deployment))
 
         self.job.set_status_message(result.stdout.decode('UTF-8'))
+
+        self.create_deployment_parameter(
+            deployment_id=deployment_id,
+            user_id=deployment_owner,
+            param_name=DeploymentParameter.HOSTNAME['name'],
+            param_value=connector.extract_vm_ip(services),
+            param_description=DeploymentParameter.HOSTNAME['description'])
+
+        application_params_update(self.api_dpl, deployment, services)
 
     def handle_deployment(self, deployment):
         if Deployment.is_component(deployment):

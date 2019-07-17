@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 import logging
 import os
+import re
+import json
 from subprocess import run, PIPE, STDOUT
 from tempfile import NamedTemporaryFile
 
@@ -18,7 +20,9 @@ def instantiate_from_cimi(api_infrastructure_service, api_credential):
 def append_os_env(env):
     final_env = os.environ.copy()
     if env:
-        final_env.update(env)
+        for key, value in env.items():
+            if value:
+                final_env[key] = value
     return final_env
 
 
@@ -75,8 +79,14 @@ class DockerCliConnector(Connector):
         with NamedTemporaryFile() as compose_file:
             compose_file.write(docker_compose.encode())
             compose_file.flush()
-            cmd = self.build_cmd_line(['stack', 'deploy', '-c', compose_file.name, stack_name])
-            return execute_cmd(cmd, env=env)
+            cmd_deploy = self.build_cmd_line(
+                ['stack', 'deploy', '-c', compose_file.name, stack_name])
+
+            result = execute_cmd(cmd_deploy, env=env)
+
+            services = self._stack_services(stack_name)
+
+            return result, services
 
     @should_connect
     def stop(self, ids):
@@ -89,11 +99,45 @@ class DockerCliConnector(Connector):
         cmd = self.build_cmd_line(['stack', 'ls'])
         return execute_cmd(cmd)
 
+    @staticmethod
+    def _extract_service_info(stack_name, service):
+        service_info = {}
+        service_json = json.loads(service)
+        service_info['image'] = service_json['Image']
+        service_info['mode'] = service_json['Mode']
+        service_info['service-id'] = service_json['ID']
+        node_id = service_json['Name'][len(stack_name) + 1:]
+        service_info['node-id'] = node_id
+        replicas = service_json['Replicas'].split('/')
+        replicas_desired = replicas[1]
+        replicas_running = replicas[0]
+        service_info['replicas.desired'] = replicas_desired
+        service_info['replicas.running'] = replicas_running
+        ports = service_json['Ports'].split(',')
+        for port in ports:
+            external_port_info, internal_port_info = port.split('->')
+            external_port = external_port_info.split(':')[1]
+            internal_port, protocol = internal_port_info.split('/')
+            service_info['{}.{}'.format(protocol, internal_port)] = external_port
+        return service_info
+
+    def _stack_services(self, stack_name):
+        cmd = self.build_cmd_line(['stack', 'services', '--format',
+                                   '{{ json . }}', stack_name])
+        stdout = execute_cmd(cmd).stdout.decode('UTF-8')
+        services = [DockerCliConnector._extract_service_info(stack_name, service)
+                    for service in stdout.splitlines()]
+        return services
+
+    @should_connect
+    def stack_services(self, stack_name):
+        return self._stack_services(stack_name)
+
     def extract_vm_id(self, vm):
         pass
 
-    def extract_vm_ip(self, vm):
-        pass
+    def extract_vm_ip(self, services):
+        return re.search('(?:http.*://)?(?P<host>[^:/ ]+)', self.endpoint).group('host')
 
     def extract_vm_ports_mapping(self, vm):
         pass
