@@ -4,9 +4,9 @@ import os
 import re
 import json
 from subprocess import run, PIPE, STDOUT
-from tempfile import NamedTemporaryFile
+from tempfile import NamedTemporaryFile, TemporaryDirectory
 
-from .connector import Connector, ConnectorError, should_connect
+from .connector import Connector, should_connect
 
 log = logging.getLogger('docker_cli_connector')
 
@@ -75,12 +75,23 @@ class DockerCliConnector(Connector):
         docker_compose = kwargs['docker_compose']
         stack_name = kwargs['stack_name']
         env = kwargs['env']
+        files = kwargs['files']
 
-        with NamedTemporaryFile() as compose_file:
-            compose_file.write(docker_compose.encode())
-            compose_file.flush()
+        with TemporaryDirectory() as tmp_dir_name:
+            compose_file_path = tmp_dir_name + "/docker-compose.yaml"
+            compose_file = open(compose_file_path, 'w')
+            compose_file.write(docker_compose)
+            compose_file.close()
+
+            if files:
+                for file_info in files:
+                    file_path = tmp_dir_name + "/" + file_info['file-name']
+                    file = open(file_path, 'w')
+                    file.write(file_info['file-content'])
+                    file.close()
+
             cmd_deploy = self.build_cmd_line(
-                ['stack', 'deploy', '-c', compose_file.name, stack_name])
+                ['stack', 'deploy', '-c', compose_file_path, stack_name])
 
             result = execute_cmd(cmd_deploy, env=env)
 

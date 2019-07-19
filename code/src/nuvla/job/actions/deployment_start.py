@@ -184,7 +184,8 @@ class DeploymentStartJob(object):
 
         result, services = connector.start(docker_compose=docker_compose,
                                            stack_name=Deployment.uuid(deployment),
-                                           env=get_env(deployment))
+                                           env=get_env(deployment),
+                                           files=module_content['files'])
 
         self.job.set_status_message(result.stdout.decode('UTF-8'))
 
