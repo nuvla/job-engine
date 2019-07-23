@@ -46,8 +46,6 @@ class DockerCliConnector(Connector):
         self.endpoint = self.kwargs['endpoint'].replace('https://', '')
         self.cert_key_file = None
 
-        docker_base_cmd = ['docker', '-H', self.endpoint]
-
     @property
     def connector_type(self):
         return 'Docker-cli'
