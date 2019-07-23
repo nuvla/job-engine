@@ -22,8 +22,9 @@ class Executor(Base):
 
     @override
     def _set_command_specific_options(self, parser):
-        parser.add_argument('--es-hosts', dest='es_hosts', default=['localhost'], nargs='+', metavar='HOST',
-                            help='Elasticsearch list of hosts [localhost:[port]] (default: [localhost])')
+        parser.add_argument \
+            ('--es-hosts', dest='es_hosts', default=['localhost'], nargs='+', metavar='HOST',
+             help='Elasticsearch list of hosts [localhost:[port]] (default: [localhost])')
 
     def _get_action_instance(self, job):
         if 'action' not in job:
@@ -56,20 +57,23 @@ class Executor(Base):
                 return_code = action_instance.do_work()
             except ActionNotImplemented as e:
                 logging.error('Action "{}" not implemented'.format(str(e)))
-                # Consume not implemented action to avoid queue to be filled with not implemented actions
+                # Consume not implemented action to avoid queue
+                # to be filled with not implemented actions
                 msg = 'Not implemented action'.format(job.id)
                 status_message = '{}: {}'.format(msg, str(e))
                 job.update_job(state='FAILED', status_message=status_message)
             except JobUpdateError as e:
                 logging.error('{} update error: {}'.format(job.id, str(e)))
-            except Exception as _:
+            except Exception as ex:
                 ex_type, ex_msg, ex_tb = sys.exc_info()
-                status_message = ''.join(traceback.format_exception(etype=ex_type, value=ex_msg, tb=ex_tb))
+                status_message = type(ex).__name__ + '-' + ''.join(traceback.format_exception(
+                    etype=ex_type, value=ex_msg, tb=ex_tb))
                 logging.error('Failed to process {}, with error: {}'.format(job.id, status_message))
                 job.update_job(state='FAILED', status_message=status_message)
             else:
-                job.update_job(state='SUCCESS', return_code=return_code)
-                logging.info('Successfully finished {}.'.format(job.id))
+                state = 'SUCCESS' if return_code == 0 else 'FAILED'
+                job.update_job(state=state, return_code=return_code)
+                logging.info('Finished {} with return_code {}.'.format(job.id, return_code))
         logging.info('Executor {} properly stopped.'.format(self.name))
 
     @override

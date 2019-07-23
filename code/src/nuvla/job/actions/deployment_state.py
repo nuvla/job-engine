@@ -3,9 +3,10 @@
 import logging
 from datetime import datetime
 
-from nuvla.connector import connector_factory, docker_connector
+from nuvla.connector import connector_factory, docker_connector, docker_cli_connector
 from .deployment import Deployment, DeploymentParameter
 from ..actions import action
+from .deployment_start import application_params_update
 
 action_name = 'deployment_state'
 
@@ -24,11 +25,11 @@ class DeploymentStateJob(object):
         self.api = job.api
         self.api_dpl = Deployment(self.api)
 
-    def handle_deployment(self, deployment):
+    def get_component_state(self, deployment):
         connector = connector_factory(docker_connector, self.api, deployment.get('parent'))
-        did = deployment['id']
+        did = Deployment.id(deployment)
         # FIXME: at the moment deployment UUID is the service name.
-        sname = self.api_dpl.uuid(did)
+        sname = self.api_dpl.uuid(deployment)
 
         desired = connector.service_replicas_desired(sname)
 
@@ -43,46 +44,51 @@ class DeploymentStateJob(object):
                                  x['DesiredState'] == 'shutdown' and
                                  x['Status']['State'] == 'rejected', tasks))
 
-        self.api_dpl.set_parameter(did, sname,
-                                   DeploymentParameter.CHECK_TIMESTAMP['name'], utcnow())
+        self.api_dpl.set_parameter(did, sname, DeploymentParameter.CHECK_TIMESTAMP['name'],
+                                   utcnow())
 
-        self.api_dpl.set_parameter(did, sname,
-                                   DeploymentParameter.REPLICAS_DESIRED['name'], str(desired))
+        self.api_dpl.set_parameter(did, sname, DeploymentParameter.REPLICAS_DESIRED['name'],
+                                   str(desired))
 
-        self.api_dpl.set_parameter(did, sname,
-                                   DeploymentParameter.REPLICAS_RUNNING['name'], str(len(t_running)))
+        self.api_dpl.set_parameter(did, sname, DeploymentParameter.REPLICAS_RUNNING['name'],
+                                   str(len(t_running)))
 
         if len(t_failed) > 0:
-            self.api_dpl.set_parameter(did, sname,
-                                       DeploymentParameter.RESTART_NUMBER['name'], str(len(t_failed)))
+            self.api_dpl.set_parameter(did, sname, DeploymentParameter.RESTART_NUMBER['name'],
+                                       str(len(t_failed)))
 
-            self.api_dpl.set_parameter(did, sname,
-                                       DeploymentParameter.RESTART_TIMESTAMP['name'], t_failed[0].get('CreatedAt', ''))
+            self.api_dpl.set_parameter(did, sname, DeploymentParameter.RESTART_TIMESTAMP['name'],
+                                       t_failed[0].get('CreatedAt', ''))
 
-            self.api_dpl.set_parameter(did, sname,
-                                       DeploymentParameter.RESTART_ERR_MSG['name'],
+            self.api_dpl.set_parameter(did, sname, DeploymentParameter.RESTART_ERR_MSG['name'],
                                        t_failed[0].get('Status', {}).get('Err', ''))
 
-            exit_code = str(t_failed[0].get('Status', {}).get('ContainerStatus', {}).get('ExitCode', ''))
-            self.api_dpl.set_parameter(did, sname,
-                                       DeploymentParameter.RESTART_EXIT_CODE['name'], exit_code)
+            exit_code = str(
+                t_failed[0].get('Status', {}).get('ContainerStatus', {}).get('ExitCode', ''))
+            self.api_dpl.set_parameter(did, sname, DeploymentParameter.RESTART_EXIT_CODE['name'],
+                                       exit_code)
         elif len(t_rejected) > 0:
-            self.api_dpl.set_parameter(did, sname,
-                                       DeploymentParameter.RESTART_NUMBER['name'], str(len(t_rejected)))
+            self.api_dpl.set_parameter(did, sname, DeploymentParameter.RESTART_NUMBER['name'],
+                                       str(len(t_rejected)))
 
-            self.api_dpl.set_parameter(did, sname,
-                                       DeploymentParameter.RESTART_TIMESTAMP['name'],
+            self.api_dpl.set_parameter(did, sname, DeploymentParameter.RESTART_TIMESTAMP['name'],
                                        t_rejected[0].get('CreatedAt', ''))
 
-            self.api_dpl.set_parameter(did, sname,
-                                       DeploymentParameter.RESTART_ERR_MSG['name'],
+            self.api_dpl.set_parameter(did, sname, DeploymentParameter.RESTART_ERR_MSG['name'],
                                        t_rejected[0].get('Status', {}).get('Err', ''))
 
         # update any port mappings that are available
         services = connector.list(filters={"name": sname})
         if services:
             ports_mapping = connector.extract_vm_ports_mapping(services[0])
-            self.api_dpl.update_port_parameters(did, ports_mapping)
+            self.api_dpl.update_port_parameters(deployment, ports_mapping)
+
+    def get_application_state(self, deployment):
+        connector = connector_factory(docker_cli_connector, self.api,
+                                      deployment.get('parent'))
+        stack_name = Deployment.uuid(deployment)
+        services = connector.stack_services(stack_name)
+        application_params_update(self.api_dpl, deployment, services)
 
     def do_work(self):
         deployment_id = self.job['target-resource']['href']
@@ -94,7 +100,10 @@ class DeploymentStateJob(object):
         self.job.set_progress(10)
 
         try:
-            self.handle_deployment(deployment)
+            if Deployment.is_component(deployment):
+                self.get_component_state(deployment)
+            elif Deployment.is_application(deployment):
+                self.get_application_state(deployment)
         except Exception as ex:
             self.job.set_status_message(str(ex))
             log.error('Failed to obtain deployment state {0}: {1}'.format(deployment_id, ex))

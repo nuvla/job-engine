@@ -87,25 +87,33 @@ class DockerConnector(Connector):
         if connect_result:
             connect_result.close()
 
+    @staticmethod
+    def format_env(env):
+        container_env = []
+        for key, value in env.items():
+            if value:
+                container_env.append('{}={}'.format(key, value))
+        return container_env
+
     @should_connect
-    def start(self, **start_kwargs):
+    def start(self, **kwargs):
         # Mandatory start_kwargs
-        image = start_kwargs['image']
+        image = kwargs['image']
 
         # Optional start_kwargs
-        service_name = start_kwargs.get('service_name')
-        env = start_kwargs.get('env')
-        mounts_opt = start_kwargs.get('mounts_opt', [])
-        ports_opt = start_kwargs.get('ports_opt', [])
-        working_dir = start_kwargs.get('working_dir')
-        cpus = start_kwargs.get('cpus')
-        memory = start_kwargs.get('memory')
-        cmd = start_kwargs.get('cmd')
-        args = start_kwargs.get('args')
-        restart_policy_condition = start_kwargs.get('restart_policy_condition')
-        restart_policy_delay = start_kwargs.get('restart_policy_delay')
-        restart_policy_max_attempts = start_kwargs.get('restart_policy_max_attempts')
-        restart_policy_window = start_kwargs.get('restart_policy_window')
+        service_name = kwargs.get('service_name')
+        env = kwargs.get('env')
+        mounts_opt = kwargs.get('mounts_opt', [])
+        ports_opt = kwargs.get('ports_opt', [])
+        working_dir = kwargs.get('working_dir')
+        cpus = kwargs.get('cpus')
+        memory = kwargs.get('memory')
+        cmd = kwargs.get('cmd')
+        args = kwargs.get('args')
+        restart_policy_condition = kwargs.get('restart_policy_condition')
+        restart_policy_delay = kwargs.get('restart_policy_delay')
+        restart_policy_max_attempts = kwargs.get('restart_policy_max_attempts')
+        restart_policy_window = kwargs.get('restart_policy_window')
 
         #
         # The fields that are supported by the Docker API are documented here:
@@ -122,7 +130,7 @@ class DockerConnector(Connector):
             service_json['TaskTemplate']['ContainerSpec']['Dir'] = working_dir
 
         if env:
-            service_json['TaskTemplate']['ContainerSpec']['Env'] = env
+            service_json['TaskTemplate']['ContainerSpec']['Env'] = DockerConnector.format_env(env)
 
         if cpus:
             nano_cpus_soft = int(float(cpus) * as_nanos)
