@@ -70,23 +70,15 @@ class DeploymentStopJob(object):
 
         self.job.set_progress(10)
 
-        try:
-            if Deployment.is_component(deployment):
-                self.stop_component(deployment)
-            elif Deployment.is_application(deployment):
-                self.stop_application(deployment)
-            self.try_delete_deployment_credentials(deployment_id)
-        except Exception as ex:
-            log.error('Failed to stop deployment {0}: {1}'.format(deployment_id, ex))
-            try:
-                self.job.set_status_message(str(ex))
-                self.api_dpl.set_state_error(deployment_id)
-                return 1
-            except Exception as ex:
-                log.error('Failed to set error state for {0}: {1}'.format(deployment_id, ex))
-                raise ex
+        if Deployment.is_component(deployment):
+            self.stop_component(deployment)
+        elif Deployment.is_application(deployment):
+            self.stop_application(deployment)
+
+        self.try_delete_deployment_credentials(deployment_id)
 
         self.api_dpl.set_state_stopped(deployment_id)
+
         return 0
 
     def do_work(self):

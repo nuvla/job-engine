@@ -99,15 +99,9 @@ class DeploymentStateJob(object):
 
         self.job.set_progress(10)
 
-        try:
-            if Deployment.is_component(deployment):
-                self.get_component_state(deployment)
-            elif Deployment.is_application(deployment):
-                self.get_application_state(deployment)
-        except Exception as ex:
-            self.job.set_status_message(str(ex))
-            log.error('Failed to obtain deployment state {0}: {1}'.format(deployment_id, ex))
-            log.exception(ex)
-            return 1
+        if Deployment.is_component(deployment):
+            self.get_component_state(deployment)
+        elif Deployment.is_application(deployment):
+            self.get_application_state(deployment)
 
         return 0

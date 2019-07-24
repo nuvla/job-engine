@@ -169,7 +169,7 @@ class DeploymentStartJob(object):
 
         # immediately update any port mappings that are already available
         ports_mapping = connector.extract_vm_ports_mapping(service)
-        self.api_dpl.update_port_parameters(deployment_id, ports_mapping)
+        self.api_dpl.update_port_parameters(deployment, ports_mapping)
 
     def start_application(self, deployment):
         deployment_id = Deployment.id(deployment)
@@ -216,19 +216,10 @@ class DeploymentStartJob(object):
 
         self.job.set_progress(10)
 
-        try:
-            self.handle_deployment(deployment)
-        except Exception as ex:
-            log.error('Failed to start {0}: {1}'.format(deployment_id, ex))
-            try:
-                self.job.set_status_message(repr(ex))
-                self.api_dpl.set_state_error(deployment_id)
-                return 1
-            except Exception as ex:
-                log.error('Failed to set error state for {0}: {1}'.format(deployment_id, ex))
-                raise ex
+        self.handle_deployment(deployment)
 
         self.api_dpl.set_state_started(deployment_id)
+
         return 0
 
     def do_work(self):

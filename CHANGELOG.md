@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+## [2.3.1] - 2019-07-24
+
+### Changed
+
+  - Fix in Deployment start component regression
+  - Deployment action do not cat exception to force full stack trace
+
 ## [2.3.0] - 2019-07-24
 
 ### Added
