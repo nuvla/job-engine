@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## [2.3.0] - 2019-07-24
+
 ### Added
 
   - Added support for start stop state deployment of subtype application
