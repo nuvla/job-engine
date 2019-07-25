@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## [2.3.2] - 2019-07-25
+
+### Changed
+
+  - Deployment actions - Put deployment in final state before raising the exception
+
 ## [2.3.1] - 2019-07-24
 
 ### Changed
