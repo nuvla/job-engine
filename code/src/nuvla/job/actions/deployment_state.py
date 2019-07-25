@@ -99,9 +99,19 @@ class DeploymentStateJob(object):
 
         self.job.set_progress(10)
 
-        if Deployment.is_component(deployment):
-            self.get_component_state(deployment)
-        elif Deployment.is_application(deployment):
-            self.get_application_state(deployment)
+        try:
+            if Deployment.is_component(deployment):
+                self.get_component_state(deployment)
+            elif Deployment.is_application(deployment):
+                self.get_application_state(deployment)
+        except Exception as ex:
+            log.error('Failed to start {0}: {1}'.format(deployment_id, ex))
+            try:
+                self.job.set_status_message(repr(ex))
+                self.api_dpl.set_state_error(deployment_id)
+            except Exception as ex_state:
+                log.error('Failed to set error state for {0}: {1}'.format(deployment_id, ex_state))
+
+            raise ex
 
         return 0
