@@ -122,7 +122,7 @@ class DockerCliConnector(Connector):
         replicas_running = replicas[0]
         service_info['replicas.desired'] = replicas_desired
         service_info['replicas.running'] = replicas_running
-        ports = service_json['Ports'].split(',')
+        ports = filter(None, service_json['Ports'].split(','))
         for port in ports:
             external_port_info, internal_port_info = port.split('->')
             external_port = external_port_info.split(':')[1]
