@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## [2.3.3] - 2019-07-29
+
 ### Changed
 
   - Connector Docker Cli - Fix when no ports are defined, the deploymnet fail
