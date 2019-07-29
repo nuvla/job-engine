@@ -12,13 +12,22 @@ class NuvlaBoxDeleteJob(object):
         self.api = job.api
         self.error = 0
 
-    def delete_api_key(self, nuvlabox_id):
-        credentials = self.api.search('credential',
-                                      filter='parent="{}"'.format(nuvlabox_id),
-                                      select='id').resources
+    def delete_linked_resources(self, collection, nuvlabox_id):
+        entries = self.api.search(collection,
+                                  filter='parent="{}"'.format(nuvlabox_id),
+                                  select='id').resources
+        for entry in entries:
+            entry_id = entry.id
+            try:
+                self.api.delete(entry.id)
+            except Exception:
+                self.error += 1
+                logging.warning('problem deleting resource {}.'.format(entry_id))
 
-        for credential in credentials:
-            self.api.delete(credential.id)
+
+
+    def delete_api_key(self, nuvlabox_id):
+        self.deleted_linked_resources('credential', nuvlabox_id)
 
     # FIXME: This will currently leave orphan data-object and data-record resources!
     def delete_s3_credential(self, credential_id):
@@ -87,17 +96,14 @@ class NuvlaBoxDeleteJob(object):
                 self.error += 1
                 logging.warning('problem deleting resource {}.'.format(infra_service_group_id))
 
+    # The nuvlabox-peripheral collection should exist for all versions where
+    # this code is deployed. For nuvlabox version 0, this should simply return
+    # with no entries.
+    def delete_peripherals(self, nuvlabox_id):
+        self.delete_linked_resources('nuvlabox-peripheral', nuvlabox_id)
+
     def delete_status(self, nuvlabox_id):
-        entries = self.api.search('nuvlabox-status',
-                                  filter='parent="{}"'.format(nuvlabox_id),
-                                  select='id').resources
-        for entry in entries:
-            entry_id = entry.id
-            try:
-                self.api.delete(entry.id)
-            except Exception:
-                self.error += 1
-                logging.warning('problem deleting resource {}.'.format(entry_id))
+        self.delete_linked_resources('nuvlabox-status', nuvlabox_id)
 
     def delete_nuvlabox(self):
         nuvlabox_id = self.job['target-resource']['href']
@@ -120,9 +126,13 @@ class NuvlaBoxDeleteJob(object):
 
             self.job.set_progress(30)
 
-            self.delete_api_key(nuvlabox_id)
+            self.delete_peripherals(nuvlabox_id)
 
             self.job.set_progress(40)
+
+            self.delete_api_key(nuvlabox_id)
+
+            self.job.set_progress(50)
 
             if self.error == 0:
                 try:
