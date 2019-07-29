@@ -333,7 +333,9 @@ class DockerConnector(Connector):
                 if source:
                     mount_map['Source'] = m_opt['source']
                 mount_map['Target'] = m_opt['target']
-                mount_map['VolumeOptions']['DriverConfig']['Options'] = m_opt.get('volume-options', [])
+                volume_opts = m_opt.get('volume-options')
+                if volume_opts:
+                    mount_map['VolumeOptions']['DriverConfig']['Options'] = volume_opts
                 mounts.append(mount_map)
         return mounts
 

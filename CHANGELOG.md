@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+### Changed
+
+  - Start deployment - When no volume options is set in deployment mounts, 
+    start deployment job is failing
+
 ## [2.3.3] - 2019-07-29
 
 ### Changed
