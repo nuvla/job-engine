@@ -4,6 +4,8 @@
 
 ### Changed
 
+  - Properly stop fix for job executor and and job distributor
+  - Nuvlabox decommission - Delete linked nuvlabox-peripheral
   - Start deployment - When no volume options is set in deployment mounts, 
     start deployment job is failing
 

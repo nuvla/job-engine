@@ -7,7 +7,8 @@ from ..actions import action
 
 @action('decommission_nuvlabox')
 class NuvlaBoxDeleteJob(object):
-    def __init__(self, executor, job):
+
+    def __init__(self, _, job):
         self.job = job
         self.api = job.api
         self.error = 0
@@ -28,8 +29,6 @@ class NuvlaBoxDeleteJob(object):
             # An exception when querying is probably caused by the collection
             # not existing. Simply log and ignore this.
             logging.warning('problem querying collection {}.'.format(collection))
-
-
 
     def delete_api_key(self, nuvlabox_id):
         self.deleted_linked_resources('credential', nuvlabox_id)

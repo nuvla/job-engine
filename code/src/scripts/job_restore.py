@@ -10,10 +10,12 @@ from elasticsearch import Elasticsearch
 def _init_args_parser():
     parser = argparse.ArgumentParser(description='Restore Nuvla jobs')
 
-    parser.add_argument('--zk-hosts', dest='zk_hosts', default=['zk:2181'], nargs='+', metavar='HOST',
-                        help='ZooKeeper list of hosts [localhost:port]. (default: zk:2181)')
-    parser.add_argument('--es-hosts', dest='es_hosts', default=['es'], nargs='+', metavar='HOST',
-                        help='Elasticsearch list of hosts [localhost:[port]] (default: [es])')
+    parser.add_argument(
+        '--zk-hosts', dest='zk_hosts', default=['zk:2181'], nargs='+', metavar='HOST',
+        help='ZooKeeper list of hosts [localhost:port]. (default: zk:2181)')
+    parser.add_argument(
+        '--es-hosts', dest='es_hosts', default=['es'], nargs='+', metavar='HOST',
+        help='Elasticsearch list of hosts [localhost:[port]] (default: [es])')
 
     return parser.parse_args()
 

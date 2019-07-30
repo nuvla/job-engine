@@ -11,6 +11,7 @@ def connector_factory(connector_class, nuvla_api, credential_id):
     :param credential_id: str
     :return: connector.Connector, instance
     """
+
     if nuvla_api is None:
         raise ValueError("Nuvla API is not provided!")
 

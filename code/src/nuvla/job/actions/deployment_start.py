@@ -40,7 +40,8 @@ def application_params_update(api_dpl, deployment, services):
 
 @action(action_name)
 class DeploymentStartJob(object):
-    def __init__(self, executor, job):
+
+    def __init__(self, _, job):
         self.job = job
         self.api = job.api
         self.api_dpl = Deployment(self.api)
@@ -185,7 +186,7 @@ class DeploymentStartJob(object):
         result, services = connector.start(docker_compose=docker_compose,
                                            stack_name=Deployment.uuid(deployment),
                                            env=get_env(deployment),
-                                           files=module_content['files'])
+                                           files=module_content.get('files'))
 
         self.job.set_status_message(result.stdout.decode('UTF-8'))
 

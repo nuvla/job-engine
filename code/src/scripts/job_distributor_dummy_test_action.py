@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import time
 from nuvla.job.base import main
 from nuvla.job.distributor import Distributor
 from nuvla.job.util import override
@@ -16,11 +15,9 @@ class DummuTestActionsDistributor(Distributor):
 
     @override
     def job_generator(self):
-        while True:
-            job = {'action': DummuTestActionsDistributor.ACTION_NAME,
-                   'target-resource': {'href': 'dummy'}}
-            yield job
-            time.sleep(self.collect_interval)
+        job = {'action': self._get_jobs_type(),
+               'target-resource': {'href': 'dummy'}}
+        yield job
 
     @override
     def _get_jobs_type(self):

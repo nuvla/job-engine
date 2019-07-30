@@ -14,7 +14,8 @@ log = logging.getLogger(action_name)
 
 @action(action_name)
 class DeploymentStopJob(object):
-    def __init__(self, executor, job):
+
+    def __init__(self, _, job):
         self.job = job
         self.api = job.api
         self.api_dpl = Deployment(self.api)

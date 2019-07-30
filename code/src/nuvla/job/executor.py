@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
-import logging
 import sys
+import logging
 import traceback
 
 from elasticsearch import Elasticsearch
@@ -22,9 +22,9 @@ class Executor(Base):
 
     @override
     def _set_command_specific_options(self, parser):
-        parser.add_argument \
-            ('--es-hosts', dest='es_hosts', default=['localhost'], nargs='+', metavar='HOST',
-             help='Elasticsearch list of hosts [localhost:[port]] (default: [localhost])')
+        parser.add_argument(
+            '--es-hosts', dest='es_hosts', default=['localhost'], nargs='+', metavar='HOST',
+            help='Elasticsearch list of hosts [localhost:[port]] (default: [localhost])')
 
     def _get_action_instance(self, job):
         if 'action' not in job:
@@ -43,7 +43,7 @@ class Executor(Base):
         self.api.session.mount('http://', api_http_adapter)
         self.api.session.mount('https://', api_http_adapter)
 
-        while not self.stop_event.is_set():
+        while not Executor.stop_event.is_set():
             job = Job(self.api, queue)
 
             if job.nothing_to_do:
@@ -75,6 +75,7 @@ class Executor(Base):
                 job.update_job(state=state, return_code=return_code)
                 logging.info('Finished {} with return_code {}.'.format(job.id, return_code))
         logging.info('Executor {} properly stopped.'.format(self.name))
+        sys.exit(0)
 
     @override
     def do_work(self):

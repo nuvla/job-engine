@@ -10,7 +10,8 @@ from ..actions import action
 
 @action('start_infrastructure_service_swarm')
 class SwarmStartJob(object):
-    def __init__(self, executor, job):
+
+    def __init__(self, _, job):
         self.job = job
         self.api = job.api
 

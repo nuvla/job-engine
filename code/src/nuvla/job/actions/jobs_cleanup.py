@@ -7,6 +7,7 @@ import logging
 
 @action('cleanup_jobs')
 class JobsCleanupJob(object):
+
     def __init__(self, executor, job):
         self.job = job
         self.es = executor.es

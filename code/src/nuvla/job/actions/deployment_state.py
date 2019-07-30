@@ -20,7 +20,7 @@ def utcnow():
 @action(action_name)
 class DeploymentStateJob(object):
 
-    def __init__(self, executor, job):
+    def __init__(self, _, job):
         self.job = job
         self.api = job.api
         self.api_dpl = Deployment(self.api)
