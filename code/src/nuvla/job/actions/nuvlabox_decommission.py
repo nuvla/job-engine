@@ -13,16 +13,21 @@ class NuvlaBoxDeleteJob(object):
         self.error = 0
 
     def delete_linked_resources(self, collection, nuvlabox_id):
-        entries = self.api.search(collection,
-                                  filter='parent="{}"'.format(nuvlabox_id),
-                                  select='id').resources
-        for entry in entries:
-            entry_id = entry.id
-            try:
-                self.api.delete(entry.id)
-            except Exception:
-                self.error += 1
-                logging.warning('problem deleting resource {}.'.format(entry_id))
+        try:
+            entries = self.api.search(collection,
+                                      filter='parent="{}"'.format(nuvlabox_id),
+                                      select='id').resources
+            for entry in entries:
+                entry_id = entry.id
+                try:
+                    self.api.delete(entry.id)
+                except Exception:
+                    self.error += 1
+                    logging.warning('problem deleting resource {}.'.format(entry_id))
+        except Exception:
+            # An exception when querying is probably caused by the collection
+            # not existing. Simply log and ignore this.
+            logging.warning('problem querying collection {}.'.format(collection))
 
 
 
@@ -96,10 +101,8 @@ class NuvlaBoxDeleteJob(object):
                 self.error += 1
                 logging.warning('problem deleting resource {}.'.format(infra_service_group_id))
 
-    # The nuvlabox-peripheral collection should exist for all versions where
-    # this code is deployed. For nuvlabox version 0, this should simply return
-    # with no entries.
     def delete_peripherals(self, nuvlabox_id):
+        # If the nuvlabox-peripheral collection doesn't exist, then this acts as a no-op.
         self.delete_linked_resources('nuvlabox-peripheral', nuvlabox_id)
 
     def delete_status(self, nuvlabox_id):
