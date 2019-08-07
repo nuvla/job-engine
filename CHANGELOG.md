@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## [2.3.4] - 2019-08-07
+
 ### Changed
 
   - Properly stop fix for job executor and and job distributor
