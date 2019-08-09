@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+### Changed
+
+  - Fix misspelled method name in NuvlaBox decommissioning job that
+    blocked deletion of NuvlaBox resources. 
+
 ## [2.3.4] - 2019-08-07
 
 ### Changed
