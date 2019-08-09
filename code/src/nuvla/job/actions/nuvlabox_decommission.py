@@ -31,7 +31,7 @@ class NuvlaBoxDeleteJob(object):
             logging.warning('problem querying collection {}.'.format(collection))
 
     def delete_api_key(self, nuvlabox_id):
-        self.deleted_linked_resources('credential', nuvlabox_id)
+        self.delete_linked_resources('credential', nuvlabox_id)
 
     # FIXME: This will currently leave orphan data-object and data-record resources!
     def delete_s3_credential(self, credential_id):
