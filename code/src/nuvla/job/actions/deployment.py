@@ -114,6 +114,12 @@ class Deployment(object):
         param = self._get_parameter(resource_id, node_id, name, select='id')
         return self.nuvla.edit(param.id, {'value': value})
 
+    def set_parameter_ignoring_errors(self, resource_id, node_id, name, value):
+        try:
+            self.set_parameter(resource_id, node_id, name, value)
+        except Exception as _:
+            pass
+
     def set_parameter_create_if_needed(self, resource_id, user_id, param_name, param_value=None,
                                        node_id=None, param_description=None):
         try:
@@ -160,6 +166,16 @@ class Deployment(object):
 
 
 class DeploymentParameter(object):
+
+    CURRENT_DESIRED = {'name': 'current.desired.state',
+                       'description': "Desired state of the container's current task."}
+
+    CURRENT_STATE = {'name': 'current.state',
+                     'description': "Desired state of the container's current task."}
+
+    CURRENT_ERROR = {'name': 'current.error.message',
+                     'description': "Desired state of the container's current task."}
+
     REPLICAS_DESIRED = {'name': 'replicas.desired',
                         'description': 'Desired number of service replicas.'}
 

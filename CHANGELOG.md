@@ -4,6 +4,10 @@
 
 ### Changed
 
+  - Fix calculation of replicas.running to properly take into account
+    the running task state
+  - Add deployment parameters to provide information about current
+    Docker task: current.desired.state, current.state, and current.error. 
   - Fix misspelled method name in NuvlaBox decommissioning job that
     blocked deletion of NuvlaBox resources. 
 

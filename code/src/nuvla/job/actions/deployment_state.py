@@ -5,8 +5,8 @@ from datetime import datetime
 
 from nuvla.connector import connector_factory, docker_connector, docker_cli_connector
 from .deployment import Deployment, DeploymentParameter
-from ..actions import action
 from .deployment_start import application_params_update
+from ..actions import action
 
 action_name = 'deployment_state'
 
@@ -36,7 +36,36 @@ class DeploymentStateJob(object):
         tasks = sorted(connector.service_tasks(filters={'service': sname}),
                        key=lambda x: x['CreatedAt'], reverse=True)
 
-        t_running = list(filter(lambda x: x['DesiredState'] == 'running', tasks))
+        if len(tasks) > 0:
+            current_task = tasks[0]
+
+            current_desired = current_task.get('DesiredState')
+
+            current_state = None
+            current_error = None
+            current_status = current_task.get('Status')
+            if current_status is not None:
+                current_state = current_status.get('State')
+                current_error = current_status.get('Err', "no error")
+
+            if current_desired is not None:
+                self.api_dpl.set_parameter_ignoring_errors(did, sname,
+                                                           DeploymentParameter.CURRENT_DESIRED['name'],
+                                                           current_desired)
+
+            if current_state is not None:
+                self.api_dpl.set_parameter_ignoring_errors(did, sname,
+                                                           DeploymentParameter.CURRENT_STATE['name'],
+                                                           current_state)
+
+            if current_error is not None:
+                self.api_dpl.set_parameter_ignoring_errors(did, sname,
+                                                           DeploymentParameter.CURRENT_ERROR['name'],
+                                                           current_error)
+
+        t_running = list(filter(lambda x:
+                                x['DesiredState'] == 'running' and
+                                x['Status']['State'] == 'running', tasks))
         t_failed = list(filter(lambda x:
                                x['DesiredState'] == 'shutdown' and
                                x['Status']['State'] == 'failed', tasks))
