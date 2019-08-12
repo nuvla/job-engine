@@ -171,10 +171,10 @@ class DeploymentParameter(object):
                        'description': "Desired state of the container's current task."}
 
     CURRENT_STATE = {'name': 'current.state',
-                     'description': "Desired state of the container's current task."}
+                     'description': "Actual state of the container's current task."}
 
     CURRENT_ERROR = {'name': 'current.error.message',
-                     'description': "Desired state of the container's current task."}
+                     'description': "Error message (if any) of the container's current task."}
 
     REPLICAS_DESIRED = {'name': 'replicas.desired',
                         'description': 'Desired number of service replicas.'}
