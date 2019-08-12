@@ -110,6 +110,30 @@ class DeploymentStartJob(object):
             param_description=DeploymentParameter.HOSTNAME['description'],
             node_id=node_instance_name)
 
+        self.create_deployment_parameter(
+            deployment_id=deployment_id,
+            user_id=deployment_owner,
+            param_name=DeploymentParameter.CURRENT_DESIRED['name'],
+            param_value="",
+            param_description=DeploymentParameter.CURRENT_DESIRED['description'],
+            node_id=node_instance_name)
+
+        self.create_deployment_parameter(
+            deployment_id=deployment_id,
+            user_id=deployment_owner,
+            param_name=DeploymentParameter.CURRENT_STATE['name'],
+            param_value="",
+            param_description=DeploymentParameter.CURRENT_STATE['description'],
+            node_id=node_instance_name)
+
+        self.create_deployment_parameter(
+            deployment_id=deployment_id,
+            user_id=deployment_owner,
+            param_name=DeploymentParameter.CURRENT_ERROR['name'],
+            param_value="",
+            param_description=DeploymentParameter.CURRENT_ERROR['description'],
+            node_id=node_instance_name)
+
         # FIXME: get number of desired replicas of Replicated service from deployment. 1 for now.
         desired = 1
         self.create_deployment_parameter(
