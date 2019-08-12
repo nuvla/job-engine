@@ -49,19 +49,16 @@ class DeploymentStateJob(object):
                 current_error = current_status.get('Err', "no error")
 
             if current_desired is not None:
-                self.api_dpl.set_parameter_ignoring_errors(did, sname,
-                                                           DeploymentParameter.CURRENT_DESIRED['name'],
-                                                           current_desired)
+                self.api_dpl.set_parameter_ignoring_errors(
+                    did, sname, DeploymentParameter.CURRENT_DESIRED['name'], current_desired)
 
             if current_state is not None:
-                self.api_dpl.set_parameter_ignoring_errors(did, sname,
-                                                           DeploymentParameter.CURRENT_STATE['name'],
-                                                           current_state)
+                self.api_dpl.set_parameter_ignoring_errors(
+                    did, sname, DeploymentParameter.CURRENT_STATE['name'], current_state)
 
             if current_error is not None:
-                self.api_dpl.set_parameter_ignoring_errors(did, sname,
-                                                           DeploymentParameter.CURRENT_ERROR['name'],
-                                                           current_error)
+                self.api_dpl.set_parameter_ignoring_errors(
+                    did, sname, DeploymentParameter.CURRENT_ERROR['name'], current_error)
 
         t_running = list(filter(lambda x:
                                 x['DesiredState'] == 'running' and
