@@ -16,11 +16,9 @@ class CleanupJobsDistributor(Distributor):
 
     @override
     def job_generator(self):
-        while True:
-            job = {'action': CleanupJobsDistributor.ACTION_NAME,
-                   'target-resource': {'href': 'job'}}
-            yield job
-            time.sleep(self.collect_interval)
+        job = {'action': CleanupJobsDistributor.ACTION_NAME,
+               'target-resource': {'href': 'job'}}
+        yield job
 
     @override
     def _get_jobs_type(self):

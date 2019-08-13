@@ -2,7 +2,7 @@
 
 import logging
 
-from nuvla.connector import connector_factory, docker_connector
+from nuvla.connector import connector_factory, docker_connector, docker_cli_connector
 from nuvla.api import NuvlaError, ConnectionError
 from .nuvla import Deployment
 from ..actions import action
@@ -14,7 +14,8 @@ log = logging.getLogger(action_name)
 
 @action(action_name)
 class DeploymentStopJob(object):
-    def __init__(self, executor, job):
+
+    def __init__(self, _, job):
         self.job = job
         self.api = job.api
         self.api_dpl = Deployment(self.api)
@@ -28,8 +29,8 @@ class DeploymentStopJob(object):
             except (NuvlaError, ConnectionError):
                 pass
 
-    def handle_deployment(self, deployment):
-        deployment_id = deployment['id']
+    def stop_component(self, deployment):
+        deployment_id = Deployment.id(deployment)
 
         credential_id = deployment.get('parent')
 
@@ -51,7 +52,15 @@ class DeploymentStopJob(object):
         else:
             self.job.set_status_message('No deployment parameters with service ID found!')
 
-        self.try_delete_deployment_credentials(deployment_id)
+    def stop_application(self, deployment):
+
+        deployment_uuid = Deployment.uuid(deployment)
+
+        connector = connector_factory(docker_cli_connector, self.api, deployment.get('parent'))
+
+        result = connector.stop([deployment_uuid])
+
+        self.job.set_status_message(result.stdout.decode('UTF-8'))
 
     def stop_deployment(self):
         deployment_id = self.job['target-resource']['href']
@@ -63,19 +72,25 @@ class DeploymentStopJob(object):
         self.job.set_progress(10)
 
         try:
-            self.handle_deployment(deployment)
+            if Deployment.is_component(deployment):
+                self.stop_component(deployment)
+            elif Deployment.is_application(deployment):
+                self.stop_application(deployment)
         except Exception as ex:
-            log.error('Failed to stop deployment {0}: {1}'.format(deployment_id, ex))
+            log.error('Failed to start {0}: {1}'.format(deployment_id, ex))
             try:
-                self.job.set_status_message(str(ex))
+                self.job.set_status_message(repr(ex))
                 self.api_dpl.set_state_error(deployment_id)
-                return 1
-            except Exception as ex:
-                log.error('Failed to set error state for {0}: {1}'.format(deployment_id, ex))
-                raise ex
+            except Exception as ex_state:
+                log.error('Failed to set error state for {0}: {1}'.format(deployment_id, ex_state))
+
+            raise ex
+
+        self.try_delete_deployment_credentials(deployment_id)
 
         self.api_dpl.set_state_stopped(deployment_id)
 
+        return 0
+
     def do_work(self):
-        return_code = self.stop_deployment()
-        return return_code or 0
+        return self.stop_deployment()

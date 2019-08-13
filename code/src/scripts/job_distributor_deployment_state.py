@@ -36,14 +36,12 @@ class DeploymentStateJobsDistributor(Distributor):
 
     @override
     def job_generator(self):
-        while True:
-            for deployment_id in self.active_deployments():
-                job = {'action': self._get_jobs_type(),
-                       'target-resource': {'href': deployment_id}}
-                if self.job_exists(job):
-                    continue
-                yield job
-            time.sleep(self.collect_interval)
+        for deployment_id in self.active_deployments():
+            job = {'action': self._get_jobs_type(),
+                   'target-resource': {'href': deployment_id}}
+            if self.job_exists(job):
+                continue
+            yield job
 
     @override
     def _get_jobs_type(self):

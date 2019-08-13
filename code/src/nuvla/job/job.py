@@ -1,10 +1,11 @@
 # -*- coding: utf-8 -*-
 
+import time
 import logging
 
 from nuvla.api import NuvlaError, ConnectionError
 
-from .util import wait, retry_kazoo_queue_op
+from .util import retry_kazoo_queue_op
 
 log = logging.getLogger('job')
 
@@ -24,6 +25,7 @@ class JobUpdateError(Exception):
 class Job(dict):
 
     def __init__(self, api, queue):
+        super(Job, self).__init__()
         self.nothing_to_do = False
         self.id = None
         self.queue = queue
@@ -32,16 +34,22 @@ class Job(dict):
 
     def _init(self):
         try:
-            self.id = self.queue.get().decode()
-            cimi_job = self.get_cimi_job(self.id)
-            dict.__init__(self, cimi_job)
-            if self.is_in_final_state():
-                retry_kazoo_queue_op(self.queue, "consume")
-                log.warning('Newly retrieved {} already in final state! Removed from queue.'.format(self.id))
+            self.id = self.queue.get(timeout=5)
+            if self.id is None:
                 self.nothing_to_do = True
-            elif self.get('state') == 'RUNNING':
-                # could happen when updating job and cimi server is down! let job actions decide what to do with it.
-                log.warning('Newly retrieved {} in running state!'.format(self.id))
+            else:
+                self.id = self.id.decode()
+                cimi_job = self.get_cimi_job(self.id)
+                dict.__init__(self, cimi_job)
+                if self.is_in_final_state():
+                    retry_kazoo_queue_op(self.queue, "consume")
+                    log.warning('Newly retrieved {} already in final state! Removed from queue.'
+                                .format(self.id))
+                    self.nothing_to_do = True
+                elif self.get('state') == 'RUNNING':
+                    # could happen when updating job and cimi server is down!
+                    # let job actions decide what to do with it.
+                    log.warning('Newly retrieved {} in running state!'.format(self.id))
         except NonexistentJobError as e:
             retry_kazoo_queue_op(self.queue, "consume")
             log.warning('Newly retrieved {} does not exist in cimi; '.format(self.id) +
@@ -50,10 +58,11 @@ class Job(dict):
         except Exception as e:
             timeout = 30
             retry_kazoo_queue_op(self.queue, "release")
-            log.error('Fatal error when trying to retrieve {}! Put it back in queue. '.format(self.id) +
-                      'Will go back to work after {}s.'.format(timeout))
+            log.error(
+                'Fatal error when trying to retrieve {}! Put it back in queue. '.format(self.id) +
+                'Will go back to work after {}s.'.format(timeout))
             log.exception(e)
-            wait(timeout)
+            time.sleep(timeout)
             self.nothing_to_do = True
 
     def get_cimi_job(self, job_uri):
@@ -66,9 +75,9 @@ class Job(dict):
             except NuvlaError as e:
                 reason = e.reason
                 if e.response.status_code == 404:
-                    log.warning(
-                        'Retrieve of {} failed. Attempt: {} Will retry in {}s.'.format(job_uri, attempt, wait_time))
-                    wait(wait_time)
+                    log.warning('Retrieve of {} failed. Attempt: {} Will retry in {}s.'
+                                .format(job_uri, attempt, wait_time))
+                    time.sleep(wait_time)
                 else:
                     raise e
         raise NonexistentJobError(reason)
@@ -106,7 +115,8 @@ class Job(dict):
 
     def add_affected_resources(self, affected_resources):
         has_to_update = False
-        current_affected_resources_ids = [resource['href'] for resource in self.get('affected-resources', [])]
+        current_affected_resources_ids = [resource['href'] for resource in
+                                          self.get('affected-resources', [])]
 
         for affected_resource in affected_resources:
             if affected_resource not in current_affected_resources_ids:
@@ -114,7 +124,8 @@ class Job(dict):
                 has_to_update = True
 
         if has_to_update:
-            self._edit_job('affected-resources', [{'href': id} for id in current_affected_resources_ids])
+            self._edit_job('affected-resources',
+                           [{'href': res_id} for res_id in current_affected_resources_ids])
 
     def update_job(self, state=None, return_code=None, status_message=None):
         attributes = {}
@@ -134,14 +145,15 @@ class Job(dict):
     def consume_when_final_state(self):
         if self.is_in_final_state():
             retry_kazoo_queue_op(self.queue, 'consume')
-            log.info('Great, {} is now in final state; Removed from queue.'.format(self.id))
+            log.info('Reached final state: {} removed from queue.'.format(self.id))
 
     def _edit_job(self, attribute_name, attribute_value):
         try:
             response = self.api.edit(self.id, {attribute_name: attribute_value})
         except (NuvlaError, ConnectionError):
             retry_kazoo_queue_op(self.queue, 'release')
-            reason = 'Failed to update attribute "{}" for {}! Put it back in queue.'.format(attribute_name, self.id)
+            reason = 'Failed to update attribute "{}" for {}! Put it back in queue.'.format(
+                attribute_name, self.id)
             raise JobUpdateError(reason)
         else:
             self.update(response.data)
@@ -152,8 +164,8 @@ class Job(dict):
             response = self.api.edit(self.id, attributes)
         except (NuvlaError, ConnectionError):
             retry_kazoo_queue_op(self.queue, 'release')
-            reason = 'Failed to update following attributes "{}" for {}! '.format(attributes, self.id) \
-                     + 'Put it back in queue.'
+            reason = 'Failed to update following attributes "{}" for {}! ' \
+                     'Put it back in queue.'.format(attributes, self.id)
             raise JobUpdateError(reason)
         else:
             self.update(response.data)

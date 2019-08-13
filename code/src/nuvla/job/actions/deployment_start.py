@@ -2,8 +2,8 @@
 
 import logging
 
-from nuvla.connector import connector_factory, docker_connector
 from .nuvla import Deployment, DeploymentParameter
+from nuvla.connector import connector_factory, docker_connector, docker_cli_connector
 from ..actions import action
 
 action_name = 'start_deployment'
@@ -11,9 +11,37 @@ action_name = 'start_deployment'
 log = logging.getLogger(action_name)
 
 
+def get_env(deployment):
+    env_variables = {'NUVLA_DEPLOYMENT_ID': deployment['id'],
+                     'NUVLA_API_KEY': deployment['api-credentials']['api-key'],
+                     'NUVLA_API_SECRET': deployment['api-credentials']['api-secret'],
+                     'NUVLA_ENDPOINT': deployment['api-endpoint']}
+
+    module_content = Deployment.module_content(deployment)
+
+    for env_var in module_content.get('environmental-variables', []):
+        env_variables[env_var['name']] = env_var.get('value')
+
+    return env_variables
+
+
+def application_params_update(api_dpl, deployment, services):
+    if services:
+        for service in services:
+            node_id = service['node-id']
+            for key, value in service.items():
+                api_dpl.set_parameter_create_if_needed(
+                    resource_id=Deployment.id(deployment),
+                    user_id=Deployment.owner(deployment),
+                    node_id=node_id,
+                    param_name='{}.{}'.format(node_id, key),
+                    param_value=value)
+
+
 @action(action_name)
 class DeploymentStartJob(object):
-    def __init__(self, executor, job):
+
+    def __init__(self, _, job):
         self.job = job
         self.api = job.api
         self.api_dpl = Deployment(self.api)
@@ -23,25 +51,21 @@ class DeploymentStartJob(object):
         return self.api_dpl.create_parameter(deployment_id, user_id, param_name,
                                              param_value, node_id, param_description)
 
-    def handle_deployment(self, deployment):
+    def create_user_output_params(self, deployment):
+        module_content = Deployment.module_content(deployment)
+        for output_param in module_content.get('output-parameters', []):
+            self.create_deployment_parameter(deployment_id=Deployment.id(deployment),
+                                             user_id=Deployment.owner(deployment),
+                                             param_name=output_param['name'],
+                                             param_description=output_param.get('description'))
+
+    def start_component(self, deployment):
         connector = connector_factory(docker_connector, self.api, deployment.get('parent'))
 
-        deployment_id = deployment['id']
-        node_instance_name = self.api_dpl.uuid(deployment_id)
-        deployment_owner = deployment['acl']['owners'][0]
-        module_content = deployment['module']['content']
-
-        container_env = ['NUVLA_DEPLOYMENT_ID={}'.format(deployment_id),
-                         'NUVLA_API_KEY={}'.format(deployment['api-credentials']['api-key']),
-                         'NUVLA_API_SECRET={}'.format(deployment['api-credentials']['api-secret']),
-                         'NUVLA_ENDPOINT={}'.format(deployment['api-endpoint'])]
-
-        for env_var in module_content.get('environmental-variables', []):
-            env_var_name = env_var['name']
-            env_var_value = env_var.get('value')
-            if env_var_value is not None:
-                env_var_def = "{}={}".format(env_var_name, env_var_value)
-                container_env.append(env_var_def)
+        deployment_id = Deployment.id(deployment)
+        node_instance_name = self.api_dpl.uuid(deployment)
+        deployment_owner = Deployment.owner(deployment)
+        module_content = Deployment.module_content(deployment)
 
         restart_policy = module_content.get('restart-policy', {})
 
@@ -60,7 +84,7 @@ class DeploymentStartJob(object):
 
         service = connector.start(service_name=node_instance_name,
                                   image=module_content['image'],
-                                  env=container_env,
+                                  env=get_env(deployment),
                                   mounts_opt=module_content.get('mounts'),
                                   ports_opt=module_ports,
                                   cpu_ratio=module_content.get('cpus'),
@@ -84,6 +108,30 @@ class DeploymentStartJob(object):
             param_name=DeploymentParameter.HOSTNAME['name'],
             param_value=connector.extract_vm_ip(service),
             param_description=DeploymentParameter.HOSTNAME['description'],
+            node_id=node_instance_name)
+
+        self.create_deployment_parameter(
+            deployment_id=deployment_id,
+            user_id=deployment_owner,
+            param_name=DeploymentParameter.CURRENT_DESIRED['name'],
+            param_value="",
+            param_description=DeploymentParameter.CURRENT_DESIRED['description'],
+            node_id=node_instance_name)
+
+        self.create_deployment_parameter(
+            deployment_id=deployment_id,
+            user_id=deployment_owner,
+            param_name=DeploymentParameter.CURRENT_STATE['name'],
+            param_value="",
+            param_description=DeploymentParameter.CURRENT_STATE['description'],
+            node_id=node_instance_name)
+
+        self.create_deployment_parameter(
+            deployment_id=deployment_id,
+            user_id=deployment_owner,
+            param_name=DeploymentParameter.CURRENT_ERROR['name'],
+            param_value="",
+            param_description=DeploymentParameter.CURRENT_ERROR['description'],
             node_id=node_instance_name)
 
         # FIXME: get number of desired replicas of Replicated service from deployment. 1 for now.
@@ -146,14 +194,43 @@ class DeploymentStartJob(object):
 
         # immediately update any port mappings that are already available
         ports_mapping = connector.extract_vm_ports_mapping(service)
-        self.api_dpl.update_port_parameters(deployment_id, ports_mapping)
+        self.api_dpl.update_port_parameters(deployment, ports_mapping)
 
-        for output_param in module_content.get('output-parameters', []):
-            self.create_deployment_parameter(deployment_id=deployment_id,
-                                             user_id=deployment_owner,
-                                             param_name=output_param['name'],
-                                             param_description=output_param.get('description'),
-                                             node_id=node_instance_name)
+    def start_application(self, deployment):
+        deployment_id = Deployment.id(deployment)
+
+        connector = connector_factory(docker_cli_connector, self.api, deployment.get('parent'))
+
+        module_content = Deployment.module_content(deployment)
+
+        deployment_owner = Deployment.owner(deployment)
+
+        docker_compose = module_content['docker-compose']
+
+        result, services = connector.start(docker_compose=docker_compose,
+                                           stack_name=Deployment.uuid(deployment),
+                                           env=get_env(deployment),
+                                           files=module_content.get('files'))
+
+        self.job.set_status_message(result.stdout.decode('UTF-8'))
+
+        self.create_deployment_parameter(
+            deployment_id=deployment_id,
+            user_id=deployment_owner,
+            param_name=DeploymentParameter.HOSTNAME['name'],
+            param_value=connector.extract_vm_ip(services),
+            param_description=DeploymentParameter.HOSTNAME['description'])
+
+        application_params_update(self.api_dpl, deployment, services)
+
+    def handle_deployment(self, deployment):
+
+        if Deployment.is_component(deployment):
+            self.start_component(deployment)
+        elif Deployment.is_application(deployment):
+            self.start_application(deployment)
+
+        self.create_user_output_params(deployment)
 
     def start_deployment(self):
         deployment_id = self.job['target-resource']['href']
@@ -167,17 +244,18 @@ class DeploymentStartJob(object):
         try:
             self.handle_deployment(deployment)
         except Exception as ex:
-            log.error('Failed to start deployment {0}: {1}'.format(deployment_id, ex))
+            log.error('Failed to start {0}: {1}'.format(deployment_id, ex))
             try:
-                self.job.set_status_message(str(ex))
+                self.job.set_status_message(repr(ex))
                 self.api_dpl.set_state_error(deployment_id)
-                return 1
-            except Exception as ex:
-                log.error('Failed to set error state for {0}: {1}'.format(deployment_id, ex))
-                raise ex
+            except Exception as ex_state:
+                log.error('Failed to set error state for {0}: {1}'.format(deployment_id, ex_state))
+
+            raise ex
 
         self.api_dpl.set_state_started(deployment_id)
 
+        return 0
+
     def do_work(self):
-        return_code = self.start_deployment()
-        return return_code or 0
+        return self.start_deployment()

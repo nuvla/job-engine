@@ -10,6 +10,7 @@ from ..actions import action
 
 @action('stop_infrastructure_service_swarm')
 class SwarmStopJob(object):
+
     def __init__(self, _, job):
         self.job = job
         self.api = job.api
@@ -51,7 +52,7 @@ class SwarmStopJob(object):
 
         try:
             self.handle_deployment(swarm_data)
-        except:
+        except Exception:
             self.api.edit(infra_service_id, {'state': 'ERROR'})
             raise
 

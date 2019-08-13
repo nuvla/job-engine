@@ -38,8 +38,36 @@ class Deployment(object):
     resource = 'deployment'
 
     @staticmethod
-    def uuid(resource_id):
-        return resource_id.split('/')[1]
+    def id(deployment):
+        return deployment['id']
+
+    @staticmethod
+    def uuid(deployment):
+        return Deployment.id(deployment).split('/')[1]
+
+    @staticmethod
+    def subtype(deployment):
+        return Deployment.module(deployment)['subtype']
+
+    @staticmethod
+    def is_component(deployment):
+        return Deployment.subtype(deployment) == 'component'
+
+    @staticmethod
+    def is_application(deployment):
+        return Deployment.subtype(deployment) == 'application'
+
+    @staticmethod
+    def module(deployment):
+        return deployment['module']
+
+    @staticmethod
+    def module_content(deployment):
+        return Deployment.module(deployment)['content']
+
+    @staticmethod
+    def owner(deployment):
+        return deployment['acl']['owners'][0]
 
     @staticmethod
     def get_port_name_value(port_mapping):
@@ -103,31 +131,45 @@ class Deployment(object):
             parameter['value'] = param_value
         return self.nuvla.add('deployment-parameter', parameter)
 
-    def set_parameter(self, resource_id, node_name, name, value):
+    def set_parameter(self, resource_id, node_id, name, value):
         if not isinstance(value, str):
             raise ValueError('Parameter value should be string.')
-        param = self._get_parameter(resource_id, node_name, name, select='id')
+        param = self._get_parameter(resource_id, node_id, name, select='id')
         return self.nuvla.edit(param.id, {'value': value})
 
-    def _get_parameter(self, resource_id, node_name, name, select=None):
-        filters = "parent='{0}' and node-id='{1}' and name='{2}'".format(resource_id, node_name, name)
+    def set_parameter_ignoring_errors(self, resource_id, node_id, name, value):
+        try:
+            self.set_parameter(resource_id, node_id, name, value)
+        except Exception as _:
+            pass
+
+    def set_parameter_create_if_needed(self, resource_id, user_id, param_name, param_value=None,
+                                       node_id=None, param_description=None):
+        try:
+            self.set_parameter(resource_id, node_id, param_name, param_value)
+        except ResourceNotFound as _:
+            self.create_parameter(resource_id, user_id, param_name, param_value,
+                                  node_id, param_description)
+
+    def _get_parameter(self, resource_id, node_id, name, select=None):
+        filters = "parent='{0}' and node-id='{1}' and name='{2}'".format(resource_id, node_id, name)
         res = self.nuvla.search("deployment-parameter", filter=filters, select=select)
         if res.count < 1:
             raise ResourceNotFound('Deployment parameter "{0}" not found.'.format(filters))
         return res.resources[0]
 
-    def get_parameter(self, resource_id, node_name, name):
+    def get_parameter(self, resource_id, node_id, name):
         try:
-            param = self._get_parameter(resource_id, node_name, name)
+            param = self._get_parameter(resource_id, node_id, name)
         except ResourceNotFound:
             return None
         return param.data.get('value')
 
-    def update_port_parameters(self, deployment_id, ports_mapping):
+    def update_port_parameters(self, deployment, ports_mapping):
         if ports_mapping:
             for port_mapping in ports_mapping.split():
                 port_param_name, port_param_value = self.get_port_name_value(port_mapping)
-                self.set_parameter(deployment_id, self.uuid(deployment_id),
+                self.set_parameter(Deployment.id(deployment), Deployment.uuid(deployment),
                                    port_param_name, port_param_value)
 
     def set_state(self, resource_id, state):
@@ -147,6 +189,16 @@ class Deployment(object):
 
 
 class DeploymentParameter(object):
+
+    CURRENT_DESIRED = {'name': 'current.desired.state',
+                       'description': "Desired state of the container's current task."}
+
+    CURRENT_STATE = {'name': 'current.state',
+                     'description': "Actual state of the container's current task."}
+
+    CURRENT_ERROR = {'name': 'current.error.message',
+                     'description': "Error message (if any) of the container's current task."}
+
     REPLICAS_DESIRED = {'name': 'replicas.desired',
                         'description': 'Desired number of service replicas.'}
 

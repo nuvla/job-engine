@@ -13,11 +13,11 @@ from .connector import Connector, should_connect
 def instantiate_from_cimi(api_infrastructure_service, api_credential):
     return DockerMachineConnector(
         driver_credential=api_credential,
-        driver=api_credential["subtype"].split("-")[-1],
+        driver=api_credential['subtype'].split('-')[-1],
         service_owner=api_infrastructure_service['acl']['owner']['principal'],
-        infrastructure_service_id=api_infrastructure_service["id"],
-        machineBaseName=api_infrastructure_service.get("name",
-                                                       api_infrastructure_service["id"].split('/')[1]))
+        infrastructure_service_id=api_infrastructure_service['id'],
+        machineBaseName=
+        api_infrastructure_service.get('name', api_infrastructure_service['id'].split('/')[1]))
 
 
 class DockerMachineConnector(Connector):
@@ -51,9 +51,10 @@ class DockerMachineConnector(Connector):
 
         self.driver = self.kwargs.get("driver")
 
-        if not self.driver in self.XARGS:
-            raise NotImplementedError('There are no Docker Machine arguments {} available for driver {}.'
-                                      .format(self.XARGS, self.driver))
+        if self.driver not in self.XARGS:
+            raise NotImplementedError(
+                'There are no Docker Machine arguments {} available for driver {}.'
+                    .format(self.XARGS, self.driver))
         else:
             self.driver_xargs = self.XARGS[self.driver]
 
@@ -119,7 +120,8 @@ class DockerMachineConnector(Connector):
         return node
 
     def install_swarm(self):
-        command = "sudo docker swarm init --force-new-cluster --advertise-addr {}".format(self._vm_get_ip())
+        command = "sudo docker swarm init --force-new-cluster --advertise-addr {}".format(
+            self._vm_get_ip())
         start_swarm = self.machine.ssh(self.machineBaseName, command)
 
         return start_swarm
@@ -196,7 +198,8 @@ class DockerMachineConnector(Connector):
             os.makedirs(machine_folder)
 
             with open("{}/config.json".format(machine_folder), 'w') as cfg:
-                cfg.write(base64.b64decode(node["machine-config-base64"].encode('ascii')).decode('ascii'))
+                cfg.write(
+                    base64.b64decode(node["machine-config-base64"].encode('ascii')).decode('ascii'))
 
             stopped.append(self.machine.rm(machine=self.machineBaseName, force=True))
 

@@ -1,23 +1,18 @@
 # -*- coding: utf-8 -*-
 
-import logging
 import os
-import random
 import sys
-import threading
 import uuid
+import time
+import random
+import logging
 import warnings
 
 PY2 = sys.version_info[0] == 2
 
 
-def wait(secs):
-    e = threading.Event()
-    e.wait(timeout=secs)
-
-
 def random_wait(secs_min, secs_max):
-    wait(random.uniform(secs_min, secs_max))
+    time.sleep(random.uniform(secs_min, secs_max))
 
 
 class InterruptException(Exception):
@@ -25,8 +20,8 @@ class InterruptException(Exception):
 
 
 def override(func):
-    """This is a decorator which can be used to check that a method override a method of the base class.
-    If not the case it will result in a warning being emitted."""
+    """This is a decorator which can be used to check that a method override a method of the base
+    class. If not the case it will result in a warning being emitted."""
 
     def overrided_func(self, *args, **kwargs):
         bases_functions = []
@@ -35,7 +30,8 @@ def override(func):
 
         if func.__name__ not in bases_functions:
             warnings.warn("The method '%s' should override a method of the base class '%s'." %
-                          (func.__name__, self.__class__.__bases__[0].__name__), category=SyntaxWarning, stacklevel=2)
+                          (func.__name__, self.__class__.__bases__[0].__name__),
+                          category=SyntaxWarning, stacklevel=2)
         return func(self, *args, **kwargs)
 
     return overrided_func
@@ -57,4 +53,5 @@ def assure_path_exists(path):
 def retry_kazoo_queue_op(queue, function_name):
     while not getattr(queue, function_name)():
         random_wait(0.1, 5)
-        logging.warning('retry_kazoo_queue_op: Retrying {} on {}.'.format(function_name, queue.get()))
+        logging.warning(
+            'retry_kazoo_queue_op: Retrying {} on {}.'.format(function_name, queue.get()))

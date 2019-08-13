@@ -21,6 +21,7 @@ def should_connect(f):
 
 
 class ConnectorError(Exception):
+
     def __init__(self, reason):
         super(ConnectorError, self).__init__(reason)
         self.reason = reason
