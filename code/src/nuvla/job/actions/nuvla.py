@@ -208,7 +208,7 @@ class Callback:
         """
 
         callback = {"action": action_name,
-              "target-resource": {'href': target_resource}}
+                    "target-resource": {'href': target_resource}}
 
         if data:
             callback.update({"data": data})
