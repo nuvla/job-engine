@@ -50,14 +50,15 @@ class ComponentImageState(object):
 
         expiry = utc_from_now_iso(EXPIRY_FROM_NOW_SEC)
         acl = component.get('acl', None)
+        msg = 'New image for component {0}: {1}'.format(component_id, new_image_str)
+
+        content = component['content']
+        content.update({'image': new_image, 'commit': msg})
 
         callback = Callback(self.api)
-        data = {'content':
-                    {'image': new_image}}
-        callback_id = callback.create('module-update', component_id, data=data, expires=expiry, acl=acl)
+        callback_id = callback.create('module-update', component_id, data=content,
+                                      expires=expiry, acl=acl)
 
-        msg = 'Newer image available for component {0}: {1}'.format(
-            component_id, new_image_str)
         notification_id = notification.create(msg, 'module-update', notif_unique_id,
                                               expiry=expiry, target_resource=component_id,
                                               callback_id=callback_id, acl=acl)
