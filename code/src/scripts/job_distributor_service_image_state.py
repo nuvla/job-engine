@@ -24,7 +24,7 @@ class ServiceImageStateJobsDistributor(Distributor):
     def active_deployments(self):
         return map(lambda x: x.id,
                    self.api.search('deployment',
-                                   filter="state='STARTED'", select='id').resources)
+                                   filter="state='STARTED' and module/subtype='component'", select='id').resources)
 
     def job_exists(self, job):
         filters = "(state='QUEUED' or state='RUNNING')" \

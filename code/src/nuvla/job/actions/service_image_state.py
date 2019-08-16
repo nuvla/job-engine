@@ -44,7 +44,7 @@ class ServiceImageState(object):
         deployment_id = deployment['id']
 
         # FIXME: at the moment deployment UUID is the service name.
-        sname = self.api_dpl.uuid(deployment_id)
+        sname = self.api_dpl.uuid(deployment)
 
         new_image = self.check_new_image(connector, sname)
         if not new_image:
@@ -61,14 +61,14 @@ class ServiceImageState(object):
 
         expiry = utc_from_now_iso(EXPIRY_FROM_NOW_SEC)
         acl = deployment.get('acl', None)
+        msg = 'New image for deployment {0}: {1}'.format(deployment_id, new_image_str)
 
         callback = Callback(self.api)
-        data = {'image': new_image}
+        data = {'image': new_image,
+                'commit': msg}
         callback_id = callback.create('deployment-update', deployment_id, data=data,
                                       expires=expiry, acl=acl)
 
-        msg = 'Newer image available for deployment {0}: {1}'.format(
-            deployment_id, new_image_str)
         notification_id = notification.create(msg, 'deployment-update', notif_unique_id,
                                               expiry=expiry, target_resource=deployment_id,
                                               callback_id=callback_id, acl=acl)
