@@ -32,11 +32,7 @@ class DeploymentLogFetchJob(object):
 
         last_timestamp = deployment_log.get('last-timestamp')
 
-        existing_log = deployment_log.get('log', [])
-
         since = deployment_log.get('since')
-
-        head_or_tail = deployment_log.get('head-or-tail', 'all')
 
         lines = deployment_log.get('lines', 200)
 
@@ -54,16 +50,17 @@ class DeploymentLogFetchJob(object):
             docker_service_name = deployment_uuid
 
         tmp_since = last_timestamp or since
+
         since_opt = ['--since', tmp_since] if tmp_since else []
 
         list_opts = ['-t', '--no-trunc'] + since_opt + [docker_service_name]
 
         result = connector.log(list_opts) \
-            .stdout.decode('UTF-8').strip().split('\n')
+            .stdout.decode('UTF-8').strip().split('\n')[:lines]
 
         new_last_timestamp = DeploymentLogFetchJob.extract_last_timestamp(result)
 
-        update_deployment_log = {'log': existing_log + result}
+        update_deployment_log = {'log': result}
 
         if new_last_timestamp:
             update_deployment_log['last-timestamp'] = new_last_timestamp
@@ -75,7 +72,8 @@ class DeploymentLogFetchJob(object):
 
         log.info('Job started for {}.'.format(deployment_log_id))
 
-        deployment_log = self.api.get(deployment_log_id).data
+        deployment_log = self.api.get(
+            deployment_log_id, select='id, parent, service, since, lines, last-timestamp').data
 
         self.job.set_progress(10)
 
