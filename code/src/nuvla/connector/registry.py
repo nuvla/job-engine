@@ -1,37 +1,39 @@
-
 import json
 import base64
 import requests
 
 from .utils import timestr2dtime
 
-
 DEFAULT_REGISTRY = 'registry-1.docker.io'
 DEFAULT_TAG = 'latest'
 
 
 def image_str_to_dict(image_s):
-    registry = ''
+    image_dict = {}
 
     parts = image_s.split('/', 1)
+
     if len(parts) > 1:
         if '.' in parts[0] or ':' in parts[0]:
             # highly likely this is a DNS name in the form example.com[:123]
-            registry = parts[0]
+            image_dict['registry'] = parts[0]
             repo_tag = parts[1].split(':')
         else:
             repo_tag = image_s.split(':')
     else:
         repo_tag = parts[0].split(':')
-    repository = repo_tag[0]
-    if len(repo_tag) > 1:
-        tag = repo_tag[1]
-    else:
-        tag = DEFAULT_TAG
 
-    return {'registry': registry,
-            'repository': repository,
-            'tag': tag}
+    image_dict['tag'] = repo_tag[1] if len(repo_tag) > 1 else DEFAULT_TAG
+
+    image_repo_parts = repo_tag[0].split('/')
+
+    if len(image_repo_parts) > 1:
+        image_dict['repository'] = image_repo_parts[0]
+        image_dict['image-name'] = image_repo_parts[1]
+    else:
+        image_dict['image-name'] = image_repo_parts[0]
+
+    return image_dict
 
 
 def image_dict_to_str(image_d):
@@ -73,12 +75,13 @@ def list_tags(image):
     :param image: {'registry': '', 'repository': '', 'tag': ''}
     :return: dict, image tags
     """
-    repo = image.get('repository')
-    if 'image-name' in image and not repo.endswith(image.get('image-name')):
-        repo = repo + '/' + image.get('image-name')
-    headers = authn_header(repo)
-    url = 'https://{registry}/v2/{repo}/tags/list'.format(
-        registry=(image.get('registry') or DEFAULT_REGISTRY), repo=repo)
+    image_name = image.get('image-name')
+    repository = image.get('repository')
+    if repository:
+        image_name = repository + '/' + image_name
+    headers = authn_header(image_name)
+    url = 'https://{registry}/v2/{image_name}/tags/list'.format(
+        registry=(image.get('registry') or DEFAULT_REGISTRY), image_name=image_name)
     response = requests.get(url, headers=headers, json=True)
     if not response.status_code == requests.codes.ok:
         raise Exception('Failed to list image tags: {}'.format(response.reason))
@@ -119,7 +122,8 @@ def new_image_semantic_tag(image):
         except ValueError:
             pass
     if len(img_tags) == 0:
-        raise Exception('No semantically versioned tags in the registry for semantically versioned running image.')
+        raise Exception('No semantically versioned tags in the registry '
+                        'for semantically versioned running image.')
     last_ver = sorted(img_tags)[-1]
     if tuple(last_ver) > tuple(ver_running):
         image.update({'tag': '.'.join(map(str, last_ver))})

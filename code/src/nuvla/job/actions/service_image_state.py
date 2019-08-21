@@ -28,7 +28,8 @@ class ServiceImageState(object):
         self.api = job.api
         self.api_dpl = Deployment(self.api)
 
-    def check_new_image(self, caas, sname):
+    @staticmethod
+    def check_new_image(caas, sname):
         service = caas.service_get(sname)
 
         image = image_str_to_dict(caas.service_image_digest(service)[0])
@@ -46,7 +47,7 @@ class ServiceImageState(object):
         # FIXME: at the moment deployment UUID is the service name.
         sname = self.api_dpl.uuid(deployment)
 
-        new_image = self.check_new_image(connector, sname)
+        new_image = ServiceImageState.check_new_image(connector, sname)
         if not new_image:
             return
 
