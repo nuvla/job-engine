@@ -59,4 +59,4 @@ class SwarmStopJob(object):
         return 0
 
     def do_work(self):
-        self.start_deployment()
+        return self.start_deployment()
