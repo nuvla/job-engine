@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# FIXME: this should go to nuvla.api.deployment module.
+# FIXME: this should go to nuvla.api library.
 
 
 class ResourceNotFound(Exception):
@@ -17,6 +17,7 @@ def check_created(resp, errmsg=''):
     """
     Returns id of the created resource or raises ResourceCreateError.
     :param resp: nuvla.api.models.CimiResponse
+    :param errmsg: error message
     :return: str, resource id
     """
     if resp.data['status'] == 201:
@@ -27,6 +28,7 @@ def check_created(resp, errmsg=''):
         else:
             msg = resp.data['message']
         raise ResourceCreateError(msg, resp)
+
 
 class Deployment(object):
     """Stateless interface to Nuvla module deployment."""
@@ -256,6 +258,7 @@ class Callback:
         :param target_resource: resource id
         :param data: dict
         :param expires: ISO timestamp
+        :param acl: acl
         :return:
         """
 

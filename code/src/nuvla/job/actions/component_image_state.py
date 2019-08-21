@@ -26,14 +26,15 @@ class ComponentImageState(object):
         self.api = job.api
         self.api_module = Module(self.api)
 
-    def check_new_image(self, image):
+    @staticmethod
+    def check_new_image(image):
         if is_semantic_version(image.get('tag', '')):
             return new_image_semantic_tag(image)
         else:
             return None
 
     def handle_component(self, component):
-        new_image = self.check_new_image(component['content']['image'])
+        new_image = ComponentImageState.check_new_image(component['content']['image'])
         if not new_image:
             return
 

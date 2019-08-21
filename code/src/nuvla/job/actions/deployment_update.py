@@ -2,8 +2,8 @@
 
 import logging
 
-from nuvla.connector import connector_factory, docker_connector, docker_cli_connector
-from .nuvla import Deployment, DeploymentParameter
+from nuvla.connector import connector_factory, docker_connector
+from .nuvla import Deployment
 from ..actions import action
 
 from .deployment_start import get_env, application_params_update
@@ -36,35 +36,6 @@ class DeploymentUpdateJob(object):
         ports_mapping = connector.extract_vm_ports_mapping(service)
         self.api_dpl.update_port_parameters(deployment, ports_mapping)
 
-    def update_application(self, deployment):
-        """
-        FIXME: this is a stub. The function was not tested.
-        :param deployment:
-        :return:
-        """
-        raise NotImplementedError('Update of running application is not implemented.')
-
-        connector = connector_factory(docker_cli_connector, self.api, deployment.get('parent'))
-
-        module_content = Deployment.module_content(deployment)
-
-        result, services = connector.update(docker_compose=module_content['docker-compose'],
-                                            stack_name=Deployment.uuid(deployment),
-                                            env=get_env(deployment),
-                                            files=module_content.get('files'))
-
-        self.job.set_status_message(result.stdout.decode('UTF-8'))
-
-        # TODO: update the parameter
-        # self.create_deployment_parameter(
-        #     deployment_id=Deployment.id(deployment),
-        #     user_id=Deployment.owner(deployment),
-        #     param_name=DeploymentParameter.HOSTNAME['name'],
-        #     param_value=connector.extract_vm_ip(services),
-        #     param_description=DeploymentParameter.HOSTNAME['description'])
-
-        application_params_update(self.api_dpl, deployment, services)
-
     def update_deployment(self):
         deployment_id = self.job['target-resource']['href']
 
@@ -78,7 +49,7 @@ class DeploymentUpdateJob(object):
             if Deployment.is_component(deployment):
                 self.update_component(deployment)
             elif Deployment.is_application(deployment):
-                self.update_application(deployment)
+                raise NotImplementedError('Update of running application is not implemented.')
         except Exception as ex:
             log.error('Failed to update {0}: {1}'.format(deployment_id, ex))
             try:

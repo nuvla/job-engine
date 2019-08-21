@@ -189,7 +189,8 @@ class DockerConnector(Connector):
 
         service['EndpointSpec']['Ports'] = DockerConnector.construct_ports_mapping(ports_opt)
 
-        service['TaskTemplate']['ContainerSpec']['Mounts'] = DockerConnector.construct_mounts(mounts_opt)
+        service['TaskTemplate']['ContainerSpec']['Mounts'] = \
+            DockerConnector.construct_mounts(mounts_opt)
 
         return service
 
@@ -205,7 +206,8 @@ class DockerConnector(Connector):
 
         self.validate_action(response)
 
-        service = self.docker_api.get(self._get_full_url('services/{}'.format(response['ID']))).json()
+        service = self.docker_api.get(
+            self._get_full_url('services/{}'.format(response['ID']))).json()
 
         self.validate_action(service)
 
@@ -217,7 +219,6 @@ class DockerConnector(Connector):
             response = self.docker_api.delete(self._get_full_url("services/{}".format(service_id)))
             if response.status_code not in {200, 404}:
                 self.validate_action(response.json())
-
 
     @should_connect
     def update(self, sname, **kwargs):
@@ -236,14 +237,14 @@ class DockerConnector(Connector):
         else:
             raise ConnectorError('No service named {} when updating service.'.format(sname))
 
-        id = service['ID']
+        service_id = service['ID']
         service_version = service['Version']['Index']
 
         service_spec = service['Spec']
         service_spec['TaskTemplate']['ContainerSpec']['Image'] = image_dict_to_str(kwargs['image'])
 
-        response = self.docker_api.post(self._get_full_url('services/{}/update'.format(id)),
-                                        params=[('version', service_version),],
+        response = self.docker_api.post(self._get_full_url('services/{}/update'.format(service_id)),
+                                        params=[('version', service_version)],
                                         json=service_spec).json()
         self.validate_action(response)
 
@@ -302,7 +303,7 @@ class DockerConnector(Connector):
         params = {'filters': convert_filters(filters) if filters else None}
         return self.docker_api.get(self._get_full_url("tasks"), params=params).json()
 
-    def service_replicas(self, sname, tasks_filters=None):
+    def service_replicas(self, sname):
         """
         Returns number of running and desired replicas of `sname` service as two-tuple
         (#running, #desired).
@@ -312,7 +313,6 @@ class DockerConnector(Connector):
         -1 indicates an error.
 
         :param sname: str, service name.
-        :param tasks_filters: dict, see `service_tasks()`->`filters` for dict spec.
         :return: (int, int)
         """
         desired = self.service_replicas_desired(sname)
@@ -329,7 +329,6 @@ class DockerConnector(Connector):
         -1 indicates an error.
 
         :param sname: str, service name.
-        :param tasks_filters: dict, see `service_tasks()`->`filters` for dict spec.
         :return: int
         """
         services = self.list(filters={"name": sname})
@@ -357,7 +356,8 @@ class DockerConnector(Connector):
         """
         nodes = self.docker_api.get(self._get_full_url("nodes")).json()
         if availability:
-            return list(filter(lambda x: x.get('Spec', {}).get('Availability') == availability, nodes))
+            return list(filter(lambda x:
+                               x.get('Spec', {}).get('Availability') == availability, nodes))
         else:
             return nodes
 

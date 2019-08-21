@@ -4,7 +4,6 @@
 
 ### Added
 
-
   - Service image state distributor and action added
   - Component image state distributor and action added
   - Deployment log fetch action added
