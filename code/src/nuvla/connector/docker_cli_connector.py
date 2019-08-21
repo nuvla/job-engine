@@ -65,7 +65,8 @@ class DockerCliConnector(Connector):
 
     def build_cmd_line(self, list_cmd):
         return ['docker', '-H', self.endpoint, '--tls', '--tlscert', self.cert_key_file.name,
-                '--tlskey', self.cert_key_file.name] + list_cmd
+                '--tlskey', self.cert_key_file.name, '--tlscacert', self.cert_key_file.name] \
+               + list_cmd
 
     @should_connect
     def start(self, **kwargs):
@@ -108,6 +109,11 @@ class DockerCliConnector(Connector):
     @should_connect
     def list(self, filters=None):
         cmd = self.build_cmd_line(['stack', 'ls'])
+        return execute_cmd(cmd)
+
+    @should_connect
+    def log(self, list_opts):
+        cmd = self.build_cmd_line(['service', 'logs'] + list_opts)
         return execute_cmd(cmd)
 
     @staticmethod

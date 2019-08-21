@@ -2,8 +2,13 @@
 
 ## Unreleased
 
+### Added
+
+  - Deployment log fetch action added
+
 ### Changed
 
+  - Docker cli connector - when cacert is required connection fail fix
   - Fix calculation of replicas.running to properly take into account
     the running task state
   - Add deployment parameters to provide information about current
