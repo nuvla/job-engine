@@ -8,6 +8,7 @@
 
 ### Changed
 
+  - Logging - remove thread name from logging since it's no more multi-threaded
   - Successfully executed actions are in failed state because do_work 
     isn't returning result code. This was the case for jobs_cleanup, nuvlabox_decommission, 
     infrastructure_*

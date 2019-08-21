@@ -65,8 +65,8 @@ class Base(object):
 
     @staticmethod
     def _init_logger():
-        format_log = logging.Formatter('%(asctime)s - %(levelname)s - %(threadName)s - '
-                                       '%(filename)s:%(lineno)s - %(message)s')
+        log_format_str = '%(asctime)s - %(levelname)s - %(filename)s:%(lineno)s - %(message)s'
+        format_log = logging.Formatter(log_format_str)
         logger = logging.getLogger()
         logger.handlers[0].setFormatter(format_log)
         logger.setLevel(logging.INFO)
