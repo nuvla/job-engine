@@ -32,4 +32,4 @@ class JobsCleanupJob(object):
         return 0
 
     def do_work(self):
-        self.cleanup_jobs()
+        return self.cleanup_jobs()

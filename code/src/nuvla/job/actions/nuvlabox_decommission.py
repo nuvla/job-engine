@@ -146,4 +146,4 @@ class NuvlaBoxDeleteJob(object):
         return self.error
 
     def do_work(self):
-        self.delete_nuvlabox()
+        return self.delete_nuvlabox()

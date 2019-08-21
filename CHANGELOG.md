@@ -8,6 +8,9 @@
 
 ### Changed
 
+  - Successfully executed actions are in failed state because do_work 
+    isn't returning result code. This was the case for jobs_cleanup, nuvlabox_decommission, 
+    infrastructure_*
   - Docker cli connector - when cacert is required connection fail fix
   - Fix calculation of replicas.running to properly take into account
     the running task state
