@@ -2,8 +2,8 @@
 
 import logging
 
+from .nuvla import Deployment, DeploymentParameter
 from nuvla.connector import connector_factory, docker_connector, docker_cli_connector
-from .deployment import Deployment, DeploymentParameter
 from ..actions import action
 
 action_name = 'start_deployment'

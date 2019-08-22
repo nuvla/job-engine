@@ -70,7 +70,7 @@ class DockerCliConnector(Connector):
 
     @should_connect
     def start(self, **kwargs):
-        # Mandatory start_kwargs
+        # Mandatory kwargs
         docker_compose = kwargs['docker_compose']
         stack_name = kwargs['stack_name']
         env = kwargs['env']
@@ -103,6 +103,8 @@ class DockerCliConnector(Connector):
         stack_name = ids[0]
         cmd = self.build_cmd_line(['stack', 'rm', stack_name])
         return execute_cmd(cmd)
+
+    update = start
 
     @should_connect
     def list(self, filters=None):

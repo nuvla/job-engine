@@ -4,7 +4,6 @@ import argparse
 import logging
 import random
 import signal
-import sys
 import threading
 
 from kazoo.client import KazooClient, KazooRetry

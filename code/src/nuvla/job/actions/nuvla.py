@@ -1,9 +1,33 @@
 # -*- coding: utf-8 -*-
-# FIXME: this should go to nuvla.api.deployment module.
+# FIXME: this should go to nuvla.api library.
 
 
 class ResourceNotFound(Exception):
     pass
+
+
+class ResourceCreateError(Exception):
+    def __init__(self, reason, response=None):
+        super(ResourceCreateError, self).__init__(reason)
+        self.reason = reason
+        self.response = response
+
+
+def check_created(resp, errmsg=''):
+    """
+    Returns id of the created resource or raises ResourceCreateError.
+    :param resp: nuvla.api.models.CimiResponse
+    :param errmsg: error message
+    :return: str, resource id
+    """
+    if resp.data['status'] == 201:
+        return resp.data['resource-id']
+    else:
+        if errmsg:
+            msg = '{0} : {1}'.format(errmsg, resp.data['message'])
+        else:
+            msg = resp.data['message']
+        raise ResourceCreateError(msg, resp)
 
 
 class Deployment(object):
@@ -12,6 +36,8 @@ class Deployment(object):
     STATE_STARTED = 'STARTED'
     STATE_STOPPED = 'STOPPED'
     STATE_ERROR = 'ERROR'
+
+    resource = 'deployment'
 
     @staticmethod
     def id(deployment):
@@ -72,10 +98,9 @@ class Deployment(object):
         """
         module = {"module": {"href": module_id}}
 
-        res = self.nuvla.add('deployment', module)
-        if res.data['status'] != 201:
-            raise Exception('ERROR: Failed to create deployment.')
-        deployment_id = res.data['resource-id']
+        res = self.nuvla.add(self.resource, module)
+        deployment_id = check_created(res, 'Failed to create deployment.')
+
         deployment = self.get(deployment_id)
 
         if infra_cred_id:
@@ -218,3 +243,97 @@ class Credential(object):
         filters = "parent='{}'".format(infra_service_id)
         creds = self.nuvla.search('credential', filter=filters, select="id")
         return creds.resources
+
+
+class Callback:
+
+    resource = 'callback'
+
+    def __init__(self, nuvla):
+        self.nuvla = nuvla
+
+    def create(self, action_name, target_resource, data=None, expires=None, acl=None):
+        """
+        :param action_name: name of the action
+        :param target_resource: resource id
+        :param data: dict
+        :param expires: ISO timestamp
+        :param acl: acl
+        :return:
+        """
+
+        callback = {"action": action_name,
+                    "target-resource": {'href': target_resource}}
+
+        if data:
+            callback.update({"data": data})
+        if expires:
+            callback.update({"expires": expires})
+        if acl:
+            callback.update({"acl": acl})
+
+        resource_id = check_created(self.nuvla.add(self.resource, callback),
+                                    'Failed to create callback.')
+        return resource_id
+
+
+class Notification:
+
+    resource = 'notification'
+
+    def __init__(self, nuvla):
+        self.nuvla = nuvla
+
+    def create(self, message, category, content_unique_id,
+               target_resource=None, not_before=None, expiry=None,
+               callback_id=None, callback_msg=None, acl=None):
+
+        notification = {'message': message,
+                        'category': category,
+                        'content-unique-id': content_unique_id}
+
+        if target_resource:
+            notification.update({'target-resource': target_resource})
+        if not_before:
+            notification.update({'not-before': not_before})
+        if expiry:
+            notification.update({'expiry': expiry})
+        if callback_id:
+            notification.update({'callback': callback_id})
+        if callback_msg:
+            notification.update({'callback-msg': callback_msg})
+        if acl:
+            notification.update({'acl': acl})
+
+        return check_created(self.nuvla.add(self.resource, notification),
+                             'Failed to create notification.')
+
+    def find_by_content_unique_id(self, content_unique_id):
+        resp = self.nuvla.search(self.resource,
+                                 filter="content-unique-id='{}'".format(content_unique_id))
+        if resp.count < 1:
+            return None
+        else:
+            return list(resp.resources)[0]
+
+    def exists_with_content_unique_id(self, content_unique_id):
+        return self.find_by_content_unique_id(content_unique_id) is not None
+
+
+class Module:
+
+    resource = 'module'
+
+    def __init__(self, nuvla):
+        self.nuvla = nuvla
+
+    def find(self, **kvargs):
+        return self.nuvla.search(self.resource, **kvargs)
+
+    def get(self, resource_id):
+        """
+        Returns module identified by `resource_id` as dictionary.
+        :param resource_id: str
+        :return: dict
+        """
+        return self.nuvla.get(resource_id).data

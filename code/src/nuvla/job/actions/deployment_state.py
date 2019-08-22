@@ -4,7 +4,7 @@ import logging
 from datetime import datetime
 
 from nuvla.connector import connector_factory, docker_connector, docker_cli_connector
-from .deployment import Deployment, DeploymentParameter
+from .nuvla import Deployment, DeploymentParameter
 from .deployment_start import application_params_update
 from ..actions import action
 

@@ -9,6 +9,8 @@ from tempfile import NamedTemporaryFile
 import requests
 
 from .connector import Connector, ConnectorError, should_connect
+from .registry import image_dict_to_str
+from .utils import timestr2dtime
 
 """
 Service is a set of tasks. Service doesn't have a state, but tasks do.
@@ -58,6 +60,29 @@ def convert_filters(filters):
 
 class DockerConnector(Connector):
 
+    @staticmethod
+    def service_image_digest(service):
+        """
+        Returns image id and digest as two-tuple.
+
+        :param service: dict, docker service
+        :return: tuple, (image id, digest)
+        """
+        image, digest = '', ''
+        if service:
+            img = service['Spec']['TaskTemplate']['ContainerSpec']['Image']
+            parts = img.split('@')
+            image = parts[0]
+            if len(parts) > 1:
+                digest = parts[1]
+        return image, digest
+
+    @staticmethod
+    def service_get_last_timestamp(service):
+        s_created_at = timestr2dtime(service.attrs['CreatedAt'])
+        s_updated_at = timestr2dtime(service.attrs['UpdatedAt'])
+        return s_created_at > s_updated_at and s_created_at or s_updated_at
+
     def __init__(self, **kwargs):
         super(DockerConnector, self).__init__(**kwargs)
 
@@ -95,12 +120,12 @@ class DockerConnector(Connector):
                 container_env.append('{}={}'.format(key, value))
         return container_env
 
-    @should_connect
-    def start(self, **kwargs):
-        # Mandatory start_kwargs
+    @staticmethod
+    def service_dict(**kwargs):
+        # Mandatory kwargs
         image = kwargs['image']
 
-        # Optional start_kwargs
+        # Optional kwargs
         service_name = kwargs.get('service_name')
         env = kwargs.get('env')
         mounts_opt = kwargs.get('mounts_opt', [])
@@ -119,58 +144,70 @@ class DockerConnector(Connector):
         # The fields that are supported by the Docker API are documented here:
         # https://docs.docker.com/engine/api/v1.37/#39-services
         #
-        service_json = tree()
+        service = tree()
 
         if service_name:
-            service_json['Name'] = service_name
+            service['Name'] = service_name
 
-        service_json['TaskTemplate']['ContainerSpec']['Image'] = DockerConnector.construct_image_name(image)
+        service['TaskTemplate']['ContainerSpec']['Image'] = image_dict_to_str(image)
 
         if working_dir:
-            service_json['TaskTemplate']['ContainerSpec']['Dir'] = working_dir
+            service['TaskTemplate']['ContainerSpec']['Dir'] = working_dir
 
         if env:
-            service_json['TaskTemplate']['ContainerSpec']['Env'] = DockerConnector.format_env(env)
+            service['TaskTemplate']['ContainerSpec']['Env'] = DockerConnector.format_env(env)
 
         if cpus:
             nano_cpus_soft = int(float(cpus) * as_nanos)
             nano_cpus_hard = int(float(cpus) * as_nanos * tolerance)
-            service_json['TaskTemplate']['Resources']['Limits']['NanoCPUs'] = nano_cpus_hard
-            service_json['TaskTemplate']['Resources']['Reservations']['NanoCPUs'] = nano_cpus_soft
+            service['TaskTemplate']['Resources']['Limits']['NanoCPUs'] = nano_cpus_hard
+            service['TaskTemplate']['Resources']['Reservations']['NanoCPUs'] = nano_cpus_soft
 
         if memory:
             ram_bytes_soft = int(float(memory) * bytes_per_mib)
             ram_bytes_hard = int(float(memory) * bytes_per_mib * tolerance)
-            service_json['TaskTemplate']['Resources']['Limits']['MemoryBytes'] = ram_bytes_hard
-            service_json['TaskTemplate']['Resources']['Reservations']['MemoryBytes'] = ram_bytes_soft
+            service['TaskTemplate']['Resources']['Limits']['MemoryBytes'] = ram_bytes_hard
+            service['TaskTemplate']['Resources']['Reservations']['MemoryBytes'] = ram_bytes_soft
 
         if restart_policy_condition:
-            service_json['TaskTemplate']['RestartPolicy']['Condition'] = restart_policy_condition
+            service['TaskTemplate']['RestartPolicy']['Condition'] = restart_policy_condition
 
         if restart_policy_delay:
-            service_json['TaskTemplate']['RestartPolicy']['Delay'] = restart_policy_delay
+            service['TaskTemplate']['RestartPolicy']['Delay'] = restart_policy_delay
 
         if restart_policy_max_attempts:
-            service_json['TaskTemplate']['RestartPolicy']['MaxAttempts'] = restart_policy_max_attempts
+            service['TaskTemplate']['RestartPolicy']['MaxAttempts'] = restart_policy_max_attempts
 
         if restart_policy_window:
-            service_json['TaskTemplate']['RestartPolicy']['Window'] = restart_policy_window
+            service['TaskTemplate']['RestartPolicy']['Window'] = restart_policy_window
 
         if cmd:
-            service_json['TaskTemplate']['ContainerSpec']['command'] = [cmd]
+            service['TaskTemplate']['ContainerSpec']['command'] = [cmd]
 
         if args:
-            service_json['TaskTemplate']['ContainerSpec']['args'] = args
+            service['TaskTemplate']['ContainerSpec']['args'] = args
 
-        service_json['EndpointSpec']['Ports'] = DockerConnector.construct_ports_mapping(ports_opt)
+        service['EndpointSpec']['Ports'] = DockerConnector.construct_ports_mapping(ports_opt)
 
-        service_json['TaskTemplate']['ContainerSpec']['Mounts'] = DockerConnector.construct_mounts(mounts_opt)
+        service['TaskTemplate']['ContainerSpec']['Mounts'] = \
+            DockerConnector.construct_mounts(mounts_opt)
 
-        response = self.docker_api.post(self._get_full_url("services/create"), json=service_json).json()
+        return service
+
+    @should_connect
+    def start(self, **kwargs):
+        """
+        :param kwargs: see `DockerConnector.service_dict()` for of `kwargs`
+        :return:
+        """
+
+        response = self.docker_api.post(self._get_full_url("services/create"),
+                                        json=self.service_dict(**kwargs)).json()
 
         self.validate_action(response)
 
-        service = self.docker_api.get(self._get_full_url('services/{}'.format(response['ID']))).json()
+        service = self.docker_api.get(
+            self._get_full_url('services/{}'.format(response['ID']))).json()
 
         self.validate_action(service)
 
@@ -184,6 +221,40 @@ class DockerConnector(Connector):
                 self.validate_action(response.json())
 
     @should_connect
+    def update(self, sname, **kwargs):
+        """Given `sname` service parameters in `kwargs`, updates the running service.
+
+        FIXME: Only `image` 'kwargs' is used at the moment.
+
+        :param sname: str
+        :param kwargs: see `DockerConnector.service_dict()` for of `kwargs`
+        :return: json - service
+        """
+
+        services = self._list(filters={'name': sname})
+        if len(services) >= 1:
+            service = services[0]
+        else:
+            raise ConnectorError('No service named {} when updating service.'.format(sname))
+
+        service_id = service['ID']
+        service_version = service['Version']['Index']
+
+        service_spec = service['Spec']
+        service_spec['TaskTemplate']['ContainerSpec']['Image'] = image_dict_to_str(kwargs['image'])
+
+        response = self.docker_api.post(self._get_full_url('services/{}/update'.format(service_id)),
+                                        params=[('version', service_version)],
+                                        json=service_spec).json()
+        self.validate_action(response)
+
+        services = self._list(filters={'name': sname})
+        if len(services) >= 1:
+            return services[0]
+        else:
+            raise ConnectorError('No service named {} after service update.'.format(sname))
+
+    @should_connect
     def list(self, filters=None):
         """
         Returns list of services with optional `filters` applied.
@@ -195,12 +266,25 @@ class DockerConnector(Connector):
             name=<service name>
         :return: list of services
         """
+        return self._list(filters=filters)
+
+    def _list(self, filters=None):
+        """Version w/o connection wrapper.
+        See `list()` for description of parameters.
+        """
         request_url = self._get_full_url("services")
         params = {'filters': convert_filters(filters) if filters else None}
         services_list = self.docker_api.get(request_url, params=params).json()
         if not isinstance(services_list, list):
             self.validate_action(services_list)
         return services_list
+
+    def service_get(self, sname):
+        services = self.list(filters={'name': sname})
+        if len(services) >= 1:
+            return services[0]
+        else:
+            return {}
 
     @should_connect
     def service_tasks(self, filters=None):
@@ -219,7 +303,7 @@ class DockerConnector(Connector):
         params = {'filters': convert_filters(filters) if filters else None}
         return self.docker_api.get(self._get_full_url("tasks"), params=params).json()
 
-    def service_replicas(self, sname, tasks_filters=None):
+    def service_replicas(self, sname):
         """
         Returns number of running and desired replicas of `sname` service as two-tuple
         (#running, #desired).
@@ -229,7 +313,6 @@ class DockerConnector(Connector):
         -1 indicates an error.
 
         :param sname: str, service name.
-        :param tasks_filters: dict, see `service_tasks()`->`filters` for dict spec.
         :return: (int, int)
         """
         desired = self.service_replicas_desired(sname)
@@ -246,7 +329,6 @@ class DockerConnector(Connector):
         -1 indicates an error.
 
         :param sname: str, service name.
-        :param tasks_filters: dict, see `service_tasks()`->`filters` for dict spec.
         :return: int
         """
         services = self.list(filters={"name": sname})
@@ -274,7 +356,8 @@ class DockerConnector(Connector):
         """
         nodes = self.docker_api.get(self._get_full_url("nodes")).json()
         if availability:
-            return list(filter(lambda x: x.get('Spec', {}).get('Availability') == availability, nodes))
+            return list(filter(lambda x:
+                               x.get('Spec', {}).get('Availability') == availability, nodes))
         else:
             return nodes
 
@@ -338,21 +421,3 @@ class DockerConnector(Connector):
                     mount_map['VolumeOptions']['DriverConfig']['Options'] = volume_opts
                 mounts.append(mount_map)
         return mounts
-
-    @staticmethod
-    def construct_image_name(image):
-        tag = image.get('tag')
-        registry = image.get('registry')
-        repository = image.get('repository')
-
-        image_name = image['image-name']
-        if tag:
-            image_name = ':'.join([image_name, tag])
-
-        if repository:
-            image_name = '/'.join([repository, image_name])
-
-        if registry:
-            image_name = '/'.join([registry, image_name])
-
-        return image_name

@@ -4,7 +4,7 @@ import logging
 
 from nuvla.connector import connector_factory, docker_connector, docker_cli_connector
 from nuvla.api import NuvlaError, ConnectionError
-from .deployment import Deployment
+from .nuvla import Deployment
 from ..actions import action
 
 action_name = 'stop_deployment'
