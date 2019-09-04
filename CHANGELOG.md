@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## [2.3.5] - 2019-09-04
+
 ### Added
 
   - Service image state distributor and action added
