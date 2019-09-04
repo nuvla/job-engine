@@ -79,7 +79,7 @@ class DeploymentLogFetchJob(object):
         try:
             self.fetch_log(deployment_log)
         except Exception as ex:
-            log.error('Failed to fetch {0}: {1}'.format(deployment_log_id, ex))
+            log.error('Failed to {0} {1}: {2}'.format(self.job['action'], deployment_log_id, ex))
             try:
                 self.job.set_status_message(repr(ex))
             except Exception as ex_state:

@@ -51,7 +51,7 @@ class DeploymentUpdateJob(object):
             elif Deployment.is_application(deployment):
                 raise NotImplementedError('Update of running application is not implemented.')
         except Exception as ex:
-            log.error('Failed to update {0}: {1}'.format(deployment_id, ex))
+            log.error('Failed to {0} {1}: {2}'.format(self.job['action'], deployment_id, ex))
             try:
                 self.job.set_status_message(repr(ex))
                 self.api_dpl.set_state_error(deployment_id)

@@ -131,13 +131,8 @@ class DeploymentStateJob(object):
             elif Deployment.is_application(deployment):
                 self.get_application_state(deployment)
         except Exception as ex:
-            log.error('Failed to start {0}: {1}'.format(deployment_id, ex))
-            try:
-                self.job.set_status_message(repr(ex))
-                self.api_dpl.set_state_error(deployment_id)
-            except Exception as ex_state:
-                log.error('Failed to set error state for {0}: {1}'.format(deployment_id, ex_state))
-
+            log.error('Failed to {0} {1}: {2}'.format(self.job['action'], deployment_id, ex))
+            self.job.set_status_message(repr(ex))
             raise ex
 
         return 0

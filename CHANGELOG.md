@@ -10,6 +10,8 @@
 
 ### Changed
 
+  - Deployment action - Log message change
+  - Deployment state - Deployment state should not be set to state ERROR when this action fail
   - Logging - remove thread name from logging since it's no more multi-threaded
   - Successfully executed actions are in failed state because do_work 
     isn't returning result code. This was the case for jobs_cleanup, nuvlabox_decommission, 
