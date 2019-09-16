@@ -49,8 +49,8 @@ class ServiceImageState(object):
 
         expiry = utc_from_now_iso(EXPIRY_FROM_NOW_SEC)
         acl = deployment.get('acl', None)
-        msg = 'New image for deployment {0}({1}): {2}'.format(deployment['module'].get('path', ''),
-                                                              deployment_id, new_image_str)
+        msg = 'New image for deployment {0}: {1}\nUUID: {2}'.format(
+            deployment['module'].get('path', ''), new_image_str, deployment_id)
 
         callback = Callback(self.api)
         data = {'image': new_image,
