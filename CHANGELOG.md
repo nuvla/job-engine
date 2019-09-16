@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+### Changed
+
+  - Action service image state - consider nuvla as source of truth for deployed image version
+  - Action service and component image state - module path appended to the notification message
+
 ## [2.3.5] - 2019-09-04
 
 ### Added

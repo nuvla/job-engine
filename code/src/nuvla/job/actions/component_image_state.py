@@ -51,7 +51,8 @@ class ComponentImageState(object):
 
         expiry = utc_from_now_iso(EXPIRY_FROM_NOW_SEC)
         acl = component.get('acl', None)
-        msg = 'New image for component {0}: {1}'.format(component_id, new_image_str)
+        msg = 'New image for component {0}({1}): {2}'.format(component.get('path', ''),
+                                                             component_id, new_image_str)
 
         content = component['content']
         content.update({'image': new_image, 'commit': msg})

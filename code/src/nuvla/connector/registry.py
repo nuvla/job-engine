@@ -131,15 +131,15 @@ def new_image_semantic_tag(image):
     return new_image
 
 
-def new_image_timestamp(image, timestamp):
-    new_image = None
-    manifest_v1 = get_manifest_v1(image)
-    mtstamps = sorted([timestr2dtime(json.loads(x['v1Compatibility'])['created'])
-                       for x in manifest_v1['history']], reverse=True)
-    image_changed_at = mtstamps[0]
-    if image_changed_at > timestamp:
-        new_image = image
-    return new_image
+# def new_image_timestamp(image, timestamp):
+#     new_image = None
+#     manifest_v1 = get_manifest_v1(image)
+#     mtstamps = sorted([timestr2dtime(json.loads(x['v1Compatibility'])['created'])
+#                        for x in manifest_v1['history']], reverse=True)
+#     image_changed_at = mtstamps[0]
+#     if image_changed_at > timestamp:
+#         new_image = image
+#     return new_image
 
 
 def _get_manifest(image, headers=None):
