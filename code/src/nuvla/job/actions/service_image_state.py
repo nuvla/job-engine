@@ -2,16 +2,12 @@
 
 import logging
 
-from nuvla.connector import connector_factory, docker_connector
 from nuvla.connector.registry import (new_image_semantic_tag,
-                                      new_image_timestamp,
-                                      image_str_to_dict,
                                       image_dict_to_str,
                                       is_semantic_version)
 from nuvla.connector.utils import unique_id, utc_from_now_iso
 from .nuvla import Deployment, Callback, Notification
 from ..actions import action
-
 
 action_name = 'service_image_state'
 
@@ -29,25 +25,16 @@ class ServiceImageState(object):
         self.api_dpl = Deployment(self.api)
 
     @staticmethod
-    def check_new_image(caas, sname):
-        service = caas.service_get(sname)
-
-        image = image_str_to_dict(caas.service_image_digest(service)[0])
-
+    def check_new_image(image):
         if is_semantic_version(image.get('tag', '')):
             return new_image_semantic_tag(image)
         else:
-            s_changed_at = caas.service_get_last_timestamp(service)
-            return new_image_timestamp(image, s_changed_at)
+            return None
 
     def handle_deployment(self, deployment):
-        connector = connector_factory(docker_connector, self.api, deployment.get('parent'))
         deployment_id = deployment['id']
 
-        # FIXME: at the moment deployment UUID is the service name.
-        sname = self.api_dpl.uuid(deployment)
-
-        new_image = ServiceImageState.check_new_image(connector, sname)
+        new_image = ServiceImageState.check_new_image(deployment['module']['content']['image'])
         if not new_image:
             return
 
@@ -62,7 +49,8 @@ class ServiceImageState(object):
 
         expiry = utc_from_now_iso(EXPIRY_FROM_NOW_SEC)
         acl = deployment.get('acl', None)
-        msg = 'New image for deployment {0}: {1}'.format(deployment_id, new_image_str)
+        msg = 'New image for deployment {0}: {1}\nUUID: {2}'.format(
+            deployment['module'].get('path', ''), new_image_str, deployment_id)
 
         callback = Callback(self.api)
         data = {'image': new_image,
