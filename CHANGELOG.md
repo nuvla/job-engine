@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## [2.3.6] - 2019-09-18
+
 ### Changed
 
   - Action service image state - consider nuvla as source of truth for deployed image version
