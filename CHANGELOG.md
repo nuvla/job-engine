@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## [2.3.7] - 2019-10-10
+
+### Changed
+
+ - Update requirements to nuvla-api 2.1.1
+
 ## [2.3.6] - 2019-09-18
 
 ### Changed
