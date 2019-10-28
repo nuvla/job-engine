@@ -33,11 +33,18 @@ if __name__ == '__main__':
         "bool": {
             "should": [
                 {"term": {"state": "QUEUED"}},
-                {"term": {"state": "RUNNING"}}]}}})
+                {"term": {"state": "RUNNING"}}]}},
+        "sort": {"created": "asc"},
+        "from": 0,
+        "size": 10000})
 
     hits = data['hits']['hits']
 
     jobs_found = data.get('hits', {}).get('total', {}).get('value', '-')
+
+    if jobs_found > 10000:
+        logging.error("Max restoration is fixed to 10'000 jobs")
+        exit(1)
 
     logging.warning('Found {} jobs in QUEUED or RUNNING states.'.format(jobs_found))
 
