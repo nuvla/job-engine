@@ -2,10 +2,12 @@
 
 ## Unreleased
 
+## [2.3.8] - 2019-11-13
+
 ### Changed
 
  - Nuvlabox decommission - Delete vpn credential
- - Job restoration - Fix script limiting it to 10 instead of 10'000
+ - Job restoration - Fix limit restore to 10000
 
 ## [2.3.7] - 2019-10-10
 
