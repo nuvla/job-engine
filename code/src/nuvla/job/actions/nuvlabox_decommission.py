@@ -107,6 +107,14 @@ class NuvlaBoxDeleteJob(object):
     def delete_status(self, nuvlabox_id):
         self.delete_linked_resources('nuvlabox-status', nuvlabox_id)
 
+    def delete_vpn_cred(self, nuvlabox_id, vpn_server_id):
+        credentials = self.api.search('credential',
+                                      filter='parent="{}" and vpn-certificate-owner="{}"'
+                                      .format(vpn_server_id, nuvlabox_id),
+                                      select='id, subtype').resources
+        for credential in credentials:
+            self.delete_credential(credential.data)
+
     def delete_nuvlabox(self):
         nuvlabox_id = self.job['target-resource']['href']
 
@@ -135,6 +143,13 @@ class NuvlaBoxDeleteJob(object):
             self.delete_api_key(nuvlabox_id)
 
             self.job.set_progress(50)
+
+            vpn_server_id = nuvlabox.get('vpn-server-id')
+
+            if vpn_server_id:
+                self.delete_vpn_cred(nuvlabox_id, vpn_server_id)
+
+            self.job.set_progress(60)
 
             if self.error == 0:
                 try:
