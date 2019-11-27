@@ -26,7 +26,7 @@ RUN apk add --no-cache ca-certificates curl
 RUN [ ! -e /etc/nsswitch.conf ] && echo 'hosts: files dns' > /etc/nsswitch.conf
 
 ENV DOCKER_CHANNEL stable
-ENV DOCKER_VERSION 18.09.2
+ENV DOCKER_VERSION 19.03.5
 
 RUN set -eux; \
 	\
@@ -59,5 +59,7 @@ ADD https://raw.githubusercontent.com/docker-library/docker/65fab2cd767c10f22ee6
 
 RUN curl -s -L https://github.com/docker/machine/releases/download/v0.16.0/docker-machine-$(uname -s)-$(uname -m) >/tmp/docker-machine && \
             install /tmp/docker-machine /usr/local/bin/docker-machine
+
+RUN curl -LO https://storage.googleapis.com/kubernetes-release/release/`curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt`/bin/linux/amd64/kubectl && chmod +x ./kubectl && mv ./kubectl /usr/local/bin/kubectl && kubectl version --client=true
 
 ENTRYPOINT ["/app/job_executor.py"]
