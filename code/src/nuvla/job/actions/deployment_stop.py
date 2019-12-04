@@ -45,7 +45,7 @@ class DeploymentStopJob(object):
             service_id = deployment_params[0].data.get('value')
             logging.info('Stopping service {} for {}.'.format(service_id, credential_id))
             if service_id is not None:
-                connector.stop([service_id])
+                connector.stop(service_id=service_id)
             else:
                 self.job.set_status_message("Deployment parameter {} doesn't have a value!"
                                             .format(deployment_params[0].data.get('id')))
@@ -54,11 +54,15 @@ class DeploymentStopJob(object):
 
     def stop_application(self, deployment):
 
-        deployment_uuid = Deployment.uuid(deployment)
-
         connector = connector_factory(docker_cli_connector, self.api, deployment.get('parent'))
 
-        result = connector.stop([deployment_uuid])
+        module_content = Deployment.module_content(deployment)
+
+        docker_compose = module_content['docker-compose']
+
+        result = connector.stop(docker_compose=docker_compose,
+                                stack_name=Deployment.uuid(deployment),
+                                files=module_content.get('files'))
 
         self.job.set_status_message(result.stdout.decode('UTF-8'))
 

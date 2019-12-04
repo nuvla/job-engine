@@ -20,7 +20,7 @@ class SwarmStopJob(object):
                                                swarm.get('management-credential-id'))
 
         nodes = swarm.get("nodes", [])
-        connector_instance.stop(nodes)
+        connector_instance.stop(nodes=nodes)
 
         self.job.set_progress(50)
 
