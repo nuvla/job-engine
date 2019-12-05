@@ -30,7 +30,7 @@ def execute_cmd(cmd, **kwargs):
     env = append_os_env(kwargs.get('env'))
     result = run(cmd, stdout=PIPE, stderr=STDOUT, env=env)
     if result.returncode == 0:
-        return result.stdout
+        return result
     else:
         raise Exception(result.stdout.decode('UTF-8'))
 
