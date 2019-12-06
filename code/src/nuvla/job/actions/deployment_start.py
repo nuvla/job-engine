@@ -235,10 +235,10 @@ class DeploymentStartJob(object):
 
         docker_compose = module_content['docker-compose']
 
-        result = connector.start(docker_compose=docker_compose,
-                                 stack_name=Deployment.uuid(deployment),
-                                 env=get_env(deployment),
-                                 files=module_content.get('files'))
+        result, services = connector.start(docker_compose=docker_compose,
+                                           stack_name=Deployment.uuid(deployment),
+                                           env=get_env(deployment),
+                                           files=module_content.get('files'))
 
         self.job.set_status_message(result)
 
@@ -248,6 +248,8 @@ class DeploymentStartJob(object):
             param_name=DeploymentParameter.HOSTNAME['name'],
             param_value=connector.extract_vm_ip(None),
             param_description=DeploymentParameter.HOSTNAME['description'])
+
+        application_params_update(self.api_dpl, deployment, services)
 
     def handle_deployment(self, deployment):
 

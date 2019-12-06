@@ -111,7 +111,7 @@ class KubernetesCliConnector(Connector):
 
             result = execute_cmd(cmd_deploy, env=env)
 
-            services = None  # self._stack_services(stack_name)
+            services = self._stack_services(stack_name)
 
             return result, services
 
@@ -153,22 +153,18 @@ class KubernetesCliConnector(Connector):
         pass
 
     @staticmethod
-    def _extract_service_info(kubernetes_resource):
-        resource_kind = kubernetes_resource['kind']
+    def _extract_service_info(kube_resource):
+        resource_kind = kube_resource['kind']
         node_id = '.'.join([resource_kind,
-                            kubernetes_resource['metadata']['name']])
+                            kube_resource['metadata']['name']])
         service_info = {'node-id': node_id}
-        # if resource_kind == 'Deployment':
-        #     service_info['image'] = kubernetes_resource['Image']
-        #     service_info['mode'] = kubernetes_resource['Mode']
-        #     service_info['service-id'] = kubernetes_resource['ID']
-        #     replicas = kubernetes_resource['Replicas'].split('/')
-        #     replicas_desired = replicas[1]
-        #     replicas_running = replicas[0]
-        #     service_info['replicas.desired'] = replicas_desired
-        #     service_info['replicas.running'] = replicas_running
+        if resource_kind == 'Deployment':
+            replicas_desired = kube_resource['spec']['replicas']
+            replicas_running = kube_resource['status'].get('readyReplicas', 0)
+            service_info['replicas.desired'] = str(replicas_desired)
+            service_info['replicas.running'] = str(replicas_running)
         if resource_kind == 'Service':
-            ports = kubernetes_resource['spec']['ports']
+            ports = kube_resource['spec']['ports']
             for port in ports:
                 external_port = port.get('nodePort')
                 if external_port:
@@ -178,11 +174,17 @@ class KubernetesCliConnector(Connector):
         return service_info
 
     def _stack_services(self, stack_name):
-        cmd = self.build_cmd_line(['get', 'services', '--namespace', stack_name, '-o', 'json'])
-        stdout = execute_cmd(cmd)
+        cmd_services = self.build_cmd_line(['get', 'services', '--namespace',
+                                            stack_name, '-o', 'json'])
+        kube_services = json.loads(execute_cmd(cmd_services)).get('items', [])
 
-        services = [KubernetesCliConnector._extract_service_info(kubernetes_resource)
-                    for kubernetes_resource in json.loads(stdout).get('items', [])]
+        cmd_deployments = self.build_cmd_line(['get', 'deployments', '--namespace',
+                                               stack_name, '-o', 'json'])
+        kube_deployments = json.loads(execute_cmd(cmd_deployments)).get('items', [])
+
+        services = [KubernetesCliConnector._extract_service_info(kube_resource)
+                    for kube_resource in kube_services + kube_deployments]
+
         return services
 
     @should_connect
