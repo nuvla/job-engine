@@ -3,7 +3,8 @@
 import logging
 from datetime import datetime
 
-from nuvla.connector import connector_factory, docker_connector, docker_cli_connector
+from nuvla.connector import connector_factory, docker_connector, \
+    docker_cli_connector, kubernetes_cli_connector
 from .nuvla import Deployment, DeploymentParameter
 from .deployment_start import application_params_update
 from ..actions import action
@@ -116,6 +117,13 @@ class DeploymentStateJob(object):
         services = connector.stack_services(stack_name)
         application_params_update(self.api_dpl, deployment, services)
 
+    def get_application_kubernetes_state(self, deployment):
+        connector = connector_factory(kubernetes_cli_connector, self.api,
+                                      deployment.get('parent'))
+        stack_name = Deployment.uuid(deployment)
+        services = connector.stack_services(stack_name)
+        application_params_update(self.api_dpl, deployment, services)
+
     def do_work(self):
         deployment_id = self.job['target-resource']['href']
 
@@ -130,6 +138,8 @@ class DeploymentStateJob(object):
                 self.get_component_state(deployment)
             elif Deployment.is_application(deployment):
                 self.get_application_state(deployment)
+            elif Deployment.is_application_kubernetes(deployment):
+                self.get_application_kubernetes_state(deployment)
         except Exception as ex:
             log.error('Failed to {0} {1}: {2}'.format(self.job['action'], deployment_id, ex))
             self.job.set_status_message(repr(ex))

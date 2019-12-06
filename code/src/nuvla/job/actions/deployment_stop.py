@@ -79,7 +79,7 @@ class DeploymentStopJob(object):
                                 stack_name=Deployment.uuid(deployment),
                                 files=module_content.get('files'))
 
-        self.job.set_status_message(result.stdout.decode('UTF-8'))
+        self.job.set_status_message(result)
 
     def stop_deployment(self):
         deployment_id = self.job['target-resource']['href']

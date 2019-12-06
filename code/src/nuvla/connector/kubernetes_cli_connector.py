@@ -2,6 +2,7 @@
 import logging
 import os
 import re
+import json
 import yaml
 from subprocess import run, PIPE, STDOUT
 from tempfile import NamedTemporaryFile, TemporaryDirectory
@@ -30,7 +31,7 @@ def execute_cmd(cmd, **kwargs):
     env = append_os_env(kwargs.get('env'))
     result = run(cmd, stdout=PIPE, stderr=STDOUT, env=env)
     if result.returncode == 0:
-        return result
+        return result.stdout.decode('UTF-8')
     else:
         raise Exception(result.stdout.decode('UTF-8'))
 
@@ -66,7 +67,8 @@ class KubernetesCliConnector(Connector):
 
     def build_cmd_line(self, list_cmd):
         return ['kubectl', '-s', self.endpoint, '--client-certificate', self.cert_key_file.name,
-                '--client-key', self.cert_key_file.name] + list_cmd
+                '--client-key', self.cert_key_file.name, '--insecure-skip-tls-verify=true'] \
+               + list_cmd
 
     @staticmethod
     def _create_deployment_context(directory_path, stack_name, docker_compose, files):
@@ -109,23 +111,34 @@ class KubernetesCliConnector(Connector):
 
             result = execute_cmd(cmd_deploy, env=env)
 
-            services = None #self._stack_services(stack_name)
+            services = None  # self._stack_services(stack_name)
 
             return result, services
 
     @should_connect
     def stop(self, **kwargs):
         # Mandatory kwargs
-        docker_compose = kwargs['docker_compose']
+        # docker_compose = kwargs['docker_compose']
         stack_name = kwargs['stack_name']
-        files = kwargs['files']
+        # files = kwargs['files']
+        #
+        # with TemporaryDirectory() as tmp_dir_name:
+        #     KubernetesCliConnector._create_deployment_context(tmp_dir_name, stack_name,
+        #                                                       docker_compose, files)
+        # cmd_stop = self.build_cmd_line(['delete', '-k', tmp_dir_name])
+        cmd_stop = self.build_cmd_line(['delete', 'namespace', stack_name])
 
-        with TemporaryDirectory() as tmp_dir_name:
-            KubernetesCliConnector._create_deployment_context(tmp_dir_name, stack_name,
-                                                              docker_compose, files)
-            cmd_stop = self.build_cmd_line(['delete', '-k', tmp_dir_name])
-
+        try:
             return execute_cmd(cmd_stop)
+        except Exception as ex:
+            if 'NotFound' in ex.args[0] if len(ex.args) > 0 else '':
+                return 'namespace "{}" already stopped (not found)'.format(stack_name)
+            else:
+                raise ex
+
+    @should_connect
+    def update(self, service_name, **kwargs):
+        pass
 
     @should_connect
     def list(self, filters=None):
@@ -140,36 +153,37 @@ class KubernetesCliConnector(Connector):
         pass
 
     @staticmethod
-    def _extract_service_info(stack_name, service):
-        # service_info = {}
-        # service_json = json.loads(service)
-        # service_info['image'] = service_json['Image']
-        # service_info['mode'] = service_json['Mode']
-        # service_info['service-id'] = service_json['ID']
-        # node_id = service_json['Name'][len(stack_name) + 1:]
-        # service_info['node-id'] = node_id
-        # replicas = service_json['Replicas'].split('/')
-        # replicas_desired = replicas[1]
-        # replicas_running = replicas[0]
-        # service_info['replicas.desired'] = replicas_desired
-        # service_info['replicas.running'] = replicas_running
-        # ports = filter(None, service_json['Ports'].split(','))
-        # for port in ports:
-        #     external_port_info, internal_port_info = port.split('->')
-        #     external_port = external_port_info.split(':')[1]
-        #     internal_port, protocol = internal_port_info.split('/')
-        #     service_info['{}.{}'.format(protocol, internal_port)] = external_port
-        # return service_info
-        pass
+    def _extract_service_info(kubernetes_resource):
+        resource_kind = kubernetes_resource['kind']
+        node_id = '.'.join([resource_kind,
+                            kubernetes_resource['metadata']['name']])
+        service_info = {'node-id': node_id}
+        # if resource_kind == 'Deployment':
+        #     service_info['image'] = kubernetes_resource['Image']
+        #     service_info['mode'] = kubernetes_resource['Mode']
+        #     service_info['service-id'] = kubernetes_resource['ID']
+        #     replicas = kubernetes_resource['Replicas'].split('/')
+        #     replicas_desired = replicas[1]
+        #     replicas_running = replicas[0]
+        #     service_info['replicas.desired'] = replicas_desired
+        #     service_info['replicas.running'] = replicas_running
+        if resource_kind == 'Service':
+            ports = kubernetes_resource['spec']['ports']
+            for port in ports:
+                external_port = port.get('nodePort')
+                if external_port:
+                    internal_port = port['port']
+                    protocol = port['protocol'].lower()
+                    service_info['{}.{}'.format(protocol, internal_port)] = str(external_port)
+        return service_info
 
     def _stack_services(self, stack_name):
-        # cmd = self.build_cmd_line(['stack', 'services', '--format',
-        #                            '{{ json . }}', stack_name])
-        # stdout = execute_cmd(cmd).stdout.decode('UTF-8')
-        # services = [DockerCliConnector._extract_service_info(stack_name, service)
-        #             for service in stdout.splitlines()]
-        # return services
-        pass
+        cmd = self.build_cmd_line(['get', 'services', '--namespace', stack_name, '-o', 'json'])
+        stdout = execute_cmd(cmd)
+
+        services = [KubernetesCliConnector._extract_service_info(kubernetes_resource)
+                    for kubernetes_resource in json.loads(stdout).get('items', [])]
+        return services
 
     @should_connect
     def stack_services(self, stack_name):
