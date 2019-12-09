@@ -99,8 +99,10 @@ class DockerCliConnector(Connector):
             return result, services
 
     @should_connect
-    def stop(self, ids):
-        stack_name = ids[0]
+    def stop(self, **kwargs):
+        # Mandatory kwargs
+        stack_name = kwargs['stack_name']
+
         cmd = self.build_cmd_line(['stack', 'rm', stack_name])
         return execute_cmd(cmd)
 

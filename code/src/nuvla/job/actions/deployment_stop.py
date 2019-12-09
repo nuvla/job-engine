@@ -57,13 +57,7 @@ class DeploymentStopJob(object):
 
         connector = connector_factory(docker_cli_connector, self.api, deployment.get('parent'))
 
-        module_content = Deployment.module_content(deployment)
-
-        docker_compose = module_content['docker-compose']
-
-        result = connector.stop(docker_compose=docker_compose,
-                                stack_name=Deployment.uuid(deployment),
-                                files=module_content.get('files'))
+        result = connector.stop(stack_name=Deployment.uuid(deployment))
 
         self.job.set_status_message(result.stdout.decode('UTF-8'))
 
@@ -73,11 +67,7 @@ class DeploymentStopJob(object):
 
         module_content = Deployment.module_content(deployment)
 
-        docker_compose = module_content['docker-compose']
-
-        result = connector.stop(docker_compose=docker_compose,
-                                stack_name=Deployment.uuid(deployment),
-                                files=module_content.get('files'))
+        result = connector.stop(stack_name=Deployment.uuid(deployment))
 
         self.job.set_status_message(result)
 
