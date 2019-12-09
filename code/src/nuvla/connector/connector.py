@@ -50,7 +50,7 @@ class Connector(object):
 
     @abstractmethod
     @should_connect
-    def stop(self, ids):
+    def stop(self, **kwargs):
         pass
 
     @abstractmethod

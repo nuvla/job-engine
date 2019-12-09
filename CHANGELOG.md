@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+  - Kubernetes - deployment support start, stop, state actions
+  - Install kubectl command
+  - Update docker client to 19.03.5
+
 ## [2.3.8] - 2019-11-13
 
 ### Changed

@@ -2,7 +2,8 @@
 
 import logging
 
-from nuvla.connector import connector_factory, docker_connector, docker_cli_connector
+from nuvla.connector import connector_factory, docker_connector, \
+    docker_cli_connector, kubernetes_cli_connector
 from nuvla.api import NuvlaError, ConnectionError
 from .nuvla import Deployment
 from ..actions import action
@@ -45,7 +46,7 @@ class DeploymentStopJob(object):
             service_id = deployment_params[0].data.get('value')
             logging.info('Stopping service {} for {}.'.format(service_id, credential_id))
             if service_id is not None:
-                connector.stop([service_id])
+                connector.stop(service_id=service_id)
             else:
                 self.job.set_status_message("Deployment parameter {} doesn't have a value!"
                                             .format(deployment_params[0].data.get('id')))
@@ -54,13 +55,31 @@ class DeploymentStopJob(object):
 
     def stop_application(self, deployment):
 
-        deployment_uuid = Deployment.uuid(deployment)
-
         connector = connector_factory(docker_cli_connector, self.api, deployment.get('parent'))
 
-        result = connector.stop([deployment_uuid])
+        module_content = Deployment.module_content(deployment)
+
+        docker_compose = module_content['docker-compose']
+
+        result = connector.stop(docker_compose=docker_compose,
+                                stack_name=Deployment.uuid(deployment),
+                                files=module_content.get('files'))
 
         self.job.set_status_message(result.stdout.decode('UTF-8'))
+
+    def stop_application_kubernetes(self, deployment):
+
+        connector = connector_factory(kubernetes_cli_connector, self.api, deployment.get('parent'))
+
+        module_content = Deployment.module_content(deployment)
+
+        docker_compose = module_content['docker-compose']
+
+        result = connector.stop(docker_compose=docker_compose,
+                                stack_name=Deployment.uuid(deployment),
+                                files=module_content.get('files'))
+
+        self.job.set_status_message(result)
 
     def stop_deployment(self):
         deployment_id = self.job['target-resource']['href']
@@ -76,6 +95,8 @@ class DeploymentStopJob(object):
                 self.stop_component(deployment)
             elif Deployment.is_application(deployment):
                 self.stop_application(deployment)
+            elif Deployment.is_application_kubernetes(deployment):
+                self.stop_application_kubernetes(deployment)
         except Exception as ex:
             log.error('Failed to {0} {1}: {2}'.format(self.job['action'], deployment_id, ex))
             try:

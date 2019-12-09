@@ -60,6 +60,10 @@ class Deployment(object):
         return Deployment.subtype(deployment) == 'application'
 
     @staticmethod
+    def is_application_kubernetes(deployment):
+        return Deployment.subtype(deployment) == 'application_kubernetes'
+
+    @staticmethod
     def module(deployment):
         return deployment['module']
 

@@ -191,7 +191,8 @@ class DockerMachineConnector(Connector):
         return new_coe
 
     @should_connect
-    def stop(self, ids):
+    def stop(self, **kwargs):
+        ids = kwargs['nodes']
         stopped = []
         for node in ids:
             machine_folder = "{}/{}".format(self.DOCKER_MACHINE_FOLDER, node["machine-name"])

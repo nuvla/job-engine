@@ -3,7 +3,8 @@
 import logging
 
 from .nuvla import Deployment, DeploymentParameter
-from nuvla.connector import connector_factory, docker_connector, docker_cli_connector
+from nuvla.connector import connector_factory, docker_connector, \
+    docker_cli_connector, kubernetes_cli_connector
 from ..actions import action
 
 action_name = 'start_deployment'
@@ -223,12 +224,41 @@ class DeploymentStartJob(object):
 
         application_params_update(self.api_dpl, deployment, services)
 
+    def start_application_kubernetes(self, deployment):
+        deployment_id = Deployment.id(deployment)
+
+        connector = connector_factory(kubernetes_cli_connector, self.api, deployment.get('parent'))
+
+        module_content = Deployment.module_content(deployment)
+
+        deployment_owner = Deployment.owner(deployment)
+
+        docker_compose = module_content['docker-compose']
+
+        result, services = connector.start(docker_compose=docker_compose,
+                                           stack_name=Deployment.uuid(deployment),
+                                           env=get_env(deployment),
+                                           files=module_content.get('files'))
+
+        self.job.set_status_message(result)
+
+        self.create_deployment_parameter(
+            deployment_id=deployment_id,
+            user_id=deployment_owner,
+            param_name=DeploymentParameter.HOSTNAME['name'],
+            param_value=connector.extract_vm_ip(None),
+            param_description=DeploymentParameter.HOSTNAME['description'])
+
+        application_params_update(self.api_dpl, deployment, services)
+
     def handle_deployment(self, deployment):
 
         if Deployment.is_component(deployment):
             self.start_component(deployment)
         elif Deployment.is_application(deployment):
             self.start_application(deployment)
+        elif Deployment.is_application_kubernetes(deployment):
+            self.start_application_kubernetes(deployment)
 
         self.create_user_output_params(deployment)
 
