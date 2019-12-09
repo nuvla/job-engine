@@ -4,6 +4,12 @@
 
 ### Changed
 
+## [2.3.10] - 2019-12-09
+
+### Changed
+
+  - Fix regression stop docker application
+
 ## [2.3.9] - 2019-12-09
 
 ### Changed
