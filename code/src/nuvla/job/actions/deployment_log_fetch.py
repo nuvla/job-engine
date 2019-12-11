@@ -2,7 +2,7 @@
 
 import logging
 
-from nuvla.connector import connector_factory, docker_cli_connector
+from nuvla.connector import connector_factory, docker_cli_connector, kubernetes_cli_connector
 from .nuvla import Deployment
 from ..actions import action
 
@@ -41,21 +41,27 @@ class DeploymentLogFetchJob(object):
 
         deployment_uuid = Deployment.uuid(deployment)
 
-        connector = connector_factory(docker_cli_connector, self.api, deployment.get('parent'))
-
-        if Deployment.is_application(deployment):
-            docker_service_name = deployment_uuid + '_' + service_name
-        else:
-            docker_service_name = deployment_uuid
-
         tmp_since = last_timestamp or since
 
-        since_opt = ['--since', tmp_since] if tmp_since else []
+        if Deployment.is_application_kubernetes(deployment):
+            connector = connector_factory(kubernetes_cli_connector,
+                                          self.api, deployment.get('parent'))
+            since_opt = ['--since-time', tmp_since] if tmp_since else []
+            list_opts = [service_name, '--timestamps=true', '--tail', str(lines),
+                         '--namespace', deployment_uuid] + since_opt
+        else:
+            connector = connector_factory(docker_cli_connector, self.api, deployment.get('parent'))
 
-        list_opts = ['-t', '--no-trunc'] + since_opt + [docker_service_name]
+            if Deployment.is_application(deployment):
+                docker_service_name = deployment_uuid + '_' + service_name
+            else:
+                docker_service_name = deployment_uuid
 
-        result = connector.log(list_opts) \
-            .stdout.decode('UTF-8').strip().split('\n')[:lines]
+            since_opt = ['--since', tmp_since] if tmp_since else []
+
+            list_opts = ['-t', '--no-trunc'] + since_opt + [docker_service_name]
+
+        result = connector.log(list_opts).strip().split('\n')[:lines]
 
         new_last_timestamp = DeploymentLogFetchJob.extract_last_timestamp(result)
 

@@ -213,7 +213,7 @@ class DeploymentStartJob(object):
                                            env=get_env(deployment),
                                            files=module_content.get('files'))
 
-        self.job.set_status_message(result.stdout.decode('UTF-8'))
+        self.job.set_status_message(result)
 
         self.create_deployment_parameter(
             deployment_id=deployment_id,
