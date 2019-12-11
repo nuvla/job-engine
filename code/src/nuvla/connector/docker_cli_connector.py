@@ -30,7 +30,7 @@ def execute_cmd(cmd, **kwargs):
     env = append_os_env(kwargs.get('env'))
     result = run(cmd, stdout=PIPE, stderr=STDOUT, env=env)
     if result.returncode == 0:
-        return result
+        return result.stdout.decode('UTF-8')
     else:
         raise Exception(result.stdout.decode('UTF-8'))
 
@@ -143,7 +143,7 @@ class DockerCliConnector(Connector):
     def _stack_services(self, stack_name):
         cmd = self.build_cmd_line(['stack', 'services', '--format',
                                    '{{ json . }}', stack_name])
-        stdout = execute_cmd(cmd).stdout.decode('UTF-8')
+        stdout = execute_cmd(cmd)
         services = [DockerCliConnector._extract_service_info(stack_name, service)
                     for service in stdout.splitlines()]
         return services

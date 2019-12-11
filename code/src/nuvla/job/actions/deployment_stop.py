@@ -59,13 +59,11 @@ class DeploymentStopJob(object):
 
         result = connector.stop(stack_name=Deployment.uuid(deployment))
 
-        self.job.set_status_message(result.stdout.decode('UTF-8'))
+        self.job.set_status_message(result)
 
     def stop_application_kubernetes(self, deployment):
 
         connector = connector_factory(kubernetes_cli_connector, self.api, deployment.get('parent'))
-
-        module_content = Deployment.module_content(deployment)
 
         result = connector.stop(stack_name=Deployment.uuid(deployment))
 

@@ -148,9 +148,8 @@ class KubernetesCliConnector(Connector):
 
     @should_connect
     def log(self, list_opts):
-        # cmd = self.build_cmd_line(['service', 'logs'] + list_opts)
-        # return execute_cmd(cmd)
-        pass
+        cmd = self.build_cmd_line(['logs'] + list_opts)
+        return execute_cmd(cmd)
 
     @staticmethod
     def _extract_service_info(kube_resource):
