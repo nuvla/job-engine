@@ -28,12 +28,13 @@ def append_os_env(env):
 
 
 def execute_cmd(cmd, **kwargs):
-    env = append_os_env(kwargs.get('env'))
-    result = run(cmd, stdout=PIPE, stderr=STDOUT, env=env)
+    opt_env = append_os_env(kwargs.get('env'))
+    opt_input = kwargs.get('input')
+    result = run(cmd, stdout=PIPE, stderr=STDOUT, env=opt_env, input=opt_input, encoding='UTF-8')
     if result.returncode == 0:
-        return result.stdout.decode('UTF-8')
+        return result.stdout
     else:
-        raise Exception(result.stdout.decode('UTF-8'))
+        raise Exception(result.stdout)
 
 
 class KubernetesCliConnector(Connector):
@@ -99,17 +100,20 @@ class KubernetesCliConnector(Connector):
     @should_connect
     def start(self, **kwargs):
         # Mandatory kwargs
-        docker_compose = kwargs['docker_compose']
-        stack_name = kwargs['stack_name']
         env = kwargs['env']
+        docker_compose = kwargs['docker_compose']
+        envsubst_shell_format = ' '.join(['${}'.format(k) for k in env.keys()])
+        docker_compose_env_subs = execute_cmd(['envsubst', envsubst_shell_format],
+                                              env=env, input=docker_compose)
+        stack_name = kwargs['stack_name']
         files = kwargs['files']
 
         with TemporaryDirectory() as tmp_dir_name:
             KubernetesCliConnector._create_deployment_context(tmp_dir_name, stack_name,
-                                                              docker_compose, files)
+                                                              docker_compose_env_subs, files)
             cmd_deploy = self.build_cmd_line(['apply', '-k', tmp_dir_name])
 
-            result = execute_cmd(cmd_deploy, env=env)
+            result = execute_cmd(cmd_deploy)
 
             services = self._stack_services(stack_name)
 
