@@ -62,4 +62,6 @@ RUN curl -s -L https://github.com/docker/machine/releases/download/v0.16.0/docke
 
 RUN curl -LO https://storage.googleapis.com/kubernetes-release/release/`curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt`/bin/linux/amd64/kubectl && chmod +x ./kubectl && mv ./kubectl /usr/local/bin/kubectl && kubectl version --client=true
 
+RUN apk --no-cache add gettext
+
 ENTRYPOINT ["/app/job_executor.py"]

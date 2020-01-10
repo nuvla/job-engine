@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+  - Kubernetes connector - deployment start support env vars substitution
+
 ### Changed
 
 ## [2.3.10] - 2019-12-09
