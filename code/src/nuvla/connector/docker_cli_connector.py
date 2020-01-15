@@ -1,11 +1,9 @@
 # -*- coding: utf-8 -*-
-import logging
-import os
 import re
 import json
-from subprocess import run, PIPE, STDOUT
-from tempfile import NamedTemporaryFile, TemporaryDirectory
-
+import logging
+from tempfile import TemporaryDirectory
+from .utils import execute_cmd, create_tmp_file
 from .connector import Connector, should_connect
 
 log = logging.getLogger('docker_cli_connector')
@@ -17,24 +15,6 @@ def instantiate_from_cimi(api_infrastructure_service, api_credential):
                               endpoint=api_infrastructure_service.get('endpoint'))
 
 
-def append_os_env(env):
-    final_env = os.environ.copy()
-    if env:
-        for key, value in env.items():
-            if value:
-                final_env[key] = value
-    return final_env
-
-
-def execute_cmd(cmd, **kwargs):
-    env = append_os_env(kwargs.get('env'))
-    result = run(cmd, stdout=PIPE, stderr=STDOUT, env=env)
-    if result.returncode == 0:
-        return result.stdout.decode('UTF-8')
-    else:
-        raise Exception(result.stdout.decode('UTF-8'))
-
-
 class DockerCliConnector(Connector):
 
     def __init__(self, **kwargs):
@@ -44,7 +24,8 @@ class DockerCliConnector(Connector):
         self.cert = self.kwargs['cert']
         self.key = self.kwargs['key']
         self.endpoint = self.kwargs['endpoint'].replace('https://', '')
-        self.cert_key_file = None
+        self.cert_file = None
+        self.key_file = None
 
     @property
     def connector_type(self):
@@ -52,20 +33,20 @@ class DockerCliConnector(Connector):
 
     def connect(self):
         log.info('Connecting to endpoint {}'.format(self.endpoint))
-        auth_file = NamedTemporaryFile(delete=True)
-        auth_text = self.cert + '\n' + self.key
-        auth_file.write(auth_text.encode())
-        auth_file.flush()
-        self.cert_key_file = auth_file
-        return auth_file
+        self.cert_file = create_tmp_file(self.cert)
+        self.key_file = create_tmp_file(self.key)
 
     def clear_connection(self, connect_result):
-        if connect_result:
-            connect_result.close()
+        if self.cert_file:
+            self.cert_file.close()
+            self.cert_file = None
+        if self.key_file:
+            self.key_file.close()
+            self.key_file = None
 
     def build_cmd_line(self, list_cmd):
-        return ['docker', '-H', self.endpoint, '--tls', '--tlscert', self.cert_key_file.name,
-                '--tlskey', self.cert_key_file.name, '--tlscacert', self.cert_key_file.name] \
+        return ['docker', '-H', self.endpoint, '--tls', '--tlscert', self.cert_file.name,
+                '--tlskey', self.key_file.name, '--tlscacert', self.cert_file.name] \
                + list_cmd
 
     @should_connect
@@ -151,6 +132,15 @@ class DockerCliConnector(Connector):
     @should_connect
     def stack_services(self, stack_name):
         return self._stack_services(stack_name)
+
+    @should_connect
+    def info(self):
+        cmd = self.build_cmd_line(['info', '--format', '{{ json . }}'])
+        info = json.loads(execute_cmd(cmd))
+        server_errors = info.get('ServerErrors', [])
+        if len(server_errors) > 0:
+            raise Exception(server_errors[0])
+        return info
 
     def extract_vm_id(self, vm):
         pass

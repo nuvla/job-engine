@@ -1,12 +1,10 @@
 # -*- coding: utf-8 -*-
-import logging
-import os
 import re
 import json
 import yaml
-from subprocess import run, PIPE, STDOUT
-from tempfile import NamedTemporaryFile, TemporaryDirectory
-
+import logging
+from tempfile import TemporaryDirectory
+from .utils import execute_cmd, create_tmp_file
 from .connector import Connector, should_connect
 
 log = logging.getLogger('kubernetes_cli_connector')
@@ -16,25 +14,6 @@ def instantiate_from_cimi(api_infrastructure_service, api_credential):
     return KubernetesCliConnector(cert=api_credential.get('cert').replace("\\n", "\n"),
                                   key=api_credential.get('key').replace("\\n", "\n"),
                                   endpoint=api_infrastructure_service.get('endpoint'))
-
-
-def append_os_env(env):
-    final_env = os.environ.copy()
-    if env:
-        for key, value in env.items():
-            if value:
-                final_env[key] = value
-    return final_env
-
-
-def execute_cmd(cmd, **kwargs):
-    opt_env = append_os_env(kwargs.get('env'))
-    opt_input = kwargs.get('input')
-    result = run(cmd, stdout=PIPE, stderr=STDOUT, env=opt_env, input=opt_input, encoding='UTF-8')
-    if result.returncode == 0:
-        return result.stdout
-    else:
-        raise Exception(result.stdout)
 
 
 class KubernetesCliConnector(Connector):
@@ -47,7 +26,8 @@ class KubernetesCliConnector(Connector):
         self.key = self.kwargs['key']
 
         self.endpoint = self.kwargs['endpoint']
-        self.cert_key_file = None
+        self.cert_file = None
+        self.key_file = None
 
     @property
     def connector_type(self):
@@ -55,20 +35,20 @@ class KubernetesCliConnector(Connector):
 
     def connect(self):
         log.info('Connecting to endpoint {}'.format(self.endpoint))
-        auth_file = NamedTemporaryFile(delete=True)
-        auth_text = self.cert + '\n' + self.key
-        auth_file.write(auth_text.encode())
-        auth_file.flush()
-        self.cert_key_file = auth_file
-        return auth_file
+        self.cert_file = create_tmp_file(self.cert)
+        self.key_file = create_tmp_file(self.key)
 
     def clear_connection(self, connect_result):
-        if connect_result:
-            connect_result.close()
+        if self.cert_file:
+            self.cert_file.close()
+            self.cert_file = None
+        if self.key_file:
+            self.key_file.close()
+            self.key_file = None
 
     def build_cmd_line(self, list_cmd):
-        return ['kubectl', '-s', self.endpoint, '--client-certificate', self.cert_key_file.name,
-                '--client-key', self.cert_key_file.name, '--insecure-skip-tls-verify=true'] \
+        return ['kubectl', '-s', self.endpoint, '--client-certificate', self.cert_file.name,
+                '--client-key', self.key_file.name, '--insecure-skip-tls-verify=true'] \
                + list_cmd
 
     @staticmethod
@@ -189,6 +169,12 @@ class KubernetesCliConnector(Connector):
                     for kube_resource in kube_services + kube_deployments]
 
         return services
+
+    @should_connect
+    def version(self):
+        cmd = self.build_cmd_line(['version', '-o', 'json'])
+        version = execute_cmd(cmd)
+        return json.loads(version)
 
     @should_connect
     def stack_services(self, stack_name):

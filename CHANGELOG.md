@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Changed
+
+  - Credential check_coe - implement check COE action
+
 ## [2.3.11] - 2020-01-10
 
 ### Changed
