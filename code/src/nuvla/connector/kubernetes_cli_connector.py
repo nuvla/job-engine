@@ -173,7 +173,7 @@ class KubernetesCliConnector(Connector):
     @should_connect
     def version(self):
         cmd = self.build_cmd_line(['version', '-o', 'json'])
-        version = execute_cmd(cmd)
+        version = execute_cmd(cmd, timeout=5)
         return json.loads(version)
 
     @should_connect

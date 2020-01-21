@@ -6,7 +6,7 @@ from datetime import datetime
 from nuvla.connector import connector_factory, docker_cli_connector, kubernetes_cli_connector
 from ..actions import action
 
-action_name = 'credential_check_coe'
+action_name = 'credential_check'
 
 log = logging.getLogger(action_name)
 
@@ -33,6 +33,9 @@ class CredentialCheckCOEJob(object):
         version = connector.version()
         self.job.set_status_message(version)
 
+    def update_credential_last_check(self, credential_id, status):
+        self.api.edit(credential_id, {'status': status})
+
     def do_work(self):
         credential_id = self.job['target-resource']['href']
 
@@ -51,8 +54,10 @@ class CredentialCheckCOEJob(object):
                 self.check_coe_swarm(credential)
             elif infra_service['subtype'] == 'kubernetes':
                 self.check_coe_kubernetes(credential)
+            self.update_credential_last_check(credential_id, 'VALID')
         except Exception as ex:
             log.error('Failed to {0} {1}: {2}'.format(self.job['action'], infra_service_id, ex))
+            self.update_credential_last_check(credential_id, 'INVALID')
             msg = str(ex)
             lines = msg.splitlines()
             status = lines[-1] if len(lines) > 1 else msg

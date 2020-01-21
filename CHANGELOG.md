@@ -4,7 +4,9 @@
 
 ### Changed
 
-  - Credential check_coe - implement check COE action
+  - Deployment log - docker log command deadlock fixed by command timeout
+  - Timeout run command to 120s by default and 5s to credential check 
+  - Credential check - implement check credential action
 
 ## [2.3.11] - 2020-01-10
 
