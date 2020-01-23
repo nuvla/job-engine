@@ -4,6 +4,10 @@
 
 ### Changed
 
+## [2.3.12] - 2020-01-23
+
+### Changed
+
   - Deployment log - docker log command deadlock fixed by command timeout
   - Timeout run command to 120s by default and 5s to credential check 
   - Credential check - implement check credential action
