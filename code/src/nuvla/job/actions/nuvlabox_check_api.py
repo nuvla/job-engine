@@ -7,7 +7,7 @@ from nuvla.connector import nuvlabox_connector as NB
 
 
 @action('check_nuvlabox_api')
-class NBRebootJob(object):
+class NBCheckJob(object):
 
     def __init__(self, _, job):
         self.job = job
