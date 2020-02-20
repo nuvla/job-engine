@@ -6,8 +6,6 @@ from nuvla.connector import connector_factory, docker_connector
 from .nuvla import Deployment
 from ..actions import action
 
-from .deployment_start import get_env, application_params_update
-
 action_name = 'update_deployment'
 
 log = logging.getLogger(action_name)
@@ -21,6 +19,21 @@ class DeploymentUpdateJob(object):
         self.api = job.api
         self.api_dpl = Deployment(self.api)
 
+    def private_registries_auth(self, deployment):
+        registries_credentials = deployment.get('registries-credentials')
+        if registries_credentials:
+            list_cred_infra = []
+            for registry_cred in registries_credentials:
+                credential = self.api.get(registry_cred).data
+                infra_service = self.api.get(credential['parent']).data
+                registry_auth = {'username': credential['username'],
+                                 'password': credential['password'],
+                                 'serveraddress': infra_service['endpoint'].replace('https://', '')}
+                list_cred_infra.append(registry_auth)
+            return list_cred_infra
+        else:
+            return None
+
     def update_component(self, deployment):
         connector = connector_factory(docker_connector, self.api, deployment.get('parent'))
 
@@ -29,8 +42,11 @@ class DeploymentUpdateJob(object):
         # name of the service is the UUID of the deployment in the case of component
         sname = Deployment.uuid(deployment)
 
+        registries_auth = self.private_registries_auth(deployment)
+
         # FIXME: only image update for now
-        service = connector.update(sname, image=module_content['image'])
+        service = connector.update(sname, image=module_content['image'],
+                                   registries_auth=registries_auth)
 
         # immediately update any port mappings that are already available
         ports_mapping = connector.extract_vm_ports_mapping(service)

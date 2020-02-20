@@ -2,6 +2,7 @@
 import re
 import json
 import yaml
+import base64
 import logging
 from tempfile import TemporaryDirectory
 from .utils import execute_cmd, create_tmp_file
@@ -52,7 +53,8 @@ class KubernetesCliConnector(Connector):
                + list_cmd
 
     @staticmethod
-    def _create_deployment_context(directory_path, stack_name, docker_compose, files):
+    def _create_deployment_context(directory_path, stack_name, docker_compose, files,
+                                   registries_auth):
         manifest_file_path = directory_path + '/manifest.yml'
         with open(manifest_file_path, 'w') as manifest_file:
             manifest_file.write(docker_compose)
@@ -64,18 +66,36 @@ class KubernetesCliConnector(Connector):
                               'metadata': {'name': stack_name}}
             yaml.safe_dump(namespace_data, namespace_file, allow_unicode=True)
 
-        kustomization_file_path = directory_path + '/kustomization.yml'
-        with open(kustomization_file_path, 'w') as kustomization_file:
-            kustomization_data = {'namespace': stack_name,
-                                  'resources': ['manifest.yml', 'namespace.yml']}
-            yaml.safe_dump(kustomization_data, kustomization_file, allow_unicode=True)
-
         if files:
             for file_info in files:
                 file_path = directory_path + "/" + file_info['file-name']
                 file = open(file_path, 'w')
                 file.write(file_info['file-content'])
                 file.close()
+
+        if registries_auth:
+            auths = {}
+            for registry_auth in registries_auth:
+                user_pass = registry_auth['username'] + ':' + registry_auth['password']
+                auth = base64.b64encode(user_pass.encode('ascii')).decode('utf-8')
+                auths['https://' + registry_auth['serveraddress']] = {'auth': auth}
+            secret_registries_path = directory_path + '/secret-registries-credentials.yml'
+            config = json.dumps({'auths': auths})
+            config_b64 = base64.b64encode(config.encode('ascii')).decode('utf-8')
+            with open(secret_registries_path, 'w') as secret_registries_file:
+                secret_registries_data = {'apiVersion': 'v1',
+                                          'kind': 'Secret',
+                                          'metadata': {'name': 'registries-credentials'},
+                                          'data': {'.dockerconfigjson': config_b64},
+                                          'type': 'kubernetes.io/dockerconfigjson'}
+                yaml.safe_dump(secret_registries_data, secret_registries_file, allow_unicode=True)
+
+        kustomization_file_path = directory_path + '/kustomization.yml'
+        with open(kustomization_file_path, 'w') as kustomization_file:
+            kustomization_data = {'namespace': stack_name,
+                                  'resources': ['manifest.yml', 'namespace.yml',
+                                                'secret-registries-credentials.yml']}
+            yaml.safe_dump(kustomization_data, kustomization_file, allow_unicode=True)
 
     @should_connect
     def start(self, **kwargs):
@@ -85,12 +105,15 @@ class KubernetesCliConnector(Connector):
         envsubst_shell_format = ' '.join(['${}'.format(k) for k in env.keys()])
         docker_compose_env_subs = execute_cmd(['envsubst', envsubst_shell_format],
                                               env=env, input=docker_compose)
+        registries_auth = kwargs['registries_auth']
         stack_name = kwargs['stack_name']
         files = kwargs['files']
 
         with TemporaryDirectory() as tmp_dir_name:
             KubernetesCliConnector._create_deployment_context(tmp_dir_name, stack_name,
-                                                              docker_compose_env_subs, files)
+                                                              docker_compose_env_subs, files,
+                                                              registries_auth)
+
             cmd_deploy = self.build_cmd_line(['apply', '-k', tmp_dir_name])
 
             result = execute_cmd(cmd_deploy)

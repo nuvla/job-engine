@@ -76,6 +76,7 @@ class DockerCliConnector(Connector):
                 config = open(config_path, 'w')
                 json.dump({'auths': {'': {}}}, config)
                 config.close()
+                # we don't generate the config file to have an additional validation if login works
                 for registry_auth in registries_auth:
                     cmd_login = self.build_cmd_line(
                         ['--config', tmp_dir_name, 'login',
