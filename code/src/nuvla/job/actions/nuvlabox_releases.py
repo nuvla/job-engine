@@ -20,12 +20,12 @@ class NuvlaBoxReleasesJob(object):
 
         if len(results) > 1:
             # shouldn't happen, just clean up everything
-            logging.warning("WHY: {}".format(results))
             for rel in results:
                 self.api.delete(rel.id)
 
             return False
         elif len(results) == 1:
+            logging.warning("WHY: {} {}".format(results[0].data.get('published-date', ''), published_at))
             if results[0].data.get('published-date', '') < published_at:
                 self.api.delete(results[0].id)
                 return False
