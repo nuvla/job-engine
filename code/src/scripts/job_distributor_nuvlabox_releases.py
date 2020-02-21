@@ -12,7 +12,7 @@ class NuvlaBoxReleasesDistributor(Distributor):
 
     def __init__(self):
         super(NuvlaBoxReleasesDistributor, self).__init__()
-        self.collect_interval = 86400.0  # 1 day
+        self.collect_interval = 30.0  # 1 day
 
     @override
     def job_generator(self):
