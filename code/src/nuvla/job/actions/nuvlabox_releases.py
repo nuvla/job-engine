@@ -25,8 +25,8 @@ class NuvlaBoxReleasesJob(object):
 
             return False
         elif len(results) == 1:
-            logging.warning("WHY: {} {}".format(results[0].data.get('published-date', ''), published_at))
-            if results[0].data.get('published-date', '') < published_at:
+            if results[0].data.get('release-date', '') < published_at:
+                logging.info("NuvlaBox release {} is already catalogued but seems outdated".format(release))
                 self.api.delete(results[0].id)
                 return False
 
