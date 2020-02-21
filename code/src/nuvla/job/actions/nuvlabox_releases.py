@@ -25,7 +25,7 @@ class NuvlaBoxReleasesJob(object):
 
             return False
         elif len(results) == 1:
-            if results[0].get('published-date') < published_at:
+            if results[0].data.get('published-date', '') < published_at:
                 self.api.delete(results[0].id)
                 return False
 
