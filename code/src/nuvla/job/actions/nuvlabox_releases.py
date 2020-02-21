@@ -20,6 +20,7 @@ class NuvlaBoxReleasesJob(object):
 
         if len(results) > 1:
             # shouldn't happen, just clean up everything
+            logging.warning("WHY: {}".format(results))
             for rel in results:
                 self.api.delete(rel.id)
 
