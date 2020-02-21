@@ -95,7 +95,7 @@ class NuvlaBoxReleasesJob(object):
                 'compose-files': compose_files
             }
 
-            self.api.post('nuvlabox-release', json=resource_payload)
+            self.api.add('nuvlabox-release', resource_payload)
 
         self.job.set_progress(100)
 
