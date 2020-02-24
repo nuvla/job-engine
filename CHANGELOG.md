@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+### Added
+
+  - update_nuvlabox_releases - new action
+  - job_distributor_nuvlabox_releases - new distributor 
+
 ### Changed
 
   - Deployment start, update - support private registries
