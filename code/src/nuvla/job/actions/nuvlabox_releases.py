@@ -16,7 +16,7 @@ class NuvlaBoxReleasesJob(object):
 
     def release_already_exists(self, release, published_at):
         results = self.api.search('nuvlabox-release',
-                        filter='release="{}"'.format(release)).resources
+                                  filter='release="{}"'.format(release)).resources
 
         if len(results) > 1:
             # shouldn't happen, just clean up everything
@@ -26,14 +26,14 @@ class NuvlaBoxReleasesJob(object):
             return False
         elif len(results) == 1:
             if results[0].data.get('release-date', '') < published_at:
-                logging.info("NuvlaBox release {} is already catalogued but seems outdated".format(release))
+                logging.info(
+                    "NuvlaBox release {} is already catalogued but seems outdated".format(release))
                 self.api.delete(results[0].id)
                 return False
 
             return True
         else:
             return False
-
 
     def update_nuvlabox_releases(self):
         logging.info('Updating catalogue of NuvlaBox releases')
@@ -44,7 +44,7 @@ class NuvlaBoxReleasesJob(object):
 
         current_job_progress = 20
         missing_progress = 100 - current_job_progress
-        progress_steps = int((missing_progress)/len(releases))
+        progress_steps = int(missing_progress / len(releases))
 
         for rel in releases:
             self.job.set_progress(current_job_progress)
@@ -61,7 +61,9 @@ class NuvlaBoxReleasesJob(object):
                 continue
 
             if not assets:
-                logging.warning('NuvlaBox release %s is missing assets and thus cannot be published in Nuvla' % release)
+                logging.warning(
+                    'NuvlaBox release %s is missing assets and thus cannot be published in Nuvla'
+                    % release)
                 continue
 
             # Check if this release is already catalogued
@@ -75,7 +77,8 @@ class NuvlaBoxReleasesJob(object):
                     name = asset['name']
                     download_asset_url = asset['browser_download_url']
                 except KeyError:
-                    logging.warning('Cannot resolve asset %s for NuvlaBox release %s' % (asset, release))
+                    logging.warning(
+                        'Cannot resolve asset %s for NuvlaBox release %s' % (asset, release))
                     continue
 
                 file = requests.get(download_asset_url).text

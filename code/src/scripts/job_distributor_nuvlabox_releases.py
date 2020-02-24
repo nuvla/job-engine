@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import time
 from nuvla.job.base import main
 from nuvla.job.distributor import Distributor
 from nuvla.job.util import override
