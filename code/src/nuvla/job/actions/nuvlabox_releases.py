@@ -82,7 +82,9 @@ class NuvlaBoxReleasesJob(object):
                     continue
 
                 file = requests.get(download_asset_url).text
-                scope = name.rstrip('.yml').lstrip('docker-compose.')
+
+                # seems buggy with docker-compose.modbus.yml: lstrip('docker-compose.')
+                scope = ' '.join(name.split('.')[1:-1])
 
                 compose_files.append({
                     'name': name,

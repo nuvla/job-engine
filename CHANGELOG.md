@@ -12,6 +12,7 @@
   - Deployment start, update - support private registries
   - Connectors - docker api, docker cli and kubernetes cli support 
     private registries
+  - Found bug in `lstrip` method
 
 ## [2.3.12] - 2020-01-23
 
