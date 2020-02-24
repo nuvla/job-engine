@@ -60,6 +60,21 @@ class DeploymentStartJob(object):
                                              param_name=output_param['name'],
                                              param_description=output_param.get('description'))
 
+    def private_registries_auth(self, deployment):
+        registries_credentials = deployment.get('registries-credentials')
+        if registries_credentials:
+            list_cred_infra = []
+            for registry_cred in registries_credentials:
+                credential = self.api.get(registry_cred).data
+                infra_service = self.api.get(credential['parent']).data
+                registry_auth = {'username': credential['username'],
+                                 'password': credential['password'],
+                                 'serveraddress': infra_service['endpoint'].replace('https://', '')}
+                list_cred_infra.append(registry_auth)
+            return list_cred_infra
+        else:
+            return None
+
     def start_component(self, deployment):
         connector = connector_factory(docker_connector, self.api, deployment.get('parent'))
 
@@ -83,6 +98,8 @@ class DeploymentStartJob(object):
                     param_description="mapping for {} port {}".format(protocol, str(target_port)),
                     node_id=node_instance_name)
 
+        registries_auth = self.private_registries_auth(deployment)
+
         service = connector.start(service_name=node_instance_name,
                                   image=module_content['image'],
                                   env=get_env(deployment),
@@ -93,7 +110,8 @@ class DeploymentStartJob(object):
                                   restart_policy_condition=restart_policy.get('condition'),
                                   restart_policy_delay=restart_policy.get('delay'),
                                   restart_policy_max_attempts=restart_policy.get('max-attempts'),
-                                  restart_policy_window=restart_policy.get('window'))
+                                  restart_policy_window=restart_policy.get('window'),
+                                  registry_auth=registries_auth[0] if registries_auth else None)
 
         self.create_deployment_parameter(
             deployment_id=deployment_id,
@@ -208,10 +226,13 @@ class DeploymentStartJob(object):
 
         docker_compose = module_content['docker-compose']
 
+        registries_auth = self.private_registries_auth(deployment)
+
         result, services = connector.start(docker_compose=docker_compose,
                                            stack_name=Deployment.uuid(deployment),
                                            env=get_env(deployment),
-                                           files=module_content.get('files'))
+                                           files=module_content.get('files'),
+                                           registries_auth=registries_auth)
 
         self.job.set_status_message(result)
 
@@ -235,10 +256,13 @@ class DeploymentStartJob(object):
 
         docker_compose = module_content['docker-compose']
 
+        registries_auth = self.private_registries_auth(deployment)
+
         result, services = connector.start(docker_compose=docker_compose,
                                            stack_name=Deployment.uuid(deployment),
                                            env=get_env(deployment),
-                                           files=module_content.get('files'))
+                                           files=module_content.get('files'),
+                                           registries_auth=registries_auth)
 
         self.job.set_status_message(result)
 

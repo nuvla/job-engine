@@ -1,8 +1,5 @@
-import json
 import base64
 import requests
-
-from .utils import timestr2dtime
 
 DEFAULT_REGISTRY = 'registry-1.docker.io'
 DEFAULT_TAG = 'latest'
