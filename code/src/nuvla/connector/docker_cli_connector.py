@@ -56,6 +56,7 @@ class DockerCliConnector(Connector):
         stack_name = kwargs['stack_name']
         env = kwargs['env']
         files = kwargs['files']
+        registries_auth = kwargs['registries_auth']
 
         with TemporaryDirectory() as tmp_dir_name:
             compose_file_path = tmp_dir_name + "/docker-compose.yaml"
@@ -70,8 +71,22 @@ class DockerCliConnector(Connector):
                     file.write(file_info['file-content'])
                     file.close()
 
+            if registries_auth:
+                config_path = tmp_dir_name + "/config.json"
+                config = open(config_path, 'w')
+                json.dump({'auths': {'': {}}}, config)
+                config.close()
+                # we don't generate the config file to have an additional validation if login works
+                for registry_auth in registries_auth:
+                    cmd_login = self.build_cmd_line(
+                        ['--config', tmp_dir_name, 'login',
+                         '--username', registry_auth['username'], '--password-stdin',
+                         'https://' + registry_auth['serveraddress']])
+                    execute_cmd(cmd_login, input=registry_auth['password'])
+
             cmd_deploy = self.build_cmd_line(
-                ['stack', 'deploy', '-c', compose_file_path, stack_name])
+                ['--config', tmp_dir_name, 'stack', 'deploy',
+                 '--with-registry-auth', '-c', compose_file_path, stack_name])
 
             result = execute_cmd(cmd_deploy, env=env)
 

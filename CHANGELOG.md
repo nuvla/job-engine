@@ -4,6 +4,10 @@
 
 ### Changed
 
+  - Deployment start, update - support private registries
+  - Connectors - docker api, docker cli and kubernetes cli support 
+    private registries
+
 ## [2.3.12] - 2020-01-23
 
 ### Changed

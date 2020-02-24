@@ -3,6 +3,7 @@
 import json
 import logging
 import re
+import base64
 from collections import defaultdict
 from tempfile import NamedTemporaryFile
 
@@ -194,12 +195,21 @@ class DockerConnector(Connector):
 
         return service
 
+    def registry_auth_header(self, registry_auth):
+        registry_auth_json = json.dumps(registry_auth).encode('ascii')
+        x_registry_auth = base64.b64encode(registry_auth_json)
+        self.docker_api.headers['X-Registry-Auth'] = x_registry_auth
+
     @should_connect
     def start(self, **kwargs):
         """
         :param kwargs: see `DockerConnector.service_dict()` for of `kwargs`
         :return:
         """
+
+        registry_auth = kwargs.get('registry_auth')
+        if registry_auth:
+            self.registry_auth_header(registry_auth)
 
         response = self.docker_api.post(self._get_full_url("services/create"),
                                         json=self.service_dict(**kwargs)).json()
@@ -232,6 +242,10 @@ class DockerConnector(Connector):
         :param kwargs: see `DockerConnector.service_dict()` for of `kwargs`
         :return: json - service
         """
+
+        registry_auth = kwargs.get('registry_auth')
+        if registry_auth:
+            self.registry_auth_header(registry_auth)
 
         services = self._list(filters={'name': sname})
         if len(services) >= 1:
