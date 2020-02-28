@@ -35,12 +35,16 @@ class CredentialCheckCOEJob(object):
             if ("unable to resolve docker endpoint" in error_msg.lower()) or \
                     ("invalid bind address format" in error_msg.lower()) or \
                     ("cannot connect to the docker daemon at" in error_msg.lower()) or \
-                    ("is the docker daemon running" in error_msg.lower()):
+                    ("is the docker daemon running" in error_msg.lower()) or \
+                    ("no such host" in error_msg.lower()):
                 # "unable to resolve docker endpoint: Invalid bind address format"
                 # it means that the infrastructure has a broken endpoint and will never work -> thus offline
 
                 # "Cannot connect to the Docker daemon at ... Is the docker daemon running?"
                 # it means that the infrastructure is reachable, but not the Docker API -> thus offline
+
+                # dial tcp: lookup swarm.nuvdla.io on ...: no such host
+                # it means the endpoint is unreachable and thus not usable -> offline
 
                 if infra_online != False:
                     self.api.edit(infrastructure_service.get("id"), {'online': False})
