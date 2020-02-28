@@ -53,6 +53,8 @@ class CredentialCheckCOEJob(object):
             elif "remote error: tls" in error_msg.lower():
                 # "error during connect: Get <endpoint>/v1.40/info: remote error: tls: unknown certificate authority"
                 # in this case the infra is running, reachable, and Docker has replied. Simply the creds are not good
+
+                log.info("Got here. se is %s and online is %s" % (infra_swarm_enabled, infra_online))
                 if infra_online != True:
                     self.api.edit(infrastructure_service.get("id"), {'online': True})
             else:
@@ -69,10 +71,14 @@ class CredentialCheckCOEJob(object):
 
             raise Exception(error_msg)
 
+        log.info("Got passes the raise")
+
         if infra_online != True:
             self.api.edit(infrastructure_service.get("id"), {'online': True})
 
+
         try:
+            log.info("going for se")
             node_id = info['Swarm']['NodeID']
             managers = list(map(lambda x: x['NodeID'], info['Swarm']['RemoteManagers']))
             log.info(info, node_id, managers)
@@ -85,6 +91,7 @@ class CredentialCheckCOEJob(object):
                 if infra_swarm_enabled != False:
                     self.api.edit(infrastructure_service.get("id"), {'swarm-enabled': False})
         except (KeyError, TypeError):
+            log.info("failed se")
             # then Swarm mode is not enabled
             if infra_swarm_enabled != False:
                 self.api.edit(infrastructure_service.get("id"), {'swarm-enabled': False})
