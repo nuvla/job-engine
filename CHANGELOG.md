@@ -14,6 +14,7 @@
     private registries
   - Found bug in `lstrip` method
   - make action `credential_check` also check for swarm mode and status
+  - reduced number of api calls in connector_factory
 
 ## [2.3.12] - 2020-01-23
 
