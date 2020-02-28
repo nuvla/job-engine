@@ -151,7 +151,7 @@ class DockerCliConnector(Connector):
     @should_connect
     def info(self):
         cmd = self.build_cmd_line(['info', '--format', '{{ json . }}'])
-        info = json.loads(execute_cmd(cmd, timeout=50))
+        info = json.loads(execute_cmd(cmd, timeout=5))
         server_errors = info.get('ServerErrors', [])
         if len(server_errors) > 0:
             raise Exception(server_errors[0])
