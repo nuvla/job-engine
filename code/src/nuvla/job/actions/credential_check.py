@@ -75,7 +75,6 @@ class CredentialCheckCOEJob(object):
         try:
             node_id = info['Swarm']['NodeID']
             managers = list(map(lambda x: x['NodeID'], info['Swarm']['RemoteManagers']))
-            log.info(info, node_id, managers)
             if node_id and node_id in managers:
                 if infra_swarm_enabled != True:
                     self.api.edit(infrastructure_service.get("id"), {'swarm-enabled': True})
