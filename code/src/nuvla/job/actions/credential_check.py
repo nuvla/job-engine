@@ -81,7 +81,7 @@ class CredentialCheckCOEJob(object):
                 log.warning("Infrastructure {} does not have a Swarm manager".format(infrastructure_service.get("id")))
                 if infra_swarm_enabled != False:
                     self.api.edit(infrastructure_service.get("id"), {'swarm-enabled': False})
-        except KeyError:
+        except (KeyError, TypeError):
             # then Swarm mode is not enabled
             if infra_swarm_enabled != False:
                 self.api.edit(infrastructure_service.get("id"), {'swarm-enabled': False})
