@@ -13,6 +13,7 @@
   - Connectors - docker api, docker cli and kubernetes cli support 
     private registries
   - Found bug in `lstrip` method
+  - make action `credential_check` also check for swarm mode and status
 
 ## [2.3.12] - 2020-01-23
 
