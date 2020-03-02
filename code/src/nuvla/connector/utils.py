@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
-
 import os
+import json
+import base64
 import hashlib
 from datetime import datetime, timedelta
 from subprocess import run, PIPE, STDOUT, TimeoutExpired
@@ -61,3 +62,12 @@ def create_tmp_file(content):
     file.write(content.encode())
     file.flush()
     return file
+
+
+def generate_registry_config(registries_auth):
+    auths = {}
+    for registry_auth in registries_auth:
+        user_pass = registry_auth['username'] + ':' + registry_auth['password']
+        auth = base64.b64encode(user_pass.encode('ascii')).decode('utf-8')
+        auths['https://' + registry_auth['serveraddress']] = {'auth': auth}
+    return json.dumps({'auths': auths})

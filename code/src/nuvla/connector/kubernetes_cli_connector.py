@@ -5,7 +5,7 @@ import yaml
 import base64
 import logging
 from tempfile import TemporaryDirectory
-from .utils import execute_cmd, create_tmp_file
+from .utils import execute_cmd, create_tmp_file, generate_registry_config
 from .connector import Connector, should_connect
 
 log = logging.getLogger('kubernetes_cli_connector')
@@ -74,14 +74,9 @@ class KubernetesCliConnector(Connector):
                 file.close()
 
         if registries_auth:
-            auths = {}
-            for registry_auth in registries_auth:
-                user_pass = registry_auth['username'] + ':' + registry_auth['password']
-                auth = base64.b64encode(user_pass.encode('ascii')).decode('utf-8')
-                auths['https://' + registry_auth['serveraddress']] = {'auth': auth}
-            secret_registries_path = directory_path + '/secret-registries-credentials.yml'
-            config = json.dumps({'auths': auths})
+            config = generate_registry_config(registries_auth)
             config_b64 = base64.b64encode(config.encode('ascii')).decode('utf-8')
+            secret_registries_path = directory_path + '/secret-registries-credentials.yml'
             with open(secret_registries_path, 'w') as secret_registries_file:
                 secret_registries_data = {'apiVersion': 'v1',
                                           'kind': 'Secret',

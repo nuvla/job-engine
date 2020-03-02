@@ -3,7 +3,7 @@ import re
 import json
 import logging
 from tempfile import TemporaryDirectory
-from .utils import execute_cmd, create_tmp_file
+from .utils import execute_cmd, create_tmp_file, generate_registry_config
 from .connector import Connector, should_connect
 
 log = logging.getLogger('docker_cli_connector')
@@ -74,15 +74,8 @@ class DockerCliConnector(Connector):
             if registries_auth:
                 config_path = tmp_dir_name + "/config.json"
                 config = open(config_path, 'w')
-                json.dump({'auths': {'': {}}}, config)
+                config.write(generate_registry_config(registries_auth))
                 config.close()
-                # we don't generate the config file to have an additional validation if login works
-                for registry_auth in registries_auth:
-                    cmd_login = self.build_cmd_line(
-                        ['--config', tmp_dir_name, 'login',
-                         '--username', registry_auth['username'], '--password-stdin',
-                         'https://' + registry_auth['serveraddress']])
-                    execute_cmd(cmd_login, input=registry_auth['password'])
 
             cmd_deploy = self.build_cmd_line(
                 ['--config', tmp_dir_name, 'stack', 'deploy',
@@ -168,3 +161,20 @@ class DockerCliConnector(Connector):
 
     def extract_vm_state(self, vm):
         pass
+
+    @staticmethod
+    def registry_login(**kwargs):
+        # Mandatory kwargs
+        username = kwargs['username']
+        password = kwargs['password']
+        serveraddress = kwargs['serveraddress']
+
+        with TemporaryDirectory() as tmp_dir_name:
+            config_path = tmp_dir_name + "/config.json"
+            config = open(config_path, 'w')
+            json.dump({'auths': {'': {}}}, config)
+            config.close()
+            cmd_login = ['docker', '--config', tmp_dir_name, 'login',
+                         '--username', username, '--password-stdin',
+                         'https://' + serveraddress.replace('https://', '')]
+            return execute_cmd(cmd_login, input=password)
