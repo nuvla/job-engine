@@ -199,8 +199,8 @@ class DockerComposeCliConnector(Connector):
 
         return False
 
-    def check_module_compatibility(self, **kwargs):
-        """ Checks whether the module is compatible with Swarm or Docker Compose
+    def check_app_compatibility(self, **kwargs):
+        """ Checks whether the app is compatible with Swarm or Docker Compose
 
         :return compatibility: 'swarm' or 'docker-compose' """
 

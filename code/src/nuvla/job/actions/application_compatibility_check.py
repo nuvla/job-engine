@@ -5,13 +5,13 @@ import logging
 from nuvla.connector import docker_compose_cli_connector
 from ..actions import action
 
-action_name = 'module_compatibility_check'
+action_name = 'application_compatibility_check'
 
 log = logging.getLogger(action_name)
 
 
 @action(action_name)
-class ModuleCompatibilityCheck(object):
+class ApplicationCompatibilityCheck(object):
 
     def __init__(self, _, job):
         self.job = job
@@ -21,7 +21,7 @@ class ModuleCompatibilityCheck(object):
     def check_config(compose_file):
         connector = docker_compose_cli_connector.DockerComposeCliConnector(endpoint="unix:///var/run/docker.sock")
 
-        return connector.check_module_compatibility(docker_compose=compose_file)
+        return connector.check_app_compatibility(docker_compose=compose_file)
 
     def do_work(self):
         module_id = self.job['target-resource']['href']
