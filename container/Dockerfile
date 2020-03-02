@@ -60,6 +60,9 @@ ADD https://raw.githubusercontent.com/docker-library/docker/65fab2cd767c10f22ee6
 RUN curl -s -L https://github.com/docker/machine/releases/download/v0.16.0/docker-machine-$(uname -s)-$(uname -m) >/tmp/docker-machine && \
             install /tmp/docker-machine /usr/local/bin/docker-machine
 
+RUN curl -s -L https://github.com/docker/compose/releases/download/1.25.4/docker-compose-$(uname -s)-$(uname -m) >/tmp/docker-compose && \
+            install /tmp/docker-compose /usr/local/bin/docker-compose
+
 RUN curl -LO https://storage.googleapis.com/kubernetes-release/release/`curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt`/bin/linux/amd64/kubectl && chmod +x ./kubectl && mv ./kubectl /usr/local/bin/kubectl && kubectl version --client=true
 
 RUN apk --no-cache add gettext
