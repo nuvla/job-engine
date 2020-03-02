@@ -17,13 +17,13 @@ class CredentialCheck(object):
         self.job = job
         self.api = job.api
 
-    def check_coe_swarm(self, credential, infrastructure_service):
+    def check_coe_swarm(self, credential, infra_service):
         connector = connector_factory(docker_cli_connector, self.api,
                                       credential['id'],
-                                      api_infrastructure_service=infrastructure_service)
+                                      api_infrastructure_service=infra_service)
 
-        infra_online = infrastructure_service.get("online")
-        infra_swarm_enabled = infrastructure_service.get("swarm-enabled")
+        infra_online = infra_service.get("online")
+        infra_swarm_enabled = infra_service.get("swarm-enabled")
         try:
             info = connector.info()
         except Exception as ex:
@@ -45,16 +45,16 @@ class CredentialCheck(object):
                 # it means the endpoint is unreachable and thus not usable -> offline
 
                 if infra_online:
-                    self.api.edit(infrastructure_service.get("id"), {'online': False})
+                    self.api.edit(infra_service.get("id"), {'online': False})
                 if infra_swarm_enabled:
-                    self.api.edit(infrastructure_service.get("id"), {'swarm-enabled': False})
+                    self.api.edit(infra_service.get("id"), {'swarm-enabled': False})
             elif "remote error: tls" in error_msg.lower():
                 # "error during connect: Get <endpoint>/v1.40/info:
                 # remote error: tls: unknown certificate authority"
                 # in this case the infra is running, reachable, and Docker has replied.
                 # Simply the creds are not good
                 if not infra_online:
-                    self.api.edit(infrastructure_service.get("id"), {'online': True})
+                    self.api.edit(infra_service.get("id"), {'online': True})
             else:
                 # other errors can simply mean that the server could not run the command,
                 # thus not being Docker related
@@ -75,41 +75,42 @@ class CredentialCheck(object):
             raise Exception(error_msg)
 
         if not infra_online:
-            self.api.edit(infrastructure_service.get("id"), {'online': True})
+            self.api.edit(infra_service.get("id"), {'online': True})
 
         try:
             node_id = info['Swarm']['NodeID']
             managers = list(map(lambda x: x['NodeID'], info['Swarm']['RemoteManagers']))
             if node_id and node_id in managers:
                 if not infra_swarm_enabled:
-                    self.api.edit(infrastructure_service.get("id"), {'swarm-enabled': True})
+                    self.api.edit(infra_service.get("id"), {'swarm-enabled': True})
             else:
                 # The endpoint from infrastructure is not a manager
                 log.warning("Infrastructure {} does not have a Swarm manager".format(
-                    infrastructure_service.get("id")))
+                    infra_service.get("id")))
                 if infra_swarm_enabled:
-                    self.api.edit(infrastructure_service.get("id"), {'swarm-enabled': False})
+                    self.api.edit(infra_service.get("id"), {'swarm-enabled': False})
         except (KeyError, TypeError):
             # then Swarm mode is not enabled
             if infra_swarm_enabled:
-                self.api.edit(infrastructure_service.get("id"), {'swarm-enabled': False})
+                self.api.edit(infra_service.get("id"), {'swarm-enabled': False})
         except:
             # it's ok if we cannot infer the Swarm mode...so just move on
             pass
 
         self.job.set_status_message(info)
 
-    def check_coe_kubernetes(self, credential):
-        connector = connector_factory(kubernetes_cli_connector, self.api, credential['id'])
+    def check_coe_kubernetes(self, credential, infra_service):
+        connector = connector_factory(kubernetes_cli_connector, self.api, credential['id'],
+                                      api_infrastructure_service=infra_service)
         version = connector.version()
         self.job.set_status_message(version)
 
     @staticmethod
-    def check_registry_login(infrastructure_servcie, credential):
+    def check_registry_login(credential, infra_service):
         docker_cli_connector.DockerCliConnector.registry_login(
             username=credential['username'],
             password=credential['password'],
-            serveraddress=infrastructure_servcie['endpoint'])
+            serveraddress=infra_service['endpoint'])
 
     def update_credential_last_check(self, credential_id, status):
         self.api.edit(credential_id, {'status': status})
@@ -133,9 +134,9 @@ class CredentialCheck(object):
             if infra_service_subtype == 'swarm':
                 self.check_coe_swarm(credential, infra_service)
             elif infra_service_subtype == 'kubernetes':
-                self.check_coe_swarm(credential, infra_service)
+                self.check_coe_kubernetes(credential, infra_service)
             elif infra_service_subtype == 'registry':
-                CredentialCheck.check_registry_login(infra_service, credential)
+                CredentialCheck.check_registry_login(credential, infra_service)
             self.update_credential_last_check(credential_id, 'VALID')
         except Exception as ex:
             log.error('Failed to {0} {1}: {2}'.format(self.job['action'], infra_service_id, ex))
