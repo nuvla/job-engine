@@ -61,7 +61,7 @@ def docker_info_error_msg_infer(error_msg):
 
         # if we got here, is because the error is most likely not related
         # with the infra, so just raise
-        pass
+        return None, None
 
 
 @action(action_name)
