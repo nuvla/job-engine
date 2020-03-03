@@ -219,8 +219,8 @@ class DockerComposeCliConnector(Connector):
                 # Then Swarm is enforced
                 return "swarm"
 
-            docker_compose_yaml = yaml.load(docker_compose)
-
+            docker_compose_yaml = yaml.load(docker_compose, Loader=yaml.FullLoader)
+            log.info(docker_compose_yaml)
             services = set(docker_compose_yaml['services'])
 
             if services.intersection(set(dc_specific_keys)):
