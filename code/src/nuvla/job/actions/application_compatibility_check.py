@@ -29,7 +29,7 @@ class ApplicationCompatibilityCheck(object):
         if last_version.get('docker-compose') != before_last_version.get('docker-compose'):
             return connector.check_app_compatibility(docker_compose=module['content']['docker-compose'])
 
-        return None
+        return None, []
 
     def do_work(self):
         module_id = self.job['target-resource']['href']
@@ -47,9 +47,10 @@ class ApplicationCompatibilityCheck(object):
             return 1
 
         try:
-            compatibility_mode = self.check_config(module)
+            compatibility_mode, unsupported_options = self.check_config(module)
             if compatibility_mode:
                 module['compatibility'] = compatibility_mode
+                module['content']['unsupported-options'] = unsupported_options
                 self.api.edit(module_id, module)
             else:
                 # no need to run compatibility check cause compose file hasn't changed
@@ -57,6 +58,7 @@ class ApplicationCompatibilityCheck(object):
         except Exception as e:
             log.exception('Cannot check compatibility for %s' % module_id)
             # default to swarm compatibility
+            module['content']['unsupported-options'] = []
             module['compatibility'] = 'swarm'
             self.api.edit(module_id, module)
             self.job.set_status_message(e)

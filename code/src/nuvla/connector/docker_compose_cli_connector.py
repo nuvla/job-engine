@@ -215,20 +215,22 @@ class DockerComposeCliConnector(Connector):
             compose_file.write(docker_compose)
             compose_file.close()
 
-            if self.config_mandates_swarm(compose_file_path):
-                # Then Swarm is enforced
-                return "swarm"
-
             docker_compose_yaml = yaml.load(docker_compose, Loader=yaml.FullLoader)
             options = []
             for service in docker_compose_yaml['services'].values():
                 options += list(service.keys())
 
-            if set(options).intersection(set(dc_specific_keys)):
+            swarm_unsupported_options = list(set(options).intersection(set(dc_specific_keys)))
+
+            if self.config_mandates_swarm(compose_file_path):
+                # Then Swarm is enforced
+                return "swarm", swarm_unsupported_options
+
+            if swarm_unsupported_options:
                 # the module's compose file has docker-compose specific options, thus it is compose compatible
-                return 'docker-compose'
+                return 'docker-compose', []
 
             # default is swarm
-            return 'swarm'
+            return 'swarm', []
 
 
