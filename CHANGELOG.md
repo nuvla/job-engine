@@ -6,6 +6,7 @@
 
   - update_nuvlabox_releases - new action
   - job_distributor_nuvlabox_releases - new distributor 
+  - application_compatibility_check - new action
 
 ### Changed
 
