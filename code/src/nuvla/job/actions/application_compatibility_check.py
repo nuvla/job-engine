@@ -44,7 +44,8 @@ class ApplicationCompatibilityCheck(object):
             body = {
                 'versions': [{
                     'author': module['versions'][-1]['author'],
-                    'commit': module['versions'][-1]['commit'] + " - auto compatibility check"
+                    'commit': module['versions'][-1]['commit'] + " - auto compatibility check",
+                    'docker-compose': module['versions'][-1]['docker-compose']
                 }]
             }
         except Exception as e:
