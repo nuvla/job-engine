@@ -41,10 +41,7 @@ class ApplicationCompatibilityCheck(object):
         self.job.set_progress(10)
 
         try:
-            body = {
-                'content': {**module['content'],
-                            **{'commit': module['content']['commit'] + " - auto compatibility check"}}
-            }
+            module.update({'content': {'commit': module['content']['commit'] + " - auto compatibility check"}})
         except Exception as e:
             self.job.set_status_message("Cannot parse last commit from {}: {}".format(module_id, e))
             return 1
@@ -52,16 +49,16 @@ class ApplicationCompatibilityCheck(object):
         try:
             compatibility_mode = self.check_config(module)
             if compatibility_mode:
-                body['compatibility'] = compatibility_mode
-                self.api.edit(module_id, body)
+                module['compatibility'] = compatibility_mode
+                self.api.edit(module_id, module)
             else:
                 # no need to run compatibility check cause compose file hasn't changed
                 self.job.set_status_message("Nothing to do")
         except Exception as e:
             log.exception('Cannot check compatibility for %s' % module_id)
             # default to swarm compatibility
-            body['compatibility'] = 'swarm'
-            self.api.edit(module_id, body)
+            module['compatibility'] = 'swarm'
+            self.api.edit(module_id, module)
             self.job.set_status_message(e)
             return 1
 
