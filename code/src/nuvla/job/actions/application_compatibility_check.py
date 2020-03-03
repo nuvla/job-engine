@@ -41,12 +41,10 @@ class ApplicationCompatibilityCheck(object):
         self.job.set_progress(10)
 
         try:
-            module.update({'content': {'commit': module['content']['commit'] + " - auto compatibility check"}})
+            module['content']['commit'] = module['content']['commit'] + " - auto compatibility check"
         except Exception as e:
             self.job.set_status_message("Cannot parse last commit from {}: {}".format(module_id, e))
             return 1
-
-        log.info(module)
 
         try:
             compatibility_mode = self.check_config(module)
