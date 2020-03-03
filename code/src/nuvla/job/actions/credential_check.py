@@ -24,11 +24,12 @@ def is_swarm_enabled(info):
 
 def docker_info_error_msg_infer(error_msg):
     error_msg_lowercase = error_msg.lower()
-    if error_msg_lowercase in ['unable to resolve docker endpoint',
-                               'invalid bind address format',
-                               'cannot connect to the docker daemon at',
-                               'is the docker daemon running',
-                               'no such host']:
+    if any(error_substr in error_msg_lowercase
+           for error_substr in ['unable to resolve docker endpoint',
+                                'invalid bind address format',
+                                'cannot connect to the docker daemon at',
+                                'is the docker daemon running',
+                                'no such host']):
         # "unable to resolve docker endpoint: Invalid bind address format"
         # it means that the infrastructure has a broken endpoint
         # and will never work -> thus offline
