@@ -42,11 +42,7 @@ class ApplicationCompatibilityCheck(object):
 
         try:
             body = {
-                'versions': [{
-                    'author': module['versions'][-1]['author'],
-                    'commit': module['versions'][-1]['commit'] + " - auto compatibility check",
-                    'docker-compose': module['versions'][-1]['docker-compose']
-                }]
+                'content': {**module['content'], **{'commit': module['content'] + " - auto compatibility check"}}
             }
         except Exception as e:
             self.job.set_status_message("Cannot parse last commit from {}: {}".format(module_id, e))
