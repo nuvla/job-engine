@@ -52,6 +52,7 @@ class ApplicationCompatibilityCheck(object):
                 module['compatibility'] = compatibility_mode
                 module['content']['unsupported-options'] = unsupported_options
                 self.api.edit(module_id, module)
+                self.job.set_status_message("Module {} is {} compatible".format(module_id, module['compatibility']))
             else:
                 # no need to run compatibility check cause compose file hasn't changed
                 self.job.set_status_message("Nothing to do")
@@ -64,7 +65,6 @@ class ApplicationCompatibilityCheck(object):
             self.job.set_status_message(e)
             return 1
 
-        self.job.set_status_message("Module {} is {} compatible".format(module_id, module['compatibility']))
         self.job.set_progress(100)
 
         return 0
