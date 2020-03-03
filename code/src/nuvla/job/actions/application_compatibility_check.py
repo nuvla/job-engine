@@ -62,6 +62,7 @@ class ApplicationCompatibilityCheck(object):
             self.job.set_status_message(e)
             return 1
 
+        self.job.set_status_message("Module {} is {} compatible".format(module_id, module['compatibility']))
         self.job.set_progress(100)
 
         return 0
