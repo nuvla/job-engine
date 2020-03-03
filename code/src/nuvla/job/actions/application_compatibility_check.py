@@ -42,7 +42,8 @@ class ApplicationCompatibilityCheck(object):
 
         try:
             body = {
-                'content': {**module['content'], **{'commit': module['content'] + " - auto compatibility check"}}
+                'content': {**module['content'],
+                            **{'commit': module['content']['commit'] + " - auto compatibility check"}}
             }
         except Exception as e:
             self.job.set_status_message("Cannot parse last commit from {}: {}".format(module_id, e))
