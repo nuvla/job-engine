@@ -48,7 +48,6 @@ class ApplicationCompatibilityCheck(object):
 
         try:
             compatibility_mode = self.check_config(module)
-            log.info(compatibility_mode)
             if compatibility_mode:
                 module['compatibility'] = compatibility_mode
                 self.api.edit(module_id, module)

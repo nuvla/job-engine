@@ -220,10 +220,11 @@ class DockerComposeCliConnector(Connector):
                 return "swarm"
 
             docker_compose_yaml = yaml.load(docker_compose, Loader=yaml.FullLoader)
-            log.info(docker_compose_yaml)
-            services = set(docker_compose_yaml['services'])
+            options = []
+            for service in docker_compose_yaml['services'].values():
+                options += list(service.keys())
 
-            if services.intersection(set(dc_specific_keys)):
+            if set(options).intersection(set(dc_specific_keys)):
                 # the module's compose file has docker-compose specific options, thus it is compose compatible
                 return 'docker-compose'
 
