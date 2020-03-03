@@ -191,9 +191,7 @@ class DockerComposeCliConnector(Connector):
         cmd = ["docker-compose", "-f", compose_file, "config", "-q"]
         config_output = execute_cmd(cmd)
 
-        assert (config_output.returncode == 0), "Compose file in invalid: %s" % config_output.stdout
-
-        if "docker stack deploy" in config_output.stdout.lower():
+        if "docker stack deploy" in config_output.lower():
             # there are Swarm-specific options
             return True
 
@@ -217,13 +215,9 @@ class DockerComposeCliConnector(Connector):
             compose_file.write(docker_compose)
             compose_file.close()
 
-            try:
-                if self.config_mandates_swarm(compose_file_path):
-                    # Then Swarm is enforced
-                    return "swarm"
-            except AssertionError:
-                log.exception("Compose file if invalid")
-                raise
+            if self.config_mandates_swarm(compose_file_path):
+                # Then Swarm is enforced
+                return "swarm"
 
             docker_compose_yaml = yaml.load(docker_compose)
 
