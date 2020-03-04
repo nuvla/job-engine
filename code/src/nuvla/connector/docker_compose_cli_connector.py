@@ -138,16 +138,19 @@ class DockerComposeCliConnector(Connector):
         cmd = self.build_cmd_line(['-p', project_name, '-f', docker_compose_path,
                                    'ps', service])
         stdout = self._execute_clean_command(cmd)
-
+        log.info(stdout)
         return ''.join(stdout.splitlines()[-1].split()[-2:])
 
     def _extract_service_info(self, project_name, service, docker_compose_path):
-        service_info = {}
-        service_info['image'] = self._get_image(project_name, service, docker_compose_path)
-        service_info['service-id'] = self._get_service_id(project_name, service, docker_compose_path)
-        service_info['node-id'] = self.endpoint
+        service_info = {
+            'image': self._get_image(project_name, service, docker_compose_path),
+            'service-id': self._get_service_id(project_name, service, docker_compose_path),
+            'node-id': self.endpoint
+        }
         ports = self._get_service_ports(project_name, service, docker_compose_path).split(',')
+        log.info(ports)
         for port in ports:
+            log.info(port)
             external_port_info, internal_port_info = port.split('->')
             external_port = external_port_info.split(':')[1]
             internal_port, protocol = internal_port_info.split('/')
