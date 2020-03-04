@@ -55,9 +55,9 @@ class DockerComposeCliConnector(Connector):
 
         return ['docker-compose'] + remote_tls + list_cmd
 
-    def _execute_clean_command(self, cmd, **kwargs):
+    def _execute_clean_command(self, cmd, noenv=False, **kwargs):
         try:
-            return self.sanitize_command_output(execute_cmd(cmd, **kwargs))
+            return self.sanitize_command_output(execute_cmd(cmd, noenv=noenv, **kwargs))
         except Exception as e:
             error = self.sanitize_command_output(e.args[0])
             raise Exception(error)
