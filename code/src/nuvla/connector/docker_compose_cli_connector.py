@@ -3,6 +3,7 @@ import re
 import json
 import logging
 import yaml
+import os
 from tempfile import TemporaryDirectory
 from .utils import execute_cmd, create_tmp_file, generate_registry_config
 from .connector import Connector, should_connect
@@ -147,7 +148,8 @@ class DockerComposeCliConnector(Connector):
 
     def _stack_services(self, project_name, docker_compose_path):
         cmd = self.build_cmd_line(['-f', docker_compose_path, 'ps', '--services'], local=True)
-
+        log.info(cmd)
+        log.info(os.listdir(docker_compose_path))
         stdout = execute_cmd(cmd)
 
         stdout_clean = self.sanitize_command_output(stdout)
