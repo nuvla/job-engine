@@ -52,6 +52,8 @@ def execute_cmd(cmd, noenv=False, **kwargs):
     try:
         result = run(cmd, stdout=PIPE, stderr=STDOUT, env=opt_env, input=opt_input,
                      timeout=timeout, encoding='UTF-8')
+        print(noenv)
+        print(result)
     except TimeoutExpired:
         raise Exception('Command execution timed out after {} seconds'.format(timeout))
     if result.returncode == 0:
