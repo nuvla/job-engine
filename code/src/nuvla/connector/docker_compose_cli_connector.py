@@ -154,9 +154,8 @@ class DockerComposeCliConnector(Connector):
         return '\n'.join(new_output)
 
     def _stack_services(self, project_name, docker_compose_path):
-        cmd = self.build_cmd_line(['-f', docker_compose_path, 'ps', '--services'], local=True)
-        log.info(cmd)
-        log.info(os.listdir(docker_compose_path))
+        cmd = self.build_cmd_line(['-f', docker_compose_path, 'config', '--services'], local=True)
+
         stdout = execute_cmd(cmd)
 
         stdout_clean = self.sanitize_command_output(stdout)
