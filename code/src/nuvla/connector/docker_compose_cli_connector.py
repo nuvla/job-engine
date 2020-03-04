@@ -89,10 +89,17 @@ class DockerComposeCliConnector(Connector):
     @should_connect
     def stop(self, **kwargs):
         # Mandatory kwargs
-        stack_name = kwargs['stack_name']
+        project_name = kwargs['stack_name']
+        docker_compose = kwargs['docker_compose']
 
-        cmd = self.build_cmd_line(['stack', 'rm', stack_name])
-        return execute_cmd(cmd)
+        with TemporaryDirectory() as tmp_dir_name:
+            compose_file_path = tmp_dir_name + "/docker-compose.yaml"
+            compose_file = open(compose_file_path, 'w')
+            compose_file.write(docker_compose)
+            compose_file.close()
+
+            cmd = self.build_cmd_line(['-p', project_name, '-f', compose_file_path, 'down', '-v'])
+            return execute_cmd(cmd)
 
     update = start
 
