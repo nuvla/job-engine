@@ -178,12 +178,13 @@ class DockerComposeCliConnector(Connector):
     # TODO: fix this
     @should_connect
     def info(self):
-        cmd = self.build_cmd_line(['info', '--format', '{{ json . }}'])
-        info = json.loads(execute_cmd(cmd, timeout=5))
-        server_errors = info.get('ServerErrors', [])
-        if len(server_errors) > 0:
-            raise Exception(server_errors[0])
-        return info
+        # cmd = self.build_cmd_line(['info', '--format', '{{ json . }}'])
+        # info = json.loads(execute_cmd(cmd, timeout=5))
+        # server_errors = info.get('ServerErrors', [])
+        # if len(server_errors) > 0:
+        #     raise Exception(server_errors[0])
+        # return info
+        pass
 
     def extract_vm_id(self, vm):
         pass
