@@ -55,6 +55,13 @@ class DockerComposeCliConnector(Connector):
 
         return ['docker-compose'] + remote_tls + list_cmd
 
+    def _execute_clean_command(self, cmd, **kwargs):
+        try:
+            return self.sanitize_command_output(execute_cmd(cmd, **kwargs))
+        except Exception as e:
+            error = self.sanitize_command_output(e.args[0])
+            raise Exception(error)
+
     @should_connect
     def start(self, **kwargs):
         # Mandatory kwargs
@@ -80,7 +87,7 @@ class DockerComposeCliConnector(Connector):
             cmd_deploy = docker_config_prefix + self.build_cmd_line(
                 ['-p', project_name, '-f', compose_file_path, "up", "-d"])
 
-            result = execute_cmd(cmd_deploy, env=env)
+            result = self._execute_clean_command(cmd_deploy, env=env)
 
             services = self._stack_services(project_name, compose_file_path)
 
@@ -99,7 +106,7 @@ class DockerComposeCliConnector(Connector):
             compose_file.close()
 
             cmd = self.build_cmd_line(['-p', project_name, '-f', compose_file_path, 'down', '-v'])
-            return execute_cmd(cmd)
+            return self._execute_clean_command(cmd)
 
     update = start
 
@@ -116,21 +123,21 @@ class DockerComposeCliConnector(Connector):
     def _get_image(self, project_name, service, docker_compose_path):
         cmd = self.build_cmd_line(['-p', project_name, '-f', docker_compose_path,
                                    'images', service])
-        stdout = self.sanitize_command_output(execute_cmd(cmd))
+        stdout = self._execute_clean_command(cmd)
 
         return ':'.join(stdout.splitlines()[-1].split()[1:3])
 
     def _get_service_id(self, project_name, service, docker_compose_path):
         cmd = self.build_cmd_line(['-p', project_name, '-f', docker_compose_path,
                                    'ps', '-q', service])
-        stdout = self.sanitize_command_output(execute_cmd(cmd))
+        stdout = self._execute_clean_command(cmd)
 
         return yaml.load(stdout, Loader=yaml.FullLoader)
 
     def _get_service_ports(self, project_name, service, docker_compose_path):
         cmd = self.build_cmd_line(['-p', project_name, '-f', docker_compose_path,
                                    'ps', service])
-        stdout = self.sanitize_command_output(execute_cmd(cmd))
+        stdout = self._execute_clean_command(cmd)
 
         return ''.join(stdout.splitlines()[-1].split()[-2:])
 
@@ -156,12 +163,10 @@ class DockerComposeCliConnector(Connector):
     def _stack_services(self, project_name, docker_compose_path):
         cmd = self.build_cmd_line(['-f', docker_compose_path, 'config', '--services'], local=True)
 
-        stdout = execute_cmd(cmd)
+        stdout = self._execute_clean_command(cmd)
 
-        stdout_clean = self.sanitize_command_output(stdout)
-
-        services = [DockerComposeCliConnector._extract_service_info(project_name, service, docker_compose_path)
-                    for service in stdout_clean.splitlines()]
+        services = [self._extract_service_info(project_name, service, docker_compose_path)
+                    for service in stdout.splitlines()]
         return services
 
     @should_connect
