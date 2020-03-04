@@ -6,7 +6,8 @@
 
   - update_nuvlabox_releases - new action
   - job_distributor_nuvlabox_releases - new distributor 
-
+  - docker_compose_cli_connector - new connector for docker-compose
+  
 ### Changed
 
   - Deployment start, update - support private registries
