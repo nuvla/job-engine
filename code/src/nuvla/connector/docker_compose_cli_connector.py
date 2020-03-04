@@ -55,9 +55,9 @@ class DockerComposeCliConnector(Connector):
 
         return ['docker-compose'] + remote_tls + list_cmd
 
-    def _execute_clean_command(self, cmd, noenv=False, **kwargs):
+    def _execute_clean_command(self, cmd, **kwargs):
         try:
-            return self.sanitize_command_output(execute_cmd(cmd, noenv=noenv, **kwargs))
+            return self.sanitize_command_output(execute_cmd(cmd, **kwargs))
         except Exception as e:
             error = self.sanitize_command_output(e.args[0])
             raise Exception(error)
@@ -175,6 +175,7 @@ class DockerComposeCliConnector(Connector):
     def stack_services(self, stack_name):
         return self._stack_services(stack_name)
 
+    # TODO: fix this
     @should_connect
     def info(self):
         cmd = self.build_cmd_line(['info', '--format', '{{ json . }}'])
