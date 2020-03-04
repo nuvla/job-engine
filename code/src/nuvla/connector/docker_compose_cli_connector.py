@@ -68,7 +68,7 @@ class DockerComposeCliConnector(Connector):
             compose_file.write(docker_compose)
             compose_file.close()
 
-            docker_config_prefix = ''
+            docker_config_prefix = []
             if registries_auth:
                 config_path = tmp_dir_name + "/config.json"
                 config = open(config_path, 'w')
