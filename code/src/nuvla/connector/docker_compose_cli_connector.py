@@ -56,8 +56,6 @@ class DockerComposeCliConnector(Connector):
         return ['docker-compose'] + remote_tls + list_cmd
 
     def _execute_clean_command(self, cmd, **kwargs):
-        print(kwargs)
-        print(kwargs.get("noenv"))
         try:
             return self.sanitize_command_output(execute_cmd(cmd, **kwargs))
         except Exception as e:
@@ -139,7 +137,7 @@ class DockerComposeCliConnector(Connector):
     def _get_service_ports(self, project_name, service, docker_compose_path):
         cmd = self.build_cmd_line(['-p', project_name, '-f', docker_compose_path,
                                    'ps', service])
-        stdout = self._execute_clean_command(cmd, noenv=True)
+        stdout = self.sanitize_command_output(execute_cmd(cmd, noenv=True))
 
         return ''.join(stdout.splitlines()[-1].split()[-2:])
 

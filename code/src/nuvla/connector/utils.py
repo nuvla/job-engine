@@ -43,8 +43,7 @@ def append_os_env(env):
 
 
 def execute_cmd(cmd, **kwargs):
-    print(kwargs)
-    if kwargs.get('noenv'):
+    if kwargs.get('env'):
         opt_env = None
     else:
         opt_env = append_os_env(kwargs.get('env'))
