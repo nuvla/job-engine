@@ -3,7 +3,7 @@ import re
 import json
 import logging
 import yaml
-from subprocess import run, PIPE, STDOUT, TimeoutExpired
+import os
 from tempfile import TemporaryDirectory
 from .utils import execute_cmd, create_tmp_file, generate_registry_config
 from .connector import Connector, should_connect
@@ -137,8 +137,7 @@ class DockerComposeCliConnector(Connector):
     def _get_service_ports(self, project_name, service, docker_compose_path):
         cmd = self.build_cmd_line(['-p', project_name, '-f', docker_compose_path,
                                    'ps', service])
-        stdout = self.sanitize_command_output(run(cmd, stdout=PIPE, stderr=STDOUT, env=None, input=None,
-                                                  timeout=120, encoding='UTF-8').stdout)
+        stdout = self._execute_clean_command(cmd)
 
         return ''.join(stdout.splitlines()[-1].split()[-2:])
 
@@ -179,13 +178,12 @@ class DockerComposeCliConnector(Connector):
     # TODO: fix this
     @should_connect
     def info(self):
-        # cmd = self.build_cmd_line(['info', '--format', '{{ json . }}'])
-        # info = json.loads(execute_cmd(cmd, timeout=5))
-        # server_errors = info.get('ServerErrors', [])
-        # if len(server_errors) > 0:
-        #     raise Exception(server_errors[0])
-        # return info
-        pass
+        cmd = self.build_cmd_line(['info', '--format', '{{ json . }}'])
+        info = json.loads(execute_cmd(cmd, timeout=5))
+        server_errors = info.get('ServerErrors', [])
+        if len(server_errors) > 0:
+            raise Exception(server_errors[0])
+        return info
 
     def extract_vm_id(self, vm):
         pass

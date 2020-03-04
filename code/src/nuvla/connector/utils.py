@@ -45,16 +45,14 @@ def append_os_env(env):
 
 def execute_cmd(cmd, **kwargs):
     if kwargs.get('env'):
-        opt_env = None
-    else:
         opt_env = append_os_env(kwargs.get('env'))
+    else:
+        opt_env = None
     opt_input = kwargs.get('input')
     timeout = kwargs.get('timeout', 120)
     try:
         result = run(cmd, stdout=PIPE, stderr=STDOUT, env=opt_env, input=opt_input,
                      timeout=timeout, encoding='UTF-8')
-        logging.info(opt_env)
-        logging.info(cmd)
     except TimeoutExpired:
         raise Exception('Command execution timed out after {} seconds'.format(timeout))
     if result.returncode == 0:
