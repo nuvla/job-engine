@@ -3,7 +3,7 @@ import re
 import json
 import logging
 import yaml
-import os
+from subprocess import run, PIPE, STDOUT, TimeoutExpired
 from tempfile import TemporaryDirectory
 from .utils import execute_cmd, create_tmp_file, generate_registry_config
 from .connector import Connector, should_connect
@@ -137,7 +137,8 @@ class DockerComposeCliConnector(Connector):
     def _get_service_ports(self, project_name, service, docker_compose_path):
         cmd = self.build_cmd_line(['-p', project_name, '-f', docker_compose_path,
                                    'ps', service])
-        stdout = self.sanitize_command_output(execute_cmd(cmd, noenv=True))
+        stdout = self.sanitize_command_output(run(cmd, stdout=PIPE, stderr=STDOUT, env=None, input=None,
+                                                  timeout=120, encoding='UTF-8').stdout)
 
         return ''.join(stdout.splitlines()[-1].split()[-2:])
 
