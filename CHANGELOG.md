@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## [2.3.13] - 2020-03-06
+
 ### Added
 
   - update_nuvlabox_releases - new action
