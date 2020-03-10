@@ -116,6 +116,7 @@ class DockerComposeCliConnector(Connector):
     @should_connect
     def log(self, list_opts):
         cmd = self.build_cmd_line(['logs'] + list_opts, binary='docker')
+        log.info(cmd)
         return self._execute_clean_command(cmd)
 
     @staticmethod
