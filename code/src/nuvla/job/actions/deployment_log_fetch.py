@@ -2,7 +2,8 @@
 
 import logging
 
-from nuvla.connector import connector_factory, docker_cli_connector, kubernetes_cli_connector
+from nuvla.connector import connector_factory, docker_cli_connector, \
+    docker_compose_cli_connector, kubernetes_cli_connector
 from .nuvla import Deployment
 from ..actions import action
 
@@ -50,16 +51,25 @@ class DeploymentLogFetchJob(object):
             list_opts = [service_name, '--timestamps=true', '--tail', str(lines),
                          '--namespace', deployment_uuid] + since_opt
         else:
-            connector = connector_factory(docker_cli_connector, self.api, deployment.get('parent'))
+            is_docker_compose = (Deployment.module(deployment).get('compatibility') == "docker-compose")
+            if is_docker_compose:
+                connector = connector_factory(docker_compose_cli_connector, self.api, deployment.get('parent'))
+                no_trunc = []
+            else:
+                connector = connector_factory(docker_cli_connector, self.api, deployment.get('parent'))
+                no_trunc = ['--no-trunc']
 
             if Deployment.is_application(deployment):
-                docker_service_name = deployment_uuid + '_' + service_name
+                if is_docker_compose:
+                    docker_service_name = self.api_dpl.get_parameter(deployment_uuid, service_name, 'service-id')
+                else:
+                    docker_service_name = deployment_uuid + '_' + service_name
             else:
                 docker_service_name = deployment_uuid
 
             since_opt = ['--since', tmp_since] if tmp_since else []
 
-            list_opts = ['-t', '--no-trunc'] + since_opt + [docker_service_name]
+            list_opts = ['-t'] + no_trunc + since_opt + [docker_service_name]
 
         result = connector.log(list_opts).strip().split('\n')[:lines]
 

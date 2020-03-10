@@ -111,13 +111,12 @@ class DockerComposeCliConnector(Connector):
 
     @should_connect
     def list(self, filters=None):
-        cmd = self.build_cmd_line(['stack', 'ls'])
-        return execute_cmd(cmd)
+        pass
 
     @should_connect
     def log(self, list_opts):
-        cmd = self.build_cmd_line(['service', 'logs'] + list_opts)
-        return execute_cmd(cmd)
+        cmd = self.build_cmd_line(['logs'] + list_opts, binary='docker')
+        return self._execute_clean_command(cmd)
 
     @staticmethod
     def _get_image(container_info):
@@ -154,7 +153,6 @@ class DockerComposeCliConnector(Connector):
             'node-id': service
         }
         ports = self._get_service_ports(inspection)
-        log.info(ports)
         for container_port, mapping in ports.items():
             internal_port, protocol = container_port.split('/')
             try:
