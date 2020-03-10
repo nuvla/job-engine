@@ -49,6 +49,7 @@ def execute_cmd(cmd, **kwargs):
         opt_env = None
     opt_input = kwargs.get('input')
     timeout = kwargs.get('timeout', 120)
+    print(opt_env)
     try:
         result = run(cmd, stdout=PIPE, stderr=STDOUT, env=opt_env, input=opt_input,
                      timeout=timeout, encoding='UTF-8')
