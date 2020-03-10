@@ -56,6 +56,8 @@ class DockerComposeCliConnector(Connector):
 
     def _execute_clean_command(self, cmd, **kwargs):
         try:
+            log.info(kwargs)
+            log.info(cmd)
             return self.sanitize_command_output(execute_cmd(cmd, **kwargs))
         except Exception as e:
             error = self.sanitize_command_output(e.args[0])
@@ -167,8 +169,9 @@ class DockerComposeCliConnector(Connector):
 
     @staticmethod
     def sanitize_command_output(output):
+        log.info("san: %s" % output)
         new_output = [ line for line in output.splitlines() if "InsecureRequestWarning" not in line ]
-
+        log.info("san: %s" % new_output)
         return '\n'.join(new_output)
 
     def _stack_services(self, project_name, docker_compose_path):

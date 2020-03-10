@@ -3,6 +3,7 @@ import os
 import json
 import base64
 import hashlib
+import logging
 from datetime import datetime, timedelta
 from subprocess import run, PIPE, STDOUT, TimeoutExpired
 from tempfile import NamedTemporaryFile
@@ -43,13 +44,14 @@ def append_os_env(env):
 
 
 def execute_cmd(cmd, **kwargs):
+    logging.warning("function")
     if kwargs.get('env'):
         opt_env = append_os_env(kwargs.get('env'))
     else:
         opt_env = None
     opt_input = kwargs.get('input')
     timeout = kwargs.get('timeout', 120)
-    print(opt_env)
+    logging.warning(opt_env)
     try:
         result = run(cmd, stdout=PIPE, stderr=STDOUT, env=opt_env, input=opt_input,
                      timeout=timeout, encoding='UTF-8')
