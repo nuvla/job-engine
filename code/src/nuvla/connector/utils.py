@@ -51,7 +51,7 @@ def execute_cmd(cmd, **kwargs):
     opt_input = kwargs.get('input')
     timeout = kwargs.get('timeout', 120)
     try:
-        result = run(cmd, stdout=PIPE, stderr=STDOUT, env=opt_env, input=opt_input,
+        result = run(cmd, stdout=PIPE, stderr=STDOUT, env=None, input=opt_input,
                      timeout=timeout, encoding='UTF-8')
         logging.info(opt_env)
         logging.info(result)
