@@ -86,6 +86,7 @@ class DockerComposeCliConnector(Connector):
             cmd_deploy = docker_config_prefix + self.build_cmd_line(
                 ['-p', project_name, '-f', compose_file_path, "up", "-d"])
 
+            log.info(env)
             result = self._execute_clean_command(cmd_deploy, env=env)
 
             services = self._stack_services(project_name, compose_file_path)
