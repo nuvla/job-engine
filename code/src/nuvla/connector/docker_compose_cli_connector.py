@@ -119,12 +119,12 @@ class DockerComposeCliConnector(Connector):
         cmd = self.build_cmd_line(['service', 'logs'] + list_opts)
         return execute_cmd(cmd)
 
-    def _get_image(self, project_name, service, docker_compose_path):
-        cmd = self.build_cmd_line(['-p', project_name, '-f', docker_compose_path,
-                                   'images', service])
-        stdout = self._execute_clean_command(cmd)
-
-        return ':'.join(stdout.splitlines()[-1].split()[1:3])
+    @staticmethod
+    def _get_image(container_info):
+        try:
+            return container_info[0]['Config']['Image']
+        except KeyError:
+            return ''
 
     def _get_service_id(self, project_name, service, docker_compose_path):
         cmd = self.build_cmd_line(['-p', project_name, '-f', docker_compose_path,
@@ -133,24 +133,27 @@ class DockerComposeCliConnector(Connector):
 
         return yaml.load(stdout, Loader=yaml.FullLoader)
 
-    def _get_service_ports(self, service_id):
-        cmd = self.build_cmd_line(['inspect', service_id], binary='docker')
-
-        stdout = json.loads(self._execute_clean_command(cmd))
-
+    @staticmethod
+    def _get_service_ports(container_info):
         try:
-            return stdout[0]['NetworkSettings']['Ports']
+            return container_info[0]['NetworkSettings']['Ports']
         except KeyError:
             return {}
 
+    def _get_container_inspect(self, service_id):
+        cmd = self.build_cmd_line(['inspect', service_id], binary='docker')
+
+        return json.loads(self._execute_clean_command(cmd))
+
     def _extract_service_info(self, project_name, service, docker_compose_path):
         service_id = self._get_service_id(project_name, service, docker_compose_path)
+        inspection = self._get_container_inspect(service_id)
         service_info = {
-            'image': self._get_image(project_name, service, docker_compose_path),
+            'image': self._get_image(inspection),
             'service-id': service_id,
-            'node-id': self.endpoint
+            'node-id': service
         }
-        ports = self._get_service_ports(service_id)
+        ports = self._get_service_ports(inspection)
         log.info(ports)
         for container_port, mapping in ports.items():
             internal_port, protocol = container_port.split('/')
@@ -178,13 +181,18 @@ class DockerComposeCliConnector(Connector):
         return services
 
     @should_connect
-    def stack_services(self, stack_name):
-        return self._stack_services(stack_name)
+    def stack_services(self, stack_name, raw_compose_file):
+        with TemporaryDirectory() as tmp_dir_name:
+            compose_file_path = tmp_dir_name + "/docker-compose.yaml"
+            compose_file = open(compose_file_path, 'w')
+            compose_file.write(raw_compose_file)
+            compose_file.close()
 
-    # TODO: fix this
+            return self._stack_services(stack_name, compose_file_path)
+
     @should_connect
     def info(self):
-        cmd = self.build_cmd_line(['info', '--format', '{{ json . }}'])
+        cmd = self.build_cmd_line(['info', '--format', '{{ json . }}'], binary='docker')
         info = json.loads(execute_cmd(cmd, timeout=5))
         server_errors = info.get('ServerErrors', [])
         if len(server_errors) > 0:
