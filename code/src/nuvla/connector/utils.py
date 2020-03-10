@@ -3,7 +3,6 @@ import os
 import json
 import base64
 import hashlib
-import logging
 from datetime import datetime, timedelta
 from subprocess import run, PIPE, STDOUT, TimeoutExpired
 from tempfile import NamedTemporaryFile
@@ -51,10 +50,8 @@ def execute_cmd(cmd, **kwargs):
     opt_input = kwargs.get('input')
     timeout = kwargs.get('timeout', 120)
     try:
-        result = run(cmd, stdout=PIPE, stderr=STDOUT, env=None, input=opt_input,
+        result = run(cmd, stdout=PIPE, stderr=STDOUT, env=opt_env, input=opt_input,
                      timeout=timeout, encoding='UTF-8')
-        logging.info(opt_env)
-        logging.info(result)
     except TimeoutExpired:
         raise Exception('Command execution timed out after {} seconds'.format(timeout))
     if result.returncode == 0:
