@@ -56,8 +56,6 @@ class DockerComposeCliConnector(Connector):
 
     def _execute_clean_command(self, cmd, **kwargs):
         try:
-            log.info(kwargs)
-            log.info(cmd)
             return self.sanitize_command_output(execute_cmd(cmd, **kwargs))
         except Exception as e:
             error = self.sanitize_command_output(e.args[0])
@@ -88,7 +86,6 @@ class DockerComposeCliConnector(Connector):
             cmd_deploy = docker_config_prefix + self.build_cmd_line(
                 ['-p', project_name, '-f', compose_file_path, "up", "-d"])
 
-            log.info(env)
             result = self._execute_clean_command(cmd_deploy, env=env)
 
             services = self._stack_services(project_name, compose_file_path)
@@ -119,7 +116,6 @@ class DockerComposeCliConnector(Connector):
     @should_connect
     def log(self, list_opts):
         cmd = self.build_cmd_line(['logs'] + list_opts, binary='docker')
-        log.info(cmd)
         return self._execute_clean_command(cmd)
 
     @staticmethod
@@ -169,13 +165,11 @@ class DockerComposeCliConnector(Connector):
 
     @staticmethod
     def sanitize_command_output(output):
-        log.info("san: %s" % output)
         new_output = [ line for line in output.splitlines() if "InsecureRequestWarning" not in line ]
-        log.info("san: %s" % new_output)
         return '\n'.join(new_output)
 
     def _stack_services(self, project_name, docker_compose_path):
-        cmd = self.build_cmd_line(['-f', docker_compose_path, 'config', '--services'], local=True)
+        cmd = self.build_cmd_line(['-f', docker_compose_path, 'config', '--services', '--no-interpolate'], local=True)
 
         stdout = self._execute_clean_command(cmd)
 
