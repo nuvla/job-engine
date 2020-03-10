@@ -61,7 +61,9 @@ class DeploymentLogFetchJob(object):
 
             if Deployment.is_application(deployment):
                 if is_docker_compose:
-                    docker_service_name = self.api_dpl.get_parameter(deployment_uuid, service_name, 'service-id')
+                    docker_service_name = self.api_dpl.get_parameter(deployment_uuid,
+                                                                     service_name,
+                                                                     service_name + '.service-id')
                 else:
                     docker_service_name = deployment_uuid + '_' + service_name
             else:
