@@ -16,6 +16,7 @@
   - Found bug in `lstrip` method
   - make action `credential_check` also check for swarm mode and status
   - reduced number of api calls in connector_factory
+  - deployment_* actions to support docker-compose apps
 
 ## [2.3.12] - 2020-01-23
 
