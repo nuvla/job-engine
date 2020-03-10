@@ -3,7 +3,6 @@ import os
 import json
 import base64
 import hashlib
-import logging
 from datetime import datetime, timedelta
 from subprocess import run, PIPE, STDOUT, TimeoutExpired
 from tempfile import NamedTemporaryFile
