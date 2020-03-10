@@ -3,7 +3,6 @@ import re
 import json
 import logging
 import yaml
-from subprocess import run, PIPE, STDOUT, TimeoutExpired
 from tempfile import TemporaryDirectory
 from .utils import execute_cmd, create_tmp_file, generate_registry_config
 from .connector import Connector, should_connect
@@ -46,14 +45,14 @@ class DockerComposeCliConnector(Connector):
             self.key_file.close()
             self.key_file = None
 
-    def build_cmd_line(self, list_cmd, local=False):
+    def build_cmd_line(self, list_cmd, local=False, binary='docker-compose'):
         if local:
             remote_tls = []
         else:
             remote_tls = ['-H', self.endpoint, '--tls', '--tlscert', self.cert_file.name,
                           '--tlskey', self.key_file.name, '--tlscacert', self.cert_file.name]
 
-        return ['docker-compose'] + remote_tls + list_cmd
+        return [binary] + remote_tls + list_cmd
 
     def _execute_clean_command(self, cmd, **kwargs):
         try:
@@ -134,28 +133,32 @@ class DockerComposeCliConnector(Connector):
 
         return yaml.load(stdout, Loader=yaml.FullLoader)
 
-    def _get_service_ports(self, project_name, service, docker_compose_path):
-        cmd = self.build_cmd_line(['-p', project_name, '-f', docker_compose_path,
-                                   'ps', service])
+    def _get_service_ports(self, service_id):
+        cmd = self.build_cmd_line(['inspect', service_id], binary='docker')
 
-        stdout = self.sanitize_command_output(run(cmd, stdout=PIPE, stderr=STDOUT, encoding='UTF-8').stdout)
+        stdout = json.loads(self._execute_clean_command(cmd))
 
-        # stdout = self._execute_clean_command(cmd)
-
-        return ''.join(stdout.splitlines()[-1].split()[-2:])
+        try:
+            return stdout[0]['NetworkSettings']['Ports']
+        except KeyError:
+            return {}
 
     def _extract_service_info(self, project_name, service, docker_compose_path):
+        service_id = self._get_service_id(project_name, service, docker_compose_path)
         service_info = {
             'image': self._get_image(project_name, service, docker_compose_path),
-            'service-id': self._get_service_id(project_name, service, docker_compose_path),
+            'service-id': service_id,
             'node-id': self.endpoint
         }
-        ports = self._get_service_ports(project_name, service, docker_compose_path).split(',')
-        for port in ports:
-            log.info(port)
-            external_port_info, internal_port_info = port.split('->')
-            external_port = external_port_info.split(':')[1]
-            internal_port, protocol = internal_port_info.split('/')
+        ports = self._get_service_ports(service_id)
+        log.info(ports)
+        for container_port, mapping in ports.items():
+            internal_port, protocol = container_port.split('/')
+            try:
+                external_port = mapping[0]['HostPort']
+            except (KeyError, IndexError):
+                log.warning("Cannot get mapping for container port %s" % internal_port)
+                continue
             service_info['{}.{}'.format(protocol, internal_port)] = external_port
         return service_info
 
