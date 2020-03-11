@@ -98,7 +98,21 @@ class NuvlaBoxReleasesJob(object):
                 'pre-release': pre_release,
                 'release-date': release_date,
                 'release-notes': release_notes,
-                'compose-files': compose_files
+                'compose-files': compose_files,
+                'acl': {
+                    'view-data': [
+                        'group/nuvla-user'
+                    ],
+                    'view-meta': [
+                        'group/nuvla-user'
+                    ],
+                    'view-acl': [
+                        'group/nuvla-user'
+                    ],
+                    'owners': [
+                        'group/nuvla-admin'
+                    ]
+                }
             }
 
             self.api.add('nuvlabox-release', resource_payload)
