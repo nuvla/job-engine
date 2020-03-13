@@ -16,7 +16,7 @@ class NBEnableStreamJob(object):
     def enable_stream(self):
         nuvlabox_peripheral_id = self.job['target-resource']['href']
 
-        peripheral = self.api.get(nuvlabox_peripheral_id).json()
+        peripheral = self.api.get(nuvlabox_peripheral_id).data
         nuvlabox_id = peripheral['parent']
 
         data = {

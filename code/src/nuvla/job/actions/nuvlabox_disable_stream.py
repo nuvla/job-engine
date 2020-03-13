@@ -19,7 +19,7 @@ class NBDisableStreamJob(object):
 
         peripheral = None
         try:
-            peripheral = self.api.get(nuvlabox_peripheral_id).json()
+            peripheral = self.api.get(nuvlabox_peripheral_id).data
         except NuvlaError as e:
             if e.response.status_code == 404:
                 logging.warning("Peripheral has already been deleted. Will try to disable stream anyway")
