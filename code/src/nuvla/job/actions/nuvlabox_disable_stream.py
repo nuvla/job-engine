@@ -31,7 +31,11 @@ class NBDisableStreamJob(object):
         else:
             # Peripheral has already been deleted
             try:
-                nuvlabox_id = self.job['affected-resources'][0]['href']
+                nuvlabox_id = None
+                for res in self.job['affected-resources']:
+                    if res['href'].startswith("nuvlabox/"):
+                        nuvlabox_id = res['href']
+                        break
             except (IndexError, KeyError) as e:
                 logging.exception("Cannot figure out the corresponding NuvlaBox. Stopping")
                 raise
