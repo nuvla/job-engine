@@ -197,7 +197,8 @@ class DockerComposeCliConnector(Connector):
 
         return False
 
-    def check_app_compatibility(self, **kwargs):
+    @staticmethod
+    def check_app_compatibility(**kwargs):
         """ Checks whether the app is compatible with Swarm or Docker Compose
 
         :return compatibility: 'swarm' or 'docker-compose' """
@@ -222,7 +223,7 @@ class DockerComposeCliConnector(Connector):
 
             swarm_unsupported_options = list(set(options).intersection(set(dc_specific_keys)))
 
-            if self.config_mandates_swarm(compose_file_path):
+            if DockerComposeCliConnector.config_mandates_swarm(compose_file_path):
                 # Then Swarm is enforced
                 return "swarm", swarm_unsupported_options
 

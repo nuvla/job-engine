@@ -18,7 +18,7 @@ class ApplicationCompatibilityCheck(object):
         self.api = job.api
 
     def check_config(self, module):
-        connector = docker_compose_cli_connector.DockerComposeCliConnector(endpoint="unix:///var/run/docker.sock")
+        connector = docker_compose_cli_connector.DockerComposeCliConnector()
 
         last_version = self.api.get(module['versions'][-1]['href']).data
 
