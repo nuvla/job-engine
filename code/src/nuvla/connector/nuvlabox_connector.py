@@ -113,6 +113,7 @@ class NuvlaBoxConnector(Connector):
         method = kwargs.get('method', 'GET').upper()
         payload = kwargs.get('payload', {})
 
+        # 3rd - make the request
         r = self.nuvlabox_api.request(method, action_endpoint, json=payload, timeout=self.timeout).json()
         self.job.set_progress(99)
 

@@ -8,6 +8,7 @@
 
   - update_nuvlabox_releases - new action
   - job_distributor_nuvlabox_releases - new distributor 
+  - enable-stream and disable-stream - new nuvlabox actions
 
 ### Changed
 
