@@ -2,11 +2,14 @@
 
 ## Unreleased
 
+## [2.3.13] - 2020-03-06
+
 ### Added
 
   - update_nuvlabox_releases - new action
   - job_distributor_nuvlabox_releases - new distributor 
   - application_compatibility_check - new action
+  - enable-stream and disable-stream - new nuvlabox actions
 
 ### Changed
 
@@ -14,6 +17,8 @@
   - Connectors - docker api, docker cli and kubernetes cli support 
     private registries
   - Found bug in `lstrip` method
+  - make action `credential_check` also check for swarm mode and status
+  - reduced number of api calls in connector_factory
 
 ## [2.3.12] - 2020-01-23
 
