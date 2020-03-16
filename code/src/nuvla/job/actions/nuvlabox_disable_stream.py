@@ -3,7 +3,7 @@
 import logging
 
 from ..actions import action
-from nuvla.connector import nuvlabox_connector as NB
+from nuvla.connector.nuvlabox_connector import NuvlaBoxConnector
 from nuvla.api import NuvlaError
 
 
@@ -22,7 +22,8 @@ class NBDisableStreamJob(object):
             peripheral = self.api.get(nuvlabox_peripheral_id).data
         except NuvlaError as e:
             if e.response.status_code == 404:
-                logging.warning("Peripheral has already been deleted. Will try to disable stream anyway")
+                logging.warning(
+                    "Peripheral has already been deleted. Will try to disable stream anyway")
             else:
                 raise
 
@@ -36,19 +37,18 @@ class NBDisableStreamJob(object):
                     if res['href'].startswith("nuvlabox/"):
                         nuvlabox_id = res['href']
                         break
-            except (IndexError, KeyError) as e:
+            except (IndexError, KeyError):
                 logging.exception("Cannot figure out the corresponding NuvlaBox. Stopping")
                 raise
 
-        data = {
-            "id": nuvlabox_peripheral_id
-        }
+        data = {"id": nuvlabox_peripheral_id}
 
-        logging.info('Disabling data stream for {} in NuvlaBox {}'.format(nuvlabox_peripheral_id, nuvlabox_id))
-        connector = NB.NuvlaBoxConnector(api=self.api, nuvlabox_id=nuvlabox_id, job=self.job)
+        logging.info('Disabling data stream for {} in NuvlaBox {}'.format(nuvlabox_peripheral_id,
+                                                                          nuvlabox_id))
+        connector = NuvlaBoxConnector(api=self.api, nuvlabox_id=nuvlabox_id, job=self.job)
 
         # IMPORTANT BIT THAT MUST CHANGE FOR EVERY NUVLABOX API ACTION
-        r = connector.start(api_action_name="data-source-mjpg/disable", method='post', payload=data)
+        connector.start(api_action_name="data-source-mjpg/disable", method='post', payload=data)
 
         return 0
 

@@ -3,7 +3,7 @@
 import logging
 
 from ..actions import action
-from nuvla.connector import nuvlabox_connector as NB
+from nuvla.connector.nuvlabox_connector import NuvlaBoxConnector
 
 
 @action('enable-stream')
@@ -19,16 +19,15 @@ class NBEnableStreamJob(object):
         peripheral = self.api.get(nuvlabox_peripheral_id).data
         nuvlabox_id = peripheral['parent']
 
-        data = {
-            "id": nuvlabox_peripheral_id,
-            "video-device": peripheral['video-device']
-        }
+        data = {"id": nuvlabox_peripheral_id,
+                "video-device": peripheral['video-device']}
 
-        logging.info('Enabling data stream for {} in NuvlaBox {}'.format(nuvlabox_peripheral_id, nuvlabox_id))
-        connector = NB.NuvlaBoxConnector(api=self.api, nuvlabox_id=nuvlabox_id, job=self.job)
+        logging.info('Enabling data stream for {} in NuvlaBox {}'.format(nuvlabox_peripheral_id,
+                                                                         nuvlabox_id))
+        connector = NuvlaBoxConnector(api=self.api, nuvlabox_id=nuvlabox_id, job=self.job)
 
         # IMPORTANT BIT THAT MUST CHANGE FOR EVERY NUVLABOX API ACTION
-        r = connector.start(api_action_name="data-source-mjpg/enable", method='post', payload=data)
+        connector.start(api_action_name="data-source-mjpg/enable", method='post', payload=data)
 
         return 0
 
