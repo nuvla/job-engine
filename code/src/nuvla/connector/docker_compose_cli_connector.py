@@ -33,7 +33,7 @@ class DockerComposeCliConnector(Connector):
 
     def connect(self):
         log.info('Connecting to endpoint {}'.format(self.endpoint))
-        if self.cert_file and self.key_file:
+        if self.cert and self.key:
             self.cert_file = create_tmp_file(self.cert)
             self.key_file = create_tmp_file(self.key)
 
@@ -45,18 +45,28 @@ class DockerComposeCliConnector(Connector):
             self.key_file.close()
             self.key_file = None
 
-    def build_cmd_line(self, list_cmd):
-        return ['docker-compose', '-H', self.endpoint, '--tls', '--tlscert', self.cert_file.name,
-                '--tlskey', self.key_file.name, '--tlscacert', self.cert_file.name] \
-               + list_cmd
+    def build_cmd_line(self, list_cmd, local=False, binary='docker-compose'):
+        if local:
+            remote_tls = []
+        else:
+            remote_tls = ['-H', self.endpoint, '--tls', '--tlscert', self.cert_file.name,
+                          '--tlskey', self.key_file.name, '--tlscacert', self.cert_file.name]
+
+        return [binary] + remote_tls + list_cmd
+
+    def _execute_clean_command(self, cmd, **kwargs):
+        try:
+            return self.sanitize_command_output(execute_cmd(cmd, **kwargs))
+        except Exception as e:
+            error = self.sanitize_command_output(e.args[0])
+            raise Exception(error)
 
     @should_connect
     def start(self, **kwargs):
         # Mandatory kwargs
         docker_compose = kwargs['docker_compose']
-        stack_name = kwargs['stack_name']
+        project_name = kwargs['stack_name']
         env = kwargs['env']
-        files = kwargs['files']
         registries_auth = kwargs['registries_auth']
 
         with TemporaryDirectory() as tmp_dir_name:
@@ -65,86 +75,123 @@ class DockerComposeCliConnector(Connector):
             compose_file.write(docker_compose)
             compose_file.close()
 
-            if files:
-                for file_info in files:
-                    file_path = tmp_dir_name + "/" + file_info['file-name']
-                    file = open(file_path, 'w')
-                    file.write(file_info['file-content'])
-                    file.close()
+            docker_config_prefix = []
 
             if registries_auth:
                 config_path = tmp_dir_name + "/config.json"
                 config = open(config_path, 'w')
                 config.write(generate_registry_config(registries_auth))
                 config.close()
+                docker_config_prefix += ["export", "DOCKER_CONFIG=%s" % config_path, "&&"]
 
-            cmd_deploy = self.build_cmd_line(
-                ['--config', tmp_dir_name, 'stack', 'deploy',
-                 '--with-registry-auth', '-c', compose_file_path, stack_name])
+            cmd_deploy = docker_config_prefix + self.build_cmd_line(
+                ['-p', project_name, '-f', compose_file_path, "up", "-d"])
 
-            result = execute_cmd(cmd_deploy, env=env)
+            result = self._execute_clean_command(cmd_deploy, env=env)
 
-            services = self._stack_services(stack_name)
+            services = self._stack_services(project_name, compose_file_path)
 
             return result, services
 
     @should_connect
     def stop(self, **kwargs):
         # Mandatory kwargs
-        stack_name = kwargs['stack_name']
+        project_name = kwargs['stack_name']
+        docker_compose = kwargs['docker_compose']
 
-        cmd = self.build_cmd_line(['stack', 'rm', stack_name])
-        return execute_cmd(cmd)
+        with TemporaryDirectory() as tmp_dir_name:
+            compose_file_path = tmp_dir_name + "/docker-compose.yaml"
+            compose_file = open(compose_file_path, 'w')
+            compose_file.write(docker_compose)
+            compose_file.close()
+
+            cmd = self.build_cmd_line(['-p', project_name, '-f', compose_file_path, 'down', '-v'])
+            return self._execute_clean_command(cmd)
 
     update = start
 
     @should_connect
     def list(self, filters=None):
-        cmd = self.build_cmd_line(['stack', 'ls'])
-        return execute_cmd(cmd)
+        pass
 
     @should_connect
     def log(self, list_opts):
-        cmd = self.build_cmd_line(['service', 'logs'] + list_opts)
-        return execute_cmd(cmd)
+        cmd = self.build_cmd_line(['logs'] + list_opts, binary='docker')
+        return self._execute_clean_command(cmd)
 
     @staticmethod
-    def _extract_service_info(stack_name, service):
-        service_info = {}
-        service_json = json.loads(service)
-        service_info['image'] = service_json['Image']
-        service_info['mode'] = service_json['Mode']
-        service_info['service-id'] = service_json['ID']
-        node_id = service_json['Name'][len(stack_name) + 1:]
-        service_info['node-id'] = node_id
-        replicas = service_json['Replicas'].split('/')
-        replicas_desired = replicas[1]
-        replicas_running = replicas[0]
-        service_info['replicas.desired'] = replicas_desired
-        service_info['replicas.running'] = replicas_running
-        ports = filter(None, service_json['Ports'].split(','))
-        for port in ports:
-            external_port_info, internal_port_info = port.split('->')
-            external_port = external_port_info.split(':')[1]
-            internal_port, protocol = internal_port_info.split('/')
+    def _get_image(container_info):
+        try:
+            return container_info[0]['Config']['Image']
+        except KeyError:
+            return ''
+
+    def _get_service_id(self, project_name, service, docker_compose_path):
+        cmd = self.build_cmd_line(['-p', project_name, '-f', docker_compose_path,
+                                   'ps', '-q', service])
+        stdout = self._execute_clean_command(cmd)
+
+        return yaml.load(stdout, Loader=yaml.FullLoader)
+
+    @staticmethod
+    def _get_service_ports(container_info):
+        try:
+            return container_info[0]['NetworkSettings']['Ports']
+        except KeyError:
+            return {}
+
+    def _get_container_inspect(self, service_id):
+        cmd = self.build_cmd_line(['inspect', service_id], binary='docker')
+
+        return json.loads(self._execute_clean_command(cmd))
+
+    def _extract_service_info(self, project_name, service, docker_compose_path):
+        service_id = self._get_service_id(project_name, service, docker_compose_path)
+        inspection = self._get_container_inspect(service_id)
+        service_info = {
+            'image': self._get_image(inspection),
+            'service-id': service_id,
+            'node-id': service
+        }
+        ports = self._get_service_ports(inspection)
+        for container_port, mapping in ports.items():
+            internal_port, protocol = container_port.split('/')
+            try:
+                external_port = mapping[0]['HostPort']
+            except (KeyError, IndexError):
+                log.warning("Cannot get mapping for container port %s" % internal_port)
+                continue
             service_info['{}.{}'.format(protocol, internal_port)] = external_port
         return service_info
 
-    def _stack_services(self, stack_name):
-        cmd = self.build_cmd_line(['stack', 'services', '--format',
-                                   '{{ json . }}', stack_name])
-        stdout = execute_cmd(cmd)
-        services = [DockerComposeCliConnector._extract_service_info(stack_name, service)
+    @staticmethod
+    def sanitize_command_output(output):
+        new_output = [ line for line in output.splitlines() if "InsecureRequestWarning" not in line ]
+        return '\n'.join(new_output)
+
+    def _stack_services(self, project_name, docker_compose_path):
+        cmd = self.build_cmd_line(['-f', docker_compose_path, 'config', '--services', '--no-interpolate'], local=True)
+
+        stdout = self._execute_clean_command(cmd)
+
+        services = [self._extract_service_info(project_name, service, docker_compose_path)
                     for service in stdout.splitlines()]
         return services
 
     @should_connect
-    def stack_services(self, stack_name):
-        return self._stack_services(stack_name)
+    def stack_services(self, stack_name, raw_compose_file):
+        with TemporaryDirectory() as tmp_dir_name:
+            compose_file_path = tmp_dir_name + "/docker-compose.yaml"
+            compose_file = open(compose_file_path, 'w')
+            compose_file.write(raw_compose_file)
+            compose_file.close()
+
+            return self._stack_services(stack_name, compose_file_path)
 
     @should_connect
     def info(self):
-        cmd = self.build_cmd_line(['info', '--format', '{{ json . }}'])
+        cmd = self.build_cmd_line(['info', '--format', '{{ json . }}'], binary='docker')
+
         info = json.loads(execute_cmd(cmd, timeout=5))
         server_errors = info.get('ServerErrors', [])
         if len(server_errors) > 0:

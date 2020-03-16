@@ -43,7 +43,10 @@ def append_os_env(env):
 
 
 def execute_cmd(cmd, **kwargs):
-    opt_env = append_os_env(kwargs.get('env'))
+    if kwargs.get('env'):
+        opt_env = append_os_env(kwargs.get('env'))
+    else:
+        opt_env = None
     opt_input = kwargs.get('input')
     timeout = kwargs.get('timeout', 120)
     try:
