@@ -76,6 +76,7 @@ class DockerComposeCliConnector(Connector):
             compose_file.close()
 
             docker_config_prefix = []
+
             if registries_auth:
                 config_path = tmp_dir_name + "/config.json"
                 config = open(config_path, 'w')
@@ -190,6 +191,7 @@ class DockerComposeCliConnector(Connector):
     @should_connect
     def info(self):
         cmd = self.build_cmd_line(['info', '--format', '{{ json . }}'], binary='docker')
+
         info = json.loads(execute_cmd(cmd, timeout=5))
         server_errors = info.get('ServerErrors', [])
         if len(server_errors) > 0:
@@ -242,7 +244,8 @@ class DockerComposeCliConnector(Connector):
 
         return False
 
-    def check_app_compatibility(self, **kwargs):
+    @staticmethod
+    def check_app_compatibility(**kwargs):
         """ Checks whether the app is compatible with Swarm or Docker Compose
 
         :return compatibility: 'swarm' or 'docker-compose' """
@@ -267,7 +270,7 @@ class DockerComposeCliConnector(Connector):
 
             swarm_unsupported_options = list(set(options).intersection(set(dc_specific_keys)))
 
-            if self.config_mandates_swarm(compose_file_path):
+            if DockerComposeCliConnector.config_mandates_swarm(compose_file_path):
                 # Then Swarm is enforced
                 return "swarm", swarm_unsupported_options
 

@@ -2,12 +2,16 @@
 
 ## Unreleased
 
+## [2.3.13] - 2020-03-06
+
 ### Added
 
   - update_nuvlabox_releases - new action
   - job_distributor_nuvlabox_releases - new distributor 
   - docker_compose_cli_connector - new connector for docker-compose
-  
+  - application_compatibility_check - new action
+  - enable-stream and disable-stream - new nuvlabox actions
+
 ### Changed
 
   - Deployment start, update - support private registries
