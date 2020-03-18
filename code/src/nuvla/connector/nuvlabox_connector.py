@@ -122,6 +122,11 @@ class NuvlaBoxConnector(Connector):
                                       timeout=self.timeout).json()
         self.job.set_progress(99)
 
+        msg = 'Call /api/{} for NuvlaBox {}. Output: {}'.format(kwargs.get('api_action_name', ''),
+                                                                self.nuvlabox_id,
+                                                                r)
+        self.job.set_status_message(msg)
+
         return r
 
     @should_connect

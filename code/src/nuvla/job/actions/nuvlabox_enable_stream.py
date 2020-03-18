@@ -30,9 +30,6 @@ class NBEnableStreamJob(object):
         api_action_name = 'data-source-mjpg/enable'
         r = connector.start(api_action_name=api_action_name, method='post', payload=data)
 
-        msg = 'Call /api/{} for NuvlaBox {}. Output: {}'.format(api_action_name, nuvlabox_id, r)
-        self.job.set_status_message(msg)
-
         return 0
 
     def do_work(self):
