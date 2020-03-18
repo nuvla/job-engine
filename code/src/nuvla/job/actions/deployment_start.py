@@ -4,7 +4,7 @@ import logging
 
 from .nuvla import Deployment, DeploymentParameter
 from nuvla.connector import connector_factory, docker_connector, \
-    docker_cli_connector, kubernetes_cli_connector
+    docker_cli_connector, docker_compose_cli_connector, kubernetes_cli_connector
 from ..actions import action
 
 action_name = 'start_deployment'
@@ -218,7 +218,10 @@ class DeploymentStartJob(object):
     def start_application(self, deployment):
         deployment_id = Deployment.id(deployment)
 
-        connector = connector_factory(docker_cli_connector, self.api, deployment.get('parent'))
+        if Deployment.module(deployment).get('compatibility') == "docker-compose":
+            connector = connector_factory(docker_compose_cli_connector, self.api, deployment.get('parent'))
+        else:
+            connector = connector_factory(docker_cli_connector, self.api, deployment.get('parent'))
 
         module_content = Deployment.module_content(deployment)
 

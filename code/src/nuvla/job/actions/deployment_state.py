@@ -4,7 +4,7 @@ import logging
 from datetime import datetime
 
 from nuvla.connector import connector_factory, docker_connector, \
-    docker_cli_connector, kubernetes_cli_connector
+    docker_cli_connector, docker_compose_cli_connector, kubernetes_cli_connector
 from .nuvla import Deployment, DeploymentParameter
 from .deployment_start import application_params_update
 from ..actions import action
@@ -111,10 +111,19 @@ class DeploymentStateJob(object):
             self.api_dpl.update_port_parameters(deployment, ports_mapping)
 
     def get_application_state(self, deployment):
-        connector = connector_factory(docker_cli_connector, self.api,
-                                      deployment.get('parent'))
         stack_name = Deployment.uuid(deployment)
-        services = connector.stack_services(stack_name)
+
+        if Deployment.module(deployment).get('compatibility') == "docker-compose":
+            module_content = Deployment.module_content(deployment)
+            compose_file = module_content['docker-compose']
+
+            connector = connector_factory(docker_compose_cli_connector, self.api, deployment.get('parent'))
+
+            services = connector.stack_services(stack_name, compose_file)
+        else:
+            connector = connector_factory(docker_cli_connector, self.api, deployment.get('parent'))
+            services = connector.stack_services(stack_name)
+
         application_params_update(self.api_dpl, deployment, services)
 
     def get_application_kubernetes_state(self, deployment):

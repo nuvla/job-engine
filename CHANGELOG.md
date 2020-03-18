@@ -8,6 +8,8 @@
 
   - update_nuvlabox_releases - new action
   - job_distributor_nuvlabox_releases - new distributor 
+  - docker_compose_cli_connector - new connector for docker-compose
+  - application_compatibility_check - new action
   - enable-stream and disable-stream - new nuvlabox actions
 
 ### Changed
@@ -18,6 +20,7 @@
   - Found bug in `lstrip` method
   - make action `credential_check` also check for swarm mode and status
   - reduced number of api calls in connector_factory
+  - deployment_* actions to support docker-compose apps
 
 ## [2.3.12] - 2020-01-23
 

@@ -3,7 +3,7 @@
 import logging
 
 from nuvla.connector import connector_factory, docker_connector, \
-    docker_cli_connector, kubernetes_cli_connector
+    docker_cli_connector, docker_compose_cli_connector, kubernetes_cli_connector
 from nuvla.api import NuvlaError, ConnectionError
 from .nuvla import Deployment
 from ..actions import action
@@ -55,9 +55,13 @@ class DeploymentStopJob(object):
 
     def stop_application(self, deployment):
 
-        connector = connector_factory(docker_cli_connector, self.api, deployment.get('parent'))
+        if Deployment.module(deployment).get('compatibility') == "docker-compose":
+            connector = connector_factory(docker_compose_cli_connector, self.api, deployment.get('parent'))
+        else:
+            connector = connector_factory(docker_cli_connector, self.api, deployment.get('parent'))
 
-        result = connector.stop(stack_name=Deployment.uuid(deployment))
+        result = connector.stop(stack_name=Deployment.uuid(deployment),
+                                docker_compose=Deployment.module_content(deployment)['docker-compose'])
 
         self.job.set_status_message(result)
 
