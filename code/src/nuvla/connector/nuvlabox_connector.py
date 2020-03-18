@@ -115,13 +115,7 @@ class NuvlaBoxConnector(Connector):
 
         # 3rd - make the request
         r = self.nuvlabox_api.request(method, action_endpoint, json=payload, timeout=self.timeout).json()
-        self.job.set_progress(99)
-
-        msg = 'Call /api/{} for NuvlaBox {}. Output: {}'.format(kwargs.get('api_action_name', ''),
-                                                                self.nuvlabox_id,
-                                                                r)
-
-        self.create_notification(msg)
+        self.job.set_progress(100)
 
         return r
 
