@@ -228,34 +228,9 @@ class DockerComposeCliConnector(Connector):
             return execute_cmd(cmd_login, input=password)
 
     @staticmethod
-    def config_mandates_swarm(compose_file):
-        """ Checks if compose file config has Swarm-specific attributes
-
-        :param compose_file: path yaml file
-        :return boolean
-        """
-
-        cmd = ["docker-compose", "-f", compose_file, "config", "-q"]
-        config_output = execute_cmd(cmd)
-
-        if "docker stack deploy" in config_output.lower():
-            # there are Swarm-specific options
-            return True
-
-        return False
-
-    @staticmethod
-    def check_app_compatibility(**kwargs):
-        """ Checks whether the app is compatible with Swarm or Docker Compose
-
-        :return compatibility: 'swarm' or 'docker-compose' """
-
+    def config(**kwargs):
         # required kwargs
         docker_compose = kwargs['docker_compose']
-
-        dc_specific_keys = ['devices', 'build', 'cap_add', 'cap_drop', 'cgroup_parent', 'container_name',
-                            'depends_on', 'external_links', 'network_mode', 'restart', 'security_opt',
-                            'tmpfs', 'userns_mode', 'privileged', 'domainname', 'ipc', 'mac_address', 'shm_size']
 
         with TemporaryDirectory() as tmp_dir_name:
             compose_file_path = tmp_dir_name + "/docker-compose.yaml"
@@ -263,22 +238,10 @@ class DockerComposeCliConnector(Connector):
             compose_file.write(docker_compose)
             compose_file.close()
 
-            docker_compose_yaml = yaml.load(docker_compose, Loader=yaml.FullLoader)
-            options = []
-            for service in docker_compose_yaml['services'].values():
-                options += list(service.keys())
+            cmd = ["docker-compose", "-f", compose_file_path, "config", "-q"]
+            result = execute_cmd(cmd)
 
-            swarm_unsupported_options = list(set(options).intersection(set(dc_specific_keys)))
+        return result
 
-            if DockerComposeCliConnector.config_mandates_swarm(compose_file_path):
-                # Then Swarm is enforced
-                return "swarm", swarm_unsupported_options
-
-            if swarm_unsupported_options:
-                # the module's compose file has docker-compose specific options, thus it is compose compatible
-                return 'docker-compose', []
-
-            # default is swarm
-            return 'swarm', []
 
 
