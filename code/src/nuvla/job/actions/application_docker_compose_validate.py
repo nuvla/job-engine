@@ -17,6 +17,19 @@ class ApplicationDockerComposeValidate(object):
         self.job = job
         self.api = job.api
 
+    @staticmethod
+    def get_env_to_mute_undefined(module_content):
+        value = "some-value"
+        env_variables = {'NUVLA_DEPLOYMENT_ID': value,
+                         'NUVLA_API_KEY': value,
+                         'NUVLA_API_SECRET': value,
+                         'NUVLA_ENDPOINT': value}
+
+        for env_var in module_content.get('environmental-variables', []):
+            env_variables[env_var['name']] = value
+
+        return env_variables
+
     def do_work(self):
         module_id = self.job['target-resource']['href']
 
@@ -27,7 +40,8 @@ class ApplicationDockerComposeValidate(object):
         self.job.set_progress(10)
 
         try:
-            DockerComposeCliConnector.config(docker_compose=module['content']['docker-compose'])
+            DockerComposeCliConnector.config(docker_compose=module['content']['docker-compose'],
+                                             env=self.get_env_to_mute_undefined(module['content']))
         except Exception as ex:
             self.job.set_status_message(str(ex))
             return 1

@@ -231,6 +231,7 @@ class DockerComposeCliConnector(Connector):
     def config(**kwargs):
         # required kwargs
         docker_compose = kwargs['docker_compose']
+        env = kwargs['env']
 
         with TemporaryDirectory() as tmp_dir_name:
             compose_file_path = tmp_dir_name + "/docker-compose.yaml"
@@ -239,7 +240,7 @@ class DockerComposeCliConnector(Connector):
             compose_file.close()
 
             cmd = ["docker-compose", "-f", compose_file_path, "config", "-q"]
-            result = execute_cmd(cmd)
+            result = execute_cmd(cmd, env=env)
 
         return result
 
