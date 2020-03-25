@@ -42,8 +42,12 @@ class ApplicationDockerComposeValidate(object):
         try:
             DockerComposeCliConnector.config(docker_compose=module['content']['docker-compose'],
                                              env=self.get_env_to_mute_undefined(module['content']))
+            self.api.edit(module_id, {'valid': True,
+                                      'validation-message': 'Docker-compose valid.'})
         except Exception as ex:
             self.job.set_status_message(str(ex))
+            self.api.edit(module_id, {'valid': False,
+                                      'validation-message': str(ex)})
             return 1
 
         return 0
