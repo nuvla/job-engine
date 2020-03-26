@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import os
 import re
 import json
 import yaml
@@ -66,6 +67,9 @@ class KubernetesCliConnector(Connector):
                               'metadata': {'name': stack_name}}
             yaml.safe_dump(namespace_data, namespace_file, allow_unicode=True)
 
+        kustomization_data = {'namespace': stack_name,
+                              'resources': ['manifest.yml', 'namespace.yml']}
+
         if files:
             for file_info in files:
                 file_path = directory_path + "/" + file_info['file-name']
@@ -76,7 +80,8 @@ class KubernetesCliConnector(Connector):
         if registries_auth:
             config = generate_registry_config(registries_auth)
             config_b64 = base64.b64encode(config.encode('ascii')).decode('utf-8')
-            secret_registries_path = directory_path + '/secret-registries-credentials.yml'
+            secret_registries_fn = 'secret-registries-credentials.yml'
+            secret_registries_path = os.path.join(directory_path, secret_registries_fn)
             with open(secret_registries_path, 'w') as secret_registries_file:
                 secret_registries_data = {'apiVersion': 'v1',
                                           'kind': 'Secret',
@@ -84,12 +89,11 @@ class KubernetesCliConnector(Connector):
                                           'data': {'.dockerconfigjson': config_b64},
                                           'type': 'kubernetes.io/dockerconfigjson'}
                 yaml.safe_dump(secret_registries_data, secret_registries_file, allow_unicode=True)
+            kustomization_data.setdefault('resources', []) \
+                .append(secret_registries_fn)
 
         kustomization_file_path = directory_path + '/kustomization.yml'
         with open(kustomization_file_path, 'w') as kustomization_file:
-            kustomization_data = {'namespace': stack_name,
-                                  'resources': ['manifest.yml', 'namespace.yml',
-                                                'secret-registries-credentials.yml']}
             yaml.safe_dump(kustomization_data, kustomization_file, allow_unicode=True)
 
     @should_connect
