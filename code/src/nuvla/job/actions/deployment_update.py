@@ -3,7 +3,7 @@
 import logging
 
 from nuvla.connector import connector_factory, docker_connector
-from .nuvla import Deployment
+from nuvla.api.resources import Deployment
 from ..actions import action
 
 action_name = 'update_deployment'
@@ -35,7 +35,8 @@ class DeploymentUpdateJob(object):
             return None
 
     def update_component(self, deployment):
-        connector = connector_factory(docker_connector, self.api, deployment.get('parent'))
+        connector = connector_factory(docker_connector, self.api,
+                                      Deployment.credential_id(deployment))
 
         module_content = Deployment.module_content(deployment)
 

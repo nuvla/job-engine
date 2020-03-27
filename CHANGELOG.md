@@ -10,6 +10,7 @@
 
 ### Changed
 
+  - reuse python library wrappers
   - deployment_* actions to support docker-compose apps
 
 ## [2.3.13] - 2020-03-06

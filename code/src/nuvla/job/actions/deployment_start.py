@@ -2,7 +2,7 @@
 
 import logging
 
-from .nuvla import Deployment, DeploymentParameter
+from nuvla.api.resources import Deployment, DeploymentParameter
 from nuvla.connector import connector_factory, docker_connector, \
     docker_cli_connector, docker_compose_cli_connector, kubernetes_cli_connector
 from ..actions import action
@@ -76,10 +76,11 @@ class DeploymentStartJob(object):
             return None
 
     def start_component(self, deployment):
-        connector = connector_factory(docker_connector, self.api, deployment.get('parent'))
+        connector = connector_factory(docker_connector, self.api,
+                                      Deployment.credential_id(deployment))
 
         deployment_id = Deployment.id(deployment)
-        node_instance_name = self.api_dpl.uuid(deployment)
+        node_instance_name = Deployment.uuid(deployment)
         deployment_owner = Deployment.owner(deployment)
         module_content = Deployment.module_content(deployment)
 
@@ -217,11 +218,12 @@ class DeploymentStartJob(object):
 
     def start_application(self, deployment):
         deployment_id = Deployment.id(deployment)
+        credential_id = Deployment.credential_id(deployment)
 
-        if Deployment.module(deployment).get('compatibility') == "docker-compose":
-            connector = connector_factory(docker_compose_cli_connector, self.api, deployment.get('parent'))
+        if Deployment.is_compatibility_docker_compose(deployment):
+            connector = connector_factory(docker_compose_cli_connector, self.api, credential_id)
         else:
-            connector = connector_factory(docker_cli_connector, self.api, deployment.get('parent'))
+            connector = connector_factory(docker_cli_connector, self.api, credential_id)
 
         module_content = Deployment.module_content(deployment)
 
@@ -251,7 +253,8 @@ class DeploymentStartJob(object):
     def start_application_kubernetes(self, deployment):
         deployment_id = Deployment.id(deployment)
 
-        connector = connector_factory(kubernetes_cli_connector, self.api, deployment.get('parent'))
+        connector = connector_factory(kubernetes_cli_connector, self.api,
+                                      Deployment.credential_id(deployment))
 
         module_content = Deployment.module_content(deployment)
 
