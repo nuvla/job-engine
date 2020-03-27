@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## [2.3.14] - 2020-03-27
+
 ### Added
 
   - validate-docker-compose - new action
