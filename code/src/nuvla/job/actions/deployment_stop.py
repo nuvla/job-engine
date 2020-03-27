@@ -5,7 +5,7 @@ import logging
 from nuvla.connector import connector_factory, docker_connector, \
     docker_cli_connector, docker_compose_cli_connector, kubernetes_cli_connector
 from nuvla.api import NuvlaError, ConnectionError
-from .nuvla import Deployment
+from nuvla.api.resources import Deployment, Credential
 from ..actions import action
 
 action_name = 'stop_deployment'
@@ -20,20 +20,20 @@ class DeploymentStopJob(object):
         self.job = job
         self.api = job.api
         self.api_dpl = Deployment(self.api)
+        self.api_crd = Credential(self.api)
 
     def try_delete_deployment_credentials(self, deployment_id):
-        credentials = self.api.search('credential', filter="parent='{}'".format(deployment_id),
-                                      select='id, parent').resources
+        credentials = self.api_crd.find_parent(deployment_id)
         for credential in credentials:
             try:
-                self.api.delete(credential.data['id'])
+                self.api_crd.delete(Credential.id(credential))
             except (NuvlaError, ConnectionError):
                 pass
 
     def stop_component(self, deployment):
         deployment_id = Deployment.id(deployment)
 
-        credential_id = deployment.get('parent')
+        credential_id = Deployment.credential_id(deployment)
 
         connector = connector_factory(docker_connector, self.api, credential_id)
 
@@ -54,20 +54,22 @@ class DeploymentStopJob(object):
             self.job.set_status_message('No deployment parameters with service ID found!')
 
     def stop_application(self, deployment):
-
-        if Deployment.module(deployment).get('compatibility') == "docker-compose":
-            connector = connector_factory(docker_compose_cli_connector, self.api, deployment.get('parent'))
+        credential_id = Deployment.credential_id(deployment)
+        if Deployment.is_compatibility_docker_compose(deployment):
+            connector = connector_factory(docker_compose_cli_connector, self.api, credential_id)
         else:
-            connector = connector_factory(docker_cli_connector, self.api, deployment.get('parent'))
+            connector = connector_factory(docker_cli_connector, self.api, credential_id)
 
         result = connector.stop(stack_name=Deployment.uuid(deployment),
-                                docker_compose=Deployment.module_content(deployment)['docker-compose'])
+                                docker_compose=Deployment.module_content(deployment)[
+                                    'docker-compose'])
 
         self.job.set_status_message(result)
 
     def stop_application_kubernetes(self, deployment):
 
-        connector = connector_factory(kubernetes_cli_connector, self.api, deployment.get('parent'))
+        connector = connector_factory(kubernetes_cli_connector, self.api,
+                                      Deployment.credential_id(deployment))
 
         result = connector.stop(stack_name=Deployment.uuid(deployment))
 

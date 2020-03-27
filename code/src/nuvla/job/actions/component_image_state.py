@@ -7,7 +7,7 @@ from nuvla.connector.registry import (new_image_semantic_tag,
                                       is_semantic_version)
 from nuvla.connector.utils import (unique_id,
                                    utc_from_now_iso)
-from .nuvla import Module, Callback, Notification
+from nuvla.api.resources import Module, Callback, Notification
 from ..actions import action
 
 action_name = 'component_image_state'
