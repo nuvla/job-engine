@@ -136,26 +136,26 @@ class DockerCliConnector(Connector):
         replicas_running = replicas[0]
         service_info['replicas.desired'] = replicas_desired
         service_info['replicas.running'] = replicas_running
-        ports = list(filter(None, service_json['Ports'].split(',')))
+        ports = filter(None, service_json['Ports'].split(','))
         for port in ports:
             protocol, internal_port, external_port = DockerCliConnector.ports_info(port)
             service_info['{}.{}'.format(protocol, internal_port)] = external_port
-        if not any(ports):
-            # Check if service has host ports published
-            cmd = self.build_cmd_line(['service', 'ps', '--filter', 'desired-state=running',
-                                       '--format', '{{ json . }}', service_id])
-            tasks = [json.loads(task_line) for task_line in execute_cmd(cmd).splitlines()]
-            for task_json in tasks:
-                task_ports = filter(None, task_json['Ports'].split(','))
-                task_id = task_json['ID']
-                task_replica_number = task_json['Name'].split('.')[-1]
-                for task_port in task_ports:
-                    task_protocol, task_internal_port, task_external_port = \
-                        DockerCliConnector.ports_info(task_port)
-                    host_ip = self.resolve_task_host_ip(task_id)
-                    service_info['{}.{}.{}'.format(
-                        task_replica_number, task_protocol, task_internal_port)] = \
-                        '{}:{}'.format(host_ip, task_external_port)
+
+        # Check if service has host ports published
+        cmd = self.build_cmd_line(['service', 'ps', '--filter', 'desired-state=running',
+                                   '--format', '{{ json . }}', service_id])
+        tasks = [json.loads(task_line) for task_line in execute_cmd(cmd).splitlines()]
+        for task_json in tasks:
+            task_ports = filter(None, task_json['Ports'].split(','))
+            task_id = task_json['ID']
+            task_replica_number = task_json['Name'].split('.')[-1]
+            for task_port in task_ports:
+                task_protocol, task_internal_port, task_external_port = \
+                    DockerCliConnector.ports_info(task_port)
+                host_ip = self.resolve_task_host_ip(task_id)
+                service_info['{}.{}.{}'.format(
+                    task_replica_number, task_protocol, task_internal_port)] = \
+                    '{}:{}'.format(host_ip, task_external_port)
         return service_info
 
     def _stack_services(self, stack_name):
