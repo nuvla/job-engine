@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+### Changed
+
+  - Docker cli connector - export node ip and ports when a service
+    use host mode ports
+
 ## [2.3.14] - 2020-03-27
 
 ### Added

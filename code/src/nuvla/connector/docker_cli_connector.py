@@ -108,12 +108,27 @@ class DockerCliConnector(Connector):
         return execute_cmd(cmd)
 
     @staticmethod
-    def _extract_service_info(stack_name, service):
+    def ports_info(port):
+        external_port_info, internal_port_info = port.split('->')
+        external_port = external_port_info.split(':')[1]
+        internal_port, protocol = internal_port_info.split('/')
+        return protocol, internal_port, external_port
+
+    def resolve_task_host_ip(self, task_id):
+        json_task = json.loads(execute_cmd(self.build_cmd_line(['inspect', task_id])))
+        node_id = json_task[0]['NodeID'] if len(json_task) > 0 else None
+        if node_id:
+            json_node = json.loads(execute_cmd(self.build_cmd_line(['node', 'inspect', node_id])))
+            return json_node[0].get('Status', {}).get('Addr') if len(json_node) > 0 else ''
+        return ''
+
+    def _extract_service_info(self, stack_name, service):
         service_info = {}
         service_json = json.loads(service)
+        service_id = service_json['ID']
         service_info['image'] = service_json['Image']
         service_info['mode'] = service_json['Mode']
-        service_info['service-id'] = service_json['ID']
+        service_info['service-id'] = service_id
         node_id = service_json['Name'][len(stack_name) + 1:]
         service_info['node-id'] = node_id
         replicas = service_json['Replicas'].split('/')
@@ -121,19 +136,33 @@ class DockerCliConnector(Connector):
         replicas_running = replicas[0]
         service_info['replicas.desired'] = replicas_desired
         service_info['replicas.running'] = replicas_running
-        ports = filter(None, service_json['Ports'].split(','))
+        ports = list(filter(None, service_json['Ports'].split(',')))
         for port in ports:
-            external_port_info, internal_port_info = port.split('->')
-            external_port = external_port_info.split(':')[1]
-            internal_port, protocol = internal_port_info.split('/')
+            protocol, internal_port, external_port = DockerCliConnector.ports_info(port)
             service_info['{}.{}'.format(protocol, internal_port)] = external_port
+        if not any(ports):
+            # Check if service has host ports published
+            cmd = self.build_cmd_line(['service', 'ps', '--filter', 'desired-state=running',
+                                       '--format', '{{ json . }}', service_id])
+            tasks = [json.loads(task_line) for task_line in execute_cmd(cmd).splitlines()]
+            for task_json in tasks:
+                task_ports = filter(None, task_json['Ports'].split(','))
+                task_id = task_json['ID']
+                task_replica_number = task_json['Name'].split('.')[-1]
+                for task_port in task_ports:
+                    task_protocol, task_internal_port, task_external_port = \
+                        DockerCliConnector.ports_info(task_port)
+                    host_ip = self.resolve_task_host_ip(task_id)
+                    service_info['{}.{}.{}'.format(
+                        task_replica_number, task_protocol, task_internal_port)] = \
+                        '{}:{}'.format(host_ip, task_external_port)
         return service_info
 
     def _stack_services(self, stack_name):
         cmd = self.build_cmd_line(['stack', 'services', '--format',
                                    '{{ json . }}', stack_name])
         stdout = execute_cmd(cmd)
-        services = [DockerCliConnector._extract_service_info(stack_name, service)
+        services = [self._extract_service_info(stack_name, service)
                     for service in stdout.splitlines()]
         return services
 
