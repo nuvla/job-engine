@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## [2.3.15] - 2020-04-14
+
 ### Changed
 
   - Docker cli connector - export node ip and ports when a service
