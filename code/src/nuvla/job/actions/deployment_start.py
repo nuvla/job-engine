@@ -13,10 +13,12 @@ log = logging.getLogger(action_name)
 
 
 def get_env(deployment):
-    env_variables = {'NUVLA_DEPLOYMENT_ID': deployment['id'],
-                     'NUVLA_API_KEY': deployment['api-credentials']['api-key'],
-                     'NUVLA_API_SECRET': deployment['api-credentials']['api-secret'],
-                     'NUVLA_ENDPOINT': deployment['api-endpoint']}
+    env_variables = {
+        'NUVLA_DEPLOYMENT_UUID': deployment['id'].split('/')[-1],
+        'NUVLA_DEPLOYMENT_ID': deployment['id'],
+        'NUVLA_API_KEY': deployment['api-credentials']['api-key'],
+        'NUVLA_API_SECRET': deployment['api-credentials']['api-secret'],
+        'NUVLA_ENDPOINT': deployment['api-endpoint']}
 
     module_content = Deployment.module_content(deployment)
 

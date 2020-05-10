@@ -21,6 +21,7 @@ class ApplicationDockerComposeValidate(object):
     def get_env_to_mute_undefined(module_content):
         value = "some-value"
         env_variables = {'NUVLA_DEPLOYMENT_ID': value,
+                         'NUVLA_DEPLOYMENT_UUID': value,
                          'NUVLA_API_KEY': value,
                          'NUVLA_API_SECRET': value,
                          'NUVLA_ENDPOINT': value}
