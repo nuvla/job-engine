@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## [2.3.16] - 2020-05-11
+
+### Changed
+
+  - Deployment start - add NUVLA_DEPLOYEMT_UUID env var
+
 ## [2.3.15] - 2020-04-14
 
 ### Changed
