@@ -186,7 +186,7 @@
             <id>default-build</id>
             <phase>install</phase>
             <goals>
-              <goal>exec</goal>
+              <goal>build</goal>
             </goals>
             <configuration>
               <repository>docker.io/${docker-organization}/agent</repository>
@@ -211,7 +211,7 @@
             <id>default-push</id>
             <phase>deploy</phase>
             <goals>
-              <goal>exec</goal>
+              <goal>push</goal>
             </goals>
             <configuration>
               <repository>docker.io/${docker-organization}/agent</repository>
