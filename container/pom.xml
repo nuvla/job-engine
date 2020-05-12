@@ -182,36 +182,80 @@
             </configuration>
           </execution>
 
+          <execution>
+            <id>default-build</id>
+            <phase>install</phase>
+            <goals>
+              <goal>exec</goal>
+            </goals>
+            <configuration>
+              <repository>docker.io/${docker-organization}/agent</repository>
+              <tag>${docker-tag}</tag>
+              <executable>${basedir}/container-build.sh</executable>
+              <environmentVariables>
+                <DOCKER_ORG>${docker-organization}</DOCKER_ORG>
+                <DOCKER_IMAGE>job</DOCKER_IMAGE>
+                <DOCKER_TAG>${docker-tag}</DOCKER_TAG>
+
+                <GIT_BRANCH>${git.branch.selected}</GIT_BRANCH>
+                <GIT_COMMIT_ID>${git.commit.id}</GIT_COMMIT_ID>
+                <GIT_DIRTY>${git.dirty}</GIT_DIRTY>
+                <GIT_BUILD_TIME>${git.build.time}</GIT_BUILD_TIME>
+                <TRAVIS_BUILD_NUMBER>${env.TRAVIS_BUILD_NUMBER}</TRAVIS_BUILD_NUMBER>
+                <TRAVIS_BUILD_WEB_URL>${env.TRAVIS_BUILD_WEB_URL}</TRAVIS_BUILD_WEB_URL>
+              </environmentVariables>
+            </configuration>
+          </execution>
+
+          <execution>
+            <id>default-push</id>
+            <phase>deploy</phase>
+            <goals>
+              <goal>exec</goal>
+            </goals>
+            <configuration>
+              <repository>docker.io/${docker-organization}/agent</repository>
+              <tag>${docker-tag}</tag>
+              <executable>${basedir}/container-push.sh</executable>
+              <!-- DOCKER_USERNAME and DOCKER_PASSWORD must be set externally. -->
+              <environmentVariables>
+                <DOCKER_ORG>${docker-organization}</DOCKER_ORG>
+                <DOCKER_IMAGE>job</DOCKER_IMAGE>
+                <DOCKER_TAG>${docker-tag}</DOCKER_TAG>
+              </environmentVariables>
+            </configuration>
+          </execution>
+
         </executions>
       </plugin>
 
-      <plugin>
-        <groupId>com.spotify</groupId>
-        <artifactId>dockerfile-maven-plugin</artifactId>
-        <version>1.4.10</version>
-        <executions>
-          <execution>
-            <id>default</id>
-            <goals>
-              <goal>build</goal>
-              <goal>push</goal>
-            </goals>
-          </execution>
-        </executions>
-        <configuration>
-          <repository>docker.io/${docker-organization}/job</repository>
-          <tag>${docker-tag}</tag>
-          <useMavenSettingsForAuth>true</useMavenSettingsForAuth>
-          <buildArgs>
-            <GIT_BRANCH>${git.branch.selected}</GIT_BRANCH>
-            <GIT_COMMIT_ID>${git.commit.id}</GIT_COMMIT_ID>
-            <GIT_DIRTY>${git.dirty}</GIT_DIRTY>
-            <GIT_BUILD_TIME>${git.build.time}</GIT_BUILD_TIME>
-            <TRAVIS_BUILD_NUMBER>${env.TRAVIS_BUILD_NUMBER}</TRAVIS_BUILD_NUMBER>
-            <TRAVIS_BUILD_WEB_URL>${env.TRAVIS_BUILD_WEB_URL}</TRAVIS_BUILD_WEB_URL>
-          </buildArgs>
-        </configuration>
-      </plugin>
+      <!--<plugin>-->
+      <!--<groupId>com.spotify</groupId>-->
+      <!--<artifactId>dockerfile-maven-plugin</artifactId>-->
+      <!--<version>1.4.10</version>-->
+      <!--<executions>-->
+      <!--<execution>-->
+      <!--<id>default</id>-->
+      <!--<goals>-->
+      <!--<goal>build</goal>-->
+      <!--<goal>push</goal>-->
+      <!--</goals>-->
+      <!--</execution>-->
+      <!--</executions>-->
+      <!--<configuration>-->
+      <!--<repository>docker.io/${docker-organization}/job</repository>-->
+      <!--<tag>${docker-tag}</tag>-->
+      <!--<useMavenSettingsForAuth>true</useMavenSettingsForAuth>-->
+      <!--<buildArgs>-->
+      <!--<GIT_BRANCH>${git.branch.selected}</GIT_BRANCH>-->
+      <!--<GIT_COMMIT_ID>${git.commit.id}</GIT_COMMIT_ID>-->
+      <!--<GIT_DIRTY>${git.dirty}</GIT_DIRTY>-->
+      <!--<GIT_BUILD_TIME>${git.build.time}</GIT_BUILD_TIME>-->
+      <!--<TRAVIS_BUILD_NUMBER>${env.TRAVIS_BUILD_NUMBER}</TRAVIS_BUILD_NUMBER>-->
+      <!--<TRAVIS_BUILD_WEB_URL>${env.TRAVIS_BUILD_WEB_URL}</TRAVIS_BUILD_WEB_URL>-->
+      <!--</buildArgs>-->
+      <!--</configuration>-->
+      <!--</plugin>-->
 
     </plugins>
   </build>
