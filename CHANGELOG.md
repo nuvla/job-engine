@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+### Added
+ 
+ - Deployment State job in push mode, as an entrypoint
+ 
+### Changed
+
+ - added cross-platform compatibility for Docker image 
+
 ## [2.3.16] - 2020-05-11
 
 ### Changed
