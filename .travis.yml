@@ -1,6 +1,6 @@
 language: java
-dist: trusty
-before_install: sudo docker run --privileged linuxkit/binfmt:v0.7
+dist: xenial
+before_install: ./.travis.before_install.sh
 deploy:
   provider: script
   script: cp .travis.settings.xml $HOME/.m2/settings.xml && mvn deploy
