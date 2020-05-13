@@ -36,6 +36,7 @@ RUN set -eux; \
 	case "$apkArch" in \
 		x86_64) dockerArch='x86_64' ;; \
 		armhf) dockerArch='armel' ;; \
+		armv7) dockerArch='armhf' ;; \
 		aarch64) dockerArch='aarch64' ;; \
 		ppc64le) dockerArch='ppc64le' ;; \
 		s390x) dockerArch='s390x' ;; \
