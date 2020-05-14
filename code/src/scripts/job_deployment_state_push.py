@@ -4,6 +4,8 @@
 import os
 import logging
 import requests
+import threading
+import time
 from nuvla.job.actions.deployment_state import DeploymentStateJob
 from nuvla.api.resources import Deployment
 from nuvla.api import Api
@@ -50,7 +52,6 @@ def push_state(deployment):
         pass
 
 
-
 if __name__ == '__main__':
     logging.info("Starting deployment state job in push mode...")
     if not (deployment_id and apikey and apisecret and endpoint):
@@ -68,4 +69,9 @@ if __name__ == '__main__':
     ds = DeploymentStateJob(None, local_job)
     nuvla_deployment = ds.api_dpl.get(deployment_id)
 
-    print("test")
+    while True:
+        logging.info("Starting retrieval of deployment state")
+        monitoring_thread = threading.Thread(target=push_state, args=(nuvla_deployment,))
+        monitoring_thread.daemon = True
+        monitoring_thread.start()
+        time.sleep(3)
