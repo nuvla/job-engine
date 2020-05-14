@@ -157,11 +157,12 @@ class DockerComposeCliConnector(Connector):
         for container_port, mapping in ports.items():
             internal_port, protocol = container_port.split('/')
             try:
-                external_port = mapping[0]['HostPort']
+                external_port = mapping[0].get('HostPort')
             except (KeyError, IndexError):
                 log.warning("Cannot get mapping for container port %s" % internal_port)
                 continue
-            service_info['{}.{}'.format(protocol, internal_port)] = external_port
+            if external_port:
+                service_info['{}.{}'.format(protocol, internal_port)] = external_port
         return service_info
 
     @staticmethod
