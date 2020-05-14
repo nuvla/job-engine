@@ -37,6 +37,20 @@ def nuvla_login(api_instance, credential_apikey, credential_apisecret):
     r.raise_for_status()
 
 
+def push_state(deployment):
+    try:
+        if Deployment.is_component(nuvla_deployment):
+            ds.get_component_state(nuvla_deployment)
+        elif Deployment.is_application(nuvla_deployment):
+            ds.get_application_state(nuvla_deployment)
+        elif Deployment.is_application_kubernetes(nuvla_deployment):
+            ds.get_application_kubernetes_state(nuvla_deployment)
+    except Exception as ex:
+        logging.exception('Failed to get deployment state for {}: {}'.format(Deployment.id(deployment), ex))
+        pass
+
+
+
 if __name__ == '__main__':
     logging.info("Starting deployment state job in push mode...")
     if not (deployment_id and apikey and apisecret and endpoint):
@@ -54,13 +68,4 @@ if __name__ == '__main__':
     ds = DeploymentStateJob(None, local_job)
     nuvla_deployment = ds.api_dpl.get(deployment_id)
 
-    try:
-        if Deployment.is_component(nuvla_deployment):
-            ds.get_component_state(nuvla_deployment)
-        elif Deployment.is_application(nuvla_deployment):
-            ds.get_application_state(nuvla_deployment)
-        elif Deployment.is_application_kubernetes(nuvla_deployment):
-            ds.get_application_kubernetes_state(nuvla_deployment)
-    except Exception as ex:
-        logging.exception('Failed to get deployment state for {}: {}'.format(deployment_id, ex))
-        pass
+    print("test")
