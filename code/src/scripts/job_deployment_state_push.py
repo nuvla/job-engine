@@ -69,9 +69,12 @@ if __name__ == '__main__':
     ds = DeploymentStateJob(None, local_job)
     nuvla_deployment = ds.api_dpl.get(deployment_id)
 
+    interval = 0
     while True:
         logging.info("Starting retrieval of deployment state")
         monitoring_thread = threading.Thread(target=push_state, args=(nuvla_deployment,))
         monitoring_thread.daemon = True
         monitoring_thread.start()
-        time.sleep(3)
+        if interval < 10:
+            interval += 1
+        time.sleep(interval)
