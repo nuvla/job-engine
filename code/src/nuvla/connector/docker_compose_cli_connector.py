@@ -161,6 +161,10 @@ class DockerComposeCliConnector(Connector):
             except (KeyError, IndexError):
                 log.warning("Cannot get mapping for container port %s" % internal_port)
                 continue
+            except TypeError:
+                log.warning("The exposed container port %s is not published to the host" % internal_port)
+                continue
+
             if external_port:
                 service_info['{}.{}'.format(protocol, internal_port)] = external_port
         return service_info
