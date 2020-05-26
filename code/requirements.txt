@@ -5,3 +5,4 @@ boto3==1.9.132
 requests
 python-docker-machine==0.2.5
 pyyaml
+statsd

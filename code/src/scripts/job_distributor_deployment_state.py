@@ -14,11 +14,6 @@ COLLECT_INTERVAL_SHORT = 10
 COLLECT_PAST_SEC = 120
 
 
-def publish_graphite(name, value):
-    # TODO: implement.
-    logging.info(f'PUBLISH: {name} {value}')
-
-
 class DeploymentStateJobsDistributor(Distributor):
     ACTION_NAME = 'deployment_state'
 
@@ -47,8 +42,8 @@ class DeploymentStateJobsDistributor(Distributor):
 
     def _publish_metric(self, name, value):
         interval = 'old' if self._old_deployments() else 'new'
-        publish_graphite(
-            f'job_distributor.{self.ACTION_NAME}.{interval}.{name}', value)
+        mname = f'job_distributor.{self.ACTION_NAME}.{interval}.{name}'
+        super()._publish_metric(mname, value)
 
     def active_deployments(self):
         # Collect old or new deployments.
@@ -98,7 +93,7 @@ class DeploymentStateJobsDistributor(Distributor):
 
     @override
     def _get_jobs_type(self):
-        return self.ACTION_NAME
+        return f'{self.ACTION_NAME}_{self.collect_interval}'
 
 
 if __name__ == '__main__':
