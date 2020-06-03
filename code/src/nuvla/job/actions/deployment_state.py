@@ -18,7 +18,6 @@ def utcnow():
     return datetime.utcnow().isoformat('T', timespec='milliseconds') + 'Z'
 
 
-@action(action_name)
 class DeploymentStateJob(object):
 
     def __init__(self, _, job):
@@ -157,3 +156,13 @@ class DeploymentStateJob(object):
             raise ex
 
         return 0
+
+
+@action(action_name + '_10')
+class DeploymentStateJob10(DeploymentStateJob):
+    pass
+
+
+@action(action_name + '_60')
+class DeploymentStateJob60(DeploymentStateJob):
+    pass
