@@ -2,6 +2,7 @@
 
 import logging
 from ..actions import action
+from ..util import parse_cimi_date
 import stripe
 
 action_name = 'usage_report'
@@ -47,11 +48,12 @@ class UsageReport(object):
 
         quantity = query_result.data.get('aggregations', {}).get('value_count:id').get('value')
 
-        if quantity:
-            self.stripe.SubscriptionItem.create_usage_record(
+        if quantity is not None:
+            job_updated_date = parse_cimi_date(self.job.updated)
+            stripe.SubscriptionItem.create_usage_record(
                 subscription_item_id,
                 quantity=quantity,
-                timestamp=1571252444)
+                timestamp=int(job_updated_date.timestamp()))
 
     def do_work(self):
         customer_id = self.job['target-resource']['href']
