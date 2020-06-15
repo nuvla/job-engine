@@ -9,11 +9,6 @@ action_name = 'usage_report'
 
 log = logging.getLogger(action_name)
 
-QUERY_AGG = {'nuvlabox': {
-    'resource': 'nuvlabox',
-    'filter': 'owner="%s"',
-    'aggregation': ''}}
-
 
 @action(action_name)
 class UsageReport(object):
@@ -33,17 +28,17 @@ class UsageReport(object):
         if nickname == 'nuvlabox':
             query_result = self.api.search('nuvlabox',
                                            filter="state='COMMISSIONED' and "
-                                                  "owner='%s'".format(owner_id),
+                                                  "owner='{}'".format(owner_id),
                                            aggregation="value_count:id")
         elif nickname == 'deployment':
             query_result = self.api.search('deployment',
                                            filter="state='STARTED' and "
-                                                  "owner='%s'".format(owner_id),
+                                                  "owner='{}'".format(owner_id),
                                            aggregation="value_count:id")
         elif nickname == 'vpn':
             query_result = self.api.search('credential',
                                            filter="subtype='infrastructure-service-vpn' and "
-                                                  "vpn-certificate-owner='%s'".format(owner_id),
+                                                  "vpn-certificate-owner='{}'".format(owner_id),
                                            aggregation="value_count:id")
 
         quantity = query_result.data.get('aggregations', {}).get('value_count:id').get('value')
