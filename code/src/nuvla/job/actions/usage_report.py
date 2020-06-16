@@ -31,9 +31,20 @@ class UsageReport(object):
                                                   "owner='{}'".format(owner_id),
                                            aggregation="value_count:id")
         elif nickname == 'deployment':
-            query_result = self.api.search('deployment',
-                                           filter="state='STARTED' and "
-                                                  "owner='{}'".format(owner_id),
+            dep_filter = "state='STARTED' and owner='{}'".format(owner_id)
+            nb_ids_filter = ["parent='{}'".format(nb.id) for nb in
+                             self.api.search('nuvlabox', filter="owner='{}'".format(owner_id),
+                                             select='id, infrastructure-service-group'
+                                             ).resources]
+            if nb_ids_filter:
+                infra_nb_ids_filter = ["parent!='{}'".format(infra.id) for infra in
+                                       self.api.search('infrastructure-service',
+                                                       filter="subtype='swarm' and ({})".format(
+                                                           ' or '.join(nb_ids_filter)),
+                                                       select='id').resources]
+                if infra_nb_ids_filter:
+                    dep_filter += " and ({})".join(' or '.join(infra_nb_ids_filter))
+            query_result = self.api.search('deployment', filter=dep_filter,
                                            aggregation="value_count:id")
         elif nickname == 'vpn':
             query_result = self.api.search('credential',
