@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Added
+
+ - New job distributor and executor action for usage report
+
 ### Changed
 
  - Fixed Docker Compose deployment bug - allow containers to have internal ports that are not published to the host
