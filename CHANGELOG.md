@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Changed
+
+ - Fixed Docker Compose deployment bug - allow containers to have internal ports that are not published to the host
+
 ## [2.3.16] - 2020-05-11
 
 ### Changed
