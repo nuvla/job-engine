@@ -6,23 +6,13 @@ import logging
 import multiprocessing
 import os
 import shutil
-import sys
 import glob
 
 import nuvla.connector.machine as DockerMachine
 
 from .connector import Connector, should_connect
 
-# fmt = '%(asctime)s - %(name)s - %(process)d - %(levelname)s - %(message)s'
-# log_formatter = logging.Formatter(fmt)
-
 log = logging.getLogger('docker_machine_connector')
-# log.setLevel(logging.INFO)
-#
-# stdout_handler = logging.StreamHandler(sys.stdout)
-# stdout_handler.setLevel(logging.INFO)
-# stdout_handler.setFormatter(log_formatter)
-# log.addHandler(stdout_handler)
 
 
 def instantiate_from_cimi(infra_service_coe: dict, cloud_driver_credential: dict):
