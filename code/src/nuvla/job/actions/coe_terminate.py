@@ -8,8 +8,8 @@ from nuvla.connector import connector_factory, docker_machine_connector
 from ..actions import action
 
 
-@action('start_infrastructure_service_swarm')
-class SwarmStartJob(object):
+@action('stop_infrastructure_service_coe')
+class SwarmStopJob(object):
 
     def __init__(self, _, job):
         self.job = job
@@ -19,22 +19,27 @@ class SwarmStartJob(object):
         connector_instance = connector_factory(docker_machine_connector, self.api,
                                                swarm.get('management-credential-id'))
 
-        new_coe = connector_instance.start()
+        nodes = swarm.get("nodes", [])
+        connector_instance.stop(nodes=nodes)
 
         self.job.set_progress(50)
 
-        self.api.add("credential", new_coe["credential"])
-
-        endpoint = "https://{}:2376".format(new_coe["ip"])
-
         swarm_service_id = swarm['id']
 
-        self.api.edit(swarm_service_id, {"endpoint": endpoint, "state": "STARTING", "nodes": [new_coe["node"]]})
+        self.api.edit(swarm_service_id, {"state": "STOPPED"})
 
-        self.job.set_progress(99)
-        self.api.edit(swarm_service_id, {'state': 'STARTED'})
+        self.job.set_progress(90)
 
-        return 0
+        filter_services = 'infrastructure-services="{}"'.format(swarm_service_id)
+        all_credentials = self.api.search("credential", filter=filter_services).resources
+
+        for cred in all_credentials:
+            if len(cred.data["infrastructure-services"]) == 1:
+                self.api.delete(cred.data["id"])
+
+        self.api.delete(swarm_service_id)
+
+        self.job.set_progress(100)
 
     def start_deployment(self):
         infra_service_id = self.job['target-resource']['href']
@@ -47,7 +52,7 @@ class SwarmStartJob(object):
 
         try:
             self.handle_deployment(swarm_data)
-        except:
+        except Exception:
             self.api.edit(infra_service_id, {'state': 'ERROR'})
             raise
 
