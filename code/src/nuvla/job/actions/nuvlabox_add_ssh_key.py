@@ -33,13 +33,14 @@ class NBAddSSHKey(object):
             connector.connect()
             ssh_keys = connector.nuvlabox.get('ssh-keys', [])
 
+            logging.info(credential_id)
             if credential_id not in ssh_keys:
                 r = connector.start(api_action_name="add-ssh-key", method='post',
                                     payload=pubkey, headers={"Content-Type": "text/plain"})
 
                 logging.info(r)
 
-                update_payload = ssh_keys.append(credential_id)
+                update_payload = ssh_keys + [credential_id]
                 logging.info(update_payload)
 
                 connector.update(update_payload)
