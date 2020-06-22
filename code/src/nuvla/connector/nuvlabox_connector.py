@@ -118,8 +118,12 @@ class NuvlaBoxConnector(Connector):
         headers = kwargs.get('headers', None)
 
         # 3rd - make the request
-        r = self.nuvlabox_api.request(method, action_endpoint, json=payload, headers=headers,
-                                      timeout=self.timeout)
+        if isinstance(payload, str):
+            r = self.nuvlabox_api.request(method, action_endpoint, data=payload, headers=headers,
+                                          timeout=self.timeout)
+        else:
+            r = self.nuvlabox_api.request(method, action_endpoint, json=payload, headers=headers,
+                                          timeout=self.timeout)
 
         r.raise_for_status()
 
