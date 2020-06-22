@@ -104,7 +104,7 @@ class NuvlaBoxConnector(Connector):
         else:
             logging.warning("NuvlaBox {} missing API endpoint in its status resource".format(
                 self.nuvlabox.get("id")))
-            raise ("NuvlaBox {} missing API endpoint in its status resource".format(
+            raise Exception("NuvlaBox {} missing API endpoint in its status resource".format(
                 self.nuvlabox.get("id")))
 
         # 2nd - get the corresponding credential and prepare the SSL environment
@@ -116,11 +116,12 @@ class NuvlaBoxConnector(Connector):
 
         method = kwargs.get('method', 'GET').upper()
         payload = kwargs.get('payload', {})
+        headers = kwargs.get('headers', None)
 
         # 3rd - make the request
-        r = self.nuvlabox_api.request(method, action_endpoint, json=payload,
+        r = self.nuvlabox_api.request(method, action_endpoint, json=payload, headers=headers,
                                       timeout=self.timeout).json()
-        self.job.set_progress(100)
+        self.job.set_progress(95)
 
         return r
 
@@ -129,8 +130,16 @@ class NuvlaBoxConnector(Connector):
         pass
 
     @should_connect
-    def update(self, service_name, **kwargs):
-        pass
+    def update(self, payload, **kwargs):
+        """ Updates the NuvlaBox resource with the provided payload
+
+        :param payload: content to be updated in the NuvlaBox resource
+        """
+
+        if payload:
+            self.api.edit(self.nuvlabox_id, payload)
+
+        self.job.set_progress(100)
 
     def list(self):
         pass
