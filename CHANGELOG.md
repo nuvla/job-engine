@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Added
+
+  - Added new actions for adding and revoking SSH keys from the NuvlaBox
+
 ## [2.3.16] - 2020-05-11
 
 ### Changed

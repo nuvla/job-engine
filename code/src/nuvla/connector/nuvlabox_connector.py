@@ -102,10 +102,9 @@ class NuvlaBoxConnector(Connector):
         if nb_api_endpoint:
             self.job.set_progress(50)
         else:
-            logging.warning("NuvlaBox {} missing API endpoint in its status resource".format(
-                self.nuvlabox.get("id")))
-            raise Exception("NuvlaBox {} missing API endpoint in its status resource".format(
-                self.nuvlabox.get("id")))
+            msg = "NuvlaBox {} missing API endpoint in its status resource".format(self.nuvlabox.get("id"))
+            logging.warning(msg)
+            raise Exception(msg)
 
         # 2nd - get the corresponding credential and prepare the SSL environment
         self.setup_ssl_credentials()
