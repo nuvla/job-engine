@@ -37,7 +37,10 @@ class NBAddSSHKey(object):
                 r = connector.start(api_action_name="add-ssh-key", method='post',
                                     payload=pubkey, headers={"Content-Type": "text/plain"})
 
+                logging.info(r)
+
                 update_payload = ssh_keys.append(credential_id)
+                logging.info(update_payload)
 
                 connector.update(update_payload)
         else:

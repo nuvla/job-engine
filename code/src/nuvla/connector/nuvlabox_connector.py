@@ -128,7 +128,7 @@ class NuvlaBoxConnector(Connector):
     def stop(self, **kwargs):
         pass
 
-    @should_connect
+    # @should_connect
     def update(self, payload, **kwargs):
         """ Updates the NuvlaBox resource with the provided payload
 
