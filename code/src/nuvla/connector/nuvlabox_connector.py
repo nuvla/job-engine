@@ -119,10 +119,13 @@ class NuvlaBoxConnector(Connector):
 
         # 3rd - make the request
         r = self.nuvlabox_api.request(method, action_endpoint, json=payload, headers=headers,
-                                      timeout=self.timeout).json()
+                                      timeout=self.timeout)
+
+        r.raise_for_status()
+
         self.job.set_progress(95)
 
-        return r
+        return r.json()
 
     @should_connect
     def stop(self, **kwargs):
