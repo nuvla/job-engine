@@ -46,7 +46,7 @@ class NBAddSSHKey(object):
         else:
             raise Exception('Cannot find any reference to an existing credential ID')
 
-        self.job.update(status_message=json.dumps(r))
+        self.job.update_job(status_message=json.dumps(r))
 
         return 0
 

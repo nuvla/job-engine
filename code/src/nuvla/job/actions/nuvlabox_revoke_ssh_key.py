@@ -36,7 +36,7 @@ class NBRevokeSSHKey(object):
 
             ssh_keys = connector.nuvlabox.get('ssh-keys', [])
             try:
-                ssh_keys.remove(pubkey)
+                ssh_keys.remove(credential_id)
                 update_payload = ssh_keys
             except ValueError:
                 # for some reason the key is not in this list...continue anyway, but no need to edit the NB resource
@@ -46,7 +46,7 @@ class NBRevokeSSHKey(object):
         else:
             raise Exception('Cannot find any reference to an existing credential ID')
 
-        self.job.update(status_message=json.dumps(r))
+        self.job.update_job(status_message=json.dumps(r))
 
         return 0
 
