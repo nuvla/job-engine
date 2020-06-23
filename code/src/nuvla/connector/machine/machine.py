@@ -176,7 +176,7 @@ class Machine:
                 return True
         return False
 
-    def status(self, machine="default"):
+    def status(self, machine="default", env=None):
         """
         Get the status for the machine.
 
@@ -188,7 +188,7 @@ class Machine:
 
         """
         cmd = ["status", machine]
-        stdout, _, _ = self._run(cmd)
+        stdout, _, _ = self._run(cmd, env_extra=env)
         return stdout.strip() == "Running"
 
     def stop(self, machine="default"):
@@ -241,7 +241,7 @@ class Machine:
         self._run(cmd)
         return True
 
-    def rm(self, machine="default", force=False):
+    def rm(self, machine="default", force=False, env=None):
         """
         Remove the specified machine.
 
@@ -253,7 +253,7 @@ class Machine:
         """
         f = ["-f"] if force else []
         cmd = ["rm", "-y"] + f + [machine]
-        self._run(cmd)
+        self._run(cmd, env_extra=env)
         return True
 
     def env(self, machine="default"):
@@ -282,7 +282,7 @@ class Machine:
         stdout, _, _ = self._run(cmd)
         return json.loads(stdout)
 
-    def ip(self, machine="default"):
+    def ip(self, machine="default", env=None):
         """
         Get the IP address of a machine.
 
@@ -292,7 +292,7 @@ class Machine:
             str: the IP address of a machine.
         """
         cmd = ["ip", machine]
-        stdout, _, _ = self._run(cmd)
+        stdout, _, _ = self._run(cmd, env_extra=env)
         return stdout.strip()
 
     def kill(self, machine="default"):
@@ -334,7 +334,7 @@ class Machine:
         self._run(cmd)
         return True
 
-    def url(self, machine="default"):
+    def url(self, machine="default", env=env):
         """
         Get the URL of a machine
 
@@ -344,7 +344,7 @@ class Machine:
             str: the URL of a machine
         """
         cmd = ["url", machine]
-        stdout, _, _ = self._run(cmd)
+        stdout, _, _ = self._run(cmd, env_extra=env)
         return stdout.strip()
 
     def active(self):
@@ -360,7 +360,7 @@ class Machine:
             return None
         return stdout.strip()
 
-    def scp(self, source, destination, recursive=False):
+    def scp(self, source, destination, recursive=False, env=None):
         """
         Copy files between machines
 
@@ -374,10 +374,10 @@ class Machine:
         """
         r = ["-r"] if recursive else []
         cmd = ["scp"] + r + [source, destination]
-        stdout, stderr, exit_code = self._run(cmd)
+        stdout, stderr, exit_code = self._run(cmd, env_extra=env)
         return stdout,
 
-    def ssh(self, machine, cmd):
+    def ssh(self, machine, cmd, env=None):
         """
         Run a command on a machine through docker-machine ssh
 
@@ -389,5 +389,5 @@ class Machine:
             List[str]: output of the ssh command
         """
         ssh_cmd = ['ssh', machine, cmd]
-        stdout, _, _ = self._run(ssh_cmd)
+        stdout, _, _ = self._run(ssh_cmd, env_extra=env)
         return stdout.split('\n')
