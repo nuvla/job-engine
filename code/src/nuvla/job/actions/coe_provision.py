@@ -8,18 +8,18 @@ from nuvla.connector import connector_factory, docker_machine_connector
 from nuvla.api.resources.credential import CredentialDockerSwarm, CredentialK8s
 from ..actions import action
 
-COE_TYPE_SWARM = 'swarm'
-COE_TYPE_K8S = 'kubernetes'
+COE_TYPE_SWARM = docker_machine_connector.COE_TYPE_SWARM
+COE_TYPE_K8S = docker_machine_connector.COE_TYPE_K8S
 
 
 @action('start_infrastructure_service_coe')
-class COESProvisionJob(object):
+class COEProvisionJob(object):
 
     def __init__(self, _, job):
         self.job = job
         self.api = job.api
 
-    def handle_deployment(self, infra_service_coe):
+    def _provision_coe(self, infra_service_coe: dict):
 
         coe_type = infra_service_coe['subtype']
         if coe_type not in [COE_TYPE_SWARM, COE_TYPE_K8S]:
@@ -78,22 +78,23 @@ class COESProvisionJob(object):
 
         self.api.add("credential", coe_creds)
 
-    def start_deployment(self):
-        infra_service_coe_id = self.job['target-resource']['href']
+    def provision_coe(self):
+        infra_service_id = self.job['target-resource']['href']
 
-        infra_service_coe = self.api.get(infra_service_coe_id).data
+        infra_service = self.api.get(infra_service_id).data
 
-        logging.info(f'Starting job for new COE {infra_service_coe}')
+        logging.info(f'Provision COE {infra_service_id}')
 
         self.job.set_progress(10)
 
         try:
-            self.handle_deployment(infra_service_coe)
+            self._provision_coe(infra_service)
         except:
-            self.api.edit(infra_service_coe_id, {'state': 'ERROR'})
+            self.api.edit(infra_service_id, {'state': 'ERROR'})
             raise
 
+        logging.info(f'Provisioned COE {infra_service_id}')
         return 0
 
     def do_work(self):
-        return self.start_deployment()
+        return self.provision_coe()

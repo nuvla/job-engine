@@ -5,58 +5,74 @@ from __future__ import print_function
 import logging
 
 from nuvla.connector import connector_factory, docker_machine_connector
+from nuvla.api.resources.credential import Credential
+from nuvla.api import NuvlaError
 from ..actions import action
+
+COE_TYPE_SWARM = docker_machine_connector.COE_TYPE_SWARM
+COE_TYPE_K8S = docker_machine_connector.COE_TYPE_K8S
 
 
 @action('stop_infrastructure_service_coe')
-class SwarmStopJob(object):
+class COETerminateJob(object):
 
     def __init__(self, _, job):
         self.job = job
         self.api = job.api
 
-    def handle_deployment(self, swarm):
-        connector_instance = connector_factory(docker_machine_connector, self.api,
-                                               swarm.get('management-credential-id'))
+    def _terminate_coe(self, infra_service_coe: dict):
 
-        nodes = swarm.get("nodes", [])
-        connector_instance.stop(nodes=nodes)
+        coe_type = infra_service_coe['subtype']
+        if coe_type not in [COE_TYPE_SWARM, COE_TYPE_K8S]:
+            raise Exception(f'Unknown COE type: {coe_type}')
+
+        cloud_creds_id = infra_service_coe.get('management-credential')
+        coe = connector_factory(docker_machine_connector, self.api,
+                                cloud_creds_id, infra_service_coe)
+
+        coe.stop(nodes=infra_service_coe.get("nodes", []))
 
         self.job.set_progress(50)
 
-        swarm_service_id = swarm['id']
+        infra_service_id = infra_service_coe['id']
 
-        self.api.edit(swarm_service_id, {"state": "STOPPED"})
+        self.api.edit(infra_service_id, {"state": "STOPPED"})
 
         self.job.set_progress(90)
 
-        filter_services = 'infrastructure-services="{}"'.format(swarm_service_id)
-        all_credentials = self.api.search("credential", filter=filter_services).resources
+        self._delete_coe_creds(infra_service_id)
 
-        for cred in all_credentials:
-            if len(cred.data["infrastructure-services"]) == 1:
-                self.api.delete(cred.data["id"])
-
-        self.api.delete(swarm_service_id)
+        self.api.delete(infra_service_id)
 
         self.job.set_progress(100)
 
-    def start_deployment(self):
+    def _delete_coe_creds(self, infra_service_id):
+        cred_api = Credential(self.api, subtype='dummy')
+        credentials = cred_api.find_parent(infra_service_id)
+        for credential in credentials:
+            cred_id = Credential.id(credential)
+            try:
+                cred_api.delete(cred_id)
+            except (NuvlaError, ConnectionError):
+                logging.error(f'Failed to delete {cred_id}')
+
+    def terminate_coe(self):
         infra_service_id = self.job['target-resource']['href']
 
-        swarm_data = self.api.get(infra_service_id).data
+        infra_service = self.api.get(infra_service_id).data
 
-        logging.info('Starting job for new COE infrastructure service {}'.format(infra_service_id))
+        logging.info(f'Terminate COE {infra_service_id}')
 
         self.job.set_progress(10)
 
         try:
-            self.handle_deployment(swarm_data)
+            self._terminate_coe(infra_service)
         except Exception:
             self.api.edit(infra_service_id, {'state': 'ERROR'})
             raise
 
+        logging.info(f'Terminated COE {infra_service_id}')
         return 0
 
     def do_work(self):
-        return self.start_deployment()
+        return self.terminate_coe()
