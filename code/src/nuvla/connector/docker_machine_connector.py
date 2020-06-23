@@ -462,6 +462,8 @@ class DockerMachineConnector(Connector):
     @should_connect
     def start(self, cluster_params: dict):
         multiplicity = cluster_params.get('multiplicity', 1)
+        if multiplicity < 1:
+            raise Exception('Refusing to provision cluster of multiplicity less than 1.')
         if self.coe_type == COE_TYPE_K8S:
             multiplicity += 1
         inventory = Inventory(self.machine_base_name, multiplicity=multiplicity)
@@ -517,7 +519,7 @@ class DockerMachineConnector(Connector):
         if n < 1:
             log.warning('No nodes provided to stop.')
             return
-        log.info(f'Stopping {n} nodes.')
+        log.info(f'Stopping {n} nodes on {self.driver_name}.')
         pool = multiprocessing.Pool(processes=n)
         try:
             stopped = pool.starmap(self._stop_node,
@@ -525,11 +527,11 @@ class DockerMachineConnector(Connector):
             pool.close()
             pool.join()
         except Exception as ex:
-            log.error(f'Failed to run stop machines: {ex}')
-            log.error(f'Delete the nodes manually: {kwargs["nodes"]}')
+            log.error(f'Failed to run stop machines on {self.driver_name}: {ex}')
+            log.error(f'Delete the nodes manually from {self.driver_name}: {kwargs["nodes"]}')
             pool.terminate()
             raise ex
-        log.info(f'Stopped {sum(stopped)} out of {n} nodes.')
+        log.info(f'Stopped {sum(stopped)} out of {n} nodes on {self.driver_name}.')
         return stopped
 
     def list(self):
