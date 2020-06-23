@@ -61,6 +61,8 @@ ADD https://raw.githubusercontent.com/docker-library/docker/65fab2cd767c10f22ee6
 
 RUN curl -s -L https://github.com/docker/machine/releases/download/v0.16.2/docker-machine-$(uname -s)-$(uname -m) >/tmp/docker-machine && \
             install /tmp/docker-machine /usr/local/bin/docker-machine && rm -f /tmp/docker-machine
+# Need scp for docker-machine to transfer files to machines.
+RUN apk add --no-cache openssh
 
 RUN curl -LO https://storage.googleapis.com/kubernetes-release/release/`curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt`/bin/linux/amd64/kubectl && chmod +x ./kubectl && mv ./kubectl /usr/local/bin/kubectl && kubectl version --client=true
 
