@@ -37,6 +37,6 @@ if [ "$ROLE" == "manager" ]; then
     sudo cp /etc/kubernetes/admin.conf /home/ubuntu/.kube/config
     sudo chown ubuntu. .kube/config
     kubectl cluster-info
-    KF=https://raw.githubusercontent.com/coreos/flannel/a70459be0084506e4ec919aa1c114638878db11b/Documentation/kube-flannel.yml
-    kubectl apply -f $KF | tee pod_network_setup.txt
+    KF=https://raw.githubusercontent.com/coreos/flannel/master/Documentation/kube-flannel.yml
+    kubectl apply -f $KF 2>&1 | tee pod_network_setup.txt
 fi
