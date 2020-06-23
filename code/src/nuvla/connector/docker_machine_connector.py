@@ -18,6 +18,7 @@ log = logging.getLogger('docker_machine_connector')
 DOCKER_MACHINE_FOLDER = os.path.expanduser("~/.docker/machine/machines")
 K8S_JOIN_PORT = 6443
 SWARM_TLS_PORT = 2376
+PORTAINER_PORT = 9000
 
 COE_TYPE_SWARM = 'swarm'
 COE_TYPE_K8S = 'kubernetes'
@@ -164,8 +165,11 @@ class DockerMachineConnector(Connector):
             if k not in xargs:
                 # TODO: refactor.
                 # Add K8s join port to firewall.
-                if k.endswith('open-port') and self.coe_type == COE_TYPE_K8S:
-                    xargs[k] = [v, str(K8S_JOIN_PORT)]
+                if k.endswith('open-port'):
+                    if self.coe_type == COE_TYPE_K8S:
+                        xargs[k] = [v, str(K8S_JOIN_PORT)]
+                    elif self.coe_type == COE_TYPE_SWARM:
+                        xargs[k] = [v, str(PORTAINER_PORT)]
                 else:
                     xargs[k] = v
         cmd_xargs = []
@@ -476,6 +480,17 @@ class DockerMachineConnector(Connector):
             join_tokens = self._create_coe(inventory, nodes)
             log.info(f'Provisioned COE {msg}.')
             log.debug(f'COE cluster: {self.list()}')
+
+            log.info('Install COE manager Portainer.')
+            try:
+                cmd = 'curl -L https://downloads.portainer.io/portainer-agent-stack.yml -o portainer-agent-stack.yml'
+                machine.ssh(inventory.manager, cmd, self.cmd_env)
+                cmd = 'sudo docker stack deploy --compose-file=portainer-agent-stack.yml portainer'
+                machine.ssh(inventory.manager, cmd, self.cmd_env)
+            except Exception as ex:
+                log.error('Failed to install COE manager Portainer.')
+            log.info('Installed COE manager Portainer.')
+
             # TODO: Do we need to return join tokens for later cluster expansion?
             return self._coe_credentials(inventory), \
                    self._coe_endpoint(inventory), \
