@@ -1,0 +1,1 @@
+include src/nuvla/connector/k8s-install.sh
