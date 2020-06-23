@@ -44,6 +44,13 @@ class COETerminateJob(object):
 
         self.api.delete(infra_service_id)
 
+        # Attempt deleting IS group we were in if empty.
+        isg_id = infra_service_coe.get('parent', None)
+        if isg_id:
+            isg = self.api.get(isg_id).data
+            if not isg.get('infrastructure-services', []):
+                self.api.delete(isg_id)
+
         self.job.set_progress(100)
 
     def _delete_coe_creds(self, infra_service_id):
