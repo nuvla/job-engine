@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import logging
+import json
 
 from ..actions import action
 from nuvla.connector import nuvlabox_connector as NB
@@ -40,10 +41,12 @@ class NBAddSSHKey(object):
                 update_payload = ssh_keys + [credential_id]
 
                 connector.update({"ssh-keys": update_payload})
+            else:
+                r = "Requested SSH key has already been added to the NuvlaBox in the past. Nothing to do..."
         else:
             raise Exception('Cannot find any reference to an existing credential ID')
 
-        return 0
+        return json.dumps(r)
 
     def do_work(self):
         return self.add_ssh_key()

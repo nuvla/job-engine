@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import logging
+import json
 
 from ..actions import action
 from nuvla.connector import nuvlabox_connector as NB
@@ -45,7 +46,7 @@ class NBRevokeSSHKey(object):
         else:
             raise Exception('Cannot find any reference to an existing credential ID')
 
-        return r
+        return json.dumps(r)
 
     def do_work(self):
         return self.revoke_ssh_key()
