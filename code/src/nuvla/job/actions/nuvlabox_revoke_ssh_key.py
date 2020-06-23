@@ -46,7 +46,9 @@ class NBRevokeSSHKey(object):
         else:
             raise Exception('Cannot find any reference to an existing credential ID')
 
-        return json.dumps(r)
+        self.job.update(status_message=json.dumps(r))
+
+        return 0
 
     def do_work(self):
         return self.revoke_ssh_key()
