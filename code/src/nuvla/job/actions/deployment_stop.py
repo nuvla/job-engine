@@ -20,13 +20,13 @@ class DeploymentStopJob(object):
         self.job = job
         self.api = job.api
         self.api_dpl = Deployment(self.api)
-        self.api_crd = Credential(self.api)
 
     def try_delete_deployment_credentials(self, deployment_id):
-        credentials = self.api_crd.find_parent(deployment_id)
+        cred_api = Credential(self.api, subtype='dummy')
+        credentials = cred_api.find_parent(deployment_id)
         for credential in credentials:
             try:
-                self.api_crd.delete(Credential.id(credential.data))
+                cred_api.delete(Credential.id(credential))
             except (NuvlaError, ConnectionError):
                 pass
 

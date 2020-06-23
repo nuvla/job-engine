@@ -34,11 +34,8 @@ def application_params_update(api_dpl, deployment, services):
             node_id = service['node-id']
             for key, value in service.items():
                 api_dpl.set_parameter_create_if_needed(
-                    resource_id=Deployment.id(deployment),
-                    user_id=Deployment.owner(deployment),
-                    node_id=node_id,
-                    param_name='{}.{}'.format(node_id, key),
-                    param_value=value)
+                    Deployment.id(deployment), Deployment.owner(deployment),
+                    f'{node_id}.{key}', param_value=value, node_id=node_id)
 
 
 @action(action_name)
