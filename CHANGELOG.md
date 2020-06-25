@@ -5,7 +5,8 @@
 ### Added
  
  - Deployment State job in push mode, as an entrypoint
- 
+ - New job distributor and executor action for usage report
+
 ### Changed
 
  - added cross-platform compatibility for Docker image 
