@@ -4,7 +4,16 @@
 
 ### Added
 
-  - Added new actions for adding and revoking SSH keys from the NuvlaBox
+ - Added new actions for adding and revoking SSH keys from
+    the NuvlaBox
+ - Deployment State job in push mode, as an entrypoint
+ - New job distributor and executor action for usage report
+
+### Changed
+
+ - added cross-platform compatibility for Docker image 
+ - Fixed Docker Compose deployment bug - allow containers to
+   have internal ports that are not published to the host
 
 ## [2.3.16] - 2020-05-11
 
