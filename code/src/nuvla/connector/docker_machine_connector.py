@@ -82,7 +82,9 @@ class DockerMachineConnector(Connector):
                                'amazonec2-instance-type',
                                'amazonec2-region',
                                'amazonec2-ami'],
-                      'defaults': {'amazonec2-open-port': '2377'}
+                      'defaults': {'amazonec2-open-port': '2377',
+                                   # K8s starts only on 2 CPU nodes.
+                                   'amazonec2-instance-type': 't2.medium'}
                       },
         "azure": {'env': {'azure-client-secret': 'AZURE_CLIENT_SECRET'},
                   'args': ["azure-client-id",
