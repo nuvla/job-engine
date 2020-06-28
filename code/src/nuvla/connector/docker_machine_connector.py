@@ -15,9 +15,6 @@ from .connector import Connector, should_connect
 from nuvla.api.resources.credential import KubeConfig
 
 log = logging.getLogger('docker_machine_connector')
-import sys
-log.setLevel(logging.INFO)
-log.addHandler(logging.StreamHandler(sys.stdout))
 
 DOCKER_MACHINE_FOLDER = os.path.expanduser("~/.docker/machine/machines")
 K8S_JOIN_PORT = '6443'
