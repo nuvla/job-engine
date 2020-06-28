@@ -301,7 +301,7 @@ class DockerMachineConnector(Connector):
 
     @staticmethod
     def _start_machine(driver_name, machine_name, cmd_xargs, env):
-        log.info(f'Provisioning {machine_name}.')
+        log.info(f'Provisioning {machine_name} on {driver_name} with: {" ".join(cmd_xargs)}.')
         err_code = machine.create(machine_name, driver=driver_name,
                                   xarg=cmd_xargs, env=env)
         log.info(f'Provisioned {machine_name}.')
