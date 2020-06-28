@@ -102,10 +102,9 @@ class NuvlaBoxConnector(Connector):
         if nb_api_endpoint:
             self.job.set_progress(50)
         else:
-            logging.warning("NuvlaBox {} missing API endpoint in its status resource".format(
-                self.nuvlabox.get("id")))
-            raise ("NuvlaBox {} missing API endpoint in its status resource".format(
-                self.nuvlabox.get("id")))
+            msg = "NuvlaBox {} missing API endpoint in its status resource".format(self.nuvlabox.get("id"))
+            logging.warning(msg)
+            raise Exception(msg)
 
         # 2nd - get the corresponding credential and prepare the SSL environment
         self.setup_ssl_credentials()
@@ -116,21 +115,37 @@ class NuvlaBoxConnector(Connector):
 
         method = kwargs.get('method', 'GET').upper()
         payload = kwargs.get('payload', {})
+        headers = kwargs.get('headers', None)
 
         # 3rd - make the request
-        r = self.nuvlabox_api.request(method, action_endpoint, json=payload,
-                                      timeout=self.timeout).json()
-        self.job.set_progress(100)
+        if isinstance(payload, str):
+            r = self.nuvlabox_api.request(method, action_endpoint, data=payload, headers=headers,
+                                          timeout=self.timeout)
+        else:
+            r = self.nuvlabox_api.request(method, action_endpoint, json=payload, headers=headers,
+                                          timeout=self.timeout)
 
-        return r
+        r.raise_for_status()
+
+        self.job.set_progress(95)
+
+        return r.json()
 
     @should_connect
     def stop(self, **kwargs):
         pass
 
-    @should_connect
-    def update(self, service_name, **kwargs):
-        pass
+    # @should_connect
+    def update(self, payload, **kwargs):
+        """ Updates the NuvlaBox resource with the provided payload
+
+        :param payload: content to be updated in the NuvlaBox resource
+        """
+
+        if payload:
+            self.api.edit(self.nuvlabox_id, payload)
+
+        self.job.set_progress(100)
 
     def list(self):
         pass

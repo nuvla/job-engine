@@ -1,4 +1,4 @@
-FROM python:3-alpine
+FROM nuvladev/job-docker-compose-client:master
 
 ARG GIT_BRANCH
 ARG GIT_COMMIT_ID
@@ -14,7 +14,7 @@ LABEL git.build.time=${GIT_BUILD_TIME}
 LABEL travis.build.number=${TRAVIS_BUILD_NUMBER}
 LABEL travis.build.web.url=${TRAVIS_BUILD_WEB_URL}
 
-COPY --from=docker/compose:1.25.0-alpine /usr/local/bin/docker-compose /usr/local/bin/
+#COPY --from=nuvladev/job-docker-compose-client:master /usr/local/bin/docker-compose /usr/local/bin/
 
 ADD target/job /target/job
 
@@ -36,6 +36,7 @@ RUN set -eux; \
 	case "$apkArch" in \
 		x86_64) dockerArch='x86_64' ;; \
 		armhf) dockerArch='armel' ;; \
+		armv7) dockerArch='armhf' ;; \
 		aarch64) dockerArch='aarch64' ;; \
 		ppc64le) dockerArch='ppc64le' ;; \
 		s390x) dockerArch='s390x' ;; \
@@ -59,12 +60,25 @@ RUN set -eux; \
 
 ADD https://raw.githubusercontent.com/docker-library/docker/65fab2cd767c10f22ee66afa919eda80dbdc8872/18.09/modprobe.sh /usr/local/bin/modprobe
 
-RUN curl -s -L https://github.com/docker/machine/releases/download/v0.16.2/docker-machine-$(uname -s)-$(uname -m) >/tmp/docker-machine && \
-            install /tmp/docker-machine /usr/local/bin/docker-machine && rm -f /tmp/docker-machine
-# Need scp for docker-machine to transfer files to machines.
-RUN apk add --no-cache openssh
+# This only works for amd64 but it also isn't necessary for push mode
+# since its only use is for infrastructure_service_swarm_start/stop, and that's a server-side feature
+RUN curl -s -L https://github.com/docker/machine/releases/download/v0.16.0/docker-machine-$(uname -s)-$(uname -m) >/tmp/docker-machine && \
+            install /tmp/docker-machine /usr/local/bin/docker-machine
 
-RUN curl -LO https://storage.googleapis.com/kubernetes-release/release/`curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt`/bin/linux/amd64/kubectl && chmod +x ./kubectl && mv ./kubectl /usr/local/bin/kubectl && kubectl version --client=true
+RUN set -eux; \
+    	\
+    	apkArch="$(apk --print-arch)"; \
+    	case "$apkArch" in \
+    		x86_64) kubectlArch='amd64' ;; \
+    		armv7) kubectlArch='arm' ;; \
+        aarch64) kubectlArch='amd64' ;; \
+    		*) echo >&2 "error: unsupported architecture ($apkArch) for kubectl"; exit 1 ;;\
+    	esac; \
+    	\
+    	curl -LO https://storage.googleapis.com/kubernetes-release/release/`curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt`/bin/linux/${kubectlArch}/kubectl && \
+    	chmod +x ./kubectl && \
+    	mv ./kubectl /usr/local/bin/kubectl && \
+    	kubectl version --client=true
 
 RUN apk --no-cache add gettext
 
