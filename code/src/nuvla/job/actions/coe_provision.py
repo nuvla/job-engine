@@ -27,6 +27,14 @@ class COEProvisionJob(object):
 
         cloud_creds_id = infra_service_coe.get('management-credential')
         coe_custer_params = infra_service_coe.get('cluster-params', {})
+        if 'ssh-keys' in coe_custer_params:
+            # Update ssh keys as IDs by their public key values.
+            ssh_pub_keys = []
+            for ssh_key_id in coe_custer_params['ssh-keys']:
+                # TODO: use search() to get them all at once.
+                ssh_key = self.api.get(ssh_key_id).data['public-key']
+                ssh_pub_keys.append(ssh_key)
+            coe_custer_params['ssh-keys'] = ssh_pub_keys
 
         coe = connector_factory(docker_machine_connector, self.api,
                                 cloud_creds_id, infra_service_coe)
