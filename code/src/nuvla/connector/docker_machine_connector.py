@@ -7,6 +7,7 @@ import multiprocessing
 import os
 import shutil
 import glob
+import tempfile
 
 import nuvla.connector.machine as DockerMachine
 
@@ -14,14 +15,22 @@ from .connector import Connector, should_connect
 from nuvla.api.resources.credential import KubeConfig
 
 log = logging.getLogger('docker_machine_connector')
+import sys
+log.setLevel(logging.INFO)
+log.addHandler(logging.StreamHandler(sys.stdout))
 
 DOCKER_MACHINE_FOLDER = os.path.expanduser("~/.docker/machine/machines")
-K8S_JOIN_PORT = 6443
-SWARM_TLS_PORT = 2376
-PORTAINER_PORT = 9000
+K8S_JOIN_PORT = '6443'
+SWARM_TLS_PORT = '2376'
+PORTAINER_PORT = '9000'
+PORTAINER_PORT_K8S = '30777'
 
 COE_TYPE_SWARM = 'swarm'
 COE_TYPE_K8S = 'kubernetes'
+
+UTILS_DIR = os.path.join(os.path.dirname(__loader__.path), 'extra')
+
+DEFAULT_POOL_SIZE = 5
 
 
 def instantiate_from_cimi(infra_service_coe: dict, cloud_driver_credential: dict):
@@ -76,8 +85,7 @@ class DockerMachineConnector(Connector):
                                'amazonec2-instance-type',
                                'amazonec2-region',
                                'amazonec2-ami'],
-                      'defaults': {# 'amazonec2-ami': 'ami-08c757228751c5335',
-                                   'amazonec2-open-port': '2377'}
+                      'defaults': {'amazonec2-open-port': '2377'}
                       },
         "azure": {'env': {'azure-client-secret': 'AZURE_CLIENT_SECRET'},
                   'args': ["azure-client-id",
@@ -118,7 +126,8 @@ class DockerMachineConnector(Connector):
         self.coe_type = self.kwargs.get('coe_type', COE_TYPE_SWARM).lower()
         self.machine = machine
 
-        self.cmd_xargs, self.cmd_env = self._docker_machine_args_and_env()
+        self.coe_manager_install = False
+        self.cmd_xargs, self.cmd_env = [], {}
 
     def _build_gce_adc(self) -> str:
         """Returns path to the GCE ADC file after building its content from
@@ -163,13 +172,16 @@ class DockerMachineConnector(Connector):
         # Set defaults if corresponding args are missing.
         for k, v in self.driver_xargs.get('defaults', {}).items():
             if k not in xargs:
-                # TODO: refactor.
-                # Add K8s join port to firewall.
+                # Adding ports
                 if k.endswith('open-port'):
+                    xargs[k] = [v]
+                    if self.coe_manager_install:
+                        if self.coe_type == COE_TYPE_SWARM:
+                            xargs[k].append(PORTAINER_PORT)
+                        elif self.coe_type == COE_TYPE_K8S:
+                            xargs[k].append(PORTAINER_PORT_K8S)
                     if self.coe_type == COE_TYPE_K8S:
-                        xargs[k] = [v, str(K8S_JOIN_PORT)]
-                    elif self.coe_type == COE_TYPE_SWARM:
-                        xargs[k] = [v, str(PORTAINER_PORT)]
+                        xargs[k].append(K8S_JOIN_PORT)
                 else:
                     xargs[k] = v
         cmd_xargs = []
@@ -308,30 +320,35 @@ class DockerMachineConnector(Connector):
                 token = line.strip()
         return token
 
-    def _deploy_k8s(self, inventory: Inventory) -> dict:
-        log.info('Copy K8s install script to nodes.')
-
+    @staticmethod
+    def _deploy_k8s_on_node(machine_name, machine_kind, env):
+        log.info(f'Copy K8s install script to {machine_name}.')
         k8s_fn = 'k8s-install.sh'
-        k8s_path = os.path.join(os.path.dirname(__loader__.path), k8s_fn)
         k8s_script_remote = f'/tmp/{k8s_fn}'
-        for machine_name in inventory.all():
-            log.info(f'Copy K8s install to {machine_name}.')
-            machine.scp(k8s_path, f'{machine_name}:{k8s_script_remote}',
-                        env=self.cmd_env)
+        machine.scp(os.path.join(UTILS_DIR, k8s_fn),
+                    f'{machine_name}:{k8s_script_remote}', env=env)
 
-        log.info('Install K8s on manager')
-        machine.ssh(inventory.manager,
-                    f'chmod +x {k8s_script_remote}; {k8s_script_remote} manager',
-                    env=self.cmd_env)
+        log.info(f'Install K8s on {machine_kind}')
+        machine.ssh(machine_name,
+            f'chmod +x {k8s_script_remote}; {k8s_script_remote} {machine_kind}',
+            env=env)
+        log.info(f'Installed K8s on {machine_kind}')
 
-        # TODO: make it concurrent.
+    def _deploy_k8s(self, inventory: Inventory) -> dict:
+        log.info('Install K8s on cluster.')
+        input = [(inventory.manager, 'manager', self.cmd_env)]
         for worker_name in inventory.workers:
-            log.info(f'Install K8s to {worker_name}.')
-            machine.ssh(worker_name,
-                        f'chmod +x {k8s_script_remote}; {k8s_script_remote} worker',
-                        env=self.cmd_env)
+            input.append((worker_name, 'worker', self.cmd_env))
 
-        log.info('Installed K8s on the cluster.')
+        pool = multiprocessing.Pool(len(inventory.all()))
+        try:
+            outputs = pool.starmap(self._deploy_k8s_on_node, input)
+            pool.close()
+            pool.join()
+        except Exception as ex:
+            log.error(f'Failed to install K8s on cluster: {ex}')
+            pool.terminate()
+        log.info('Installed K8s on cluster.')
 
         join_token_worker = self._k8s_join_token(inventory.manager, self.cmd_env)
         join_token_manager = f'{join_token_worker} --control-plane'
@@ -344,10 +361,8 @@ class DockerMachineConnector(Connector):
         else:
             log.info('No workers to join K8s cluster.')
 
-        return {'join_tokens':
-                    {'manager': join_token_manager,
-                     'worker': join_token_worker},
-                'kind': COE_TYPE_K8S}
+        return {'manager': join_token_manager,
+                'worker': join_token_worker}
 
     def _get_k8s_config(self, inventory: Inventory) -> str:
         log.info('Get kubectl config from manager.')
@@ -398,7 +413,8 @@ class DockerMachineConnector(Connector):
                                machine_name,
                                self.cmd_xargs,
                                self.cmd_env))
-            pool = multiprocessing.Pool(processes=len(machine_names))
+            pool_size = min(DEFAULT_POOL_SIZE, len(machine_names))
+            pool = multiprocessing.Pool(pool_size)
             try:
                 err_codes = pool.starmap(self._start_machine, inputs)
                 pool.close()
@@ -431,11 +447,11 @@ class DockerMachineConnector(Connector):
         log.debug(f'Obtained cluster join tokens from {inventory.manager}')
 
         # Join workers to the cluster, if any.
-        join_tokens = {}
         if inventory.workers:
             if not join_token_worker:
                 raise Exception(f'Failed to get swarm join token from {inventory.manager}')
-            pool = multiprocessing.Pool(processes=len(inventory.workers))
+            pool_size = min(DEFAULT_POOL_SIZE, len(inventory.workers))
+            pool = multiprocessing.Pool(pool_size)
             try:
                 log.info(f'Joining workers to cluster.')
                 input = [(x, join_token_worker, self.cmd_env) for x in inventory.workers]
@@ -447,13 +463,9 @@ class DockerMachineConnector(Connector):
                 log.error(f'Failed to join workers to cluster: {ex}')
                 pool.terminate()
                 raise ex
-            join_tokens = \
-                {'join_tokens':
-                     {'manager': join_token_manager,
-                      'worker': join_token_worker},
-                 'kind': COE_TYPE_SWARM}
 
-        return join_tokens
+        return {'manager': join_token_manager,
+                'worker': join_token_worker}
 
     def _set_kubeconfig_on_manager(self, inventory: Inventory, nodes: list):
         if self.coe_type == COE_TYPE_K8S:
@@ -463,38 +475,110 @@ class DockerMachineConnector(Connector):
                     nodes[i]['kube-config'] = config
                     break
 
-    @should_connect
-    def start(self, cluster_params: dict):
-        multiplicity = cluster_params.get('multiplicity', 1)
+    @staticmethod
+    def _push_ssh_keys_to_machine(machine_name, keys_pub, env):
+        add_keys_sh = 'ssh-add-keys.sh'
+        ssh_keys_fn = 'ssh_keys.pub'
+        machine.scp(keys_pub, f'{machine_name}:{ssh_keys_fn}', env=env)
+        machine.scp(os.path.join(UTILS_DIR, add_keys_sh), f'{machine_name}:{add_keys_sh}', env=env)
+        cmd = f'chmod +x {add_keys_sh} && ./{add_keys_sh} {ssh_keys_fn}'
+        machine.ssh(machine_name, cmd, env=env)
+
+    def _push_ssh_keys(self, inventory: Inventory, ssh_keys: list):
+        if not ssh_keys:
+            return
+        log.info('Push ssh keys to nodes.')
+        _, keys_pub_fn = tempfile.mkstemp()
+        try:
+            with open(keys_pub_fn, 'w+t') as fh:
+                for ssh_key in ssh_keys:
+                    fh.write(f'{ssh_key}\n')
+            input = [(x, keys_pub_fn, self.cmd_env) for x in inventory.all()]
+            pool_size = min(DEFAULT_POOL_SIZE, len(inventory.all()))
+            pool = multiprocessing.Pool(pool_size)
+            try:
+                pool.starmap(self._push_ssh_keys_to_machine, input)
+                pool.close()
+                pool.join()
+            except Exception as ex:
+                log.info(f'Failed to push user ssh keys to nodes: {ex}')
+                pool.terminate()
+                raise ex
+        finally:
+            os.unlink(keys_pub_fn)
+        log.info('Pushed ssh keys to nodes.')
+
+    def _install_coe_manager(self, inventory):
+        log.info('Install COE manager Portainer.')
+        endpoint = None
+        try:
+            if self.coe_type == COE_TYPE_SWARM:
+                compose = 'portainer-swarm.yaml'
+                machine.scp(os.path.join(UTILS_DIR, compose),
+                            f'{inventory.manager}:{compose}',
+                            env=self.cmd_env)
+                cmd = f'sudo docker stack deploy --compose-file={compose} portainer'
+                machine.ssh(inventory.manager, cmd, self.cmd_env)
+                ip = self._vm_get_ip(inventory.manager)
+                endpoint = f'http://{ip}:{PORTAINER_PORT}'
+            elif self.coe_type == COE_TYPE_K8S:
+                manifest = 'portainer-k8s.yaml'
+                machine.scp(os.path.join(UTILS_DIR, manifest),
+                            f'{inventory.manager}:{manifest}',
+                            env=self.cmd_env)
+                cmd = f'sudo kubectl apply -f {manifest}'
+                machine.ssh(inventory.manager, cmd, self.cmd_env)
+                # FIXME: NodePort on the provisioned COE only proxies from workers.
+                # Check kubeadmin, kube-proxy and flannel initialization.
+                ip = self._vm_get_ip(inventory.workers[0])
+                endpoint = f'http://{ip}:{PORTAINER_PORT_K8S}'
+            else:
+                msg = f'Do not know how to deploy Portainer on {self.coe_type}'
+                log.error(msg)
+                raise Exception(msg)
+        except Exception as ex:
+            log.error(f'Failed to install COE manager Portainer: {ex}')
+        log.info('Installed COE manager Portainer.')
+        return endpoint
+
+    def _start_init(self, cluster_params):
+        multiplicity = int(cluster_params.get('multiplicity'))
         if multiplicity < 1:
             raise Exception('Refusing to provision cluster of multiplicity less than 1.')
         if self.coe_type == COE_TYPE_K8S:
             multiplicity += 1
         inventory = Inventory(self.machine_base_name, multiplicity=multiplicity)
 
+        self.coe_manager_install = cluster_params.get('coe-manager-install', False)
+        self.ssh_keys = cluster_params.get('ssh-keys', [])
+        self.cmd_xargs, self.cmd_env = self._docker_machine_args_and_env()
+
+        return inventory
+
+    @should_connect
+    def start(self, cluster_params: dict):
+        inventory = self._start_init(cluster_params)
+
         nodes = []
         try:
-            msg = f'{self.coe_type.title()} cluster of size {multiplicity} on {self.driver_name}'
+            msg = f'{self.coe_type.title()} cluster of size {len(inventory.all())} on {self.driver_name}'
             log.info(f'Provisioning COE {msg}.')
             self._provision_cluster(nodes, inventory)
             join_tokens = self._create_coe(inventory, nodes)
             log.info(f'Provisioned COE {msg}.')
-            log.debug(f'COE cluster: {self.list()}')
 
-            log.info('Install COE manager Portainer.')
-            try:
-                cmd = 'curl -L https://downloads.portainer.io/portainer-agent-stack.yml -o portainer-agent-stack.yml'
-                machine.ssh(inventory.manager, cmd, self.cmd_env)
-                cmd = 'sudo docker stack deploy --compose-file=portainer-agent-stack.yml portainer'
-                machine.ssh(inventory.manager, cmd, self.cmd_env)
-            except Exception as ex:
-                log.error('Failed to install COE manager Portainer.')
-            log.info('Installed COE manager Portainer.')
+            result = {'creds': self._coe_credentials(inventory),
+                      'endpoint': self._coe_endpoint(inventory),
+                      'join-tokens': join_tokens,
+                      'nodes': nodes}
 
-            # TODO: Do we need to return join tokens for later cluster expansion?
-            return self._coe_credentials(inventory), \
-                   self._coe_endpoint(inventory), \
-                   nodes
+            self._push_ssh_keys(inventory, self.ssh_keys)
+
+            if self.coe_manager_install:
+                result['coe-manager-endpoint'] = self._install_coe_manager(inventory)
+
+            return result
+
         except Exception as ex:
             log.error(f'COE cluster failed to start: {ex}')
             self.clear_connection()
@@ -535,7 +619,7 @@ class DockerMachineConnector(Connector):
             log.warning('No nodes provided to stop.')
             return
         log.info(f'Stopping {n} nodes on {self.driver_name}.')
-        pool = multiprocessing.Pool(processes=n)
+        pool = multiprocessing.Pool(min(DEFAULT_POOL_SIZE, n))
         try:
             stopped = pool.starmap(self._stop_node,
                                    [(x, self.cmd_env) for x in kwargs['nodes']])

@@ -31,35 +31,40 @@ class COEProvisionJob(object):
         coe = connector_factory(docker_machine_connector, self.api,
                                 cloud_creds_id, infra_service_coe)
 
-        coe_certs, endpoint, coe_nodes = coe.start(coe_custer_params)
+        result = coe.start(coe_custer_params)
         try:
             self.job.set_progress(50)
-            self._register_coe(coe_certs, coe_nodes, coe_type, endpoint,
-                               infra_service_coe)
+            self._register_coe(infra_service_coe, result)
             self.job.set_progress(99)
         except Exception as ex:
             msg = f'Terminating deployed cluster. Failure in registration: {ex}'
             logging.warning(msg)
-            stopped = coe.stop(nodes=coe_nodes)
+            stopped = coe.stop(nodes=result['nodes'])
             raise ex
 
         return 0
 
-    def _register_coe(self, coe_certs: dict, coe_nodes: list, coe_type: str,
-                      endpoint: str, infra_service_coe: dict):
+    def _register_coe(self, infra_service_coe: dict, result: dict):
 
         # Minimal ACL for COE credentials. Only owners can see it.
         acl = {"acl": {"owners": infra_service_coe['acl']['owners']}}
-        coe_cred_data = {**coe_certs, **acl}
+
+        coe_cred_data = {**result['creds'], **acl}
         infra_service_coe_id = infra_service_coe['id']
-        self._set_coe_creds(coe_cred_data, coe_type,
+        self._set_coe_creds(coe_cred_data, infra_service_coe['subtype'],
                             infra_service_coe.get('name'),
                             infra_service_coe_id)
 
+        cluster_params = infra_service_coe.get('cluster-params', {})
+        if 'coe-manager-endpoint' in result:
+            cluster_params['coe-manager-endpoint'] = result['coe-manager-endpoint']
+        if 'join-tokens' in result:
+            cluster_params['join-tokens'] = result['join-tokens']
         self.api.edit(infra_service_coe_id,
-                      {"endpoint": endpoint,
-                       "state": "STARTED",
-                       "nodes": coe_nodes})
+                      {'endpoint': result['endpoint'],
+                       'state': 'STARTED',
+                       'nodes': result['nodes'],
+                       'cluster-params': cluster_params})
 
     def _set_coe_creds(self, coe_cred_data, coe_type, cred_name,
                        infra_service_coe_id):

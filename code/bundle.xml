@@ -15,7 +15,7 @@
             <outputDirectory>src/nuvla</outputDirectory>
             <includes>
                 <include>**/*.py</include>
-                <include>connector/k8s-install.sh</include>
+                <include>connector/extra/*.*</include>
             </includes>
             <fileMode>0644</fileMode>
         </fileSet>
