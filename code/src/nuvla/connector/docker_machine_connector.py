@@ -489,7 +489,7 @@ class DockerMachineConnector(Connector):
         try:
             with open(keys_pub_fn, 'w+t') as fh:
                 for ssh_key in ssh_keys:
-                    fh.write(f'{ssh_key}\n')
+                    fh.write(f'{ssh_key.strip()}\n')
             input = [(x, keys_pub_fn, self.cmd_env) for x in inventory.all()]
             pool_size = min(DEFAULT_POOL_SIZE, len(inventory.all()))
             pool = multiprocessing.Pool(pool_size)
