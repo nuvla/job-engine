@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 
-from __future__ import print_function
-
+import copy
 import logging
 
 from nuvla.connector import connector_factory, docker_machine_connector
@@ -26,7 +25,7 @@ class COEProvisionJob(object):
             raise Exception(f'Unknown COE type: {coe_type}')
 
         cloud_creds_id = infra_service_coe.get('management-credential')
-        coe_custer_params = infra_service_coe.get('cluster-params', {})
+        coe_custer_params = copy.deepcopy(infra_service_coe.get('cluster-params', {}))
         if 'ssh-keys' in coe_custer_params:
             # Update ssh keys as IDs by their public key values.
             ssh_pub_keys = []
