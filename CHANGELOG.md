@@ -8,6 +8,8 @@
     the NuvlaBox
  - Deployment State job in push mode, as an entrypoint
  - New job distributor and executor action for usage report
+ - New executor that provisions Docker Swarm and Kubernetes
+   on AWS, Azure, Google Cloud, and Exoscale.
 
 ### Changed
 
