@@ -77,9 +77,9 @@ class UsageReport(object):
             try:
                 subscription_items = stripe.SubscriptionItem.list(subscription=subscription_id)
                 for item in subscription_items.data:
-                    plan_item = item.plan
-                    usage_type = plan_item.usage_type
-                    nickname = plan_item.nickname
+                    price_item = item.price
+                    usage_type = price_item.recurring.usage_type
+                    nickname = price_item.nickname
                     if usage_type == 'metered' and nickname in ['nuvlabox', 'vpn', 'deployment']:
                         self.usage_report(owner_id, item.id, nickname)
             except Exception as ex:
