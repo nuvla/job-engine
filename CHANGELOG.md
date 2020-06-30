@@ -5,7 +5,7 @@
 ### Added
 
  - Added new actions for adding and revoking SSH keys from
-    the NuvlaBox
+   the NuvlaBox
  - Deployment State job in push mode, as an entrypoint
  - New job distributor and executor action for usage report
 
