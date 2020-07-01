@@ -82,4 +82,17 @@ RUN set -eux; \
 
 RUN apk --no-cache add gettext
 
-ENTRYPOINT ["/app/job_executor.py"]
+RUN apk add --no-cache bash openssl
+RUN curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3 && \
+    chmod 700 get_helm.sh && \
+    ./get_helm.sh && \
+    rm -f ./get_helm.sh
+
+# my_init as ENTRYPOINT to protect us from zombies.
+# It assumes python3 at that location.
+RUN ln -s $(which python3) /usr/bin/python3
+RUN curl -fsSL -o /app/my_init https://raw.githubusercontent.com/phusion/baseimage-docker/rel-0.9.19/image/bin/my_init && \
+    chmod 700 /app/my_init
+
+# Start your app by "-- /my/app --foo bar --baz"
+ENTRYPOINT ["/app/my_init"]

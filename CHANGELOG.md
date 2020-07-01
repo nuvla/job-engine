@@ -8,10 +8,13 @@
    the NuvlaBox
  - Deployment State job in push mode, as an entrypoint
  - New job distributor and executor action for usage report
+ - New executor that provisions Docker Swarm and Kubernetes
+   on AWS, Azure, Google Cloud, and Exoscale.
 
 ### Changed
 
- - added cross-platform compatibility for Docker image 
+ - Dependency nuvla-api updated to v3.0.2
+ - Added cross-platform compatibility for Docker image 
  - Fixed Docker Compose deployment bug - allow containers to
    have internal ports that are not published to the host
 

@@ -75,7 +75,7 @@ class CredentialCheck(object):
     def check_coe_swarm(self, credential, infra_service):
         connector = connector_factory(docker_cli_connector, self.api,
                                       credential['id'],
-                                      api_infrastructure_service=infra_service)
+                                      infrastructure_service=infra_service)
         info = connector.info()
         self.job.set_status_message(info)
         return info
@@ -102,7 +102,7 @@ class CredentialCheck(object):
 
     def check_coe_kubernetes(self, credential, infra_service):
         connector = connector_factory(kubernetes_cli_connector, self.api, credential['id'],
-                                      api_infrastructure_service=infra_service)
+                                      infrastructure_service=infra_service)
         version = connector.version()
         self.job.set_status_message(version)
 

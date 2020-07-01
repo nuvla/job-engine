@@ -77,7 +77,7 @@ class ServiceImageState(object):
         self.job.set_progress(10)
 
         try:
-            self.handle_deployment(deployment)
+            self.handle_deployment(deployment.data)
         except Exception as ex:
             self.job.set_status_message(str(ex))
             log.error('Failed to check for new service image on {0}: {1}'.format(deployment_id, ex))
