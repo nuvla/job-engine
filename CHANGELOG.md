@@ -13,7 +13,8 @@
 
 ### Changed
 
- - added cross-platform compatibility for Docker image 
+ - Dependency nuvla-api updated to v3.0.2
+ - Added cross-platform compatibility for Docker image 
  - Fixed Docker Compose deployment bug - allow containers to
    have internal ports that are not published to the host
 
