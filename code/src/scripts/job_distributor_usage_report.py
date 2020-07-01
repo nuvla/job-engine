@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+import logging
+
 from nuvla.job.base import main
 from nuvla.job.distributor import Distributor
 from nuvla.job.util import override
@@ -21,7 +23,10 @@ class UsageReportJobsDistributor(Distributor):
                             default=self.collect_interval, type=int, help=hmsg)
 
     def customers(self):
-        return self.api.search('customer', select='id, parent, customer-id').resources
+        try:
+            return self.api.search('customer', select='id, parent, customer-id').resources
+        except Exception as ex:
+            logging.error(f'Failed to search for customers with: {ex}')
 
     def job_exists(self, job):
         filters = "(state='QUEUED' or state='RUNNING')" \
