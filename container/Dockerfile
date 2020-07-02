@@ -62,8 +62,10 @@ ADD https://raw.githubusercontent.com/docker-library/docker/65fab2cd767c10f22ee6
 
 # This only works for amd64 but it also isn't necessary for push mode
 # since its only use is for infrastructure_service_swarm_start/stop, and that's a server-side feature
-RUN curl -s -L https://github.com/docker/machine/releases/download/v0.16.0/docker-machine-$(uname -s)-$(uname -m) >/tmp/docker-machine && \
-            install /tmp/docker-machine /usr/local/bin/docker-machine
+RUN curl -s -L https://github.com/docker/machine/releases/download/v0.16.2/docker-machine-$(uname -s)-$(uname -m) >/tmp/docker-machine && \
+            install /tmp/docker-machine /usr/local/bin/docker-machine && rm -f /tmp/docker-machine
+# Need scp for docker-machine to transfer files to machines.
+RUN apk add --no-cache openssh
 
 RUN set -eux; \
     	\
