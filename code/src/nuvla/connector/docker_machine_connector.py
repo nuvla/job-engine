@@ -20,7 +20,7 @@ DOCKER_MACHINE_FOLDER = os.path.expanduser("~/.docker/machine/machines")
 K8S_JOIN_PORT = '6443'
 SWARM_TLS_PORT = '2376'
 PORTAINER_PORT = '9000'
-PORTAINER_PORT_K8S = '30777'
+RANCHER_PORT = '31443'
 
 COE_TYPE_SWARM = 'swarm'
 COE_TYPE_K8S = 'kubernetes'
@@ -123,6 +123,12 @@ class DockerMachineConnector(Connector):
         name = self.kwargs.get("machine_base_name").replace(" ", "-")
         self.machine_base_name = f'nuvla-{name}'
         self.coe_type = self.kwargs.get('coe_type', COE_TYPE_SWARM).lower()
+        if self.coe_type not in [COE_TYPE_SWARM, COE_TYPE_K8S]:
+            msg = f'Unknown COE type {self.coe_type}'
+            log.error(msg)
+            raise Exception(msg)
+        self.is_swarm = self.coe_type == COE_TYPE_SWARM
+        self.is_k8s = self.coe_type == COE_TYPE_K8S
         self.machine = machine
 
         self.coe_manager_install = False
@@ -175,11 +181,11 @@ class DockerMachineConnector(Connector):
                 if k.endswith('open-port'):
                     xargs[k] = [v]
                     if self.coe_manager_install:
-                        if self.coe_type == COE_TYPE_SWARM:
+                        if self.is_swarm:
                             xargs[k].append(PORTAINER_PORT)
-                        elif self.coe_type == COE_TYPE_K8S:
-                            xargs[k].append(PORTAINER_PORT_K8S)
-                    if self.coe_type == COE_TYPE_K8S:
+                        elif self.is_k8s:
+                            xargs[k].append(RANCHER_PORT)
+                    if self.is_k8s:
                         xargs[k].append(K8S_JOIN_PORT)
                 else:
                     xargs[k] = v
@@ -226,12 +232,10 @@ class DockerMachineConnector(Connector):
         return machine.ip(machine=machine_name, env=self.cmd_env)
 
     def _coe_endpoint(self, inventory: Inventory):
-        if self.coe_type == COE_TYPE_K8S:
+        if self.is_k8s:
             port = K8S_JOIN_PORT
-        elif self.coe_type == COE_TYPE_SWARM:
-            port = SWARM_TLS_PORT
         else:
-            raise Exception(f'Do not know how to get endpoint for {self.coe_type}')
+            port = SWARM_TLS_PORT
         return f'https://{self._vm_get_ip(inventory.manager)}:{port}'
 
     def _get_node(self, machine_name):
@@ -283,14 +287,14 @@ class DockerMachineConnector(Connector):
             return file.read()
 
     def _coe_credentials(self, inventory: Inventory) -> dict:
-        if self.coe_type == COE_TYPE_K8S:
+        if self.is_k8s:
             kc = KubeConfig()
             config = kc.from_string(self._get_k8s_config(inventory))
             ca_cert, user_cert, user_key = kc.get_certs(config)
             return {'ca': ca_cert,
                     'cert': user_cert,
                     'key': user_key}
-        elif self.coe_type == COE_TYPE_SWARM:
+        else:
             base_path = os.path.join(DOCKER_MACHINE_FOLDER, inventory.manager)
             ca_file = os.path.join(base_path, 'ca.pem')
             cert_file = os.path.join(base_path, 'cert.pem')
@@ -298,8 +302,6 @@ class DockerMachineConnector(Connector):
             return {'ca': self._load_file_content(ca_file),
                     'cert': self._load_file_content(cert_file),
                     'key': self._load_file_content(key_file)}
-        else:
-            raise Exception(f'Do not know how to get credentials for {self.coe_type}')
 
     @staticmethod
     def _start_machine(driver_name, machine_name, cmd_xargs, env):
@@ -327,11 +329,11 @@ class DockerMachineConnector(Connector):
         machine.scp(os.path.join(UTILS_DIR, k8s_fn),
                     f'{machine_name}:{k8s_script_remote}', env=env)
 
-        log.info(f'Install K8s on {machine_kind}')
+        log.info(f'Install K8s on {machine_name}')
         machine.ssh(machine_name,
             f'chmod +x {k8s_script_remote}; {k8s_script_remote} {machine_kind}',
             env=env)
-        log.info(f'Installed K8s on {machine_kind}')
+        log.info(f'Installed K8s on {machine_name}')
 
     def _deploy_k8s(self, inventory: Inventory) -> dict:
         log.info('Install K8s on cluster.')
@@ -467,7 +469,7 @@ class DockerMachineConnector(Connector):
                 'worker': join_token_worker}
 
     def _set_kubeconfig_on_manager(self, inventory: Inventory, nodes: list):
-        if self.coe_type == COE_TYPE_K8S:
+        if self.is_k8s:
             config = self._get_k8s_config(inventory)
             for i, node in enumerate(nodes):
                 if node.get('manager', False):
@@ -507,44 +509,47 @@ class DockerMachineConnector(Connector):
             os.unlink(keys_pub_fn)
         log.info('Pushed ssh keys to nodes.')
 
+    def _install_portainer(self, inventory):
+        compose = 'portainer-swarm.yaml'
+        machine.scp(os.path.join(UTILS_DIR, compose),
+                    f'{inventory.manager}:{compose}',
+                    env=self.cmd_env)
+        cmd = f'sudo docker stack deploy --compose-file={compose} portainer'
+        machine.ssh(inventory.manager, cmd, self.cmd_env)
+        ip = self._vm_get_ip(inventory.manager)
+        endpoint = f'http://{ip}:{PORTAINER_PORT}'
+        return endpoint
+
+    def _install_rancher(self, inventory):
+        install_fn = 'install-rancher.sh'
+        machine.scp(os.path.join(UTILS_DIR, install_fn),
+                    f'{inventory.manager}:{install_fn}',
+                    env=self.cmd_env)
+        cmd = f'chmod +x {install_fn}; ./{install_fn}'
+        machine.ssh(inventory.manager, cmd, self.cmd_env)
+        ip = self._vm_get_ip(inventory.manager)
+        endpoint = f'https://{ip}:{RANCHER_PORT}'
+        return endpoint
+
     def _install_coe_manager(self, inventory):
-        log.info('Install COE manager Portainer.')
+        mgr_name = self.is_swarm and 'Portainer' or 'Rancher'
+        log.info(f'Install COE manager {mgr_name}.')
         endpoint = None
         try:
-            if self.coe_type == COE_TYPE_SWARM:
-                compose = 'portainer-swarm.yaml'
-                machine.scp(os.path.join(UTILS_DIR, compose),
-                            f'{inventory.manager}:{compose}',
-                            env=self.cmd_env)
-                cmd = f'sudo docker stack deploy --compose-file={compose} portainer'
-                machine.ssh(inventory.manager, cmd, self.cmd_env)
-                ip = self._vm_get_ip(inventory.manager)
-                endpoint = f'http://{ip}:{PORTAINER_PORT}'
-            elif self.coe_type == COE_TYPE_K8S:
-                manifest = 'portainer-k8s.yaml'
-                machine.scp(os.path.join(UTILS_DIR, manifest),
-                            f'{inventory.manager}:{manifest}',
-                            env=self.cmd_env)
-                cmd = f'sudo kubectl apply -f {manifest}'
-                machine.ssh(inventory.manager, cmd, self.cmd_env)
-                # FIXME: NodePort on the provisioned COE only proxies from workers.
-                # Check kubeadmin, kube-proxy and flannel initialization.
-                ip = self._vm_get_ip(inventory.workers[0])
-                endpoint = f'http://{ip}:{PORTAINER_PORT_K8S}'
+            if self.is_swarm:
+                endpoint = self._install_portainer(inventory)
             else:
-                msg = f'Do not know how to deploy Portainer on {self.coe_type}'
-                log.error(msg)
-                raise Exception(msg)
+                endpoint = self._install_rancher(inventory)
         except Exception as ex:
-            log.error(f'Failed to install COE manager Portainer: {ex}')
-        log.info('Installed COE manager Portainer.')
+            log.error(f'Failed to install COE manager {mgr_name}: {ex}')
+        log.info(f'Installed COE manager {mgr_name}.')
         return endpoint
 
     def _start_init(self, cluster_params):
         multiplicity = int(cluster_params.get('multiplicity'))
         if multiplicity < 1:
             raise Exception('Refusing to provision cluster of multiplicity less than 1.')
-        if self.coe_type == COE_TYPE_K8S:
+        if self.is_k8s:
             multiplicity += 1
         inventory = Inventory(self.machine_base_name, multiplicity=multiplicity)
 
@@ -587,13 +592,11 @@ class DockerMachineConnector(Connector):
 
     def _create_coe(self, inventory: Inventory, nodes: list) -> dict:
         log.info('Creating COE.')
-        if self.coe_type == COE_TYPE_SWARM:
+        if self.is_swarm:
             join_tokens = self._create_swarm(inventory)
-        elif self.coe_type == COE_TYPE_K8S:
+        else:
             join_tokens = self._deploy_k8s(inventory)
             self._set_kubeconfig_on_manager(inventory, nodes)
-        else:
-            raise Exception(f'Do not know how to create COE {self.coe_type}')
         log.info('Created COE.')
 
         return join_tokens
