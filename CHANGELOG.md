@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## [2.4.0] - 2020-07-06
+
 ### Added
 
  - Added new actions for adding and revoking SSH keys from
