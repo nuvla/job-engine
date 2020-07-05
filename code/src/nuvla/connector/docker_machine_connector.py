@@ -21,6 +21,7 @@ K8S_JOIN_PORT = '6443'
 SWARM_TLS_PORT = '2376'
 PORTAINER_PORT = '9000'
 RANCHER_PORT = '31443'
+K8S_FLANNEL_VXLAN = '8472/udp'
 
 COE_TYPE_SWARM = 'swarm'
 COE_TYPE_K8S = 'kubernetes'
@@ -185,6 +186,7 @@ class DockerMachineConnector(Connector):
                             xargs[k].append(PORTAINER_PORT)
                         elif self.is_k8s:
                             xargs[k].append(RANCHER_PORT)
+                            xargs[k].append(K8S_FLANNEL_VXLAN)
                     if self.is_k8s:
                         xargs[k].append(K8S_JOIN_PORT)
                 else:
