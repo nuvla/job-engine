@@ -13,9 +13,11 @@ log = logging.getLogger('kubernetes_cli_connector')
 
 
 def instantiate_from_cimi(api_infrastructure_service, api_credential):
-    return KubernetesCliConnector(cert=api_credential.get('cert').replace("\\n", "\n"),
-                                  key=api_credential.get('key').replace("\\n", "\n"),
-                                  endpoint=api_infrastructure_service.get('endpoint'))
+    return KubernetesCliConnector(
+        ca=api_credential.get('ca', '').replace("\\n", "\n"),
+        cert=api_credential.get('cert', '').replace("\\n", "\n"),
+        key=api_credential.get('key', '').replace("\\n", "\n"),
+        endpoint=api_infrastructure_service.get('endpoint'))
 
 
 class KubernetesCliConnector(Connector):
@@ -24,10 +26,12 @@ class KubernetesCliConnector(Connector):
         super(KubernetesCliConnector, self).__init__(**kwargs)
 
         # Mandatory kwargs
+        self.ca = self.kwargs['ca']
         self.cert = self.kwargs['cert']
         self.key = self.kwargs['key']
 
         self.endpoint = self.kwargs['endpoint']
+        self.ca_file = None
         self.cert_file = None
         self.key_file = None
 
@@ -37,10 +41,14 @@ class KubernetesCliConnector(Connector):
 
     def connect(self):
         log.info('Connecting to endpoint {}'.format(self.endpoint))
+        self.ca_file = create_tmp_file(self.ca)
         self.cert_file = create_tmp_file(self.cert)
         self.key_file = create_tmp_file(self.key)
 
     def clear_connection(self, connect_result):
+        if self.ca_file:
+            self.ca_file.close()
+            self.ca_file = None
         if self.cert_file:
             self.cert_file.close()
             self.cert_file = None
@@ -49,8 +57,10 @@ class KubernetesCliConnector(Connector):
             self.key_file = None
 
     def build_cmd_line(self, list_cmd):
-        return ['kubectl', '-s', self.endpoint, '--client-certificate', self.cert_file.name,
-                '--client-key', self.key_file.name, '--insecure-skip-tls-verify=true'] \
+        return ['kubectl', '-s', self.endpoint,
+                '--client-certificate', self.cert_file.name,
+                '--client-key', self.key_file.name,
+                '--certificate-authority', self.ca_file.name] \
                + list_cmd
 
     @staticmethod
