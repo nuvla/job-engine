@@ -627,6 +627,10 @@ class DockerMachineConnector(Connector):
             log.warning('No nodes provided to stop.')
             return
         log.info(f'Stopping {n} nodes on {self.driver_name}.')
+
+        if self.driver_name == 'google':
+            self.cmd_env['GOOGLE_APPLICATION_CREDENTIALS'] = self._build_gce_adc()
+
         pool = multiprocessing.Pool(min(DEFAULT_POOL_SIZE, n))
         try:
             stopped = pool.starmap(self._stop_node,
