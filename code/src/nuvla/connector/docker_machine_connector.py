@@ -104,6 +104,7 @@ class DockerMachineConnector(Connector):
                             'google-machine-type'],
                    'defaults': {'google-machine-image': 'ubuntu-os-cloud/global/images/ubuntu-1804-bionic-v20200610',
                                 'google-open-port': '2377',
+                                'google-machine-type': 'e2-medium',
                                 'google-zone': 'europe-west3-a'}
                    }
     }
