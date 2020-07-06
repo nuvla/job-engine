@@ -95,6 +95,7 @@ class DockerMachineConnector(Connector):
                            'azure-location'],
                   'defaults': {'azure-image': 'canonical:UbuntuServer:16.04.0-LTS:latest',
                                'azure-open-port': '2377',
+                               'azure-ssh-user': 'ubuntu',
                                'azure-location': 'francecentral'}
                   },
         "google": {'args': ['google-project',
@@ -332,8 +333,11 @@ class DockerMachineConnector(Connector):
                     f'{machine_name}:{k8s_script_remote}', env=env)
 
         log.info(f'Install K8s on {machine_name}')
+        # IP for extra Subject Alternative Name for API server cert when host IP
+        # is different from public.
+        ip = machine.ip(machine_name, env=env)
         machine.ssh(machine_name,
-            f'chmod +x {k8s_script_remote}; {k8s_script_remote} {machine_kind}',
+            f'chmod +x {k8s_script_remote}; {k8s_script_remote} {machine_kind} {ip}',
             env=env)
         log.info(f'Installed K8s on {machine_name}')
 
@@ -570,6 +574,7 @@ class DockerMachineConnector(Connector):
             msg = f'{self.coe_type.title()} cluster of size {len(inventory.all())} on {self.driver_name}'
             log.info(f'Provisioning COE {msg}.')
             self._provision_cluster(nodes, inventory)
+            self._push_ssh_keys(inventory, self.ssh_keys)
             join_tokens = self._create_coe(inventory, nodes)
             log.info(f'Provisioned COE {msg}.')
 
@@ -577,8 +582,6 @@ class DockerMachineConnector(Connector):
                       'endpoint': self._coe_endpoint(inventory),
                       'join-tokens': join_tokens,
                       'nodes': nodes}
-
-            self._push_ssh_keys(inventory, self.ssh_keys)
 
             if self.coe_manager_install:
                 result['coe-manager-endpoint'] = self._install_coe_manager(inventory)
