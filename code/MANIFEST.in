@@ -1,0 +1,5 @@
+include src/nuvla/connector/extra/k8s-install.sh
+include src/nuvla/connector/extra/portainer-k8s.yaml
+include src/nuvla/connector/extra/portainer-swarm.yaml
+include src/nuvla/connector/extra/ssh-add-keys.sh
+include src/nuvla/connector/extra/install-rancher.sh

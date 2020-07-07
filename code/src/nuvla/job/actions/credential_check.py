@@ -65,6 +65,32 @@ def docker_info_error_msg_infer(error_msg):
         return None, None
 
 
+def k8s_info_error_msg_infer(error_msg):
+    error_msg_lowercase = error_msg.lower()
+    cert_errors = [
+        'failed to parse', # creds are malformed.
+        'syntax error',    # creds are malformed.
+        'does not match',  # key doesn't match cert.
+        'must be logged in to the server' # server doesn't recognise creds.
+    ]
+    cert_problems = [error in error_msg_lowercase for error in cert_errors]
+    server_errors = [
+        'notfound', # requested resource on server not found.
+        'unable to connect to the server',
+        'command execution timed out',
+        'server rejected our request'
+    ]
+    server_problems = [error in error_msg_lowercase for error in server_errors]
+    if any(cert_problems):
+        # Were we able to reach endpoint. The problem is highly likely
+        # with credentials.
+        return True
+    elif any(server_problems):
+        return False
+    # In all other cases, we don't know.
+    return None
+
+
 @action(action_name)
 class CredentialCheck(object):
 
@@ -75,7 +101,7 @@ class CredentialCheck(object):
     def check_coe_swarm(self, credential, infra_service):
         connector = connector_factory(docker_cli_connector, self.api,
                                       credential['id'],
-                                      api_infrastructure_service=infra_service)
+                                      infrastructure_service=infra_service)
         info = connector.info()
         self.job.set_status_message(info)
         return info
@@ -97,14 +123,32 @@ class CredentialCheck(object):
                 infra_service_update_body['online'] = infra_online
             if swarm_enabled != infra_service.get('swarm-enabled') and swarm_enabled is not None:
                 infra_service_update_body['swarm-enabled'] = swarm_enabled
-            if len(infra_service_update_body) > 0:
+            if infra_service_update_body:
+                self.api.edit(infra_service.get("id"), infra_service_update_body)
+
+    def check_coe_k8s_and_set_infra_attributes(self, credential, infra_service):
+        infra_online = None
+        try:
+            info = self.check_coe_kubernetes(credential, infra_service)
+            if info.get('serverVersion'):
+                infra_online = True
+        except Exception as ex:
+            error_msg = ex.args[0]
+            infra_online = k8s_info_error_msg_infer(error_msg)
+            raise Exception(error_msg)
+        finally:
+            infra_service_update_body = {}
+            if infra_online != infra_service.get('online') and infra_online is not None:
+                infra_service_update_body['online'] = infra_online
+            if infra_service_update_body:
                 self.api.edit(infra_service.get("id"), infra_service_update_body)
 
     def check_coe_kubernetes(self, credential, infra_service):
         connector = connector_factory(kubernetes_cli_connector, self.api, credential['id'],
-                                      api_infrastructure_service=infra_service)
+                                      infrastructure_service=infra_service)
         version = connector.version()
         self.job.set_status_message(version)
+        return version
 
     @staticmethod
     def check_registry_login(credential, infra_service):
@@ -135,7 +179,7 @@ class CredentialCheck(object):
             if infra_service_subtype == 'swarm':
                 self.check_coe_swarm_and_set_infra_attributes(credential, infra_service)
             elif infra_service_subtype == 'kubernetes':
-                self.check_coe_kubernetes(credential, infra_service)
+                self.check_coe_k8s_and_set_infra_attributes(credential, infra_service)
             elif infra_service_subtype == 'registry':
                 CredentialCheck.check_registry_login(credential, infra_service)
             self.update_credential_last_check(credential_id, 'VALID')

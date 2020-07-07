@@ -12,7 +12,7 @@ action_name = 'start_deployment'
 log = logging.getLogger(action_name)
 
 
-def get_env(deployment):
+def get_env(deployment: dict):
     env_variables = {
         'NUVLA_DEPLOYMENT_UUID': deployment['id'].split('/')[-1],
         'NUVLA_DEPLOYMENT_ID': deployment['id'],
@@ -34,11 +34,8 @@ def application_params_update(api_dpl, deployment, services):
             node_id = service['node-id']
             for key, value in service.items():
                 api_dpl.set_parameter_create_if_needed(
-                    resource_id=Deployment.id(deployment),
-                    user_id=Deployment.owner(deployment),
-                    node_id=node_id,
-                    param_name='{}.{}'.format(node_id, key),
-                    param_value=value)
+                    Deployment.id(deployment), Deployment.owner(deployment),
+                    f'{node_id}.{key}', param_value=value, node_id=node_id)
 
 
 @action(action_name)
@@ -77,7 +74,7 @@ class DeploymentStartJob(object):
         else:
             return None
 
-    def start_component(self, deployment):
+    def start_component(self, deployment: dict):
         connector = connector_factory(docker_connector, self.api,
                                       Deployment.credential_id(deployment))
 
@@ -218,7 +215,7 @@ class DeploymentStartJob(object):
         ports_mapping = connector.extract_vm_ports_mapping(service)
         self.api_dpl.update_port_parameters(deployment, ports_mapping)
 
-    def start_application(self, deployment):
+    def start_application(self, deployment: dict):
         deployment_id = Deployment.id(deployment)
         credential_id = Deployment.credential_id(deployment)
 
@@ -252,7 +249,7 @@ class DeploymentStartJob(object):
 
         application_params_update(self.api_dpl, deployment, services)
 
-    def start_application_kubernetes(self, deployment):
+    def start_application_kubernetes(self, deployment: dict):
         deployment_id = Deployment.id(deployment)
 
         connector = connector_factory(kubernetes_cli_connector, self.api,
@@ -283,7 +280,7 @@ class DeploymentStartJob(object):
 
         application_params_update(self.api_dpl, deployment, services)
 
-    def handle_deployment(self, deployment):
+    def handle_deployment(self, deployment: dict):
 
         if Deployment.is_component(deployment):
             self.start_component(deployment)
@@ -304,7 +301,7 @@ class DeploymentStartJob(object):
         self.job.set_progress(10)
 
         try:
-            self.handle_deployment(deployment)
+            self.handle_deployment(deployment.data)
         except Exception as ex:
             log.error('Failed to {0} {1}: {2}'.format(self.job['action'], deployment_id, ex))
             try:

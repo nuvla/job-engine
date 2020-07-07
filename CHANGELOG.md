@@ -4,7 +4,25 @@
 
 ### Changed
 
- - Fixed Docker Compose deployment bug - allow containers to have internal ports that are not published to the host
+  - Docker machine connector - new script to install Rancher
+
+## [2.4.0] - 2020-07-06
+
+### Added
+
+ - Added new actions for adding and revoking SSH keys from
+   the NuvlaBox
+ - Deployment State job in push mode, as an entrypoint
+ - New job distributor and executor action for usage report
+ - New executor that provisions Docker Swarm and Kubernetes
+   on AWS, Azure, Google Cloud, and Exoscale.
+
+### Changed
+
+ - Dependency nuvla-api updated to v3.0.2
+ - Added cross-platform compatibility for Docker image 
+ - Fixed Docker Compose deployment bug - allow containers to
+   have internal ports that are not published to the host
 
 ## [2.3.16] - 2020-05-11
 

@@ -1,8 +1,8 @@
-nuvla-api==3.0.1
+nuvla-api==3.0.2
 kazoo>=2.6.0,<2.7.0
 elasticsearch>=7.0.0,<8.0.0
 boto3==1.9.132
 requests
-python-docker-machine==0.2.5
+docker
 pyyaml
-statsd
+stripe==2.48.0

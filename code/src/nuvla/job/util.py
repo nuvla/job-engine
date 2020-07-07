@@ -7,6 +7,7 @@ import time
 import random
 import logging
 import warnings
+from datetime import datetime
 
 PY2 = sys.version_info[0] == 2
 
@@ -55,3 +56,7 @@ def retry_kazoo_queue_op(queue, function_name):
         random_wait(0.1, 5)
         logging.warning(
             'retry_kazoo_queue_op: Retrying {} on {}.'.format(function_name, queue.get()))
+
+
+def parse_cimi_date(date):
+    return datetime.fromisoformat(date[:-1] + '+00:00')
