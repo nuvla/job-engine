@@ -5,4 +5,5 @@ boto3==1.9.132
 requests
 docker
 pyyaml
+statsd
 stripe==2.48.0

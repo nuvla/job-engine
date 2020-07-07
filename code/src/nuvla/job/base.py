@@ -123,10 +123,13 @@ class Base(object):
             statsd_host = statsd_hp[0]
             if len(statsd_hp) > 1:
                 statsd_port = statsd_hp[1]
-            self.statsd = StatsClient(host=statsd_host,
-                                      port=statsd_port,
-                                      prefix=None,
-                                      ipv6=False)
+            try:
+                self.statsd = StatsClient(host=statsd_host,
+                                          port=statsd_port,
+                                          prefix=None,
+                                          ipv6=False)
+            except Exception as ex:
+                logging.error(f'Failed to initialise StatsD client for {self.args.statsd}: {ex}')
 
         self.do_work()
 
