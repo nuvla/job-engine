@@ -5,6 +5,9 @@
 ### Changed
 
   - Docker machine connector - new script to install Rancher
+  - Deployment state job was split into two for "new" and "old" deployments with
+    configurable check intervals. This was done to reduce unnecessary load on
+    the server and remote COEs.
 
 ## [2.4.0] - 2020-07-06
 

@@ -9,6 +9,9 @@ import threading
 from kazoo.client import KazooClient, KazooRetry
 from nuvla.api import Api
 from requests.exceptions import ConnectionError
+from statsd import StatsClient
+
+STATSD_PORT = 8125
 
 names = ['Cartman', 'Kenny', 'Stan', 'Kyle', 'Butters', 'Token', 'Timmy', 'Wendy', 'M. Garrison',
          'Chef', 'Randy', 'Ike', 'Mr. Mackey', 'Mr. Slave', 'Tweek', 'Craig']
@@ -23,6 +26,7 @@ class Base(object):
         self._kz = None
         self.api = None
         self.name = None
+        self.statsd = None
 
         self._init_logger()
 
@@ -55,6 +59,9 @@ class Base(object):
         parser.add_argument('--name', dest='name', metavar='NAME', default=None,
                             help='Base name for this process')
 
+        parser.add_argument('--statsd', dest='statsd', metavar='STATSD',
+                            default=None, help=f'StatsD server as host[:{STATSD_PORT}].')
+
         self._set_command_specific_options(parser)
 
         self.args = parser.parse_args()
@@ -73,6 +80,11 @@ class Base(object):
         logging.getLogger('elasticsearch').setLevel(logging.WARN)
         logging.getLogger('nuvla').setLevel(logging.INFO)
         logging.getLogger('urllib3').setLevel(logging.WARN)
+
+    def _publish_metric(self, name, value):
+        if self.statsd:
+            self.statsd.gauge(name, value)
+            logging.debug(f'published: {name} {value}')
 
     @staticmethod
     def on_exit(signum, frame):
@@ -104,6 +116,20 @@ class Base(object):
                                connection_retry=KazooRetry(max_tries=-1),
                                command_retry=KazooRetry(max_tries=-1), timeout=30.0)
         self._kz.start()
+
+        if self.args.statsd:
+            statsd_hp = self.args.statsd.split(':')
+            statsd_port = STATSD_PORT
+            statsd_host = statsd_hp[0]
+            if len(statsd_hp) > 1:
+                statsd_port = statsd_hp[1]
+            try:
+                self.statsd = StatsClient(host=statsd_host,
+                                          port=statsd_port,
+                                          prefix=None,
+                                          ipv6=False)
+            except Exception as ex:
+                logging.error(f'Failed to initialise StatsD client for {self.args.statsd}: {ex}')
 
         self.do_work()
 
