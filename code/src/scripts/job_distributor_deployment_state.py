@@ -47,13 +47,11 @@ class DeploymentStateJobsDistributor(Distributor):
 
     def active_deployments(self):
         # Collect old or new deployments.
-        past = (datetime.now() - timedelta(seconds=COLLECT_PAST_SEC))\
-                   .isoformat(timespec='seconds') + 'Z'
         if self._old_deployments():
-            filters = f"state='STARTED' and updated<'{past}'"
+            filters = f"state='STARTED' and updated<'now-{COLLECT_PAST_SEC}s'"
             select = 'id,parent'
         else:
-            filters = f"state='STARTED' and updated>='{past}'"
+            filters = f"state='STARTED' and updated>='now-{COLLECT_PAST_SEC}s'"
             select = 'id'
         logging.info(f'Filter: {filters}. Select: {select}')
         active = self.api.search('deployment', filter=filters, select=select)
