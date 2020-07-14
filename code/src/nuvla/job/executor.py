@@ -18,13 +18,6 @@ CONNECTION_POOL_SIZE = 4
 class Executor(Base):
     def __init__(self):
         super(Executor, self).__init__()
-        self.es = None
-
-    @override
-    def _set_command_specific_options(self, parser):
-        parser.add_argument(
-            '--es-hosts', dest='es_hosts', default=['localhost'], nargs='+', metavar='HOST',
-            help='Elasticsearch list of hosts [localhost:[port]] (default: [localhost])')
 
     def _get_action_instance(self, job):
         if 'action' not in job:
@@ -80,5 +73,4 @@ class Executor(Base):
     @override
     def do_work(self):
         logging.info('I am executor {}.'.format(self.name))
-        self.es = Elasticsearch(self.args.es_hosts)
         self._process_jobs()
