@@ -128,7 +128,8 @@ class DockerMachineConnector(Connector):
                    'params-map': {'cloud-vm-image': 'google-machine-image',
                                   'cloud-vm-size': 'google-machine-type',
                                   'cloud-vm-disk-size': 'google-disk',
-                                  'cloud-region': 'google-zone'}
+                                  'cloud-region': 'google-zone',
+                                  'cloud-project': 'google-project'}
                    }
     }
 
