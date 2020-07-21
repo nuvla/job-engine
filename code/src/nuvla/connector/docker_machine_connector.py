@@ -74,38 +74,62 @@ class DockerMachineConnector(Connector):
                               'exoscale-availability-zone',
                               'exoscale-image',
                               'exoscale-instance-profile',
+                              'exoscale-disk-size',
                               'exoscale-security-group'],
-                     'defaults': {'exoscale-image': 'Linux Ubuntu 18.04 LTS 64-bit'}
+                     'defaults': {'exoscale-image': 'Linux Ubuntu 18.04 LTS 64-bit'},
+                     'params-map': {'cloud-vm-image': 'exoscale-image',
+                                    'cloud-vm-size': 'exoscale-instance-profile',
+                                    'cloud-vm-disk-size': 'exoscale-disk-size',
+                                    'cloud-region': 'exoscale-availability-zone',
+                                    'cloud-security-group': 'exoscale-security-group'}
                      },
         "amazonec2": {'env': {'amazonec2-secret-key': 'AWS_SECRET_ACCESS_KEY'},
                       'args': ["amazonec2-access-key",
                                "amazonec2-secret-key",
                                'amazonec2-instance-type',
                                'amazonec2-region',
-                               'amazonec2-ami'],
+                               'amazonec2-root-size',
+                               'amazonec2-ami',
+                               'amazonec2-security-group'],
                       'defaults': {'amazonec2-open-port': '2377',
                                    # K8s starts only on 2 CPU nodes.
-                                   'amazonec2-instance-type': 't2.medium'}
+                                   'amazonec2-instance-type': 't2.medium'},
+                      'params-map': {'cloud-vm-image': 'amazonec2-ami',
+                                     'cloud-vm-size': 'amazonec2-instance-type',
+                                     'cloud-vm-disk-size': 'amazonec2-root-size',
+                                     'cloud-region': 'amazonec2-region',
+                                     'cloud-security-group': 'amazonec2-security-group'}
                       },
         "azure": {'env': {'azure-client-secret': 'AZURE_CLIENT_SECRET'},
                   'args': ["azure-client-id",
                            "azure-client-secret",
                            "azure-subscription-id",
                            'azure-size',
-                           'azure-location'],
+                           'azure-location',
+                           'azure-image'],
                   'defaults': {'azure-image': 'canonical:UbuntuServer:16.04.0-LTS:latest',
                                'azure-open-port': '2377',
                                'azure-ssh-user': 'ubuntu',
-                               'azure-location': 'francecentral'}
+                               'azure-location': 'francecentral'},
+                  'params-map': {'cloud-vm-image': 'azure-image',
+                                 'cloud-vm-size': 'azure-size',
+                                 'cloud-region': 'azure-location'}
                   },
         "google": {'args': ['google-project',
                             'google-username',
                             'google-zone',
-                            'google-machine-type'],
+                            'google-disk'
+                            'google-machine-type',
+                            'google-machine-image'],
                    'defaults': {'google-machine-image': 'ubuntu-os-cloud/global/images/ubuntu-1804-bionic-v20200610',
                                 'google-open-port': '2377',
                                 'google-machine-type': 'e2-medium',
-                                'google-zone': 'europe-west3-a'}
+                                'google-zone': 'europe-west3-a'},
+                   'params-map': {'cloud-vm-image': 'google-machine-image',
+                                  'cloud-vm-size': 'google-machine-type',
+                                  'cloud-vm-disk-size': 'google-disk',
+                                  'cloud-region': 'google-zone',
+                                  'cloud-project': 'google-project'}
                    }
     }
 
@@ -164,15 +188,23 @@ class DockerMachineConnector(Connector):
             fh.write(json.dumps(adc))
         return adc_file
 
-    def _docker_machine_args_and_env(self):
+    def _docker_machine_args_and_env(self, cluster_params: dict):
         # Get the xargs for this driver, from the credential, and make a
         # flat string to pass to Docker Machine
         xargs = {}
         env = {}
 
+        extra_params = {}
+        for pk, pv in cluster_params.items():
+            if pk in self.driver_xargs.get('params-map', {}):
+                key = self.driver_xargs.get('params-map')[pk]
+                extra_params[key] = pv
+
+        params = {**extra_params, **self.driver_credential}
+
         for arg in self.driver_xargs.get('args', []):
-            if arg in self.driver_credential:
-                value = self.driver_credential.get(arg)
+            if arg in params:
+                value = params.get(arg)
                 if arg in self.driver_xargs.get('env', {}):
                     env.update({self.driver_xargs['env'][arg]: value})
                 else:
@@ -562,7 +594,7 @@ class DockerMachineConnector(Connector):
 
         self.coe_manager_install = cluster_params.get('coe-manager-install', False)
         self.ssh_keys = cluster_params.get('ssh-keys', [])
-        self.cmd_xargs, self.cmd_env = self._docker_machine_args_and_env()
+        self.cmd_xargs, self.cmd_env = self._docker_machine_args_and_env(cluster_params)
 
         return inventory
 
