@@ -26,7 +26,7 @@ class UsageReportJobsDistributor(Distributor):
         try:
             return self.api.search('customer', select='id, parent, customer-id').resources
         except Exception as ex:
-            logging.error(f'Failed to search for customers with: {ex}')
+            logging.error(f'Failed to search for customers: {ex}')
 
     def job_exists(self, job):
         filters = "(state='QUEUED' or state='RUNNING')" \
