@@ -65,8 +65,6 @@ class COEProvisionJob(object):
         cluster_params = infra_service_coe.get('cluster-params', {})
         if 'coe-manager-endpoint' in result:
             cluster_params['coe-manager-endpoint'] = result['coe-manager-endpoint']
-        if 'join-tokens' in result:
-            cluster_params['join-tokens'] = result['join-tokens']
         self.api.edit(infra_service_coe_id,
                       {'endpoint': result['endpoint'],
                        'state': 'STARTED',
