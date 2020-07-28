@@ -26,7 +26,7 @@ class UsageReportJobsDistributor(Distributor):
         try:
             return self.api.search('customer', select='id, parent, customer-id').resources
         except Exception as ex:
-            logging.error(f'Failed to search for customers with: {ex}')
+            logging.error(f'Failed to search for customers: {ex}')
 
     def job_exists(self, job):
         filters = "(state='QUEUED' or state='RUNNING')" \
@@ -38,12 +38,14 @@ class UsageReportJobsDistributor(Distributor):
 
     @override
     def job_generator(self):
-        for customer in self.customers():
-            job = {'action': self._get_jobs_type(),
-                   'target-resource': {'href': customer.id}}
-            if self.job_exists(job):
-                continue
-            yield job
+        customers = self.customers()
+        if customers:
+            for customer in customers:
+                job = {'action': self._get_jobs_type(),
+                       'target-resource': {'href': customer.id}}
+                if self.job_exists(job):
+                    continue
+                yield job
 
     @override
     def _get_jobs_type(self):

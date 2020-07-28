@@ -8,6 +8,7 @@
 
 ### Changed
 
+  - Usage report distributor - Do not yield jobs if no customers
   - Docker machine connector - new script to install Rancher
   - Deployment state job was split into two for "new" and "old" deployments with
     configurable check intervals. This was done to reduce unnecessary load on
