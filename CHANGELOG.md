@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Added
+
+  - New action to restart NuvlaBox data gateway streaming
+
 ### Changed
 
   - Docker machine connector - new script to install Rancher
