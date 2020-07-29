@@ -29,6 +29,7 @@ RUN [ ! -e /etc/nsswitch.conf ] && echo 'hosts: files dns' > /etc/nsswitch.conf
 
 ENV DOCKER_CHANNEL stable
 ENV DOCKER_VERSION 19.03.5
+ENV PYTHONWARNINGS "ignore:Unverified HTTPS request"
 
 RUN set -eux; \
 	\
