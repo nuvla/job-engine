@@ -4,6 +4,7 @@
 
 ### Changed
 
+  - Copy docker-compose binary to avoid having building tools in the image
   - Usage report distributor - Do not yield jobs if no customers
   - Docker machine connector - new script to install Rancher
   - Deployment state job was split into two for "new" and "old" deployments with
