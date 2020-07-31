@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## [2.5.0] - 2020-07-31
+
 ### Added
 
   - New action to restart NuvlaBox data gateway streaming
