@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Added
+
+  - New action to restart NuvlaBox data gateway streaming
+
 ### Changed
 
   - Copy docker-compose binary to avoid having building tools in the image
