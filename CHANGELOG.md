@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## [2.5.2] - 2020-08-03
+
+### Changed
+
+ - Docker-compose --host format changed from v1.26.0
+
 ## [2.5.1] - 2020-08-03
 
 ### Changed

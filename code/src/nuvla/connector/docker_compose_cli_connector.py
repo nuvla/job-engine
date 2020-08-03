@@ -23,7 +23,7 @@ class DockerComposeCliConnector(Connector):
 
         self.cert = self.kwargs.get('cert')
         self.key = self.kwargs.get('key')
-        self.endpoint = self.kwargs.get('endpoint', '').replace('https://', '')
+        self.endpoint = self.kwargs.get('endpoint', '')
         self.cert_file = None
         self.key_file = None
 
