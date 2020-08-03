@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+## [2.5.1] - 2020-08-03
+
+### Changed
+
+  - Copy docker-compose binary from official repository
+  - Fix bug in docker-compose missing a module
+
 ## [2.5.0] - 2020-07-31
 
 ### Added
