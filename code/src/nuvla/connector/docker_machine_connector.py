@@ -584,7 +584,7 @@ class DockerMachineConnector(Connector):
         log.info(f'Installed COE manager {mgr_name}.')
         return endpoint
 
-    def _start_init(self, cluster_params):
+    def _provision_init(self, cluster_params):
         multiplicity = int(cluster_params.get('multiplicity'))
         if multiplicity < 1:
             raise Exception('Refusing to provision cluster of multiplicity less than 1.')
@@ -599,8 +599,8 @@ class DockerMachineConnector(Connector):
         return inventory
 
     @should_connect
-    def start(self, cluster_params: dict):
-        inventory = self._start_init(cluster_params)
+    def provision(self, cluster_params: dict):
+        inventory = self._provision_init(cluster_params)
 
         nodes = []
         try:
@@ -622,7 +622,7 @@ class DockerMachineConnector(Connector):
             return result
 
         except Exception as ex:
-            log.error(f'COE cluster failed to start: {ex}')
+            log.error(f'Failed to provision COE cluster: {ex}')
             self.clear_connection()
             if len(nodes) > 0:
                 self.stop(nodes=nodes)
@@ -640,6 +640,44 @@ class DockerMachineConnector(Connector):
         return join_tokens
 
     @staticmethod
+    def _delete_node(node, env):
+        node_name = node["node-name"]
+        log.info(f'Deleting node: {node_name}')
+        machine_folder = os.path.join(DOCKER_MACHINE_FOLDER, node_name)
+        os.makedirs(machine_folder, exist_ok=True)
+        with open(os.path.join(machine_folder, 'config.json'), 'w') as cfg:
+            cfg.write(base64.b64decode(
+                node["node-config-base64"].encode('ascii')).decode('ascii'))
+        res = machine.rm(machine=node_name, force=True, env=env)
+        log.info(f'Deleted node: {node_name}')
+        return res
+
+    @should_connect
+    def delete(self, **kwargs):
+        n = len(kwargs['nodes'])
+        if n < 1:
+            log.warning('No nodes provided to terminate.')
+            return
+        log.info(f'Deleting {n} nodes on {self.driver_name}.')
+
+        if self.driver_name == 'google':
+            self.cmd_env['GOOGLE_APPLICATION_CREDENTIALS'] = self._build_gce_adc()
+
+        pool = multiprocessing.Pool(min(DEFAULT_POOL_SIZE, n))
+        try:
+            deleted = pool.starmap(self._delete_node,
+                                   [(x, self.cmd_env) for x in kwargs['nodes']])
+            pool.close()
+            pool.join()
+        except Exception as ex:
+            log.error(f'Failed to run delete machines on {self.driver_name}: {ex}')
+            log.error(f'Delete the nodes manually from {self.driver_name}: {kwargs["nodes"]}')
+            pool.terminate()
+            raise ex
+        log.info(f'Deleted {sum(deleted)} out of {n} nodes on {self.driver_name}.')
+        return deleted
+
+    @staticmethod
     def _stop_node(node, env):
         node_name = node["node-name"]
         log.info(f'Stopping node: {node_name}')
@@ -648,7 +686,7 @@ class DockerMachineConnector(Connector):
         with open(os.path.join(machine_folder, 'config.json'), 'w') as cfg:
             cfg.write(base64.b64decode(
                 node["node-config-base64"].encode('ascii')).decode('ascii'))
-        res = machine.rm(machine=node_name, force=True, env=env)
+        res = machine.stop(machine=node_name, env=env)
         log.info(f'Stopped node: {node_name}')
         return res
 
@@ -656,7 +694,7 @@ class DockerMachineConnector(Connector):
     def stop(self, **kwargs):
         n = len(kwargs['nodes'])
         if n < 1:
-            log.warning('No nodes provided to stop.')
+            log.warning('No nodes provided to .')
             return
         log.info(f'Stopping {n} nodes on {self.driver_name}.')
 
@@ -671,10 +709,48 @@ class DockerMachineConnector(Connector):
             pool.join()
         except Exception as ex:
             log.error(f'Failed to run stop machines on {self.driver_name}: {ex}')
-            log.error(f'Delete the nodes manually from {self.driver_name}: {kwargs["nodes"]}')
+            log.error(f'Stop the nodes manually from {self.driver_name}: {kwargs["nodes"]}')
             pool.terminate()
             raise ex
         log.info(f'Stopped {sum(stopped)} out of {n} nodes on {self.driver_name}.')
+        return stopped
+
+    @staticmethod
+    def _start_node(node, env):
+        node_name = node["node-name"]
+        log.info(f'Starting node: {node_name}')
+        machine_folder = os.path.join(DOCKER_MACHINE_FOLDER, node_name)
+        os.makedirs(machine_folder, exist_ok=True)
+        with open(os.path.join(machine_folder, 'config.json'), 'w') as cfg:
+            cfg.write(base64.b64decode(
+                node["node-config-base64"].encode('ascii')).decode('ascii'))
+        res = machine.start(machine=node_name, env=env)
+        log.info(f'Started node: {node_name}')
+        return res
+
+    @should_connect
+    def start(self, **kwargs):
+        n = len(kwargs['nodes'])
+        if n < 1:
+            log.warning('No nodes provided to .')
+            return
+        log.info(f'Starting {n} nodes on {self.driver_name}.')
+
+        if self.driver_name == 'google':
+            self.cmd_env['GOOGLE_APPLICATION_CREDENTIALS'] = self._build_gce_adc()
+
+        pool = multiprocessing.Pool(min(DEFAULT_POOL_SIZE, n))
+        try:
+            stopped = pool.starmap(self._start_node,
+                                   [(x, self.cmd_env) for x in kwargs['nodes']])
+            pool.close()
+            pool.join()
+        except Exception as ex:
+            log.error(f'Failed to run start machines on {self.driver_name}: {ex}')
+            log.error(f'Start the nodes manually from {self.driver_name}: {kwargs["nodes"]}')
+            pool.terminate()
+            raise ex
+        log.info(f'Started {sum(stopped)} out of {n} nodes on {self.driver_name}.')
         return stopped
 
     def list(self):

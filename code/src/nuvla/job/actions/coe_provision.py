@@ -11,7 +11,7 @@ COE_TYPE_SWARM = docker_machine_connector.COE_TYPE_SWARM
 COE_TYPE_K8S = docker_machine_connector.COE_TYPE_K8S
 
 
-@action('start_infrastructure_service_coe')
+@action('provision_infrastructure_service_coe')
 class COEProvisionJob(object):
 
     def __init__(self, _, job):
@@ -38,15 +38,18 @@ class COEProvisionJob(object):
         coe = connector_factory(docker_machine_connector, self.api,
                                 cloud_creds_id, infra_service_coe)
 
-        result = coe.start(coe_custer_params)
+        infra_service_id = infra_service_coe['id']
+        self.api.edit(infra_service_id, {"state": "STARTING"})
+
+        result = coe.provision(coe_custer_params)
         try:
-            self.job.set_progress(50)
+            self.job.set_progress(90)
             self._register_coe(infra_service_coe, result)
-            self.job.set_progress(99)
+            self.job.set_progress(100)
         except Exception as ex:
             msg = f'Terminating deployed cluster. Failure in registration: {ex}'
             logging.warning(msg)
-            stopped = coe.stop(nodes=result['nodes'])
+            terminated = coe.terminate(nodes=result['nodes'])
             raise ex
 
         return 0
