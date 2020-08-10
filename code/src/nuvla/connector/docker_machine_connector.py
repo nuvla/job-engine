@@ -507,13 +507,19 @@ class DockerMachineConnector(Connector):
         return {'manager': join_token_manager,
                 'worker': join_token_worker}
 
+    def _set_on_nodes_manager(self, nodes: list, key, value):
+        for i, node in enumerate(nodes):
+            if node.get('manager', False):
+                nodes[i][key] = value
+                break
+
+    def _set_join_tokens_on_manager(self, nodes, join_tokens):
+        self._set_on_nodes_manager(nodes, 'join-tokens', join_tokens)
+
     def _set_kubeconfig_on_manager(self, inventory: Inventory, nodes: list):
         if self.is_k8s:
-            config = self._get_k8s_config(inventory)
-            for i, node in enumerate(nodes):
-                if node.get('manager', False):
-                    nodes[i]['kube-config'] = config
-                    break
+            self._set_on_nodes_manager(nodes, 'kube-config',
+                                       self._get_k8s_config(inventory))
 
     @staticmethod
     def _push_ssh_keys_to_machine(machine_name, keys_pub, env):
@@ -608,12 +614,11 @@ class DockerMachineConnector(Connector):
             log.info(f'Provisioning COE {msg}.')
             self._provision_cluster(nodes, inventory)
             self._push_ssh_keys(inventory, self.ssh_keys)
-            join_tokens = self._create_coe(inventory, nodes)
+            self._create_coe(inventory, nodes)
             log.info(f'Provisioned COE {msg}.')
 
             result = {'creds': self._coe_credentials(inventory),
                       'endpoint': self._coe_endpoint(inventory),
-                      'join-tokens': join_tokens,
                       'nodes': nodes}
 
             if self.coe_manager_install:
@@ -628,16 +633,15 @@ class DockerMachineConnector(Connector):
                 self.stop(nodes=nodes)
             raise ex
 
-    def _create_coe(self, inventory: Inventory, nodes: list) -> dict:
+    def _create_coe(self, inventory: Inventory, nodes: list):
         log.info('Creating COE.')
         if self.is_swarm:
             join_tokens = self._create_swarm(inventory)
         else:
             join_tokens = self._deploy_k8s(inventory)
             self._set_kubeconfig_on_manager(inventory, nodes)
+        self._set_join_tokens_on_manager(nodes, join_tokens)
         log.info('Created COE.')
-
-        return join_tokens
 
     @staticmethod
     def _delete_node(node, env):

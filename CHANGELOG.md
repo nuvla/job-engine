@@ -2,8 +2,34 @@
 
 ## Unreleased
 
+## [2.5.3] - 2020-08-03
+
 ### Changed
 
+ - Docker host format is now different from docker-compose
+
+## [2.5.2] - 2020-08-03
+
+### Changed
+
+ - Docker-compose --host format changed from v1.26.0
+
+## [2.5.1] - 2020-08-03
+
+### Changed
+
+  - Copy docker-compose binary from official repository
+  - Fix bug in docker-compose missing a module
+
+## [2.5.0] - 2020-07-31
+
+### Added
+
+  - New action to restart NuvlaBox data gateway streaming
+
+### Changed
+
+  - Copy docker-compose binary to avoid having building tools in the image
   - Usage report distributor - Do not yield jobs if no customers
   - Docker machine connector - new script to install Rancher
   - Deployment state job was split into two for "new" and "old" deployments with

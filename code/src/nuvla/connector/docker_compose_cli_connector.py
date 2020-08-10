@@ -23,7 +23,7 @@ class DockerComposeCliConnector(Connector):
 
         self.cert = self.kwargs.get('cert')
         self.key = self.kwargs.get('key')
-        self.endpoint = self.kwargs.get('endpoint', '').replace('https://', '')
+        self.endpoint = self.kwargs.get('endpoint', '')
         self.cert_file = None
         self.key_file = None
 
@@ -46,10 +46,11 @@ class DockerComposeCliConnector(Connector):
             self.key_file = None
 
     def build_cmd_line(self, list_cmd, local=False, binary='docker-compose'):
+        endpoint = self.endpoint.replace('https://', '') if binary == 'docker' else self.endpoint
         if local:
             remote_tls = []
         else:
-            remote_tls = ['-H', self.endpoint, '--tls', '--tlscert', self.cert_file.name,
+            remote_tls = ['-H', endpoint, '--tls', '--tlscert', self.cert_file.name,
                           '--tlskey', self.key_file.name, '--tlscacert', self.cert_file.name]
 
         return [binary] + remote_tls + list_cmd

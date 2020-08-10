@@ -1,4 +1,4 @@
-FROM nuvladev/job-docker-compose-client:master
+FROM python:3-alpine
 
 ARG GIT_BRANCH
 ARG GIT_COMMIT_ID
@@ -14,7 +14,7 @@ LABEL git.build.time=${GIT_BUILD_TIME}
 LABEL travis.build.number=${TRAVIS_BUILD_NUMBER}
 LABEL travis.build.web.url=${TRAVIS_BUILD_WEB_URL}
 
-#COPY --from=nuvladev/job-docker-compose-client:master /usr/local/bin/docker-compose /usr/local/bin/
+COPY --from=docker/compose:alpine-1.26.2 /usr/local/bin/docker-compose /usr/local/bin/
 
 ADD target/job /target/job
 
@@ -29,6 +29,7 @@ RUN [ ! -e /etc/nsswitch.conf ] && echo 'hosts: files dns' > /etc/nsswitch.conf
 
 ENV DOCKER_CHANNEL stable
 ENV DOCKER_VERSION 19.03.5
+ENV PYTHONWARNINGS "ignore:Unverified HTTPS request"
 
 RUN set -eux; \
 	\
