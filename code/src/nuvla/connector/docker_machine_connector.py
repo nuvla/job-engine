@@ -277,12 +277,16 @@ class DockerMachineConnector(Connector):
     def _get_node(self, machine_name):
         fn = os.path.join(DOCKER_MACHINE_FOLDER, machine_name, 'config.json')
         with open(fn) as fh:
-            b64_content = base64.b64encode(fh.read().encode('ascii'))
+            config_b64_content = base64.b64encode(fh.read().encode('ascii'))
+        fn = os.path.join(DOCKER_MACHINE_FOLDER, machine_name, 'id_rsa')
+        with open(fn) as fh:
+            ssh_b64_content = base64.b64encode(fh.read().encode('ascii'))
 
         node = {
             "node-name": machine_name,
             "manager": 'manager' in machine_name,
-            "node-config-base64": b64_content.decode("ascii")
+            "node-config-base64": config_b64_content.decode("ascii"),
+            "node-ssh-base64": ssh_b64_content.decode("ascii")
         }
 
         return node
@@ -644,37 +648,37 @@ class DockerMachineConnector(Connector):
         log.info('Created COE.')
 
     @staticmethod
-    def _delete_node(node, env):
+    def _terminate_node(node, env):
         node_name = node["node-name"]
-        log.info(f'Deleting node: {node_name}')
+        log.info(f'Terminating node: {node_name}')
         machine_folder = os.path.join(DOCKER_MACHINE_FOLDER, node_name)
         os.makedirs(machine_folder, exist_ok=True)
         with open(os.path.join(machine_folder, 'config.json'), 'w') as cfg:
             cfg.write(base64.b64decode(
                 node["node-config-base64"].encode('ascii')).decode('ascii'))
         res = machine.rm(machine=node_name, force=True, env=env)
-        log.info(f'Deleted node: {node_name}')
+        log.info(f'Terminated node: {node_name}')
         return res
 
     @should_connect
-    def delete(self, **kwargs):
+    def terminate(self, **kwargs):
         n = len(kwargs['nodes'])
         if n < 1:
             log.warning('No nodes provided to terminate.')
             return
-        log.info(f'Deleting {n} nodes on {self.driver_name}.')
+        log.info(f'Terminating {n} nodes on {self.driver_name}.')
 
         if self.driver_name == 'google':
             self.cmd_env['GOOGLE_APPLICATION_CREDENTIALS'] = self._build_gce_adc()
 
         pool = multiprocessing.Pool(min(DEFAULT_POOL_SIZE, n))
         try:
-            deleted = pool.starmap(self._delete_node,
+            deleted = pool.starmap(self._terminate_node,
                                    [(x, self.cmd_env) for x in kwargs['nodes']])
             pool.close()
             pool.join()
         except Exception as ex:
-            log.error(f'Failed to run delete machines on {self.driver_name}: {ex}')
+            log.error(f'Failed to terminate machines on {self.driver_name}: {ex}')
             log.error(f'Delete the nodes manually from {self.driver_name}: {kwargs["nodes"]}')
             pool.terminate()
             raise ex
@@ -728,6 +732,11 @@ class DockerMachineConnector(Connector):
         with open(os.path.join(machine_folder, 'config.json'), 'w') as cfg:
             cfg.write(base64.b64decode(
                 node["node-config-base64"].encode('ascii')).decode('ascii'))
+        ssh_key_fn = os.path.join(machine_folder, 'id_rsa')
+        with open(ssh_key_fn, 'w') as cfg:
+            cfg.write(base64.b64decode(
+                node["node-ssh-base64"].encode('ascii')).decode('ascii'))
+            os.chmod(ssh_key_fn, 0o400)
         res = machine.start(machine=node_name, env=env)
         log.info(f'Started node: {node_name}')
         return res
