@@ -25,11 +25,21 @@ class UsageReport(object):
 
     def usage_report(self, owner_id, subscription_item_id, nickname):
         query_result = None
+        quantity = None
+
         if nickname == 'nuvlabox':
-            query_result = self.api.search('nuvlabox',
-                                           filter="state='COMMISSIONED' and "
-                                                  "owner='{}'".format(owner_id),
-                                           aggregation="value_count:id")
+            nb_ids_filter = ["parent='{}'".format(nb.id) for nb in
+                             self.api.search('nuvlabox',
+                                             filter="state='COMMISSIONED' and "
+                                                    "owner='{}'".format(owner_id),
+                                             select='id, nuvlabox-status '
+                                             ).resources]
+            if nb_ids_filter:
+                query_result = self.api.search('nuvlabox-status',
+                                               filter="updated > 'now-1h' and "
+                                                      "({})".format(' or '.join(nb_ids_filter)),
+                                               aggregation="value_count:id")
+
         elif nickname == 'deployment':
             dep_filter = "state='STARTED' and owner='{}'".format(owner_id)
             nb_ids_filter = ["parent='{}'".format(nb.id) for nb in
@@ -52,7 +62,8 @@ class UsageReport(object):
                                                   "vpn-certificate-owner='{}'".format(owner_id),
                                            aggregation="value_count:id")
 
-        quantity = query_result.data.get('aggregations', {}).get('value_count:id').get('value')
+        if query_result is not None:
+            quantity = query_result.data.get('aggregations', {}).get('value_count:id', {}).get('value')
 
         if quantity is not None:
             job_updated_date = parse_cimi_date(self.job.updated)
