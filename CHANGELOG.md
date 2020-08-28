@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## [2.5.4] - 2020-08-03
+
+### Changed
+
+ - Action usage_report: count only online NuvlaBoxes
+
 ## [2.5.3] - 2020-08-03
 
 ### Changed
