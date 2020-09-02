@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Changed
+
+ - Action usage_report: bugfix on exclusion of deployments running on NuvlaBoxes
+
 ## [2.5.4] - 2020-08-28
 
 ### Changed

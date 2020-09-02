@@ -38,29 +38,29 @@ class UsageReport(object):
                 query_result = self.api.search('nuvlabox-status',
                                                filter="updated > 'now-1h' and "
                                                       "({})".format(' or '.join(nb_ids_filter)),
-                                               aggregation="value_count:id")
+                                               aggregation="value_count:id", last=0)
 
         elif nickname == 'deployment':
-            dep_filter = "state='STARTED' and owner='{}'".format(owner_id)
-            nb_ids_filter = ["parent='{}'".format(nb.id) for nb in
+            dep_filter = "state='STARTED' and owner='{}' and infrastructure-service!=null".format(owner_id)
+            nb_ids_filter = ["parent='{}'".format(nb.data.get('infrastructure-service-group')) for nb in
                              self.api.search('nuvlabox', filter="owner='{}'".format(owner_id),
                                              select='id, infrastructure-service-group'
                                              ).resources]
             if nb_ids_filter:
-                infra_nb_ids_filter = ["parent!='{}'".format(infra.id) for infra in
+                infra_nb_ids_filter = ["infrastructure-service !='{}'".format(infra.id) for infra in
                                        self.api.search('infrastructure-service',
                                                        filter="subtype='swarm' and ({})".format(
                                                            ' or '.join(nb_ids_filter)),
                                                        select='id').resources]
                 if infra_nb_ids_filter:
-                    dep_filter += " and ({})".join(' or '.join(infra_nb_ids_filter))
+                    dep_filter += " and {}".format(' and '.join(infra_nb_ids_filter))
             query_result = self.api.search('deployment', filter=dep_filter,
-                                           aggregation="value_count:id")
+                                           aggregation="value_count:id", last=0)
         elif nickname == 'vpn':
             query_result = self.api.search('credential',
                                            filter="subtype='infrastructure-service-vpn' and "
                                                   "vpn-certificate-owner='{}'".format(owner_id),
-                                           aggregation="value_count:id")
+                                           aggregation="value_count:id", last=0)
 
         if query_result is not None:
             quantity = query_result.data.get('aggregations', {}).get('value_count:id', {}).get('value')
