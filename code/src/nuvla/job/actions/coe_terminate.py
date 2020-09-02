@@ -13,7 +13,7 @@ COE_TYPE_SWARM = docker_machine_connector.COE_TYPE_SWARM
 COE_TYPE_K8S = docker_machine_connector.COE_TYPE_K8S
 
 
-@action('stop_infrastructure_service_coe')
+@action('terminate_infrastructure_service_coe')
 class COETerminateJob(object):
 
     def __init__(self, _, job):
@@ -30,13 +30,13 @@ class COETerminateJob(object):
         coe = connector_factory(docker_machine_connector, self.api,
                                 cloud_creds_id, infra_service_coe)
 
-        coe.stop(nodes=infra_service_coe.get("nodes", []))
-
-        self.job.set_progress(50)
-
         infra_service_id = infra_service_coe['id']
 
-        self.api.edit(infra_service_id, {"state": "STOPPED"})
+        self.api.edit(infra_service_id, {"state": "TERMINATING"})
+
+        coe.terminate(nodes=infra_service_coe.get("nodes", []))
+
+        self.api.edit(infra_service_id, {"state": "TERMINATED"})
 
         self.job.set_progress(90)
 
@@ -78,7 +78,7 @@ class COETerminateJob(object):
             self.api.edit(infra_service_id, {'state': 'ERROR'})
             raise
 
-        logging.info(f'Terminated COE {infra_service_id}')
+        logging.info(f'Deleted COE {infra_service_id}')
         return 0
 
     def do_work(self):

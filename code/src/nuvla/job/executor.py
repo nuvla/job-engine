@@ -4,7 +4,6 @@ import sys
 import logging
 import traceback
 
-from elasticsearch import Elasticsearch
 from requests.adapters import HTTPAdapter
 
 from .actions import get_action, ActionNotImplemented

@@ -191,7 +191,7 @@ class Machine:
         stdout, _, _ = self._run(cmd, env_extra=env)
         return stdout.strip() == "Running"
 
-    def stop(self, machine="default"):
+    def stop(self, machine="default", env=None):
         """
         Stop the specified machine.
 
@@ -199,10 +199,10 @@ class Machine:
             machine (str): the name of the machine
         """
         cmd = ["stop", machine]
-        self._run(cmd)
+        self._run(cmd, env_extra=env)
         return True
 
-    def start(self, machine="default"):
+    def start(self, machine="default", env=None):
         """
         Start the specified machine.
 
@@ -212,7 +212,7 @@ class Machine:
             bool: True if successful
         """
         cmd = ["start", machine]
-        self._run(cmd)
+        self._run(cmd, env_extra=env)
         return True
 
     def provision(self, machine="default"):
