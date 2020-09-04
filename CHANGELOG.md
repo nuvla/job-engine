@@ -2,9 +2,13 @@
 
 ## Unreleased
 
+## [2.6.0] - 2020-09-04
+
 ### Changed
 
- - Action usage_report: bugfix on exclusion of deployments running on NuvlaBoxes
+ - Action usage_report: bugfix on exclusion of deployments
+   running on NuvlaBoxes
+ - COE - add stop and start actions
 
 ## [2.5.4] - 2020-08-28
 
