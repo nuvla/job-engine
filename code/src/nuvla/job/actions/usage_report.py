@@ -103,7 +103,7 @@ class UsageReport(object):
             try:
                 subscription_items = stripe.SubscriptionItem.list(subscription=subscription_id)
                 job_updated_date = parse_cimi_date(self.job.updated)\
-                    .replace(minute=0, second=0, microsecond=0)
+                    .replace(hour=0, minute=0, second=0, microsecond=0)
                 for item in subscription_items.data:
                     stripe.SubscriptionItem.create_usage_record(
                         item.id,
