@@ -98,20 +98,21 @@ class UsageReport(object):
 
     def usage_report_deployment(self, resource_target):
         deployment = self.api.get(resource_target)
-        subscription_id = deployment.data['subscription-id']
-        try:
-            subscription_items = stripe.SubscriptionItem.list(subscription=subscription_id)
-            job_updated_date = parse_cimi_date(self.job.updated)\
-                .replace(minute=0, second=0, microsecond=0)
-            for item in subscription_items.data:
-                stripe.SubscriptionItem.create_usage_record(
-                    item.id,
-                    quantity=1,
-                    action='set',
-                    timestamp=int(job_updated_date.timestamp()))
-        except Exception as ex:
-            log.error('Failed to {0} {1}: {2}'.format(self.job['action'], resource_target, ex))
-            raise ex
+        if deployment.data['state'] == 'STARTED':
+            subscription_id = deployment.data['subscription-id']
+            try:
+                subscription_items = stripe.SubscriptionItem.list(subscription=subscription_id)
+                job_updated_date = parse_cimi_date(self.job.updated)\
+                    .replace(minute=0, second=0, microsecond=0)
+                for item in subscription_items.data:
+                    stripe.SubscriptionItem.create_usage_record(
+                        item.id,
+                        quantity=1,
+                        action='set',
+                        timestamp=int(job_updated_date.timestamp()))
+            except Exception as ex:
+                log.error('Failed to {0} {1}: {2}'.format(self.job['action'], resource_target, ex))
+                raise ex
 
     def do_work(self):
         resource_target = self.job['target-resource']['href']
