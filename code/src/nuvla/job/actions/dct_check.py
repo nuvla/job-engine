@@ -71,6 +71,8 @@ class DockerContentTrustCheck(object):
         return {i: self.docker_trust_inspect(i) for i in images}
 
     def docker_trust_inspect(self, image):
+        if ':' not in image:
+            image += ':latest'
         result = run(['docker', 'trust', 'inspect', image])
         return result.returncode == 0
 

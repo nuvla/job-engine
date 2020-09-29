@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## Added
+
+ - Action dct_check: check if docker images are trusted
+
 ## [2.6.0] - 2020-09-04
 
 ### Changed
