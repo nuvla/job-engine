@@ -2,9 +2,14 @@
 
 ## Unreleased
 
-## Added
+### Added
 
- - Action dct_check: check if docker images are trusted
+ - Action dct_check - Check if docker images are trusted
+
+### Changed
+
+  - Action usage report - Report usage of nonfree deployments
+  - Distributor usage report - Create jobs for nonfree deployments
 
 ## [2.6.0] - 2020-09-04
 

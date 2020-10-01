@@ -41,8 +41,10 @@ class UsageReport(object):
                                                aggregation="value_count:id", last=0)
 
         elif nickname == 'deployment':
-            dep_filter = "state='STARTED' and owner='{}' and infrastructure-service!=null".format(owner_id)
-            nb_ids_filter = ["parent='{}'".format(nb.data.get('infrastructure-service-group')) for nb in
+            dep_filter = "state='STARTED' and owner='{}' and infrastructure-service!=null".format(
+                owner_id)
+            nb_ids_filter = ["parent='{}'".format(nb.data.get('infrastructure-service-group')) for
+                             nb in
                              self.api.search('nuvlabox', filter="owner='{}'".format(owner_id),
                                              select='id, infrastructure-service-group'
                                              ).resources]
@@ -63,22 +65,19 @@ class UsageReport(object):
                                            aggregation="value_count:id", last=0)
 
         if query_result is not None:
-            quantity = query_result.data.get('aggregations', {}).get('value_count:id', {}).get('value')
+            quantity = query_result.data.get('aggregations', {}).get('value_count:id', {}).get(
+                'value')
 
         if quantity is not None:
             job_updated_date = parse_cimi_date(self.job.updated)
             stripe.SubscriptionItem.create_usage_record(
                 subscription_item_id,
                 quantity=quantity,
+                action='set',
                 timestamp=int(job_updated_date.timestamp()))
 
-    def do_work(self):
-        customer_id = self.job['target-resource']['href']
-
-        log.info('Job started for {}.'.format(customer_id))
-        customer = self.api.get(customer_id)
-
-        self.job.set_progress(10)
+    def usage_report_customer(self, resource_target):
+        customer = self.api.get(resource_target)
 
         owner_id = customer.data['parent']
 
@@ -94,7 +93,37 @@ class UsageReport(object):
                     if usage_type == 'metered' and nickname in ['nuvlabox', 'vpn', 'deployment']:
                         self.usage_report(owner_id, item.id, nickname)
             except Exception as ex:
-                log.error('Failed to {0} {1}: {2}'.format(self.job['action'], customer_id, ex))
+                log.error('Failed to {0} {1}: {2}'.format(self.job['action'], resource_target, ex))
                 raise ex
+
+    def usage_report_deployment(self, resource_target):
+        deployment = self.api.get(resource_target)
+        if deployment.data['state'] == 'STARTED':
+            subscription_id = deployment.data['subscription-id']
+            try:
+                subscription_items = stripe.SubscriptionItem.list(subscription=subscription_id)
+                job_updated_date = parse_cimi_date(self.job.updated)\
+                    .replace(hour=0, minute=0, second=0, microsecond=0)
+                for item in subscription_items.data:
+                    stripe.SubscriptionItem.create_usage_record(
+                        item.id,
+                        quantity=1,
+                        action='set',
+                        timestamp=int(job_updated_date.timestamp()))
+            except Exception as ex:
+                log.error('Failed to {0} {1}: {2}'.format(self.job['action'], resource_target, ex))
+                raise ex
+
+    def do_work(self):
+        resource_target = self.job['target-resource']['href']
+
+        log.info('Job started for {}.'.format(resource_target))
+
+        self.job.set_progress(10)
+
+        if resource_target.startswith('customer/'):
+            self.usage_report_customer(resource_target)
+        elif resource_target.startswith('deployment/'):
+            self.usage_report_deployment(resource_target)
 
         return 0

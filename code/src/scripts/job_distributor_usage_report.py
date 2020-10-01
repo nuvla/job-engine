@@ -17,35 +17,45 @@ class UsageReportJobsDistributor(Distributor):
         self.collect_interval = self.args.interval
 
     def _set_command_specific_options(self, parser):
-        hmsg = 'Jobs distribution interval in seconds (default: {})'\
+        hmsg = 'Jobs distribution interval in seconds (default: {})' \
             .format(self.collect_interval)
         parser.add_argument('--interval', dest='interval', metavar='INTERVAL',
                             default=self.collect_interval, type=int, help=hmsg)
 
     def customers(self):
         try:
-            return self.api.search('customer', select='id, parent, customer-id').resources
+            return self.api.search('customer', select='id').resources
         except Exception as ex:
             logging.error(f'Failed to search for customers: {ex}')
 
+    def deployments(self):
+        try:
+            return self.api.search('deployment', filter="module/price != null"
+                                                        " and state = 'STARTED'"
+                                                        " and subscription-id != null",
+                                   select='id,module').resources
+        except Exception as ex:
+            logging.error(f'Failed to search for deployments: {ex}')
+
     def job_exists(self, job):
-        filters = "(state='QUEUED' or state='RUNNING')" \
-                  " and action='{0}'" \
-                  " and target-resource/href='{1}'"\
-            .format(job['action'], job['target-resource']['href'])
+        filters = f"(state='QUEUED' or state='RUNNING')" \
+                  f" and action='{job['action']}'" \
+                  f" and target-resource/href='{job['target-resource']['href']}'"
         jobs = self.api.search('job', filter=filters, select='', last=0)
         return jobs.count > 0
 
+    def yield_jobs(self, resources):
+        for resource in resources:
+            job = {'action': self._get_jobs_type(),
+                   'target-resource': {'href': resource.id}}
+            if self.job_exists(job):
+                continue
+            yield job
+
     @override
     def job_generator(self):
-        customers = self.customers()
-        if customers:
-            for customer in customers:
-                job = {'action': self._get_jobs_type(),
-                       'target-resource': {'href': customer.id}}
-                if self.job_exists(job):
-                    continue
-                yield job
+        self.yield_jobs(self.customers())
+        self.yield_jobs(self.deployments())
 
     @override
     def _get_jobs_type(self):
