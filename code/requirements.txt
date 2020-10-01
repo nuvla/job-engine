@@ -6,4 +6,4 @@ requests
 docker
 pyyaml
 statsd
-stripe==2.48.0
+stripe==2.54.0

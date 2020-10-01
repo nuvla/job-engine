@@ -7,7 +7,8 @@
  - Action dct_check - Check if docker images are trusted
 
 ### Changed
-
+  - Dependencies - Bump stripe to v2.54.0
+  - Action usage report - Remove VPN from usage reporting
   - Action usage report - Report usage of nonfree deployments
   - Distributor usage report - Create jobs for nonfree deployments
 
