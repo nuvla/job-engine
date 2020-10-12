@@ -44,18 +44,14 @@ class UsageReportJobsDistributor(Distributor):
         jobs = self.api.search('job', filter=filters, select='', last=0)
         return jobs.count > 0
 
-    def yield_jobs(self, resources):
-        for resource in resources:
+    @override
+    def job_generator(self):
+        for resource in self.customers() + self.deployments():
             job = {'action': self._get_jobs_type(),
                    'target-resource': {'href': resource.id}}
             if self.job_exists(job):
                 continue
             yield job
-
-    @override
-    def job_generator(self):
-        self.yield_jobs(self.customers())
-        self.yield_jobs(self.deployments())
 
     @override
     def _get_jobs_type(self):

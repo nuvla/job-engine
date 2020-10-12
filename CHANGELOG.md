@@ -4,6 +4,12 @@
 
 ### Changed
 
+## [2.7.1] - 2020-10-12
+
+### Changed
+
+ - Distributor usage report - Fix bug in jobs generation
+
 ## [2.7.0] - 2020-10-09
 
 ### Added
