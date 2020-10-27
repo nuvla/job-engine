@@ -157,8 +157,8 @@ class VulnerabilitiesDatabaseJob(object):
                             cve_id = cve['CVE_data_meta']['ID']
                             cve_description = cve['description']['description_data'][0]['value']
                             cve_ref = cve['references']['reference_data'][0]['url']
-                            cve_score = cve_item['impact']['baseMetricV3']['cvssV3']['baseScore']
-                            cve_severity = cve_item['impact']['baseMetricV3']['cvssV3']['baseSeverity']
+                            cve_score = cve_item['impact']['baseMetricV3']['cvssV3'].get('baseScore')
+                            cve_severity = cve_item['impact']['baseMetricV3']['cvssV3'].get('baseSeverity', 'NONE')
                             cve_published = cve_item['publishedDate']
 
                             payload = {
@@ -166,10 +166,12 @@ class VulnerabilitiesDatabaseJob(object):
                                 'description': cve_description,
                                 'reference': cve_ref,
                                 'published': cve_published,
-                                'modified': cve_modified,
-                                'score': cve_score,
-                                'severity': cve_severity
+                                'modified': cve_modified
                             }
+
+                            if cve_score:
+                                payload['score'] = cve_score
+                                payload['severity'] = cve_severity
 
                             if cve_id in nuvla_vuln_ids:
                                 # PUT
