@@ -84,7 +84,7 @@ class VulnerabilitiesDatabaseJob(object):
 
         vulns.append(aux)
 
-        print("aux %s" % len(aux))
+        logging.info("aux %s" % len(aux))
 
         while len(aux) == 10000:
             page_filter = aux[-1].data.get('modified')
@@ -131,9 +131,9 @@ class VulnerabilitiesDatabaseJob(object):
 
             nuvla_vuln_ids = []
             nuvla_vuln_res_id_map = {}
-            print(len(nuvla_vulnerabilities), nuvla_vulnerabilities)
+            logging.info(len(nuvla_vulnerabilities), nuvla_vulnerabilities)
             for res in nuvla_vulnerabilities:
-                print(res)
+                logging.info(res)
                 nuvla_vuln_ids.append(res.data.get('name', ''))
                 nuvla_vuln_res_id_map[res.data.get('name', '')] = res.id
 
