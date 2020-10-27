@@ -145,7 +145,7 @@ class VulnerabilitiesDatabaseJob(object):
                 for cve_item in cve_items:
                     try:
                         cve = cve_item['cve']
-                        cve_modified = cve.get('lastModifiedDate')
+                        cve_modified = cve_item.get('lastModifiedDate')
                         if not cve_modified:
                             # if we can't know when was the vulnerability updated, then better not to update anything
                             continue
@@ -157,9 +157,9 @@ class VulnerabilitiesDatabaseJob(object):
                             cve_id = cve['CVE_data_meta']['ID']
                             cve_description = cve['description']['description_data'][0]['value']
                             cve_ref = cve['references']['reference_data'][0]['url']
-                            cve_score = cve['impact']['baseMetricV3']['cvssV3']['baseScore']
-                            cve_severity = cve['impact']['baseMetricV3']['cvssV3']['baseSeverity']
-                            cve_published = cve['publishedDate']
+                            cve_score = cve_item['impact']['baseMetricV3']['cvssV3']['baseScore']
+                            cve_severity = cve_item['impact']['baseMetricV3']['cvssV3']['baseSeverity']
+                            cve_published = cve_item['publishedDate']
 
                             payload = {
                                 'name': cve_id,
