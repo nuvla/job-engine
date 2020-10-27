@@ -84,7 +84,9 @@ class VulnerabilitiesDatabaseJob(object):
 
         vulns.append(aux)
 
-        while len(aux) >= 10000:
+        print("aux %s" % len(aux))
+
+        while len(aux) == 10000:
             page_filter = aux[-1].data.get('modified')
             # when we get a page with less than 10k resources, then it's the last one
             aux = self.api.search('vulnerability',
@@ -129,6 +131,7 @@ class VulnerabilitiesDatabaseJob(object):
 
             nuvla_vuln_ids = []
             nuvla_vuln_res_id_map = {}
+            print(len(nuvla_vulnerabilities), nuvla_vulnerabilities)
             for res in nuvla_vulnerabilities:
                 print(res)
                 nuvla_vuln_ids.append(res.data.get('name', ''))
