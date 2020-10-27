@@ -84,8 +84,6 @@ class VulnerabilitiesDatabaseJob(object):
 
         vulns += aux
 
-        logging.info("aux %s" % len(aux))
-
         while len(aux) == 10000:
             page_filter = aux[-1].data.get('modified')
             # when we get a page with less than 10k resources, then it's the last one
@@ -131,7 +129,6 @@ class VulnerabilitiesDatabaseJob(object):
 
             nuvla_vuln_ids = []
             nuvla_vuln_res_id_map = {}
-            logging.info(len(nuvla_vulnerabilities), nuvla_vulnerabilities)
             for res in nuvla_vulnerabilities:
                 logging.info(res)
                 nuvla_vuln_ids.append(res.data.get('name', ''))
@@ -141,6 +138,10 @@ class VulnerabilitiesDatabaseJob(object):
 
             try:
                 cve_items = db_content['CVE_Items']
+                logging.info("Vulnerabilities in the Nuvla DB: %s" % len(nuvla_vuln_ids))
+                logging.info("Last Nuvla DB update: %s" % nuvla_db_last_update)
+                logging.info("Vulnerabilities in external DB: %s" % len(cve_items))
+                logging.info("Last external DB update: %s" % external_db_last_update)
                 for cve_item in cve_items:
                     try:
                         cve = cve_item['cve']
