@@ -24,7 +24,7 @@ class VulnerabilitiesDatabaseJob(object):
         external_db = requests.get(url)
 
         trimmed_url = url.split('?')[0]    # get rid of any url parameters
-        if trimmed_url('.gz'):
+        if trimmed_url.endswith('.gz'):
             # gzip file
             db_content = io.BytesIO(external_db.content)
 
