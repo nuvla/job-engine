@@ -97,7 +97,7 @@ class VulnerabilitiesDatabaseJob(object):
         return vulns
 
     def update_vulnerabilities_database(self):
-        logging.info(f'Updating DB of vulnerabilities in Nuvla, from {self.external_vulnerabilities_db_repository}')
+        logging.info(f'Updating DB of vulnerabilities in Nuvla, from {self.external_vulnerabilities_db}')
 
         self.job.set_progress(10)
 
