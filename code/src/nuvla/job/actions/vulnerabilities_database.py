@@ -130,6 +130,7 @@ class VulnerabilitiesDatabaseJob(object):
             nuvla_vuln_ids = []
             nuvla_vuln_res_id_map = {}
             for res in nuvla_vulnerabilities:
+                print(res)
                 nuvla_vuln_ids.append(res.data.get('name', ''))
                 nuvla_vuln_res_id_map[res.data.get('name', '')] = res.id
 
