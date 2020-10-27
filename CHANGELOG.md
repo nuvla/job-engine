@@ -2,7 +2,12 @@
 
 ## Unreleased
 
+### Added
+
+ - Action and distributor for updating vulnerabilities database
+
 ### Changed
+
 
 ## [2.7.1] - 2020-10-12
 
