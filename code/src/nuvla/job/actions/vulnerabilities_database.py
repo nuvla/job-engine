@@ -82,7 +82,7 @@ class VulnerabilitiesDatabaseJob(object):
         vulns = []
         aux = self.api.search('vulnerability', orderby='modified:desc', select="id,name,modified").resources
 
-        vulns.append(aux)
+        vulns += aux
 
         logging.info("aux %s" % len(aux))
 
@@ -94,7 +94,7 @@ class VulnerabilitiesDatabaseJob(object):
                                   select="id,modified",
                                   filter=f'modified<"{page_filter}"').resources
 
-            vulns.append(aux)
+            vulns += aux
 
         return vulns
 
