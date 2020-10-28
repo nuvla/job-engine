@@ -81,17 +81,17 @@ class VulnerabilitiesDatabaseJob(object):
         # we need to paginate, so let's initialize the list
         # 10k records at the time
         vulns = []
-        aux = self.api.search('vulnerability', orderby='modified:desc', select="id,name,modified").resources
+        aux = self.api.search('vulnerability', orderby='updated:desc', select="id,name,modified,updated").resources
 
         vulns += aux
 
         while len(aux) == 10000:
-            page_filter = aux[-1].data.get('modified')
+            page_filter = aux[-1].data.get('updated')
             # when we get a page with less than 10k resources, then it's the last one
             aux = self.api.search('vulnerability',
-                                  orderby='modified:desc',
-                                  select="id,name,modified",
-                                  filter=f'modified<"{page_filter}"').resources
+                                  orderby='updated:desc',
+                                  select="id,name,modified,updated",
+                                  filter=f'updated<"{page_filter}"').resources
 
             vulns += aux
 
@@ -135,7 +135,6 @@ class VulnerabilitiesDatabaseJob(object):
                 nuvla_vuln_res_id_map[res.data.get('name', '')] = res.id
 
             self.job.set_progress(60)
-            logging.info(nuvla_vuln_res_id_map.keys())
             try:
                 cve_items = db_content['CVE_Items']
                 logging.info("Vulnerabilities in the Nuvla DB: %s" % len(nuvla_vuln_res_id_map))
