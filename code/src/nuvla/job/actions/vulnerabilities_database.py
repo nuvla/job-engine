@@ -130,17 +130,15 @@ class VulnerabilitiesDatabaseJob(object):
             # get all vulnerability IDs from Nuvla
             nuvla_vulnerabilities = self.get_nuvla_vulnerabilities_list()
 
-            nuvla_vuln_ids = []
             nuvla_vuln_res_id_map = {}
             for res in nuvla_vulnerabilities:
-                nuvla_vuln_ids.append(res.data.get('name', ''))
                 nuvla_vuln_res_id_map[res.data.get('name', '')] = res.id
 
             self.job.set_progress(60)
-
+            logging.info(nuvla_vuln_res_id_map.keys())
             try:
                 cve_items = db_content['CVE_Items']
-                logging.info("Vulnerabilities in the Nuvla DB: %s" % len(nuvla_vuln_ids))
+                logging.info("Vulnerabilities in the Nuvla DB: %s" % len(nuvla_vuln_res_id_map))
                 logging.info("Last Nuvla DB update: %s" % nuvla_db_last_update)
                 logging.info("Vulnerabilities in external DB: %s" % len(cve_items))
                 logging.info("Last external DB update: %s" % external_db_last_update)
@@ -176,7 +174,7 @@ class VulnerabilitiesDatabaseJob(object):
                                 payload['score'] = cve_score
                                 payload['severity'] = cve_severity if cve_severity else "NONE"
 
-                            if cve_id in nuvla_vuln_ids:
+                            if cve_id in nuvla_vuln_res_id_map:
                                 # PUT
                                 try:
                                     self.api.edit(nuvla_vuln_res_id_map[cve_id], payload)
