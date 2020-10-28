@@ -41,7 +41,7 @@ class VulnerabilitiesDatabaseJob(object):
 
         nuvla_vulns = self.api.search('vulnerability', orderby='modified:desc', last=1).resources
         if len(nuvla_vulns) > 0:
-            nuvla_db_last_update = nuvla_vulns[0].data.get('update')
+            nuvla_db_last_update = nuvla_vulns[0].data.get('updated')
 
         # instead of naively always downloading to DB to check the last timestamp, we can try to infer whether the DB
         # is in GitHub, and find the timestamp of the last commit and a pre-condition
