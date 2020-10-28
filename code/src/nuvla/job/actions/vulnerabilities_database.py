@@ -114,6 +114,8 @@ class VulnerabilitiesDatabaseJob(object):
             return 0
 
         update_db = False
+        logging.info("Last Nuvla DB update: %s" % nuvla_db_last_update)
+        logging.info("Last external DB update: %s" % external_db_last_update)
         if not nuvla_db_last_update or external_db_last_update > nuvla_db_last_update:
             # first time populating the Nuvla Vulnerability DB
             # or
@@ -138,9 +140,7 @@ class VulnerabilitiesDatabaseJob(object):
             try:
                 cve_items = db_content['CVE_Items']
                 logging.info("Vulnerabilities in the Nuvla DB: %s" % len(nuvla_vuln_res_id_map))
-                logging.info("Last Nuvla DB update: %s" % nuvla_db_last_update)
                 logging.info("Vulnerabilities in external DB: %s" % len(cve_items))
-                logging.info("Last external DB update: %s" % external_db_last_update)
 
                 for cve_item in cve_items:
                     try:
