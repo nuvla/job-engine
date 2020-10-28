@@ -180,14 +180,16 @@ class VulnerabilitiesDatabaseJob(object):
                                     self.api.edit(nuvla_vuln_res_id_map[cve_id], payload)
                                     updated_vuln += 1
                                 except NuvlaError:
-                                    logging.exception(f"Couldn't PUT existing vulnerability {payload['name']}")
+                                    # logging.exception(f"Couldn't PUT existing vulnerability {payload['name']}")
+                                    pass
                             else:
                                 # POST
                                 try:
                                     self.api.add('vulnerability', payload)
                                     new_vuln += 1
                                 except NuvlaError:
-                                    logging.exception(f"Couldn't POST new vulnerability {payload['name']}")
+                                    # logging.exception(f"Couldn't POST new vulnerability {payload['name']}")
+                                    pass
                     except KeyError:
                         continue
             except KeyError:
