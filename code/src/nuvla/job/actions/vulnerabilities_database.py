@@ -7,6 +7,7 @@ import requests
 import gzip
 import json
 import io
+from nuvla.api import NuvlaError
 
 
 @action('update_vulnerabilities_database')
@@ -177,14 +178,17 @@ class VulnerabilitiesDatabaseJob(object):
 
                             if cve_id in nuvla_vuln_ids:
                                 # PUT
-                                self.api.edit(nuvla_vuln_res_id_map[cve_id], payload)
-                                updated_vuln += 1
+                                try:
+                                    self.api.edit(nuvla_vuln_res_id_map[cve_id], payload)
+                                    updated_vuln += 1
+                                except NuvlaError:
+                                    logging.exception(f"Couldn't PUT existing vulnerability {payload['name']}")
                             else:
                                 # POST
                                 try:
                                     self.api.add('vulnerability', payload)
                                     new_vuln += 1
-                                except self.api.NuvlaError:
+                                except NuvlaError:
                                     logging.exception(f"Couldn't POST new vulnerability {payload['name']}")
                     except KeyError:
                         continue
