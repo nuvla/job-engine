@@ -195,6 +195,8 @@ class VulnerabilitiesDatabaseJob(object):
             except KeyError:
                 logging.exception("External DB is missing expected fields")
                 raise
+        else:
+            logging.info("No updates found. Nothing to do.")
 
         msg = f"Summary: modified={updated_vuln} / new={new_vuln}"
 
