@@ -198,8 +198,10 @@ class VulnerabilitiesDatabaseJob(object):
             logging.info("No updates found. Nothing to do.")
 
         msg = f"Summary: modified={updated_vuln} / new={new_vuln}"
+        logging.info(msg)
 
         self.job.set_progress(100)
+        self.job.set_status_message(msg)
 
         return 0
 
