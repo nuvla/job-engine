@@ -11,7 +11,7 @@ class VulnerabilitiesDatabaseDistributor(Distributor):
 
     def __init__(self):
         super(VulnerabilitiesDatabaseDistributor, self).__init__()
-        self.collect_interval = 86 #400.0  # 1 day
+        self.collect_interval = 86400.0  # 1 day
 
     @override
     def job_generator(self):
