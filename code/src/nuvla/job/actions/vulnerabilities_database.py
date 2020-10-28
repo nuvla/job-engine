@@ -90,7 +90,7 @@ class VulnerabilitiesDatabaseJob(object):
             # when we get a page with less than 10k resources, then it's the last one
             aux = self.api.search('vulnerability',
                                   orderby='modified:desc',
-                                  select="id,modified",
+                                  select="id,name,modified",
                                   filter=f'modified<"{page_filter}"').resources
 
             vulns += aux
