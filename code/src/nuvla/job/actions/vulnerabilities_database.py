@@ -119,6 +119,8 @@ class VulnerabilitiesDatabaseJob(object):
             # external DB has been recently updated
             update_db = True
 
+        new_vuln = 0
+        updated_vuln = 0
         if update_db:
             self.job.set_progress(40)
             if not db_content:
@@ -142,6 +144,7 @@ class VulnerabilitiesDatabaseJob(object):
                 logging.info("Last Nuvla DB update: %s" % nuvla_db_last_update)
                 logging.info("Vulnerabilities in external DB: %s" % len(cve_items))
                 logging.info("Last external DB update: %s" % external_db_last_update)
+
                 for cve_item in cve_items:
                     try:
                         cve = cve_item['cve']
@@ -171,19 +174,23 @@ class VulnerabilitiesDatabaseJob(object):
 
                             if cve_score:
                                 payload['score'] = cve_score
-                                payload['severity'] = cve_severity
+                                payload['severity'] = cve_severity if cve_severity else "NONE"
 
                             if cve_id in nuvla_vuln_ids:
                                 # PUT
                                 self.api.edit(nuvla_vuln_res_id_map[cve_id], payload)
+                                updated_vuln += 1
                             else:
                                 # POST
                                 self.api.add('vulnerability', payload)
+                                new_vuln += 1
                     except KeyError:
                         continue
             except KeyError:
                 logging.exception("External DB is missing expected fields")
                 raise
+
+        msg = f"Summary: modified={updated_vuln} / new={new_vuln}"
 
         self.job.set_progress(100)
 
