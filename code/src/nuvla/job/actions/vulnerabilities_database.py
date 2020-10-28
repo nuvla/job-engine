@@ -132,7 +132,6 @@ class VulnerabilitiesDatabaseJob(object):
             nuvla_vuln_ids = []
             nuvla_vuln_res_id_map = {}
             for res in nuvla_vulnerabilities:
-                logging.info(res)
                 nuvla_vuln_ids.append(res.data.get('name', ''))
                 nuvla_vuln_res_id_map[res.data.get('name', '')] = res.id
 
@@ -182,8 +181,11 @@ class VulnerabilitiesDatabaseJob(object):
                                 updated_vuln += 1
                             else:
                                 # POST
-                                self.api.add('vulnerability', payload)
-                                new_vuln += 1
+                                try:
+                                    self.api.add('vulnerability', payload)
+                                    new_vuln += 1
+                                except self.api.NuvlaError:
+                                    logging.exception(f"Couldn't POST new vulnerability {payload['name']}")
                     except KeyError:
                         continue
             except KeyError:
