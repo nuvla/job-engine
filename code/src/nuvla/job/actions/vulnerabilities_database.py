@@ -113,87 +113,85 @@ class VulnerabilitiesDatabaseJob(object):
 
             return 0
 
-        update_db = False
         logging.info("Last Nuvla DB update: %s" % nuvla_db_last_update)
         logging.info("Last external DB update: %s" % external_db_last_update)
-        if not nuvla_db_last_update or external_db_last_update > nuvla_db_last_update:
-            # first time populating the Nuvla Vulnerability DB
-            # or
-            # external DB has been recently updated
-            update_db = True
 
         new_vuln = 0
         updated_vuln = 0
-        if update_db:
-            self.job.set_progress(40)
-            if not db_content:
-                db_content = self.download_db(self.external_vulnerabilities_db)
 
-            # get all vulnerability IDs from Nuvla
-            nuvla_vulnerabilities = self.get_nuvla_vulnerabilities_list()
+        self.job.set_progress(40)
+        if not db_content:
+            db_content = self.download_db(self.external_vulnerabilities_db)
 
-            nuvla_vuln_res_id_map = {}
-            for res in nuvla_vulnerabilities:
-                nuvla_vuln_res_id_map[res.data.get('name', '')] = res.id
+        # get all vulnerability IDs from Nuvla
+        nuvla_vulnerabilities = self.get_nuvla_vulnerabilities_list()
 
-            self.job.set_progress(60)
-            try:
-                cve_items = db_content['CVE_Items']
-                logging.info("Vulnerabilities in the Nuvla DB: %s" % len(nuvla_vuln_res_id_map))
-                logging.info("Vulnerabilities in external DB: %s" % len(cve_items))
+        nuvla_vuln_res_id_map = {}
+        for res in nuvla_vulnerabilities:
+            nuvla_vuln_res_id_map[res.data.get('name', '')] = {'nuvla_id': res.id,
+                                                               'modified': res.data.get('modified',
+                                                                                        '1970-01-01T00:00:00Z')}
 
-                for cve_item in cve_items:
-                    try:
-                        cve = cve_item['cve']
-                        cve_modified = cve_item.get('lastModifiedDate')
-                        if not cve_modified:
-                            # if we can't know when was the vulnerability updated, then better not to update anything
-                            continue
+        self.job.set_progress(60)
+        try:
+            cve_items = db_content['CVE_Items']
+            logging.info("Vulnerabilities in the Nuvla DB: %s" % len(nuvla_vuln_res_id_map))
+            logging.info("Vulnerabilities in external DB: %s" % len(cve_items))
 
-                        # to save API calls, let's do selective updates, by only updating the Nuvla vulnerabilities
-                        # that have in fact been updated upstream (instead of the full collection)
-                        if not nuvla_db_last_update or cve_modified > nuvla_db_last_update:
-                            # then it needs updating/creating
-                            cve_id = cve['CVE_data_meta']['ID']
-                            cve_description = cve['description']['description_data'][0]['value']
-                            cve_ref = cve['references']['reference_data'][0]['url']
-                            cve_score = cve_item['impact']['baseMetricV3']['cvssV3'].get('baseScore')
-                            cve_severity = cve_item['impact']['baseMetricV3']['cvssV3'].get('baseSeverity', 'NONE')
-                            cve_published = cve_item['publishedDate']
+            for cve_item in cve_items:
+                try:
+                    cve = cve_item['cve']
+                    cve_modified = cve_item.get('lastModifiedDate')
 
-                            payload = {
-                                'name': cve_id,
-                                'description': cve_description,
-                                'reference': cve_ref,
-                                'published': cve_published,
-                                'modified': cve_modified
-                            }
-
-                            if cve_score:
-                                payload['score'] = cve_score
-                                payload['severity'] = cve_severity if cve_severity else "NONE"
-
-                            if cve_id in nuvla_vuln_res_id_map:
-                                # PUT
-                                try:
-                                    self.api.edit(nuvla_vuln_res_id_map[cve_id], payload)
-                                    updated_vuln += 1
-                                except NuvlaError:
-                                    logging.exception(f"Couldn't PUT existing vulnerability {payload['name']}")
-                            else:
-                                # POST
-                                try:
-                                    self.api.add('vulnerability', payload)
-                                    new_vuln += 1
-                                except NuvlaError:
-                                    logging.exception(f"Couldn't POST new vulnerability {payload['name']}")
-                    except KeyError:
+                    if not cve_modified:
+                        # if we can't know when was the vulnerability updated, then better not to update anything
                         continue
-            except KeyError:
-                logging.exception("External DB is missing expected fields")
-                raise
-        else:
-            logging.info("No updates found. Nothing to do.")
+
+                    cve_id = cve['CVE_data_meta']['ID']
+
+                    # to save API calls, let's do selective updates, by only updating the Nuvla vulnerabilities
+                    # that have in fact been updated upstream (instead of the full collection)
+                    if not nuvla_db_last_update or \
+                            cve_id not in nuvla_vuln_res_id_map or \
+                            cve_modified > nuvla_vuln_res_id_map[cve_id]['modified']:
+                        # then it needs updating/creating
+                        cve_description = cve['description']['description_data'][0]['value']
+                        cve_ref = cve['references']['reference_data'][0]['url']
+                        cve_score = cve_item['impact']['baseMetricV3']['cvssV3'].get('baseScore')
+                        cve_severity = cve_item['impact']['baseMetricV3']['cvssV3'].get('baseSeverity', 'NONE')
+                        cve_published = cve_item['publishedDate']
+
+                        payload = {
+                            'name': cve_id,
+                            'description': cve_description,
+                            'reference': cve_ref,
+                            'published': cve_published,
+                            'modified': cve_modified
+                        }
+
+                        if cve_score:
+                            payload['score'] = cve_score
+                            payload['severity'] = cve_severity if cve_severity else "NONE"
+
+                        if cve_id in nuvla_vuln_res_id_map:
+                            # PUT
+                            try:
+                                self.api.edit(nuvla_vuln_res_id_map[cve_id]['nuvla_id'], payload)
+                                updated_vuln += 1
+                            except NuvlaError:
+                                logging.exception(f"Couldn't PUT existing vulnerability {payload['name']}")
+                        else:
+                            # POST
+                            try:
+                                self.api.add('vulnerability', payload)
+                                new_vuln += 1
+                            except NuvlaError:
+                                logging.exception(f"Couldn't POST new vulnerability {payload['name']}")
+                except KeyError:
+                    continue
+        except KeyError:
+            logging.exception("External DB is missing expected fields")
+            raise
 
         msg = f"Summary: modified={updated_vuln} / new={new_vuln}"
         logging.info(msg)
