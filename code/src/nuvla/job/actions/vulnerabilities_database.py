@@ -166,7 +166,21 @@ class VulnerabilitiesDatabaseJob(object):
                             'description': cve_description,
                             'reference': cve_ref,
                             'published': cve_published,
-                            'modified': cve_modified
+                            'modified': cve_modified,
+                            "acl": {
+                                "view-data": [
+                                    "group/nuvla-user"
+                                ],
+                                "view-meta": [
+                                    "group/nuvla-user"
+                                ],
+                                "view-acl": [
+                                    "group/nuvla-user"
+                                ],
+                                "owners": [
+                                    "group/nuvla-admin"
+                                ]
+                            },
                         }
 
                         if cve_score:
