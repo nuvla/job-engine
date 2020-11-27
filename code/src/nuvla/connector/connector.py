@@ -55,7 +55,7 @@ class Connector(object):
 
     @abstractmethod
     @should_connect
-    def update(self, service_name, **kwargs):
+    def update(self, **kwargs):
         pass
 
     @abstractmethod

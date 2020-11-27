@@ -131,6 +131,8 @@ class KubernetesCliConnector(Connector):
 
             return result, services
 
+    update = start
+
     @should_connect
     def stop(self, **kwargs):
         # Mandatory kwargs
@@ -151,10 +153,6 @@ class KubernetesCliConnector(Connector):
                 return 'namespace "{}" already stopped (not found)'.format(stack_name)
             else:
                 raise ex
-
-    @should_connect
-    def update(self, service_name, **kwargs):
-        pass
 
     @should_connect
     def list(self, filters=None):

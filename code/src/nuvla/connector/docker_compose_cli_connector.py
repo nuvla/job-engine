@@ -11,9 +11,10 @@ log = logging.getLogger('docker_cli_connector')
 
 
 def instantiate_from_cimi(api_infrastructure_service, api_credential):
-    return DockerComposeCliConnector(cert=api_credential.get('cert').replace("\\n", "\n"),
-                              key=api_credential.get('key').replace("\\n", "\n"),
-                              endpoint=api_infrastructure_service.get('endpoint'))
+    return DockerComposeCliConnector(
+        cert=api_credential.get('cert').replace("\\n", "\n"),
+        key=api_credential.get('key').replace("\\n", "\n"),
+        endpoint=api_infrastructure_service.get('endpoint'))
 
 
 class DockerComposeCliConnector(Connector):
@@ -86,7 +87,8 @@ class DockerComposeCliConnector(Connector):
                 docker_config_prefix += ["export", "DOCKER_CONFIG=%s" % config_path, "&&"]
 
             cmd_deploy = docker_config_prefix + self.build_cmd_line(
-                ['-p', project_name, '-f', compose_file_path, "up", "-d"])
+                ['-p', project_name, '-f', compose_file_path, 'up', '-d',
+                 '--remove-orphans'])
 
             result = self._execute_clean_command(cmd_deploy, env=env)
 
@@ -249,6 +251,3 @@ class DockerComposeCliConnector(Connector):
             result = execute_cmd(cmd, env=env)
 
         return result
-
-
-

@@ -38,8 +38,26 @@ def application_params_update(api_dpl, deployment, services):
                     f'{node_id}.{key}', param_value=value, node_id=node_id)
 
 
+class DeploymentBase(object):
+
+    def private_registries_auth(self, deployment):
+        registries_credentials = deployment.get('registries-credentials')
+        if registries_credentials:
+            list_cred_infra = []
+            for registry_cred in registries_credentials:
+                credential = self.api.get(registry_cred).data
+                infra_service = self.api.get(credential['parent']).data
+                registry_auth = {'username': credential['username'],
+                                 'password': credential['password'],
+                                 'serveraddress': infra_service['endpoint'].replace('https://', '')}
+                list_cred_infra.append(registry_auth)
+            return list_cred_infra
+        else:
+            return None
+
+
 @action(action_name)
-class DeploymentStartJob(object):
+class DeploymentStartJob(DeploymentBase):
 
     def __init__(self, _, job):
         self.job = job
@@ -58,21 +76,6 @@ class DeploymentStartJob(object):
                                              user_id=Deployment.owner(deployment),
                                              param_name=output_param['name'],
                                              param_description=output_param.get('description'))
-
-    def private_registries_auth(self, deployment):
-        registries_credentials = deployment.get('registries-credentials')
-        if registries_credentials:
-            list_cred_infra = []
-            for registry_cred in registries_credentials:
-                credential = self.api.get(registry_cred).data
-                infra_service = self.api.get(credential['parent']).data
-                registry_auth = {'username': credential['username'],
-                                 'password': credential['password'],
-                                 'serveraddress': infra_service['endpoint'].replace('https://', '')}
-                list_cred_infra.append(registry_auth)
-            return list_cred_infra
-        else:
-            return None
 
     def start_component(self, deployment: dict):
         connector = connector_factory(docker_connector, self.api,
