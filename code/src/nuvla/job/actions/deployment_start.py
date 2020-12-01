@@ -3,6 +3,7 @@
 import logging
 
 from nuvla.api.resources import Deployment, DeploymentParameter
+from nuvla.api.resources.base import ResourceNotFound
 from nuvla.connector import connector_factory, docker_connector, \
     docker_cli_connector, docker_compose_cli_connector, kubernetes_cli_connector
 from ..actions import action
@@ -63,7 +64,9 @@ class DeploymentBase(object):
     def create_deployment_parameter(self, deployment_id, user_id,
                                     param_name, param_value=None,
                                     node_id=None, param_description=None):
-        if(self.api_dpl.get_parameter(deployment_id, node_id, param_name) is None):
+        try:
+            self.api_dpl._get_parameter(deployment_id, param_name, node_id)
+        except ResourceNotFound:
             self.api_dpl.create_parameter(deployment_id,
                 user_id, param_name, param_value, node_id, param_description)
 
