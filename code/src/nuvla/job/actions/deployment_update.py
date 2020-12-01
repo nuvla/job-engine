@@ -9,7 +9,9 @@ from nuvla.connector import (connector_factory,
                              kubernetes_cli_connector)
 from nuvla.api.resources import Deployment
 from ..actions import action
-from .deployment_start import DeploymentBase, get_env
+from .deployment_start import (DeploymentBase,
+                               application_params_update,
+                               get_env)
 
 action_name = 'update_deployment'
 
@@ -20,15 +22,24 @@ log = logging.getLogger(action_name)
 class DeploymentUpdateJob(DeploymentBase):
 
     def __init__(self, _, job):
-        self.job = job
-        self.api = job.api
-        self.api_dpl = Deployment(self.api)
+        super().__init__(job)
 
     def get_update_params_docker_service(self, deployment, registries_auth):
         module_content = Deployment.module_content(deployment)
-        kwargs = {'sname'          : Deployment.uuid(deployment),
+        restart_policy = module_content.get('restart-policy', {})
+        module_ports   = module_content.get('ports')
+        kwargs = {'service_name'   : Deployment.uuid(deployment),
+                  'env'            : get_env(deployment),
                   'image'          : module_content['image'],
-                  'registries_auth': registries_auth}
+                  'mounts_opt'     : module_content.get('mounts'),
+                  'cpu_ratio'      : module_content.get('cpus'),
+                  'memory'         : module_content.get('memory'),
+                  'ports_opt'      : module_ports,
+                  'registries_auth': registries_auth,
+                  'restart_policy_condition'   : restart_policy.get('condition'),
+                  'restart_policy_delay'       : restart_policy.get('delay'),
+                  'restart_policy_max_attempts': restart_policy.get('max-attempts'),
+                  'restart_policy_window'      : restart_policy.get('window')}
         return kwargs
 
     def get_update_params_docker_stack(self, deployment, registries_auth):
@@ -50,7 +61,7 @@ class DeploymentUpdateJob(DeploymentBase):
     @staticmethod
     def get_connector_name(deployment):
         if Deployment.is_component(deployment):
-            return 'docker'
+            return 'docker_service'
         elif Deployment.is_application(deployment):
             is_compose = Deployment.is_compatibility_docker_compose(deployment)
             return 'docker_compose' if is_compose else 'docker_stack'
@@ -61,16 +72,14 @@ class DeploymentUpdateJob(DeploymentBase):
     @staticmethod
     def get_connector_class(connector_name):
         return {
-            'docker'        : docker_connector,
+            'docker_service': docker_connector,
             'docker_stack'  : docker_cli_connector,
             'docker_compose': docker_compose_cli_connector,
             'kubernetes'    : kubernetes_cli_connector
         }[connector_name]
 
 
-    def update_deployment(self):
-        deployment_id = self.job['target-resource']['href']
-
+    def update_deployment(self, deployment_id):
         log.info('Job update_deployment started for {}.'.format(deployment_id))
         self.job.set_progress(10)
 
@@ -84,23 +93,32 @@ class DeploymentUpdateJob(DeploymentBase):
         connector = connector_factory(connector_class, self.api, credential_id)
 
         kwargs = {
-            'docker'        : self.get_update_params_docker_service,
+            'docker_service': self.get_update_params_docker_service,
             'docker_stack'  : self.get_update_params_docker_stack,
             'docker_compose': self.get_update_params_docker_compose,
             'kubernetes'    : self.get_update_params_kubernetes
         }[connector_name](deployment, registries_auth)
 
-        result = connector.update(**kwargs)
+        result, services = connector.update(**kwargs)
+        self.job.set_progress(80)
 
-        # immediately update any port mappings that are already available
-        ports_mapping = connector.extract_vm_ports_mapping(result)
-        if ports_mapping:
-            self.api_dpl.update_port_parameters(deployment, ports_mapping)
+        if connector_name == 'docker_service':
+            # immediately update any port mappings that are already available
+            ports_mapping = connector.extract_vm_ports_mapping(services[0])
+            if ports_mapping:
+                self.api_dpl.update_port_parameters(deployment, ports_mapping)
+        else:
+            application_params_update(self.api_dpl, deployment, services)
+        self.create_user_output_params(deployment)
 
         self.api_dpl.set_state_started(deployment_id)
-
         return 0
 
 
     def do_work(self):
-        return self.update_deployment()
+        deployment_id = self.job['target-resource']['href']
+        try:
+            return self.update_deployment(deployment_id)
+        except Exception as e:
+            self.api_dpl.set_state_error(deployment_id)
+            raise
