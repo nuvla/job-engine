@@ -2,7 +2,13 @@
 
 ## Unreleased
 
+### Added
+
+- Support for API Key login to Nuvla
+
 ### Changed
+
+- Action deployment_update for all 4 supported COE
 
 ## [2.8.0] - 2020-11-16
 

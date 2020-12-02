@@ -10,9 +10,10 @@ log = logging.getLogger('docker_cli_connector')
 
 
 def instantiate_from_cimi(api_infrastructure_service, api_credential):
-    return DockerCliConnector(cert=api_credential.get('cert').replace("\\n", "\n"),
-                              key=api_credential.get('key').replace("\\n", "\n"),
-                              endpoint=api_infrastructure_service.get('endpoint'))
+    return DockerCliConnector(
+        cert=api_credential.get('cert').replace("\\n", "\n"),
+        key=api_credential.get('key').replace("\\n", "\n"),
+        endpoint=api_infrastructure_service.get('endpoint'))
 
 
 class DockerCliConnector(Connector):
@@ -79,7 +80,7 @@ class DockerCliConnector(Connector):
 
             cmd_deploy = self.build_cmd_line(
                 ['--config', tmp_dir_name, 'stack', 'deploy',
-                 '--with-registry-auth', '-c', compose_file_path, stack_name])
+                 '--with-registry-auth', '--prune', '-c', compose_file_path, stack_name])
 
             result = execute_cmd(cmd_deploy, env=env)
 

@@ -44,10 +44,15 @@ class Base(object):
         parser.add_argument('--api-url', dest='api_url', default='https://nuvla.io', metavar='URL',
                             help='Nuvla endpoint to connect to (default: https://nuvla.io)')
 
-        required_args.add_argument('--api-user', dest='api_user', help='Nuvla username',
+        required_args.add_argument('--api-user', dest='api_user', help='Nuvla Username',
                                    metavar='USERNAME')
         required_args.add_argument('--api-pass', dest='api_pass', help='Nuvla Password',
                                    metavar='PASSWORD')
+
+        required_args.add_argument('--api-key', dest='api_key', help='Nuvla API Key Id',
+                                   metavar='API_KEY')
+        required_args.add_argument('--api-secret', dest='api_secret', help='Nuvla API Key Secret',
+                                   metavar='API_SECRET')
 
         parser.add_argument('--api-insecure', dest='api_insecure', default=False,
                             action='store_true',
@@ -104,10 +109,13 @@ class Base(object):
                        reauthenticate=reauthenticate, authn_header=self.args.api_authn_header)
         try:
             if self.args.api_authn_header is None:
-                response = self.api.login_password(self.args.api_user, self.args.api_pass)
+                if self.args.api_key and self.args.api_secret:
+                    response = self.api.login_apikey(self.args.api_key, self.args.api_secret)
+                else:
+                    response = self.api.login_password(self.args.api_user, self.args.api_pass)
                 if response.status_code == 403:
                     raise ConnectionError(
-                        'Login with following user {} failed!'.format(self.args.api_user))
+                        'Login with following user/apikey {} failed!'.format(self.args.api_user))
         except ConnectionError as e:
             logging.error('Unable to connect to Nuvla endpoint {}! {}'.format(self.api.endpoint, e))
             exit(1)

@@ -23,7 +23,7 @@ running shutdown accepted <- DesiredState
  shutdown failed rejected <- Status.State
 
 Single replica task spawns a new container.
-    
+
 """
 
 log = logging.getLogger('docker_connector')
@@ -204,7 +204,7 @@ class DockerConnector(Connector):
     def start(self, **kwargs):
         """
         :param kwargs: see `DockerConnector.service_dict()` for of `kwargs`
-        :return:
+        :return: None, json - service
         """
 
         registry_auth = kwargs.get('registry_auth')
@@ -221,7 +221,7 @@ class DockerConnector(Connector):
 
         self.validate_action(service)
 
-        return service
+        return None, service
 
     @should_connect
     def stop(self, **kwargs):
@@ -233,42 +233,38 @@ class DockerConnector(Connector):
             self.validate_action(response.json())
 
     @should_connect
-    def update(self, sname, **kwargs):
-        """Given `sname` service parameters in `kwargs`, updates the running service.
-
-        FIXME: Only `image` 'kwargs' is used at the moment.
-
-        :param sname: str
-        :param kwargs: see `DockerConnector.service_dict()` for of `kwargs`
-        :return: json - service
+    def update(self, **kwargs):
         """
+        :param kwargs: see `DockerConnector.service_dict()` for of `kwargs`
+        :return: None, json - service
+        """
+        service_name = kwargs['service_name']
 
         registry_auth = kwargs.get('registry_auth')
         if registry_auth:
             self.registry_auth_header(registry_auth)
 
-        services = self._list(filters={'name': sname})
+        services = self._list(filters={'name': service_name})
         if len(services) >= 1:
             service = services[0]
         else:
-            raise ConnectorError('No service named {} when updating service.'.format(sname))
+            raise ConnectorError('No service named {} when updating service.'.format(service_name))
 
-        service_id = service['ID']
+        service_id      = service['ID']
         service_version = service['Version']['Index']
 
-        service_spec = service['Spec']
-        service_spec['TaskTemplate']['ContainerSpec']['Image'] = image_dict_to_str(kwargs['image'])
+        service_spec = self.service_dict(**kwargs)
 
         response = self.docker_api.post(self._get_full_url('services/{}/update'.format(service_id)),
                                         params=[('version', service_version)],
                                         json=service_spec).json()
         self.validate_action(response)
 
-        services = self._list(filters={'name': sname})
+        services = self._list(filters={'name': service_name})
         if len(services) >= 1:
-            return services[0]
+            return None, [services[0]]
         else:
-            raise ConnectorError('No service named {} after service update.'.format(sname))
+            raise ConnectorError('No service named {} after service update.'.format(service_name))
 
     @should_connect
     def list(self, filters=None):

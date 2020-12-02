@@ -3,6 +3,7 @@
 import logging
 
 from nuvla.api.resources import Deployment, DeploymentParameter
+from nuvla.api.resources.base import ResourceNotFound
 from nuvla.connector import connector_factory, docker_connector, \
     docker_cli_connector, docker_compose_cli_connector, kubernetes_cli_connector
 from ..actions import action
@@ -38,26 +39,12 @@ def application_params_update(api_dpl, deployment, services):
                     f'{node_id}.{key}', param_value=value, node_id=node_id)
 
 
-@action(action_name)
-class DeploymentStartJob(object):
+class DeploymentBase(object):
 
-    def __init__(self, _, job):
+    def __init__(self, job):
         self.job = job
         self.api = job.api
         self.api_dpl = Deployment(self.api)
-
-    def create_deployment_parameter(self, deployment_id, user_id, param_name,
-                                    param_value=None, node_id=None, param_description=None):
-        return self.api_dpl.create_parameter(deployment_id, user_id, param_name,
-                                             param_value, node_id, param_description)
-
-    def create_user_output_params(self, deployment):
-        module_content = Deployment.module_content(deployment)
-        for output_param in module_content.get('output-parameters', []):
-            self.create_deployment_parameter(deployment_id=Deployment.id(deployment),
-                                             user_id=Deployment.owner(deployment),
-                                             param_name=output_param['name'],
-                                             param_description=output_param.get('description'))
 
     def private_registries_auth(self, deployment):
         registries_credentials = deployment.get('registries-credentials')
@@ -73,6 +60,32 @@ class DeploymentStartJob(object):
             return list_cred_infra
         else:
             return None
+
+    def create_deployment_parameter(self, deployment_id, user_id,
+                                    param_name, param_value=None,
+                                    node_id=None, param_description=None):
+        try:
+            self.api_dpl._get_parameter(deployment_id, param_name, node_id)
+        except ResourceNotFound:
+            self.api_dpl.create_parameter(deployment_id,
+                user_id, param_name, param_value, node_id, param_description)
+
+    def create_user_output_params(self, deployment):
+        module_content = Deployment.module_content(deployment)
+        for output_param in module_content.get('output-parameters', []):
+            self.create_deployment_parameter(
+                deployment_id=Deployment.id(deployment),
+                user_id=Deployment.owner(deployment),
+                param_name=output_param['name'],
+                param_description=output_param.get('description'))
+
+
+@action(action_name)
+class DeploymentStartJob(DeploymentBase):
+
+    def __init__(self, _, job):
+        super().__init__(job)
+
 
     def start_component(self, deployment: dict):
         connector = connector_factory(docker_connector, self.api,
@@ -100,116 +113,46 @@ class DeploymentStartJob(object):
 
         registries_auth = self.private_registries_auth(deployment)
 
-        service = connector.start(service_name=node_instance_name,
-                                  image=module_content['image'],
-                                  env=get_env(deployment),
-                                  mounts_opt=module_content.get('mounts'),
-                                  ports_opt=module_ports,
-                                  cpu_ratio=module_content.get('cpus'),
-                                  memory=module_content.get('memory'),
-                                  restart_policy_condition=restart_policy.get('condition'),
-                                  restart_policy_delay=restart_policy.get('delay'),
-                                  restart_policy_max_attempts=restart_policy.get('max-attempts'),
-                                  restart_policy_window=restart_policy.get('window'),
-                                  registry_auth=registries_auth[0] if registries_auth else None)
-
-        self.create_deployment_parameter(
-            deployment_id=deployment_id,
-            user_id=deployment_owner,
-            param_name=DeploymentParameter.SERVICE_ID['name'],
-            param_value=connector.extract_vm_id(service),
-            param_description=DeploymentParameter.SERVICE_ID['description'],
-            node_id=node_instance_name)
-
-        self.create_deployment_parameter(
-            deployment_id=deployment_id,
-            user_id=deployment_owner,
-            param_name=DeploymentParameter.HOSTNAME['name'],
-            param_value=connector.extract_vm_ip(service),
-            param_description=DeploymentParameter.HOSTNAME['description'],
-            node_id=node_instance_name)
-
-        self.create_deployment_parameter(
-            deployment_id=deployment_id,
-            user_id=deployment_owner,
-            param_name=DeploymentParameter.CURRENT_DESIRED['name'],
-            param_value="",
-            param_description=DeploymentParameter.CURRENT_DESIRED['description'],
-            node_id=node_instance_name)
-
-        self.create_deployment_parameter(
-            deployment_id=deployment_id,
-            user_id=deployment_owner,
-            param_name=DeploymentParameter.CURRENT_STATE['name'],
-            param_value="",
-            param_description=DeploymentParameter.CURRENT_STATE['description'],
-            node_id=node_instance_name)
-
-        self.create_deployment_parameter(
-            deployment_id=deployment_id,
-            user_id=deployment_owner,
-            param_name=DeploymentParameter.CURRENT_ERROR['name'],
-            param_value="",
-            param_description=DeploymentParameter.CURRENT_ERROR['description'],
-            node_id=node_instance_name)
+        _, service = connector.start(
+            service_name=node_instance_name,
+            image=module_content['image'],
+            env=get_env(deployment),
+            mounts_opt=module_content.get('mounts'),
+            ports_opt=module_ports,
+            cpu_ratio=module_content.get('cpus'),
+            memory=module_content.get('memory'),
+            restart_policy_condition=restart_policy.get('condition'),
+            restart_policy_delay=restart_policy.get('delay'),
+            restart_policy_max_attempts=restart_policy.get('max-attempts'),
+            restart_policy_window=restart_policy.get('window'),
+            registry_auth=registries_auth[0] if registries_auth else None)
 
         # FIXME: get number of desired replicas of Replicated service from deployment. 1 for now.
         desired = 1
-        self.create_deployment_parameter(
-            deployment_id=deployment_id,
-            user_id=deployment_owner,
-            param_name=DeploymentParameter.REPLICAS_DESIRED['name'],
-            param_value=str(desired),
-            param_description=DeploymentParameter.REPLICAS_DESIRED['description'],
-            node_id=node_instance_name)
 
-        self.create_deployment_parameter(
-            deployment_id=deployment_id,
-            user_id=deployment_owner,
-            param_name=DeploymentParameter.REPLICAS_RUNNING['name'],
-            param_value="0",
-            param_description=DeploymentParameter.REPLICAS_RUNNING['description'],
-            node_id=node_instance_name)
+        deployment_parameters = (
+            (DeploymentParameter.SERVICE_ID, connector.extract_vm_id(service)),
+            (DeploymentParameter.HOSTNAME,   connector.extract_vm_ip(service)),
+            (DeploymentParameter.REPLICAS_DESIRED,  str(desired)),
+            (DeploymentParameter.REPLICAS_RUNNING,  '0'),
+            (DeploymentParameter.CURRENT_DESIRED,   ''),
+            (DeploymentParameter.CURRENT_STATE,     ''),
+            (DeploymentParameter.CURRENT_ERROR,     ''),
+            (DeploymentParameter.RESTART_EXIT_CODE, ''),
+            (DeploymentParameter.RESTART_ERR_MSG,   ''),
+            (DeploymentParameter.RESTART_TIMESTAMP, ''),
+            (DeploymentParameter.RESTART_NUMBER,    ''),
+            (DeploymentParameter.CHECK_TIMESTAMP,   ''),
+        )
 
-        self.create_deployment_parameter(
-            deployment_id=deployment_id,
-            user_id=deployment_owner,
-            param_name=DeploymentParameter.RESTART_EXIT_CODE['name'],
-            param_value="",
-            param_description=DeploymentParameter.RESTART_EXIT_CODE['description'],
-            node_id=node_instance_name)
-
-        self.create_deployment_parameter(
-            deployment_id=deployment_id,
-            user_id=deployment_owner,
-            param_name=DeploymentParameter.RESTART_ERR_MSG['name'],
-            param_value="",
-            param_description=DeploymentParameter.RESTART_ERR_MSG['description'],
-            node_id=node_instance_name)
-
-        self.create_deployment_parameter(
-            deployment_id=deployment_id,
-            user_id=deployment_owner,
-            param_name=DeploymentParameter.RESTART_TIMESTAMP['name'],
-            param_value="",
-            param_description=DeploymentParameter.RESTART_TIMESTAMP['description'],
-            node_id=node_instance_name)
-
-        self.create_deployment_parameter(
-            deployment_id=deployment_id,
-            user_id=deployment_owner,
-            param_name=DeploymentParameter.RESTART_NUMBER['name'],
-            param_value="",
-            param_description=DeploymentParameter.RESTART_NUMBER['description'],
-            node_id=node_instance_name)
-
-        self.create_deployment_parameter(
-            deployment_id=deployment_id,
-            user_id=deployment_owner,
-            param_name=DeploymentParameter.CHECK_TIMESTAMP['name'],
-            param_value="",
-            param_description=DeploymentParameter.CHECK_TIMESTAMP['description'],
-            node_id=node_instance_name)
+        for deployment_parameter, value in deployment_parameters:
+            self.create_deployment_parameter(
+                param_name=deployment_parameter['name'],
+                param_value=value,
+                param_description=deployment_parameter['description'],
+                deployment_id=deployment_id,
+                node_id=node_instance_name,
+                user_id=deployment_owner)
 
         # immediately update any port mappings that are already available
         ports_mapping = connector.extract_vm_ports_mapping(service)
@@ -224,20 +167,16 @@ class DeploymentStartJob(object):
         else:
             connector = connector_factory(docker_cli_connector, self.api, credential_id)
 
-        module_content = Deployment.module_content(deployment)
-
+        module_content   = Deployment.module_content(deployment)
         deployment_owner = Deployment.owner(deployment)
-
-        docker_compose = module_content['docker-compose']
-
-        registries_auth = self.private_registries_auth(deployment)
+        docker_compose   = module_content['docker-compose']
+        registries_auth  = self.private_registries_auth(deployment)
 
         result, services = connector.start(docker_compose=docker_compose,
                                            stack_name=Deployment.uuid(deployment),
                                            env=get_env(deployment),
                                            files=module_content.get('files'),
                                            registries_auth=registries_auth)
-
         self.job.set_status_message(result)
 
         self.create_deployment_parameter(
@@ -255,13 +194,10 @@ class DeploymentStartJob(object):
         connector = connector_factory(kubernetes_cli_connector, self.api,
                                       Deployment.credential_id(deployment))
 
-        module_content = Deployment.module_content(deployment)
-
+        module_content   = Deployment.module_content(deployment)
         deployment_owner = Deployment.owner(deployment)
-
-        docker_compose = module_content['docker-compose']
-
-        registries_auth = self.private_registries_auth(deployment)
+        docker_compose   = module_content['docker-compose']
+        registries_auth  = self.private_registries_auth(deployment)
 
         result, services = connector.start(docker_compose=docker_compose,
                                            stack_name=Deployment.uuid(deployment),
