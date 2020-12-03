@@ -3,7 +3,7 @@
 import requests
 import logging
 from .connector import Connector, should_connect
-from .utils import create_tmp_file
+from .utils import execute_cmd, create_tmp_file
 
 
 class NuvlaBoxConnector(Connector):
@@ -13,6 +13,7 @@ class NuvlaBoxConnector(Connector):
         self.api = kwargs.get("api")
         self.job = kwargs.get("job")
         self.ssl_file = None
+        self.docker_api_endpoint = None
         self.nuvlabox_api = requests.Session()
         self.nuvlabox_api.verify = False
         self.nuvlabox_api.headers = {'Content-Type': 'application/json',
@@ -22,13 +23,23 @@ class NuvlaBoxConnector(Connector):
         self.nuvlabox = None
         self.timeout = 60
         self.acl = None
+        self.cert_file = None
+        self.key_file = None
 
     @property
     def connector_type(self):
         return 'nuvlabox'
 
+    def build_cmd_line(self, list_cmd):
+        return ['docker', '-H', self.docker_api_endpoint, '--tls', '--tlscert', self.cert_file.name,
+                '--tlskey', self.key_file.name, '--tlscacert', self.cert_file.name] \
+               + list_cmd
+
+    def get_nuvlabox_status(self):
+        return self.api.get(self.nuvlabox.get("nuvlabox-status")).data
+
     def get_nuvlabox_api_endpoint(self):
-        nb_status = self.api.get(self.nuvlabox.get("nuvlabox-status")).data
+        nb_status = self.get_nuvlabox_status()
 
         return nb_status.get("nuvlabox-api-endpoint")
 
@@ -55,10 +66,10 @@ class NuvlaBoxConnector(Connector):
                                                       service_id,
                                                       cred_subtype)).resources
 
-                    return credentials[0].data
+                    return credentials[0].data, infra_service.get("endpoint")
 
     def setup_ssl_credentials(self):
-        credential = self.get_credential()
+        credential, is_endpoint = self.get_credential()
         try:
             secret = credential['cert'] + '\n' + credential['key']
         except KeyError:
@@ -67,7 +78,10 @@ class NuvlaBoxConnector(Connector):
             raise
 
         self.ssl_file = create_tmp_file(secret)
+        self.cert_file = create_tmp_file(credential['cert'])
+        self.key_file = create_tmp_file(credential['key'])
         self.nuvlabox_api.cert = self.ssl_file.name
+        self.docker_api_endpoint = is_endpoint
 
         return True
 
@@ -92,6 +106,12 @@ class NuvlaBoxConnector(Connector):
         if self.ssl_file:
             self.ssl_file.close()
             self.ssl_file = None
+        if self.cert_file:
+            self.cert_file.close()
+            self.cert_file = None
+        if self.key_file:
+            self.key_file.close()
+            self.key_file = None
 
     @should_connect
     def start(self, **kwargs):
@@ -135,10 +155,67 @@ class NuvlaBoxConnector(Connector):
     def stop(self, **kwargs):
         pass
 
+    def update_nuvlabox_engine(self, **kwargs):
+        self.job.set_progress(10)
+
+        # 1st - get the NuvlaBox Compute API endpoint and credentials
+        self.setup_ssl_credentials()
+
+        self.job.set_progress(50)
+
+        # 2nd - set the Docker args
+        docker_list_cmd = [
+            '--rm'
+        ]
+
+        # container name
+        docker_list_cmd += ['--name', 'installer']
+
+        # volumes
+        docker_list_cmd += ['-v', '/var/run/docker.sock:/var/run/docker.sock', '-v', '/:/rootfs:ro']
+
+        # image name
+        docker_list_cmd.append('nuvlabox/installer:master')
+
+        # action
+        docker_list_cmd.append('update')
+
+        # action args
+        docker_list_cmd.append('--quiet')
+
+        nb_status = self.get_nuvlabox_status()
+        if 'installation-parameters' not in nb_status:
+            raise Exception(f'Installation parameters are required, but are not present in NuvlaBox status {nb_status.id}')
+
+        installation_parameters = nb_status['installation-parameters']
+        if installation_parameters.get('working-dir'):
+            docker_list_cmd.append(f'--working-dir={installation_parameters.get("working-dir")}')
+
+        if installation_parameters.get('project-name'):
+            docker_list_cmd.append(f'--project={installation_parameters.get("project-name")}')
+
+        if installation_parameters.get('config-files'):
+            compose_files = ','.join(installation_parameters.get("config-files"))
+            docker_list_cmd.append(f'--compose-files={compose_files}')
+
+        if installation_parameters.get('environment'):
+            environment = ','.join(installation_parameters.get("environment"))
+            docker_list_cmd += [f'--current-environment={environment}', f'--new-environment={environment}']
+
+        target_release = kwargs.get('target_release')
+        docker_list_cmd.append(f'--target-version={target_release}')
+
+        # 3rd - build and run the Docker command
+        cmd = self.build_cmd_line(docker_list_cmd)
+        result = execute_cmd(cmd)
+
+        self.job.set_progress(95)
+
+        return result
+
     # @should_connect
     def update(self, payload, **kwargs):
         """ Updates the NuvlaBox resource with the provided payload
-
         :param payload: content to be updated in the NuvlaBox resource
         """
 
