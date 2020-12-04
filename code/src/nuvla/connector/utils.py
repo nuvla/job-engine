@@ -3,6 +3,8 @@ import os
 import json
 import base64
 import hashlib
+import signal
+from contextlib import contextmanager
 from datetime import datetime, timedelta
 from subprocess import run, PIPE, STDOUT, TimeoutExpired
 from tempfile import NamedTemporaryFile
@@ -74,3 +76,23 @@ def generate_registry_config(registries_auth):
         auth = base64.b64encode(user_pass.encode('ascii')).decode('utf-8')
         auths['https://' + registry_auth['serveraddress']] = {'auth': auth}
     return json.dumps({'auths': auths})
+
+
+@contextmanager
+def timeout(deadline):
+    # Register a function to raise a TimeoutError on the signal.
+    signal.signal(signal.SIGALRM, raise_timeout)
+    # Schedule the signal to be sent after ``time``.
+    signal.alarm(deadline)
+    try:
+        yield
+    except TimeoutError:
+        raise
+    finally:
+        # Unregister the signal so it won't be triggered
+        # if the timeout is not reached.
+        signal.signal(signal.SIGALRM, signal.SIG_IGN)
+
+
+def raise_timeout(signum, frame):
+    raise TimeoutError

@@ -2,8 +2,10 @@
 
 import requests
 import logging
+import docker
+import time
 from .connector import Connector, should_connect
-from .utils import execute_cmd, create_tmp_file
+from .utils import execute_cmd, create_tmp_file, timeout
 
 
 class NuvlaBoxConnector(Connector):
@@ -13,6 +15,7 @@ class NuvlaBoxConnector(Connector):
         self.api = kwargs.get("api")
         self.job = kwargs.get("job")
         self.ssl_file = None
+        self.docker_client = docker.from_env()
         self.docker_api_endpoint = None
         self.nuvlabox_api = requests.Session()
         self.nuvlabox_api.verify = False
@@ -82,6 +85,12 @@ class NuvlaBoxConnector(Connector):
         self.key_file = create_tmp_file(credential['key'])
         self.nuvlabox_api.cert = self.ssl_file.name
         self.docker_api_endpoint = is_endpoint
+        tls_config = docker.tls.TLSConfig(client_cert=(self.cert_file, self.key_file),
+                                          verify=False,
+                                          assert_hostname=False,
+                                          assert_fingerprint=False)
+        self.docker_client = docker.DockerClient(base_url=is_endpoint.replace('https://', '').replace('http://', ''),
+                                                 tls=tls_config)
 
         return True
 
@@ -165,25 +174,29 @@ class NuvlaBoxConnector(Connector):
         self.job.set_progress(50)
 
         # 2nd - set the Docker args
-        docker_list_cmd = [
-            'run',
-            '--rm'
-        ]
+        # image name
+        image = 'nuvlabox/installer:master'
+        detach = True
 
         # container name
-        docker_list_cmd += ['--name', 'installer']
+        container_name = f'installer' #-{self.job.id.replace("/", "-")}'
 
         # volumes
-        docker_list_cmd += ['-v', '/var/run/docker.sock:/var/run/docker.sock', '-v', '/:/rootfs:ro']
+        volumes = {
+            '/var/run/docker.sock': {
+                'bind': '/var/run/docker.sock',
+                'mode': 'ro'
+            },
+            '/': {'bind': '/rootfs',
+                  'mode': 'ro'}
+        }
 
-        # image name
-        docker_list_cmd.append('nuvlabox/installer:master')
-
+        # command
         # action
-        docker_list_cmd.append('update')
+        command = ['update']
 
         # action args
-        docker_list_cmd.append('--quiet')
+        command.append('--quiet')
 
         nb_status = self.get_nuvlabox_status()
         if 'installation-parameters' not in nb_status:
@@ -191,25 +204,58 @@ class NuvlaBoxConnector(Connector):
 
         installation_parameters = nb_status['installation-parameters']
         if installation_parameters.get('working-dir'):
-            docker_list_cmd.append(f'--working-dir={installation_parameters.get("working-dir")}')
+            command.append(f'--working-dir={installation_parameters.get("working-dir")}')
 
         if installation_parameters.get('project-name'):
-            docker_list_cmd.append(f'--project={installation_parameters.get("project-name")}')
+            command.append(f'--project={installation_parameters.get("project-name")}')
 
         if installation_parameters.get('config-files'):
             compose_files = ','.join(installation_parameters.get("config-files"))
-            docker_list_cmd.append(f'--compose-files={compose_files}')
+            command.append(f'--compose-files={compose_files}')
 
         if installation_parameters.get('environment'):
             environment = ','.join(installation_parameters.get("environment"))
-            docker_list_cmd += [f'--current-environment={environment}', f'--new-environment={environment}']
+            command += [f'--current-environment={environment}', f'--new-environment={environment}']
 
         target_release = kwargs.get('target_release')
-        docker_list_cmd.append(f'--target-version={target_release}')
+        command.append(f'--target-version={target_release}')
 
-        # 3rd - build and run the Docker command
-        cmd = self.build_cmd_line(docker_list_cmd)
-        result = execute_cmd(cmd)
+        # 3rd - run the Docker command
+        try:
+            self.docker_client.containers.run(image,
+                                              detach=detach,
+                                              name=container_name,
+                                              volumes=volumes,
+                                              command=command)
+        except docker.errors.NotFound as e:
+            raise Exception(f'Unable to reach NuvlaBox Docker API at {self.docker_api_endpoint}: {str(e)}')
+        except docker.errors.APIError as e:
+            if '409' in str(e) and container_name in str(e):
+                raise Exception(f'A NuvlaBox update is already taking place. Please wait for it to finish.')
+            else:
+                raise
+
+        # 4th - monitor the update, waiting for it to finish to capture the output
+        timeout_after = 600     # 10 minutes
+        try:
+            with timeout(timeout_after):
+                tries = 0
+                while True:
+                    if tries > 3:
+                        raise Exception(f'Lost connection with the NuvlaBox Docker API at {self.docker_api_endpoint}')
+                    try:
+                        this_container = self.docker_client.containers.get(container_name)
+                        if this_container.status == 'exited':
+                            result = this_container.logs().decode()
+                            break
+                    except requests.exceptions.ConnectionError:
+                        # the compute-api might be being recreated...keep trying
+                        tries += 1
+                        time.sleep(5)
+        except TimeoutError:
+            raise Exception(f'NuvlaBox update timed out after {timeout_after} sec. Operation is incomplete!')
+        finally:
+            self.docker_client.api.remove_container(container_name, force=True)
 
         self.job.set_progress(95)
 
