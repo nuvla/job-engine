@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Changed
+
+## [2.8.1] - 2020-12-04
+
 ### Added
 
 - Support for API Key login to Nuvla
