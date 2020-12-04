@@ -3,6 +3,7 @@
 import requests
 import logging
 import docker
+import re
 import time
 from .connector import Connector, should_connect
 from .utils import execute_cmd, create_tmp_file, timeout
@@ -85,7 +86,7 @@ class NuvlaBoxConnector(Connector):
         self.key_file = create_tmp_file(credential['key'])
         self.nuvlabox_api.cert = self.ssl_file.name
         self.docker_api_endpoint = is_endpoint
-        tls_config = docker.tls.TLSConfig(client_cert=(self.cert_file, self.key_file),
+        tls_config = docker.tls.TLSConfig(client_cert=(self.cert_file.name, self.key_file.name),
                                           verify=False,
                                           assert_hostname=False,
                                           assert_fingerprint=False)
@@ -175,6 +176,7 @@ class NuvlaBoxConnector(Connector):
 
         # 2nd - set the Docker args
         # image name
+        logging.info('Preparing parameters for NuvlaBox update')
         image = 'nuvlabox/installer:master'
         detach = True
 
@@ -221,6 +223,7 @@ class NuvlaBoxConnector(Connector):
         command.append(f'--target-version={target_release}')
 
         # 3rd - run the Docker command
+        logging.info(f'Running NuvlaBox update container {image}')
         try:
             self.docker_client.containers.run(image,
                                               detach=detach,
@@ -240,6 +243,7 @@ class NuvlaBoxConnector(Connector):
         try:
             with timeout(timeout_after):
                 tries = 0
+                logging.info(f'Waiting {timeout_after} sec for NuvlaBox update operation to finish...')
                 while True:
                     if tries > 3:
                         raise Exception(f'Lost connection with the NuvlaBox Docker API at {self.docker_api_endpoint}')
@@ -247,11 +251,20 @@ class NuvlaBoxConnector(Connector):
                         this_container = self.docker_client.containers.get(container_name)
                         if this_container.status == 'exited':
                             result = this_container.logs().decode()
+                            # trick to get rid of bash ASCII chars
+                            try:
+                                result = re.sub(r'\[.*?;.*?m', '\n', result)
+                            except:
+                                pass
+                            exit_code = this_container.wait().get('StatusCode', 0)
+                            if exit_code > 0:
+                                raise Exception(result)
                             break
                     except requests.exceptions.ConnectionError:
                         # the compute-api might be being recreated...keep trying
                         tries += 1
                         time.sleep(5)
+                    time.sleep(1)
         except TimeoutError:
             raise Exception(f'NuvlaBox update timed out after {timeout_after} sec. Operation is incomplete!')
         finally:
