@@ -166,6 +166,7 @@ class NuvlaBoxConnector(Connector):
 
         # 2nd - set the Docker args
         docker_list_cmd = [
+            'run',
             '--rm'
         ]
 
