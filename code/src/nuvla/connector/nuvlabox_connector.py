@@ -31,9 +31,9 @@ class NuvlaBoxConnector(Connector):
         return 'nuvlabox'
 
     def build_cmd_line(self, list_cmd):
-        return ['docker', '-H', self.docker_api_endpoint, '--tls', '--tlscert', self.cert_file.name,
-                '--tlskey', self.key_file.name, '--tlscacert', self.cert_file.name] \
-               + list_cmd
+        return ['docker', '-H', self.docker_api_endpoint.replace('https://', '').replace('http://', ''),
+                '--tls', '--tlscert', self.cert_file.name, '--tlskey', self.key_file.name,
+                '--tlscacert', self.cert_file.name] + list_cmd
 
     def get_nuvlabox_status(self):
         return self.api.get(self.nuvlabox.get("nuvlabox-status")).data
@@ -155,6 +155,7 @@ class NuvlaBoxConnector(Connector):
     def stop(self, **kwargs):
         pass
 
+    @should_connect
     def update_nuvlabox_engine(self, **kwargs):
         self.job.set_progress(10)
 
