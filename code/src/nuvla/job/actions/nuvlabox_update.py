@@ -30,13 +30,13 @@ class NBUpdateJob(object):
 
         if nb_release_id:
             release = self.api.get(nb_release_id).data['release']
-            r = connector.update_nuvlabox_engine(target_release=release)
+            r, e_code = connector.update_nuvlabox_engine(target_release=release)
         else:
             raise Exception('Cannot find any reference to an existing NuvlaBox target release')
 
         self.job.update_job(status_message=r)
 
-        return 0
+        return e_code
 
     def do_work(self):
         return self.nuvlabox_update()

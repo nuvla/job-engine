@@ -224,6 +224,7 @@ class NuvlaBoxConnector(Connector):
 
         # 3rd - run the Docker command
         logging.info(f'Running NuvlaBox update container {image}')
+        self.docker_client.images.pull(image)
         try:
             self.docker_client.containers.run(image,
                                               detach=detach,
@@ -241,6 +242,8 @@ class NuvlaBoxConnector(Connector):
         # 4th - monitor the update, waiting for it to finish to capture the output
         timeout_after = 600     # 10 minutes
         try:
+            result = f'[NuvlaBox Engine update to {target_release}] '
+            exit_code = 0
             with timeout(timeout_after):
                 tries = 0
                 logging.info(f'Waiting {timeout_after} sec for NuvlaBox update operation to finish...')
@@ -250,15 +253,12 @@ class NuvlaBoxConnector(Connector):
                     try:
                         this_container = self.docker_client.containers.get(container_name)
                         if this_container.status == 'exited':
-                            result = this_container.logs().decode()
                             # trick to get rid of bash ASCII chars
                             try:
-                                result = re.sub(r'\[.*?;.*?m', '\n', result)
+                                result += re.sub(r'\[.*?;.*?m', '\n', this_container.logs().decode())
                             except:
-                                pass
+                                result += this_container.logs().decode()
                             exit_code = this_container.wait().get('StatusCode', 0)
-                            if exit_code > 0:
-                                raise Exception(result)
                             break
                     except requests.exceptions.ConnectionError:
                         # the compute-api might be being recreated...keep trying
@@ -272,7 +272,7 @@ class NuvlaBoxConnector(Connector):
 
         self.job.set_progress(95)
 
-        return result
+        return result, exit_code
 
     # @should_connect
     def update(self, payload, **kwargs):
