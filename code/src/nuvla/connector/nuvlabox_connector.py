@@ -16,7 +16,7 @@ class NuvlaBoxConnector(Connector):
         self.api = kwargs.get("api")
         self.job = kwargs.get("job")
         self.ssl_file = None
-        self.docker_client = docker.from_env()
+        self.docker_client = None
         self.docker_api_endpoint = None
         self.nuvlabox_api = requests.Session()
         self.nuvlabox_api.verify = False
