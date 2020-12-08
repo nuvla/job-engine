@@ -13,6 +13,7 @@
   <modules>
     <module>code</module>
     <module>container</module>
+    <module>container-lite</module>
   </modules>
 
   <scm>

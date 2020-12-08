@@ -1,0 +1,4 @@
+nuvla-api==3.0.2
+docker
+pyyaml
+statsd
