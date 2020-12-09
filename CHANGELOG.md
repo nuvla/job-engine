@@ -14,7 +14,8 @@
 
 ### Added
 
- - Support for API Key login to Nuvla
+- Actions for NuvlaBox update
+- Support for API Key login to Nuvla
 
 ### Changed
 
