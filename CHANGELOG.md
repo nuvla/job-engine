@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+### Changed
+
+## [2.9.0] - 2020-12-07
+
+### Added
+
+  - BUILD - Support github actions
+
+## [2.8.1] - 2020-12-04
+
 ### Added
 
 - Actions for NuvlaBox update
@@ -9,7 +19,7 @@
 
 ### Changed
 
-- Action deployment_update for all 4 supported COE
+ - Action deployment_update for all 4 supported COE
 
 ## [2.8.0] - 2020-11-16
 

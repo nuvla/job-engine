@@ -181,7 +181,7 @@ class NuvlaBoxConnector(Connector):
         detach = True
 
         # container name
-        container_name = f'installer' #-{self.job.id.replace("/", "-")}'
+        container_name = f'installer'
 
         # volumes
         volumes = {
