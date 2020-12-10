@@ -2,7 +2,11 @@
 
 ## Unreleased
 
-### Changed
+## [2.10.0] - 2020-12-10
+
+### Added
+
+ - Actions for NuvlaBox update
 
 ## [2.9.0] - 2020-12-07
 
@@ -14,8 +18,7 @@
 
 ### Added
 
-- Actions for NuvlaBox update
-- Support for API Key login to Nuvla
+ - Support for API Key login to Nuvla
 
 ### Changed
 
