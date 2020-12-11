@@ -27,6 +27,7 @@ class UsageReportJobsDistributor(Distributor):
             return self.api.search('customer', select='id').resources
         except Exception as ex:
             logging.error(f'Failed to search for customers: {ex}')
+            return []
 
     def deployments(self):
         try:
@@ -36,6 +37,7 @@ class UsageReportJobsDistributor(Distributor):
                                    select='id,module').resources
         except Exception as ex:
             logging.error(f'Failed to search for deployments: {ex}')
+            return []
 
     def job_exists(self, job):
         filters = f"(state='QUEUED' or state='RUNNING')" \
