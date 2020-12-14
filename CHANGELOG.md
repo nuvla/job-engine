@@ -6,7 +6,11 @@
 
  - New Job Engine Lite Docker image build, optimized for running jobs from within an infrastructure, with multi-arch support
  
-### Changed
+## [2.10.0] - 2020-12-10
+
+### Added
+
+ - Actions for NuvlaBox update
 
 ## [2.9.0] - 2020-12-07
 
