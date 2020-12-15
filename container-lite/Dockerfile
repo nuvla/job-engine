@@ -74,7 +74,7 @@ RUN set -eux; \
     	wget https://storage.googleapis.com/kubernetes-release/release/${k8s_release}/bin/linux/${kubectlArch}/kubectl && \
     	chmod +x ./kubectl && \
     	mv ./kubectl /usr/local/bin/kubectl && \
-    	timeout 5s kubectl version --client=true || echo "WARNING: kubectl failed to get version"
+    	timeout 5s kubectl version --client=true || echo "WARNING: kubectl failed to get version. Continuing anyway"
 
 RUN apk --no-cache add gettext
 
