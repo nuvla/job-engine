@@ -1,4 +1,4 @@
-FROM python:3-alpine
+FROM python:3.8-alpine
 
 ARG GIT_BRANCH
 ARG GIT_COMMIT_ID
@@ -14,17 +14,17 @@ LABEL git.build.time=${GIT_BUILD_TIME}
 LABEL ci.build.number=${TRAVIS_BUILD_NUMBER}
 LABEL ci.build.web.url=${TRAVIS_BUILD_WEB_URL}
 
-COPY --from=docker/compose:alpine-1.26.2 /usr/local/bin/docker-compose /usr/local/bin/
+COPY --from=nuvladev/job-docker-compose-client:master /usr/local/bin/docker-compose /usr/local/bin/
+COPY --from=nuvladev/job-docker-compose-client:master /usr/local/lib/python3.8/site-packages /usr/local/lib/python3.8/site-packages
 
 ADD target/job /target/job
 
-RUN pip install /target/job && \
+RUN pip install -r /target/job/requirements.lite.txt && \
     mv /target/job/src/scripts/ /app/ && \
     chmod -R +x /app/ && \
     rm -rf /target/
 
 # inherited from docker:18.09 Dockerfile
-RUN apk add --no-cache ca-certificates curl
 RUN [ ! -e /etc/nsswitch.conf ] && echo 'hosts: files dns' > /etc/nsswitch.conf
 
 ENV DOCKER_CHANNEL stable
@@ -50,23 +50,15 @@ RUN set -eux; \
 	fi; \
 	\
 	tar --extract \
-		--file docker.tgz \
+		--file docker.tgz docker/docker \
 		--strip-components 1 \
 		--directory /usr/local/bin/ \
 	; \
 	rm docker.tgz; \
 	\
-	dockerd --version; \
 	docker --version
 
 ADD https://raw.githubusercontent.com/docker-library/docker/65fab2cd767c10f22ee66afa919eda80dbdc8872/18.09/modprobe.sh /usr/local/bin/modprobe
-
-# This only works for amd64 but it also isn't necessary for push mode
-# since its only use is for infrastructure_service_swarm_start/stop, and that's a server-side feature
-RUN curl -s -L https://github.com/docker/machine/releases/download/v0.16.2/docker-machine-$(uname -s)-$(uname -m) >/tmp/docker-machine && \
-            install /tmp/docker-machine /usr/local/bin/docker-machine && rm -f /tmp/docker-machine
-# Need scp for docker-machine to transfer files to machines.
-RUN apk add --no-cache openssh
 
 RUN set -eux; \
     	\
@@ -78,24 +70,22 @@ RUN set -eux; \
     		*) echo >&2 "error: unsupported architecture ($apkArch) for kubectl"; exit 1 ;;\
     	esac; \
     	\
-    	curl -LO https://storage.googleapis.com/kubernetes-release/release/`curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt`/bin/linux/${kubectlArch}/kubectl && \
+      k8s_release=$(python3 -c 'import requests;print(requests.get("https://storage.googleapis.com/kubernetes-release/release/stable.txt").text)'); \
+    	wget https://storage.googleapis.com/kubernetes-release/release/${k8s_release}/bin/linux/${kubectlArch}/kubectl && \
     	chmod +x ./kubectl && \
     	mv ./kubectl /usr/local/bin/kubectl && \
     	timeout 5s kubectl version --client=true || exit 1
 
 RUN apk --no-cache add gettext
 
-RUN apk add --no-cache bash openssl
-RUN curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3 && \
-    chmod 700 get_helm.sh && \
-    ./get_helm.sh && \
-    rm -f ./get_helm.sh
-
 # my_init as ENTRYPOINT to protect us from zombies.
 # It assumes python3 at that location.
 RUN ln -s $(which python3) /usr/bin/python3
-RUN curl -fsSL -o /app/my_init https://raw.githubusercontent.com/phusion/baseimage-docker/rel-0.9.19/image/bin/my_init && \
-    chmod 700 /app/my_init
+
+WORKDIR /app
+
+RUN wget -O my_init https://raw.githubusercontent.com/phusion/baseimage-docker/rel-0.9.19/image/bin/my_init && \
+    chmod 700 my_init
 
 # Start your app by "-- /my/app --foo bar --baz"
 ENTRYPOINT ["/app/my_init"]

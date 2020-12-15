@@ -51,6 +51,11 @@
             <outputDirectory>./</outputDirectory>
             <fileMode>0644</fileMode>
         </file>
+        <file>
+            <source>requirements.lite.txt</source>
+            <outputDirectory>./</outputDirectory>
+            <fileMode>0644</fileMode>
+        </file>
     </files>
 
 </assembly>
