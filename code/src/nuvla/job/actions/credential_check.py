@@ -40,13 +40,13 @@ def docker_info_error_msg_infer(error_msg):
 
         # dial tcp: lookup swarm.nuvdla.io on ...: no such host
         # it means the endpoint is unreachable and thus not usable -> offline
-        return False, False
+        return False, False, 'UNKNOWN'
     elif "remote error: tls" in error_msg_lowercase:
         # "error during connect: Get <endpoint>/v1.40/info:
         # remote error: tls: unknown certificate authority"
         # in this case the infra is running, reachable, and Docker has replied.
         # Simply the creds are not good
-        return True, False
+        return True, False, 'INVALID'
     else:
         # other errors can simply mean that the server could not run the command,
         # thus not being Docker related
@@ -62,7 +62,7 @@ def docker_info_error_msg_infer(error_msg):
 
         # if we got here, is because the error is most likely not related
         # with the infra, so just raise
-        return None, None
+        return None, None, 'UNKNOWN'
 
 
 def k8s_info_error_msg_infer(error_msg):
@@ -84,11 +84,11 @@ def k8s_info_error_msg_infer(error_msg):
     if any(cert_problems):
         # Were we able to reach endpoint. The problem is highly likely
         # with credentials.
-        return True
+        return True, "INVALID"
     elif any(server_problems):
-        return False
+        return False, "UNKNOWN"
     # In all other cases, we don't know.
-    return None
+    return None, "UNKNOWN"
 
 
 @action(action_name)
@@ -115,7 +115,8 @@ class CredentialCheck(object):
             swarm_enabled = is_swarm_enabled(info)
         except Exception as ex:
             error_msg = ex.args[0]
-            infra_online, swarm_enabled = docker_info_error_msg_infer(error_msg)
+            infra_online, swarm_enabled, cred_validity = docker_info_error_msg_infer(error_msg)
+            self.update_credential_last_check(credential["id"], cred_validity)
             raise Exception(error_msg)
         finally:
             infra_service_update_body = {}
@@ -134,7 +135,8 @@ class CredentialCheck(object):
                 infra_online = True
         except Exception as ex:
             error_msg = ex.args[0]
-            infra_online = k8s_info_error_msg_infer(error_msg)
+            infra_online, cred_validity = k8s_info_error_msg_infer(error_msg)
+            self.update_credential_last_check(credential["id"], cred_validity)
             raise Exception(error_msg)
         finally:
             infra_service_update_body = {}
@@ -150,12 +152,15 @@ class CredentialCheck(object):
         self.job.set_status_message(version)
         return version
 
-    @staticmethod
-    def check_registry_login(credential, infra_service):
-        docker_cli_connector.DockerCliConnector.registry_login(
-            username=credential['username'],
-            password=credential['password'],
-            serveraddress=infra_service['endpoint'])
+    def check_registry_login(self, credential, infra_service):
+        try:
+            docker_cli_connector.DockerCliConnector.registry_login(
+                username=credential['username'],
+                password=credential['password'],
+                serveraddress=infra_service['endpoint'])
+        except:
+            self.update_credential_last_check(credential["id"], 'INVALID')
+            raise
 
     def update_credential_last_check(self, credential_id, status):
         self.api.edit(credential_id, {'status': status})
@@ -181,11 +186,10 @@ class CredentialCheck(object):
             elif infra_service_subtype == 'kubernetes':
                 self.check_coe_k8s_and_set_infra_attributes(credential, infra_service)
             elif infra_service_subtype == 'registry':
-                CredentialCheck.check_registry_login(credential, infra_service)
+                self.check_registry_login(credential, infra_service)
             self.update_credential_last_check(credential_id, 'VALID')
         except Exception as ex:
             log.error('Failed to {0} {1}: {2}'.format(self.job['action'], infra_service_id, ex))
-            self.update_credential_last_check(credential_id, 'INVALID')
             msg = str(ex)
             lines = msg.splitlines()
             status = lines[-1] if len(lines) > 1 else msg

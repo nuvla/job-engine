@@ -6,6 +6,10 @@
 
  - New Job Engine Lite Docker image build, optimized for running jobs from within an infrastructure, with multi-arch support
  
+### Changed
+
+ - Credential check - support the UNKNOWN status for a credential check
+ 
 ## [2.10.0] - 2020-12-10
 
 ### Added
