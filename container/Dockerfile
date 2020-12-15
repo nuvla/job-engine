@@ -81,7 +81,7 @@ RUN set -eux; \
     	curl -LO https://storage.googleapis.com/kubernetes-release/release/`curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt`/bin/linux/${kubectlArch}/kubectl && \
     	chmod +x ./kubectl && \
     	mv ./kubectl /usr/local/bin/kubectl && \
-    	timeout 5s kubectl version --client=true || echo "Trying kubectl again" && timeout 5s kubectl version --client=true
+    	timeout 5s kubectl version --client=true || exit 1
 
 RUN apk --no-cache add gettext
 
