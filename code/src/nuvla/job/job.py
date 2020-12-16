@@ -7,7 +7,13 @@ from nuvla.api import NuvlaError, ConnectionError
 
 from .util import retry_kazoo_queue_op
 
+from .version import version as engine_version
+
 log = logging.getLogger('job')
+
+
+def version_to_tuple(ver: str) -> tuple:
+    return tuple(map(int, ver.strip('-SNAPSHOT').split('.')))
 
 
 class NonexistentJobError(Exception):
@@ -30,6 +36,7 @@ class Job(dict):
         self.id = None
         self.queue = queue
         self.api = api
+        self._engine_version = version_to_tuple(engine_version)
         self._init()
 
     def _init(self):
@@ -41,6 +48,11 @@ class Job(dict):
                 self.id = self.id.decode()
                 cimi_job = self.get_cimi_job(self.id)
                 dict.__init__(self, cimi_job)
+                if version_to_tuple(self.get('version')) > self._engine_version:
+                    log.warning(f"Job's version {self.version} is higher than engine's {self._engine_version}. "
+                                "Putting job back to the queue.")
+                    retry_kazoo_queue_op(self.queue, "release")
+                    self.nothing_to_do = True
                 if self.is_in_final_state():
                     retry_kazoo_queue_op(self.queue, "consume")
                     log.warning('Newly retrieved {} already in final state! Removed from queue.'
@@ -90,7 +102,7 @@ class Job(dict):
             raise TypeError('progress should be int not {}'.format(type(progress)))
 
         if not (0 <= progress <= 100):
-            raise ValueError('progress shoud be between 0 and 100 not {}'.format(progress))
+            raise ValueError('progress should be between 0 and 100 not {}'.format(progress))
 
         self._edit_job('progress', progress)
 
