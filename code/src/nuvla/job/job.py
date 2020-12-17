@@ -49,7 +49,7 @@ class Job(dict):
                 cimi_job = self.get_cimi_job(self.id)
                 dict.__init__(self, cimi_job)
                 if version_to_tuple(self.get('version')) > self._engine_version:
-                    log.warning(f"Job's version {self.get('version')} is higher than engine's {self._engine_version}. "
+                    log.warning(f"Job's version {self.get('version')} is higher than engine's {engine_version}. "
                                 "Putting job back to the queue.")
                     retry_kazoo_queue_op(self.queue, "release")
                     self.nothing_to_do = True
