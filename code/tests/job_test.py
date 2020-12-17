@@ -20,6 +20,12 @@ class TestJob(unittest.TestCase):
         jb = job.Job(None, queue)
         assert jb.nothing_to_do
 
+        # the job version might only indicate the major number
+        job.engine_version = '0.0.1'
+        job.Job.get_cimi_job = Mock(return_value={'version': '0'})
+        jb = job.Job(None, queue)
+        assert jb.nothing_to_do == False
+
         job.engine_version = '0.0.1-SNAPSHOT'
         job.Job.get_cimi_job = Mock(return_value={'version': '0.0.2'})
         jb = job.Job(None, queue)
