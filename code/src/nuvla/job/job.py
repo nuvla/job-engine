@@ -2,12 +2,24 @@
 
 import time
 import logging
+import re
 
 from nuvla.api import NuvlaError, ConnectionError
 
 from .util import retry_kazoo_queue_op
 
+from .version import version as engine_version
+
 log = logging.getLogger('job')
+
+VER_TRIM_RE = re.compile('-.*$')
+
+
+def version_to_tuple(ver: str) -> tuple:
+    ver_ = list(map(int, VER_TRIM_RE.sub('', ver).split('.')))
+    if len(ver_) < 2:
+        return ver_[0], 0, 0
+    return tuple(ver_)
 
 
 class NonexistentJobError(Exception):
@@ -30,6 +42,11 @@ class Job(dict):
         self.id = None
         self.queue = queue
         self.api = api
+        self._engine_version = version_to_tuple(engine_version)
+        if self._engine_version[0] < 2:
+            self._engine_version_min = (0, 0, 1)
+        else:
+            self._engine_version_min = (self._engine_version[0] - 1, 0, 0)
         self._init()
 
     def _init(self):
@@ -41,6 +58,7 @@ class Job(dict):
                 self.id = self.id.decode()
                 cimi_job = self.get_cimi_job(self.id)
                 dict.__init__(self, cimi_job)
+                self._job_version_check()
                 if self.is_in_final_state():
                     retry_kazoo_queue_op(self.queue, "consume")
                     log.warning('Newly retrieved {} already in final state! Removed from queue.'
@@ -63,6 +81,31 @@ class Job(dict):
                 'Will go back to work after {}s.'.format(timeout))
             log.exception(e)
             time.sleep(timeout)
+            self.nothing_to_do = True
+
+    def _job_version_check(self):
+        """Skips the job by setting `self.nothing_to_do = True` when the job's
+        version is outside of the engine's supported closed range [M-1, M.m.P].
+        Where M is major version from semantic version definition M.m.P.
+        The job will be removed from the queue and set as failed if the job's
+        version is strictly lower than M-1.
+        The job will be skipped if its version is strictly greater engine's M.m.P.
+        (This can happen for a short while during upgrades when jobs distribution
+        gets upgraded before the job engine.)
+        """
+        job_version_str = str(self.get('version', '0.0.1'))
+        job_version = version_to_tuple(job_version_str)
+        if job_version < self._engine_version_min:
+            evm_str = '.'.join(map(str, self._engine_version_min))
+            msg = f"Job version {job_version_str} is smaller than min supported {evm_str}"
+            log.warning(msg)
+            retry_kazoo_queue_op(self.queue, "consume")
+            self.update_job(state='FAILED', status_message=msg)
+            self.nothing_to_do = True
+        elif job_version > self._engine_version:
+            log.debug(f"Job version {job_version_str} is higher than engine's {engine_version}. "
+                      "Putting job back to the queue.")
+            retry_kazoo_queue_op(self.queue, "release")
             self.nothing_to_do = True
 
     def get_cimi_job(self, job_uri):
@@ -90,7 +133,7 @@ class Job(dict):
             raise TypeError('progress should be int not {}'.format(type(progress)))
 
         if not (0 <= progress <= 100):
-            raise ValueError('progress shoud be between 0 and 100 not {}'.format(progress))
+            raise ValueError('progress should be between 0 and 100 not {}'.format(progress))
 
         self._edit_job('progress', progress)
 
