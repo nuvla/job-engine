@@ -9,7 +9,7 @@ from requests.adapters import HTTPAdapter
 from .actions import get_action, ActionNotImplemented
 from .base import Base
 from .job import Job, JobUpdateError
-from .util import override
+from .util import override, retry_kazoo_queue_op
 
 CONNECTION_POOL_SIZE = 4
 
@@ -60,8 +60,13 @@ class Executor(Base):
                 ex_type, ex_msg, ex_tb = sys.exc_info()
                 status_message = type(ex).__name__ + '-' + ''.join(traceback.format_exception(
                     etype=ex_type, value=ex_msg, tb=ex_tb))
+                if job.get('execution-mode', '').lower() == 'mixed':
+                    status_message = f'Re-running job in pull mode after failed first attempt: {status_message}'
+                    job.update_job(state='QUEUED', status_message=status_message)
+                    retry_kazoo_queue_op(job.queue, "release")
+                else:
+                    job.update_job(state='FAILED', status_message=status_message, return_code=1)
                 logging.error('Failed to process {}, with error: {}'.format(job.id, status_message))
-                job.update_job(state='FAILED', status_message=status_message, return_code=1)
             else:
                 state = 'SUCCESS' if return_code == 0 else 'FAILED'
                 job.update_job(state=state, return_code=return_code)
