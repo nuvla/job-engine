@@ -5,6 +5,7 @@
 ### Added
 
  - New Job Engine Lite Docker image build, optimized for running jobs from within an infrastructure, with multi-arch support
+ - When a job with execution-mode=mixed fails, it get back in the job queue in pull-mode
  
 ### Changed
 
