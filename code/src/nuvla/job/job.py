@@ -214,6 +214,9 @@ class Job(dict):
             self.update(response.data)
             self.consume_when_final_state()
 
+    def get_context(self):
+        return self.api.operation(self, 'get-context').data
+
     def __setitem(self, key, value):
         dict.__setitem__(self, key, value)
 
