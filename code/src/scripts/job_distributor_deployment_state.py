@@ -64,9 +64,9 @@ class DeploymentStateJobsDistributor(Distributor):
             self._with_parent(active, with_parent)
             self._publish_metric('in_started_with_parent', len(with_parent))
             logging.info(f'Deployments in STARTED with parent: {len(with_parent)}')
-            return map(lambda x: x.id, with_parent)
+            return with_parent
         else:
-            return map(lambda x: x.id, active.resources)
+            return active.resources
 
     def job_exists(self, job):
         filters = "(state='QUEUED' or state='RUNNING')" \
@@ -79,9 +79,13 @@ class DeploymentStateJobsDistributor(Distributor):
     @override
     def job_generator(self):
         skipped = 0
-        for deployment_id in self.active_deployments():
+        for deployment in self.active_deployments():
             job = {'action': self._get_jobs_type(),
-                   'target-resource': {'href': deployment_id}}
+                   'target-resource': {'href': deployment.id}}
+
+            if deployment.get('execution-mode'):
+                job['execution-mode'] = deployment['execution-mode']
+
             if self.job_exists(job):
                 skipped += 1
                 continue
