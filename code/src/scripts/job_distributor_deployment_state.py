@@ -49,10 +49,10 @@ class DeploymentStateJobsDistributor(Distributor):
         # Collect old or new deployments.
         if self._old_deployments():
             filters = f"state='STARTED' and updated<'now-{COLLECT_PAST_SEC}s'"
-            select = 'id,parent'
+            select = 'id,execution-mode,parent'
         else:
             filters = f"state='STARTED' and updated>='now-{COLLECT_PAST_SEC}s'"
-            select = 'id'
+            select = 'id,execution-mode'
         logging.info(f'Filter: {filters}. Select: {select}')
         active = self.api.search('deployment', filter=filters, select=select)
         self._publish_metric('in_started', active.count)
@@ -83,8 +83,8 @@ class DeploymentStateJobsDistributor(Distributor):
             job = {'action': self._get_jobs_type(),
                    'target-resource': {'href': deployment.id}}
 
-            if deployment.get('execution-mode'):
-                job['execution-mode'] = deployment['execution-mode']
+            if deployment.data.get('execution-mode'):
+                job['execution-mode'] = deployment.data['execution-mode']
 
             if self.job_exists(job):
                 skipped += 1
