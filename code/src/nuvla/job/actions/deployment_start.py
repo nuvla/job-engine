@@ -48,11 +48,12 @@ class DeploymentBase(object):
 
     def private_registries_auth(self, deployment):
         registries_credentials = deployment.get('registries-credentials')
+        job_context = self.job.get_context()
         if registries_credentials:
             list_cred_infra = []
             for registry_cred in registries_credentials:
-                credential = self.api.get(registry_cred).data
-                infra_service = self.api.get(credential['parent']).data
+                credential = job_context[registry_cred]
+                infra_service = job_context[credential['parent']]
                 registry_auth = {'username': credential['username'],
                                  'password': credential['password'],
                                  'serveraddress': infra_service['endpoint'].replace('https://', '')}
