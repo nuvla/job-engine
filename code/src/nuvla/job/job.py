@@ -58,7 +58,7 @@ class Job(dict):
             else:
                 self.id = self.id.decode()
                 self.cimi_job = self.get_cimi_job(self.id)
-                dict.__init__(self, self.cimi_job)
+                dict.__init__(self, self.cimi_job.data)
                 self._job_version_check()
                 if self.is_in_final_state():
                     retry_kazoo_queue_op(self.queue, "consume")
@@ -115,7 +115,7 @@ class Job(dict):
         reason = None
         for attempt in range(max_attempt):
             try:
-                return self.api.get(job_uri).data
+                return self.api.get(job_uri)
             except NuvlaError as e:
                 reason = e.reason
                 if e.response.status_code == 404:
