@@ -40,6 +40,7 @@ class Job(dict):
         super(Job, self).__init__()
         self.nothing_to_do = False
         self.id = None
+        self.cimi_job = None
         self.queue = queue
         self.api = api
         self._engine_version = version_to_tuple(engine_version)
@@ -56,8 +57,8 @@ class Job(dict):
                 self.nothing_to_do = True
             else:
                 self.id = self.id.decode()
-                cimi_job = self.get_cimi_job(self.id)
-                dict.__init__(self, cimi_job)
+                self.cimi_job = self.get_cimi_job(self.id)
+                dict.__init__(self, self.cimi_job)
                 self._job_version_check()
                 if self.is_in_final_state():
                     retry_kazoo_queue_op(self.queue, "consume")
@@ -215,7 +216,7 @@ class Job(dict):
             self.consume_when_final_state()
 
     def get_context(self):
-        return self.api.operation(self, 'get-context').data
+        return self.api.operation(self.cimi_job, 'get-context').data
 
     def __setitem(self, key, value):
         dict.__setitem__(self, key, value)
