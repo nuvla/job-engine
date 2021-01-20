@@ -83,8 +83,11 @@ class DeploymentStateJobsDistributor(Distributor):
             job = {'action': self._get_jobs_type(),
                    'target-resource': {'href': deployment.id}}
 
-            if deployment.data.get('execution-mode'):
-                job['execution-mode'] = deployment.data['execution-mode']
+            exec_mode = deployment.data.get('execution-mode')
+            if exec_mode in ["mixed", "pull"]:
+                job['execution-mode'] = 'pull'
+            else:
+                job['execution-mode'] = 'push'
 
             if self.job_exists(job):
                 skipped += 1
