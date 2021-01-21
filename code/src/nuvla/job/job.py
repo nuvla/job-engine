@@ -43,6 +43,7 @@ class Job(dict):
         self.cimi_job = None
         self.queue = queue
         self.api = api
+        self._context = None
         self._engine_version = version_to_tuple(engine_version)
         if self._engine_version[0] < 2:
             self._engine_version_min = (0, 0, 1)
@@ -215,8 +216,15 @@ class Job(dict):
             self.update(response.data)
             self.consume_when_final_state()
 
-    def get_context(self):
-        return self.api.operation(self.cimi_job, 'get-context').data
+    @property
+    def context(self):
+        if self._context is None:
+            self._context = self.api.operation(self.cimi_job, 'get-context').data
+        return self._context
+
+    @property
+    def is_in_pull_mode(self):
+        return self.cimi_job.data.get('execution-mode', 'push') == 'pull'
 
     def __setitem(self, key, value):
         dict.__setitem__(self, key, value)

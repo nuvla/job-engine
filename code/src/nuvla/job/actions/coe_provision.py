@@ -3,7 +3,7 @@
 import copy
 import logging
 
-from nuvla.connector import connector_factory, docker_machine_connector
+from nuvla.connector import docker_machine_connector
 from nuvla.api.resources.credential import CredentialDockerSwarm, CredentialK8s
 from ..actions import action
 
@@ -24,7 +24,6 @@ class COEProvisionJob(object):
         if coe_type not in [COE_TYPE_SWARM, COE_TYPE_K8S]:
             raise Exception(f'Unknown COE type: {coe_type}')
 
-        cloud_creds_id = infra_service_coe.get('management-credential')
         coe_custer_params = copy.deepcopy(infra_service_coe.get('cluster-params', {}))
         if 'ssh-keys' in coe_custer_params:
             # Update ssh keys as IDs by their public key values.
@@ -35,8 +34,10 @@ class COEProvisionJob(object):
                 ssh_pub_keys.append(ssh_key)
             coe_custer_params['ssh-keys'] = ssh_pub_keys
 
-        coe = connector_factory(docker_machine_connector, self.api,
-                                cloud_creds_id, infra_service_coe)
+        cloud_creds_id = infra_service_coe.get('management-credential')
+        credential_coe = self.api.get(cloud_creds_id).data
+
+        coe = docker_machine_connector.instantiate_from_cimi(infra_service_coe, credential_coe)
 
         infra_service_id = infra_service_coe['id']
         self.api.edit(infra_service_id, {"state": "STARTING"})

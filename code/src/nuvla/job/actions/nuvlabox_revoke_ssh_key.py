@@ -30,7 +30,7 @@ class NBRevokeSSHKey(object):
                 break
 
         if credential_id:
-            pubkey = self.api.get(credential_id).data['public-key']
+            pubkey = self.job.context[credential_id]['public-key']
             r = connector.start(api_action_name="revoke-ssh-key", method='post',
                                 payload=pubkey, headers={"Content-Type": "text/plain"})
 

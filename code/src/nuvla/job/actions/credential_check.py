@@ -2,7 +2,7 @@
 
 import logging
 
-from nuvla.connector import connector_factory, docker_cli_connector, kubernetes_cli_connector
+from nuvla.connector import docker_cli_connector, kubernetes_cli_connector
 from ..actions import action
 
 action_name = 'credential_check'
@@ -99,9 +99,8 @@ class CredentialCheck(object):
         self.api = job.api
 
     def check_coe_swarm(self, credential, infra_service):
-        connector = connector_factory(docker_cli_connector, self.api,
-                                      credential['id'],
-                                      infrastructure_service=infra_service)
+
+        connector = docker_cli_connector.instantiate_from_cimi(infra_service, credential)
         info = connector.info()
         self.job.set_status_message(info)
         return info
@@ -146,8 +145,7 @@ class CredentialCheck(object):
                 self.api.edit(infra_service.get("id"), infra_service_update_body)
 
     def check_coe_kubernetes(self, credential, infra_service):
-        connector = connector_factory(kubernetes_cli_connector, self.api, credential['id'],
-                                      infrastructure_service=infra_service)
+        connector = kubernetes_cli_connector.instantiate_from_cimi(infra_service, credential)
         version = connector.version()
         self.job.set_status_message(version)
         return version

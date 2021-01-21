@@ -3,10 +3,10 @@
 import logging
 from datetime import datetime
 
-from nuvla.connector import connector_factory, docker_connector, \
-    docker_cli_connector, docker_compose_cli_connector, kubernetes_cli_connector
+from nuvla.connector import docker_connector, docker_cli_connector, \
+    docker_compose_cli_connector, kubernetes_cli_connector
 from nuvla.api.resources import Deployment, DeploymentParameter
-from .deployment_start import application_params_update
+from .deployment_start import application_params_update, initialize_connector
 from ..actions import action
 
 action_name = 'deployment_state'
@@ -21,13 +21,13 @@ def utcnow():
 class DeploymentStateJob(object):
 
     def __init__(self, _, job):
-        self.job = job
-        self.api = job.api
+        self.job     = job
+        self.api     = job.api
         self.api_dpl = Deployment(self.api)
 
     def get_component_state(self, deployment):
-        connector = connector_factory(docker_connector, self.api,
-                                      Deployment.credential_id(deployment))
+        connector = initialize_connector(docker_connector, self.job, deployment)
+
         did = Deployment.id(deployment)
         # FIXME: at the moment deployment UUID is the service name.
         sname = self.api_dpl.uuid(deployment)
@@ -38,13 +38,11 @@ class DeploymentStateJob(object):
                        key=lambda x: x['CreatedAt'], reverse=True)
 
         if len(tasks) > 0:
-            current_task = tasks[0]
-
+            current_task    = tasks[0]
             current_desired = current_task.get('DesiredState')
-
-            current_state = None
-            current_error = None
-            current_status = current_task.get('Status')
+            current_state   = None
+            current_error   = None
+            current_status  = current_task.get('Status')
             if current_status is not None:
                 current_state = current_status.get('State')
                 current_error = current_status.get('Err', "no error")
@@ -112,26 +110,22 @@ class DeploymentStateJob(object):
 
     def get_application_state(self, deployment):
         stack_name = Deployment.uuid(deployment)
-        credential_id = Deployment.credential_id(deployment)
 
         if Deployment.is_compatibility_docker_compose(deployment):
             module_content = Deployment.module_content(deployment)
-            compose_file = module_content['docker-compose']
-
-            connector = connector_factory(docker_compose_cli_connector, self.api, credential_id)
-
-            services = connector.stack_services(stack_name, compose_file)
+            compose_file   = module_content['docker-compose']
+            connector      = initialize_connector(docker_compose_cli_connector, self.job, deployment)
+            services       = connector.stack_services(stack_name, compose_file)
         else:
-            connector = connector_factory(docker_cli_connector, self.api, credential_id)
-            services = connector.stack_services(stack_name)
+            connector = initialize_connector(docker_cli_connector, self.job, deployment)
+            services  = connector.stack_services(stack_name)
 
         application_params_update(self.api_dpl, deployment, services)
 
     def get_application_kubernetes_state(self, deployment):
-        connector = connector_factory(kubernetes_cli_connector, self.api,
-                                      Deployment.credential_id(deployment))
+        connector  = initialize_connector(kubernetes_cli_connector, self.job, deployment)
         stack_name = Deployment.uuid(deployment)
-        services = connector.stack_services(stack_name)
+        services   = connector.stack_services(stack_name)
         application_params_update(self.api_dpl, deployment, services)
 
     def do_work(self):

@@ -4,13 +4,22 @@ import logging
 
 from nuvla.api.resources import Deployment, DeploymentParameter
 from nuvla.api.resources.base import ResourceNotFound
-from nuvla.connector import connector_factory, docker_connector, \
-    docker_cli_connector, docker_compose_cli_connector, kubernetes_cli_connector
+from nuvla.connector import docker_connector, docker_cli_connector, \
+    docker_compose_cli_connector, kubernetes_cli_connector
 from ..actions import action
 
 action_name = 'start_deployment'
 
 log = logging.getLogger(action_name)
+
+
+def initialize_connector(connector_class, job, deployment):
+    credential_id = Deployment.credential_id(deployment)
+    credential = job.context[credential_id]
+    infrastructure_service = job.context[credential['parent']]
+    if job.is_in_pull_mode:
+        infrastructure_service['endpoint'] = 'https://compute-api:5000'
+    return connector_class.instantiate_from_cimi(infrastructure_service, credential)
 
 
 def get_env(deployment: dict):
@@ -48,12 +57,11 @@ class DeploymentBase(object):
 
     def private_registries_auth(self, deployment):
         registries_credentials = deployment.get('registries-credentials')
-        job_context = self.job.get_context()
         if registries_credentials:
             list_cred_infra = []
             for registry_cred in registries_credentials:
-                credential = job_context[registry_cred]
-                infra_service = job_context[credential['parent']]
+                credential = self.job.context[registry_cred]
+                infra_service = self.job.context[credential['parent']]
                 registry_auth = {'username': credential['username'],
                                  'password': credential['password'],
                                  'serveraddress': infra_service['endpoint'].replace('https://', '')}
@@ -87,10 +95,8 @@ class DeploymentStartJob(DeploymentBase):
     def __init__(self, _, job):
         super().__init__(job)
 
-
     def start_component(self, deployment: dict):
-        connector = connector_factory(docker_connector, self.api,
-                                      Deployment.credential_id(deployment))
+        connector = initialize_connector(docker_connector, self.job, deployment)
 
         deployment_id = Deployment.id(deployment)
         node_instance_name = Deployment.uuid(deployment)
@@ -161,12 +167,11 @@ class DeploymentStartJob(DeploymentBase):
 
     def start_application(self, deployment: dict):
         deployment_id = Deployment.id(deployment)
-        credential_id = Deployment.credential_id(deployment)
 
         if Deployment.is_compatibility_docker_compose(deployment):
-            connector = connector_factory(docker_compose_cli_connector, self.api, credential_id)
+            connector = initialize_connector(docker_compose_cli_connector, self.job, deployment)
         else:
-            connector = connector_factory(docker_cli_connector, self.api, credential_id)
+            connector = initialize_connector(docker_cli_connector, self.job, deployment)
 
         module_content   = Deployment.module_content(deployment)
         deployment_owner = Deployment.owner(deployment)
@@ -192,8 +197,7 @@ class DeploymentStartJob(DeploymentBase):
     def start_application_kubernetes(self, deployment: dict):
         deployment_id = Deployment.id(deployment)
 
-        connector = connector_factory(kubernetes_cli_connector, self.api,
-                                      Deployment.credential_id(deployment))
+        connector = initialize_connector(kubernetes_cli_connector, self.job, deployment)
 
         module_content   = Deployment.module_content(deployment)
         deployment_owner = Deployment.owner(deployment)
