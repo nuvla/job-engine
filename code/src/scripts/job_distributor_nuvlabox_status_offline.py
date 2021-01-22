@@ -31,6 +31,7 @@ class NuvlaBoxStatusOfflineDistributor(Distributor):
         # we don't generate a job because it's a simple edit on each nuvlabox status
         for nuvlabox_status in self.collect_offline():
             self.api.edit(nuvlabox_status.id, {'online': False})
+        return []
 
 
 if __name__ == '__main__':
