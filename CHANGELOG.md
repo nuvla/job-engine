@@ -4,6 +4,7 @@
 
 ### Added
 
+ - New distributor for setting nuvlabox status to offline
  - New Job Engine Lite Docker image build, optimized for running jobs from within an infrastructure, with multi-arch support
  
 ## [2.10.0] - 2020-12-10
