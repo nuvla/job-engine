@@ -38,7 +38,7 @@ class Base(object):
         required_args = parser.add_argument_group('required named arguments')
 
         parser.add_argument(
-            '--zk-hosts', dest='zk_hosts', default=['127.0.0.1:2181'], nargs='+', metavar='HOST',
+            '--zk-hosts', dest='zk_hosts', default=None, nargs='+', metavar='HOST',
             help='ZooKeeper list of hosts [localhost:port]. (default: 127.0.0.1:2181)')
 
         parser.add_argument('--api-url', dest='api_url', default='https://nuvla.io', metavar='URL',
@@ -120,10 +120,11 @@ class Base(object):
             logging.error('Unable to connect to Nuvla endpoint {}! {}'.format(self.api.endpoint, e))
             exit(1)
 
-        self._kz = KazooClient(','.join(self.args.zk_hosts),
-                               connection_retry=KazooRetry(max_tries=-1),
-                               command_retry=KazooRetry(max_tries=-1), timeout=30.0)
-        self._kz.start()
+        if self.args.zk_hosts:
+            self._kz = KazooClient(','.join(self.args.zk_hosts),
+                                   connection_retry=KazooRetry(max_tries=-1),
+                                   command_retry=KazooRetry(max_tries=-1), timeout=30.0)
+            self._kz.start()
 
         if self.args.statsd:
             statsd_hp = self.args.statsd.split(':')
