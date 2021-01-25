@@ -57,7 +57,9 @@ class Job(dict):
             if self.id is None:
                 self.nothing_to_do = True
             else:
-                self.id = self.id.decode()
+                if isinstance(self.id, bytes):
+                    self.id = self.id.decode()
+                
                 self.cimi_job = self.get_cimi_job(self.id)
                 dict.__init__(self, self.cimi_job.data)
                 self._job_version_check()
