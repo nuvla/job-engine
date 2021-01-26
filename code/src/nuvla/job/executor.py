@@ -87,7 +87,7 @@ class Executor(Base):
                     job._edit_job_multi({"state": 'QUEUED',
                                          "status-message": status_message,
                                          "execution-mode": "pull"})
-                    retry_kazoo_queue_op(job.queue, "release")
+                    retry_kazoo_queue_op(job.queue, "consume")
                 else:
                     job.update_job(state='FAILED', status_message=status_message, return_code=1)
                 logging.error('Failed to process {}, with error: {}'.format(job.id, status_message))
