@@ -5,6 +5,7 @@ from datetime import datetime
 
 from nuvla.connector import docker_connector, docker_cli_connector, \
     docker_compose_cli_connector, kubernetes_cli_connector
+from nuvla.api import Api
 from nuvla.api.resources import Deployment, DeploymentParameter
 from .deployment_start import application_params_update, initialize_connector
 from ..actions import action
@@ -23,7 +24,7 @@ class DeploymentStateJob(object):
     def __init__(self, _, job):
         self.job     = job
         self.api     = job.api
-        self.api_dpl = Deployment(self.api)
+        self.api_dpl = None
 
     def get_component_state(self, deployment):
         connector = initialize_connector(docker_connector, self.job, deployment)
@@ -128,11 +129,19 @@ class DeploymentStateJob(object):
         services   = connector.stack_services(stack_name)
         application_params_update(self.api_dpl, deployment, services)
 
+    def get_deployment_api(self, deployment_id):
+        creds = Deployment._get_attr(Deployment(self.api).get(deployment_id), 'api-credentials')
+        insecure = not self.api.session.verify
+        api = Api(endpoint=self.api.endpoint, insecure=insecure, reauthenticate=True)
+        api.login_apikey(creds['api-key'], creds['api-secret'])
+        return Deployment(api)
+
     def do_work(self):
         deployment_id = self.job['target-resource']['href']
 
         log.info('Job started for {}.'.format(deployment_id))
 
+        self.api_dpl = self.get_deployment_api(deployment_id)
         deployment = self.api_dpl.get(deployment_id)
 
         self.job.set_progress(10)
