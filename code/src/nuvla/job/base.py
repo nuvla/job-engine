@@ -6,7 +6,6 @@ import random
 import signal
 import threading
 
-from kazoo.client import KazooClient, KazooRetry
 from nuvla.api import Api
 from requests.exceptions import ConnectionError
 from statsd import StatsClient
@@ -121,6 +120,7 @@ class Base(object):
             exit(1)
 
         if self.args.zk_hosts:
+            from kazoo.client import KazooClient, KazooRetry
             self._kz = KazooClient(','.join(self.args.zk_hosts),
                                    connection_retry=KazooRetry(max_tries=-1),
                                    command_retry=KazooRetry(max_tries=-1), timeout=30.0)
