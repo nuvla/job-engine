@@ -19,7 +19,8 @@ COPY --from=nuvladev/job-docker-compose-client:master /usr/local/lib/python3.8/s
 
 ADD target/job /target/job
 
-RUN pip install -r /target/job/requirements.lite.txt && \
+RUN mv /target/job/requirements.lite.txt /target/job/requirements.txt && \
+    pip install /target/job && \
     mv /target/job/src/scripts/ /app/ && \
     chmod -R +x /app/ && \
     rm -rf /target/
