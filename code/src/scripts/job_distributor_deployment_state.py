@@ -49,10 +49,10 @@ class DeploymentStateJobsDistributor(Distributor):
         # Collect old or new deployments.
         if self._old_deployments():
             filters = f"state='STARTED' and updated<'now-{COLLECT_PAST_SEC}s'"
-            select = 'id,execution-mode,parent'
+            select = 'id,execution-mode,nuvlabox,parent'
         else:
             filters = f"state='STARTED' and updated>='now-{COLLECT_PAST_SEC}s'"
-            select = 'id,execution-mode'
+            select = 'id,execution-mode,nuvlabox'
         logging.info(f'Filter: {filters}. Select: {select}')
         active = self.api.search('deployment', filter=filters, select=select)
         self._publish_metric('in_started', active.count)
@@ -82,6 +82,12 @@ class DeploymentStateJobsDistributor(Distributor):
         for deployment in self.active_deployments():
             job = {'action': self._get_jobs_type(),
                    'target-resource': {'href': deployment.id}}
+
+            nuvlabox = deployment.data.get('nuvlabox')
+            if nuvlabox:
+                job['acl'] = {'edit-data': [nuvlabox],
+                              'manage': [nuvlabox],
+                              'owners': ['group/nuvla-admin']}
 
             exec_mode = deployment.data.get('execution-mode')
             if exec_mode in ["mixed", "pull"]:
