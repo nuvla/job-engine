@@ -5,9 +5,8 @@ from datetime import datetime
 
 from nuvla.connector import docker_connector, docker_cli_connector, \
     docker_compose_cli_connector, kubernetes_cli_connector
-from nuvla.api import Api
 from nuvla.api.resources import Deployment, DeploymentParameter
-from .deployment_start import application_params_update, initialize_connector
+from .deployment_start import DeploymentBase, application_params_update, initialize_connector
 from ..actions import action
 
 action_name = 'deployment_state'
@@ -19,19 +18,14 @@ def utcnow():
     return datetime.utcnow().isoformat('T', timespec='milliseconds') + 'Z'
 
 
-class DeploymentStateJob(object):
+class DeploymentStateJob(DeploymentBase):
 
-    def __init__(self, _, job):
-        self.job     = job
-        self.api     = job.api
-        self.api_dpl = None
+    def get_component_state(self):
+        connector = initialize_connector(docker_connector, self.job, self.deployment)
 
-    def get_component_state(self, deployment):
-        connector = initialize_connector(docker_connector, self.job, deployment)
-
-        did = Deployment.id(deployment)
+        did = Deployment.id(self.deployment)
         # FIXME: at the moment deployment UUID is the service name.
-        sname = self.api_dpl.uuid(deployment)
+        sname = self.api_dpl.uuid(self.deployment)
 
         desired = connector.service_replicas_desired(sname)
 
@@ -107,54 +101,41 @@ class DeploymentStateJob(object):
         services = connector.list(filters={"name": sname})
         if services:
             ports_mapping = connector.extract_vm_ports_mapping(services[0])
-            self.api_dpl.update_port_parameters(deployment, ports_mapping)
+            self.api_dpl.update_port_parameters(self.deployment, ports_mapping)
 
-    def get_application_state(self, deployment):
-        stack_name = Deployment.uuid(deployment)
+    def get_application_state(self):
+        stack_name = Deployment.uuid(self.deployment)
 
-        if Deployment.is_compatibility_docker_compose(deployment):
-            module_content = Deployment.module_content(deployment)
+        if Deployment.is_compatibility_docker_compose(self.deployment):
+            module_content = Deployment.module_content(self.deployment)
             compose_file   = module_content['docker-compose']
-            connector      = initialize_connector(docker_compose_cli_connector, self.job, deployment)
+            connector      = initialize_connector(docker_compose_cli_connector, self.job, self.deployment)
             services       = connector.stack_services(stack_name, compose_file)
         else:
-            connector = initialize_connector(docker_cli_connector, self.job, deployment)
+            connector = initialize_connector(docker_cli_connector, self.job, self.deployment)
             services  = connector.stack_services(stack_name)
 
-        application_params_update(self.api_dpl, deployment, services)
+        application_params_update(self.api_dpl, self.deployment, services)
 
-    def get_application_kubernetes_state(self, deployment):
-        connector  = initialize_connector(kubernetes_cli_connector, self.job, deployment)
-        stack_name = Deployment.uuid(deployment)
+    def get_application_kubernetes_state(self):
+        connector  = initialize_connector(kubernetes_cli_connector, self.job, self.deployment)
+        stack_name = Deployment.uuid(self.deployment)
         services   = connector.stack_services(stack_name)
-        application_params_update(self.api_dpl, deployment, services)
-
-    def get_deployment_api(self, deployment_id):
-        creds = Deployment._get_attr(Deployment(self.api).get(deployment_id), 'api-credentials')
-        insecure = not self.api.session.verify
-        api = Api(endpoint=self.api.endpoint, insecure=insecure, reauthenticate=True)
-        api.login_apikey(creds['api-key'], creds['api-secret'])
-        return Deployment(api)
+        application_params_update(self.api_dpl, self.deployment, services)
 
     def do_work(self):
-        deployment_id = self.job['target-resource']['href']
-
-        log.info('Job started for {}.'.format(deployment_id))
-
-        self.api_dpl = self.get_deployment_api(deployment_id)
-        deployment = self.api_dpl.get(deployment_id)
-
+        log.info('Job started for {}.'.format(self.deployment_id))
         self.job.set_progress(10)
 
         try:
-            if Deployment.is_component(deployment):
-                self.get_component_state(deployment)
-            elif Deployment.is_application(deployment):
-                self.get_application_state(deployment)
-            elif Deployment.is_application_kubernetes(deployment):
-                self.get_application_kubernetes_state(deployment)
+            if Deployment.is_component(self.deployment):
+                self.get_component_state()
+            elif Deployment.is_application(self.deployment):
+                self.get_application_state()
+            elif Deployment.is_application_kubernetes(self.deployment):
+                self.get_application_kubernetes_state()
         except Exception as ex:
-            log.error('Failed to {0} {1}: {2}'.format(self.job['action'], deployment_id, ex))
+            log.error('Failed to {0} {1}: {2}'.format(self.job['action'], self.deployment_id, ex))
             self.job.set_status_message(repr(ex))
             raise ex
 

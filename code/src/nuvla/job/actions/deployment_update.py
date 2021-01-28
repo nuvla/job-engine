@@ -17,9 +17,6 @@ log = logging.getLogger(action_name)
 @action(action_name)
 class DeploymentUpdateJob(DeploymentBase):
 
-    def __init__(self, _, job):
-        super().__init__(job)
-
     def get_update_params_docker_service(self, deployment, registries_auth):
         module_content = Deployment.module_content(deployment)
         restart_policy = module_content.get('restart-policy', {})
@@ -107,9 +104,8 @@ class DeploymentUpdateJob(DeploymentBase):
         return 0
 
     def do_work(self):
-        deployment_id = self.job['target-resource']['href']
         try:
-            return self.update_deployment(deployment_id)
+            return self.update_deployment(self.deployment_id)
         except Exception as e:
-            self.api_dpl.set_state_error(deployment_id)
+            self.api_dpl.set_state_error(self.deployment_id)
             raise

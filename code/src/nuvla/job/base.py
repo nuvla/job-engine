@@ -105,7 +105,8 @@ class Base(object):
         # true unless header authentication is used
         reauthenticate = self.args.api_authn_header is None
         self.api = Api(endpoint=self.args.api_url, insecure=self.args.api_insecure,
-                       reauthenticate=reauthenticate, authn_header=self.args.api_authn_header)
+                       persist_cookie=False, reauthenticate=reauthenticate,
+                       authn_header=self.args.api_authn_header)
         try:
             if self.args.api_authn_header is None:
                 if self.args.api_key and self.args.api_secret:

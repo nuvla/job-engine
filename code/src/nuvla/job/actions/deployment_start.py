@@ -4,6 +4,7 @@ import re
 import copy
 import logging
 
+from nuvla.api import Api
 from nuvla.api.resources import Deployment, DeploymentParameter
 from nuvla.api.resources.base import ResourceNotFound
 from nuvla.connector import docker_connector, docker_cli_connector, \
@@ -17,18 +18,18 @@ log = logging.getLogger(action_name)
 
 def initialize_connector(connector_class, job, deployment):
     credential_id = Deployment.credential_id(deployment)
-    credential = get_credential_from_context(job, credential_id)
-    infrastructure_service = copy.deepcopy(get_credential_from_context(job, credential['parent']))
+    credential = get_from_context(job, credential_id)
+    infrastructure_service = copy.deepcopy(get_from_context(job, credential['parent']))
     if job.is_in_pull_mode:
         infrastructure_service['endpoint'] = 'https://compute-api:5000'
     return connector_class.instantiate_from_cimi(infrastructure_service, credential)
 
 
-def get_credential_from_context(job, credential_id):
+def get_from_context(job, resource_id):
     try:
-        return job.context[credential_id]
+        return job.context[resource_id]
     except KeyError:
-        raise Exception(f'Credential {credential_id} not found in job context')
+        raise Exception(f'{resource_id} not found in job context')
 
 
 def get_env(deployment: dict):
@@ -59,19 +60,29 @@ def application_params_update(api_dpl, deployment, services):
 
 class DeploymentBase(object):
 
-    def __init__(self, job):
+    def __init__(self, _, job):
         self.job = job
         self.api = job.api
-        self.api_dpl = Deployment(self.api)
+        self.deployment_id = self.job['target-resource']['href']
+        self.api_dpl = self.get_deployment_api(self.deployment_id)
+        self.deployment = self.api_dpl.get(self.deployment_id)
 
-    def get_credential_from_context(self, credential_id):
-        return get_credential_from_context(self.job, credential_id)
+    def get_from_context(self, resource_id):
+        return get_from_context(self.job, resource_id)
 
-    def get_hostname(self, deployment):
-        credential_id = Deployment.credential_id(deployment)
-        credential = self.get_credential_from_context(credential_id)
-        endpoint   = self.get_credential_from_context(credential['parent'])['endpoint']
+    def get_hostname(self):
+        credential_id = Deployment.credential_id(self.deployment)
+        credential = self.get_from_context(credential_id)
+        endpoint   = self.get_from_context(credential['parent'])['endpoint']
         return re.search('(?:http.*://)?(?P<host>[^:/ ]+)', endpoint).group('host')
+
+    def get_deployment_api(self, deployment_id):
+        creds = Deployment._get_attr(Deployment(self.api).get(deployment_id), 'api-credentials')
+        insecure = not self.api.session.verify
+        api = Api(endpoint=self.api.endpoint, insecure=insecure,
+                  persist_cookie=False, reauthenticate=True)
+        api.login_apikey(creds['api-key'], creds['api-secret'])
+        return Deployment(api)
 
     def private_registries_auth(self, deployment):
         registries_credentials = deployment.get('registries-credentials')
@@ -109,9 +120,6 @@ class DeploymentBase(object):
 
 @action(action_name)
 class DeploymentStartJob(DeploymentBase):
-
-    def __init__(self, _, job):
-        super().__init__(job)
 
     def start_component(self, deployment: dict):
         connector = initialize_connector(docker_connector, self.job, deployment)
@@ -157,7 +165,7 @@ class DeploymentStartJob(DeploymentBase):
 
         deployment_parameters = (
             (DeploymentParameter.SERVICE_ID, connector.extract_vm_id(service)),
-            (DeploymentParameter.HOSTNAME,   self.get_hostname(deployment)),
+            (DeploymentParameter.HOSTNAME,   self.get_hostname()),
             (DeploymentParameter.REPLICAS_DESIRED,  str(desired)),
             (DeploymentParameter.REPLICAS_RUNNING,  '0'),
             (DeploymentParameter.CURRENT_DESIRED,   ''),
@@ -207,7 +215,7 @@ class DeploymentStartJob(DeploymentBase):
             deployment_id=deployment_id,
             user_id=deployment_owner,
             param_name=DeploymentParameter.HOSTNAME['name'],
-            param_value=self.get_hostname(deployment),
+            param_value=self.get_hostname(),
             param_description=DeploymentParameter.HOSTNAME['description'])
 
         application_params_update(self.api_dpl, deployment, services)
@@ -234,7 +242,7 @@ class DeploymentStartJob(DeploymentBase):
             deployment_id=deployment_id,
             user_id=deployment_owner,
             param_name=DeploymentParameter.HOSTNAME['name'],
-            param_value=self.get_hostname(deployment),
+            param_value=self.get_hostname(),
             param_description=DeploymentParameter.HOSTNAME['description'])
 
         application_params_update(self.api_dpl, deployment, services)
