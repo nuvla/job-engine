@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 
+import re
+import copy
 import logging
 
 from nuvla.api.resources import Deployment, DeploymentParameter
@@ -15,11 +17,18 @@ log = logging.getLogger(action_name)
 
 def initialize_connector(connector_class, job, deployment):
     credential_id = Deployment.credential_id(deployment)
-    credential = job.context[credential_id]
-    infrastructure_service = job.context[credential['parent']]
+    credential = get_credential_from_context(job, credential_id)
+    infrastructure_service = copy.deepcopy(get_credential_from_context(job, credential['parent']))
     if job.is_in_pull_mode:
         infrastructure_service['endpoint'] = 'https://compute-api:5000'
     return connector_class.instantiate_from_cimi(infrastructure_service, credential)
+
+
+def get_credential_from_context(job, credential_id):
+    try:
+        return job.context[credential_id]
+    except KeyError:
+        raise Exception(f'Credential {credential_id} not found in job context')
 
 
 def get_env(deployment: dict):
@@ -54,6 +63,15 @@ class DeploymentBase(object):
         self.job = job
         self.api = job.api
         self.api_dpl = Deployment(self.api)
+
+    def get_credential_from_context(self, credential_id):
+        return get_credential_from_context(self.job, credential_id)
+
+    def get_hostname(self, deployment):
+        credential_id = Deployment.credential_id(deployment)
+        credential = self.get_credential_from_context(credential_id)
+        endpoint   = self.get_credential_from_context(credential['parent'])['endpoint']
+        return re.search('(?:http.*://)?(?P<host>[^:/ ]+)', endpoint).group('host')
 
     def private_registries_auth(self, deployment):
         registries_credentials = deployment.get('registries-credentials')
@@ -139,7 +157,7 @@ class DeploymentStartJob(DeploymentBase):
 
         deployment_parameters = (
             (DeploymentParameter.SERVICE_ID, connector.extract_vm_id(service)),
-            (DeploymentParameter.HOSTNAME,   connector.extract_vm_ip(service)),
+            (DeploymentParameter.HOSTNAME,   self.get_hostname(deployment)),
             (DeploymentParameter.REPLICAS_DESIRED,  str(desired)),
             (DeploymentParameter.REPLICAS_RUNNING,  '0'),
             (DeploymentParameter.CURRENT_DESIRED,   ''),
@@ -189,7 +207,7 @@ class DeploymentStartJob(DeploymentBase):
             deployment_id=deployment_id,
             user_id=deployment_owner,
             param_name=DeploymentParameter.HOSTNAME['name'],
-            param_value=connector.extract_vm_ip(services),
+            param_value=self.get_hostname(deployment),
             param_description=DeploymentParameter.HOSTNAME['description'])
 
         application_params_update(self.api_dpl, deployment, services)
@@ -216,7 +234,7 @@ class DeploymentStartJob(DeploymentBase):
             deployment_id=deployment_id,
             user_id=deployment_owner,
             param_name=DeploymentParameter.HOSTNAME['name'],
-            param_value=connector.extract_vm_ip(None),
+            param_value=self.get_hostname(deployment),
             param_description=DeploymentParameter.HOSTNAME['description'])
 
         application_params_update(self.api_dpl, deployment, services)
