@@ -72,4 +72,5 @@ for module in __all__:
     try:
         globals()[module] = importlib.import_module(module)
     except ModuleNotFoundError:
+        logging.exception(f'Unable to load module {module}')
         pass
