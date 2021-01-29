@@ -67,4 +67,8 @@ action = Actions.action
 get_action = Actions.get_action
 register_action = Actions.register_action
 
-from . import *
+for module in __all__:
+    try:
+        import module
+    except ModuleNotFoundError:
+        pass
