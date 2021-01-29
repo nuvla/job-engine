@@ -3,6 +3,7 @@
 import glob
 import logging
 import os
+import importlib
 
 from os.path import dirname, basename, isfile
 
@@ -69,6 +70,6 @@ register_action = Actions.register_action
 
 for module in __all__:
     try:
-        import module
+        globals()[module] = importlib.import_module(module)
     except ModuleNotFoundError:
         pass
