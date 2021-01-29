@@ -12,15 +12,22 @@ LS_FIELDS = ["Name", "Active", "ActiveHost", "ActiveSwarm", "DriverName", "State
 
 
 class Machine:
-    def __init__(self, path="docker-machine"):
+    def __init__(self, binary="docker-machine"):
         """
         Args:
-            path (str): path to docker-machine binary
+            binary (str): path to docker-machine binary
         """
-        where = which(path)
-        if not where:
-            raise RuntimeError("Cant find docker-machine binary (%s)" % path)
-        self.path = where
+        self._path = None
+        self.binary = binary
+
+    @property
+    def path(self):
+        if self._path is None:
+            where = which(self.binary)
+            if not where:
+                raise RuntimeError("Cant find docker-machine binary (%s)" % self.binary)
+            self._path = where
+        return self._path
 
     def _run(self, cmd, raise_error=True, env_extra: Optional[dict]=None):
         """
