@@ -7,7 +7,7 @@ from nuvla.connector.nuvlabox_connector import NuvlaBoxConnector
 from nuvla.api import NuvlaError
 
 
-@action('disable-stream')
+@action('disable-stream', True)
 class NBDisableStreamJob(object):
 
     def __init__(self, _, job):

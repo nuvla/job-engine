@@ -118,7 +118,7 @@ class DeploymentBase(object):
                 param_description=output_param.get('description'))
 
 
-@action(action_name)
+@action(action_name, True)
 class DeploymentStartJob(DeploymentBase):
 
     def start_component(self, deployment: dict):

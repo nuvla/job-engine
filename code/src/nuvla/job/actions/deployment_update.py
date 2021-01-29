@@ -14,7 +14,7 @@ action_name = 'update_deployment'
 log = logging.getLogger(action_name)
 
 
-@action(action_name)
+@action(action_name, True)
 class DeploymentUpdateJob(DeploymentBase):
 
     def get_update_params_docker_service(self, deployment, registries_auth):

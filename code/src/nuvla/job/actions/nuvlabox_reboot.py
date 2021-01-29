@@ -6,7 +6,7 @@ from ..actions import action
 from nuvla.connector import nuvlabox_connector as NB
 
 
-@action('reboot_nuvlabox')
+@action('reboot_nuvlabox', True)
 class NBRebootJob(object):
 
     def __init__(self, _, job):

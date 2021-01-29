@@ -14,7 +14,7 @@ action_name = 'stop_deployment'
 log = logging.getLogger(action_name)
 
 
-@action(action_name)
+@action(action_name, True)
 class DeploymentStopJob(DeploymentBase):
 
     def try_delete_deployment_credentials(self, deployment_id):

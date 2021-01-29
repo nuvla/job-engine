@@ -6,7 +6,7 @@ from ..actions import action
 from nuvla.connector.nuvlabox_connector import NuvlaBoxConnector
 
 
-@action('enable-stream')
+@action('enable-stream', True)
 class NBEnableStreamJob(object):
 
     def __init__(self, _, job):

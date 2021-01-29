@@ -6,6 +6,7 @@ ARG GIT_DIRTY
 ARG GIT_BUILD_TIME
 ARG TRAVIS_BUILD_NUMBER
 ARG TRAVIS_BUILD_WEB_URL
+ARG IMAGE_NAME
 
 LABEL git.branch=${GIT_BRANCH}
 LABEL git.commit.id=${GIT_COMMIT_ID}
@@ -30,6 +31,7 @@ RUN [ ! -e /etc/nsswitch.conf ] && echo 'hosts: files dns' > /etc/nsswitch.conf
 ENV DOCKER_CHANNEL stable
 ENV DOCKER_VERSION 19.03.5
 ENV PYTHONWARNINGS "ignore:Unverified HTTPS request"
+ENV IMAGE_NAME ${IMAGE_NAME}
 
 RUN set -eux; \
 	\

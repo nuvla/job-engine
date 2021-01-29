@@ -7,7 +7,7 @@ from ..actions import action
 from nuvla.connector import nuvlabox_connector as NB
 
 
-@action('nuvlabox_add_ssh_key')
+@action('nuvlabox_add_ssh_key', True)
 class NBAddSSHKey(object):
 
     def __init__(self, _, job):
