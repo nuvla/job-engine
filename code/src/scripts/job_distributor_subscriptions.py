@@ -58,7 +58,7 @@ class SubscriptionsManager(Distributor):
     def _resources_by_filter(self, subs_conf):
         last = 10000
         resources = self.api.search(subs_conf.get('resource-kind'),
-                                    filter=subs_conf.get('resource-filter'), last=last)
+                                    filter=subs_conf.get('resource-filter') or None, last=last)
         return set(map(lambda x: x.id, resources))
 
     def _get_individual_subscriptions(self, subs_conf):
