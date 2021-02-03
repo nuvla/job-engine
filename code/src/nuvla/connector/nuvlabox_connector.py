@@ -285,5 +285,13 @@ class NuvlaBoxConnector(Connector):
 
         self.job.set_progress(100)
 
+    def commission(self, payload, **kwargs):
+        """ Updates the NuvlaBox resource with the provided payload
+        :param payload: content to be updated in the NuvlaBox resource
+        """
+
+        if payload:
+            self.api.operation(self.nuvlabox_id, "commission", data=payload)
+
     def list(self):
         pass

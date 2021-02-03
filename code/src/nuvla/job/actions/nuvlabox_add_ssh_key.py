@@ -40,7 +40,8 @@ class NBAddSSHKey(object):
 
                 update_payload = ssh_keys + [credential_id]
 
-                connector.update({"ssh-keys": update_payload})
+                connector.commission({"ssh-keys": update_payload})
+                self.job.set_progress(100)
             else:
                 r = "Requested SSH key has already been added to the NuvlaBox in the past. Nothing to do..."
         else:

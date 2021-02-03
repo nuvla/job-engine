@@ -42,7 +42,8 @@ class NBRevokeSSHKey(object):
                 # for some reason the key is not in this list...continue anyway, but no need to edit the NB resource
                 update_payload = {}
 
-            connector.update(update_payload)
+            connector.commission({"ssh-keys": update_payload})
+            self.job.set_progress(100)
         else:
             raise Exception('Cannot find any reference to an existing credential ID')
 
