@@ -26,10 +26,10 @@ class DeploymentStopJob(DeploymentBase):
             except (NuvlaError, ConnectionError):
                 pass
 
-    def stop_component(self, deployment):
-        deployment_id = Deployment.id(deployment)
+    def stop_component(self):
+        deployment_id = Deployment.id(self.deployment)
 
-        connector = initialize_connector(docker_connector, self.job, deployment)
+        connector = initialize_connector(docker_connector, self.job, self.deployment)
         filter_params = 'parent="{}" and name="service-id"'.format(deployment_id)
 
         deployment_params = self.api.search('deployment-parameter', filter=filter_params,
