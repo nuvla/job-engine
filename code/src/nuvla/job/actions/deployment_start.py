@@ -20,8 +20,10 @@ def initialize_connector(connector_class, job, deployment):
     credential_id = Deployment.credential_id(deployment)
     credential = get_from_context(job, credential_id)
     infrastructure_service = copy.deepcopy(get_from_context(job, credential['parent']))
-    if job.is_in_pull_mode:
-        infrastructure_service['endpoint'] = 'https://compute-api:5000'
+    # if you uncomment this, the pull-mode deployment_* will only work with the NB compute-api.
+    # Which means standalone ISs and k8s capable NuvlaBoxes, are not supported
+    # if job.is_in_pull_mode:
+    #     infrastructure_service['endpoint'] = 'https://compute-api:5000'
     return connector_class.instantiate_from_cimi(infrastructure_service, credential)
 
 
