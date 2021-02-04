@@ -24,6 +24,7 @@ class NuvlaBoxConnector(Connector):
                                      'Accept': 'application/json'}
 
         self.nuvlabox_id = kwargs.get("nuvlabox_id")
+        self.nuvlabox_resource = None
         self.nuvlabox = None
         self.timeout = 60
         self.acl = None
@@ -109,7 +110,8 @@ class NuvlaBoxConnector(Connector):
 
     def connect(self):
         logging.info('Connecting to NuvlaBox {}'.format(self.nuvlabox_id))
-        self.nuvlabox = self.api.get(self.nuvlabox_id).data
+        self.nuvlabox_resource = self.api.get(self.nuvlabox_id)
+        self.nuvlabox = self.nuvlabox_resource.data
         self.acl = self.nuvlabox.get('acl')
 
     def clear_connection(self, connect_result):
@@ -285,14 +287,14 @@ class NuvlaBoxConnector(Connector):
 
         self.job.set_progress(100)
 
-    @should_connect
+    # @should_connect
     def commission(self, payload, **kwargs):
         """ Updates the NuvlaBox resource with the provided payload
         :param payload: content to be updated in the NuvlaBox resource
         """
 
         if payload:
-            self.api.operation(self.nuvlabox, "commission", data=payload)
+            self.api.operation(self.nuvlabox_resource, "commission", data=payload)
 
     def list(self):
         pass
