@@ -5,7 +5,7 @@ ROLE=${1:?"Role: manager or worker"}
 # Extra Subject Alternative Names for the API server.
 EXTRA_SANS=${2}
 
-K8S_VER=1.18.5-00
+K8S_VER=1.19.5-00
 
 # "Fix" docker daemon: https://github.com/kubernetes/kubeadm/issues/1394#issuecomment-462878219
 cat > /tmp/daemon.json <<EOF
