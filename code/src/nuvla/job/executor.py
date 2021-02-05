@@ -45,7 +45,7 @@ class Executor(Base):
 
     def _set_command_specific_options(self, parser):
         parser.add_argument('--job-id', dest='job_id', metavar='ID',
-                            help='Pull mode signle job id to execute')
+                            help='Pull mode single job id to execute')
 
     def _process_jobs(self, queue):
         is_single_job_only = isinstance(queue, LocalOneJobQueue)
