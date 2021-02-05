@@ -7,6 +7,8 @@ from nuvla.job.base import main
 from nuvla.job.distributor import Distributor
 from nuvla.job.util import override
 
+LAST = 10000
+
 
 class SubscriptionsManager(Distributor):
     ACTION_NAME = 'subscriptions_manager'
@@ -32,8 +34,7 @@ class SubscriptionsManager(Distributor):
         return []
 
     def _get_subscription_configs(self) -> dict:
-        last = 10000
-        subs_configs = self.api.search('subscription-config', last=last)
+        subs_configs = self.api.search('subscription-config', last=LAST)
         logging.info(f'Subscription configs number: {subs_configs.count}')
         for r in subs_configs.resources:
             yield r.data
@@ -56,19 +57,16 @@ class SubscriptionsManager(Distributor):
             logging.debug(f'Deleted subscription {subs_id}')
 
     def _resources_by_filter(self, subs_conf):
-        last = 10000
         resources = self.api.search(subs_conf.get('resource-kind'),
-                                    filter=subs_conf.get('resource-filter') or None, last=last)
+                                    filter=subs_conf.get('resource-filter') or None, last=LAST)
         return set(map(lambda x: x.id, resources))
 
     def _get_individual_subscriptions(self, subs_conf):
         filters = f"parent = '{subs_conf.get('id')}'"
         select = 'id,resource-id'
-        last = 10000
-        subs = self.api.search('subscription', filter=filters, select=select, last=last)
-        subs_all = map(lambda x: x.data, subs.resources)
+        subs = self.api.search('subscription', filter=filters, select=select, last=LAST)
         sub_res = {}
-        for s in subs_all:
+        for s in map(lambda x: x.data, subs.resources):
             sub_res[s.get('resource-id')] = s.get('id')
         return sub_res
 
