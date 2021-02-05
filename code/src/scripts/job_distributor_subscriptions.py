@@ -24,6 +24,8 @@ class SubscriptionsManager(Distributor):
     @override
     def job_generator(self):
         # no job generation
+        # TODO: optimisation - consider caching the last check time and
+        #  searching for the configs updated from e.g. (last check time - 15min).
         for subs_conf in self._get_subscription_configs():
             res_subs_ids = self._get_individual_subscriptions(subs_conf)
             res_ids = self._resources_by_filter(subs_conf)
