@@ -49,10 +49,10 @@ class DeploymentStateJobsDistributor(Distributor):
         # Collect old or new deployments.
         if self._old_deployments():
             filters = f"state='STARTED' and updated<'now-{COLLECT_PAST_SEC}s'"
-            select = 'id,parent'
+            select = 'id,execution-mode,nuvlabox,parent'
         else:
             filters = f"state='STARTED' and updated>='now-{COLLECT_PAST_SEC}s'"
-            select = 'id'
+            select = 'id,execution-mode,nuvlabox'
         logging.info(f'Filter: {filters}. Select: {select}')
         active = self.api.search('deployment', filter=filters, select=select)
         self._publish_metric('in_started', active.count)
@@ -64,9 +64,9 @@ class DeploymentStateJobsDistributor(Distributor):
             self._with_parent(active, with_parent)
             self._publish_metric('in_started_with_parent', len(with_parent))
             logging.info(f'Deployments in STARTED with parent: {len(with_parent)}')
-            return map(lambda x: x.id, with_parent)
+            return with_parent
         else:
-            return map(lambda x: x.id, active.resources)
+            return active.resources
 
     def job_exists(self, job):
         filters = "(state='QUEUED' or state='RUNNING')" \
@@ -79,9 +79,22 @@ class DeploymentStateJobsDistributor(Distributor):
     @override
     def job_generator(self):
         skipped = 0
-        for deployment_id in self.active_deployments():
+        for deployment in self.active_deployments():
             job = {'action': self._get_jobs_type(),
-                   'target-resource': {'href': deployment_id}}
+                   'target-resource': {'href': deployment.id}}
+
+            nuvlabox = deployment.data.get('nuvlabox')
+            if nuvlabox:
+                job['acl'] = {'edit-data': [nuvlabox],
+                              'manage': [nuvlabox],
+                              'owners': ['group/nuvla-admin']}
+
+            exec_mode = deployment.data.get('execution-mode')
+            if exec_mode in ["mixed", "pull"]:
+                job['execution-mode'] = 'pull'
+            else:
+                job['execution-mode'] = 'push'
+
             if self.job_exists(job):
                 skipped += 1
                 continue

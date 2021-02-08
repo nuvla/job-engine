@@ -4,9 +4,7 @@ from __future__ import print_function
 
 import logging
 
-from nuvla.connector import connector_factory, docker_machine_connector
-from nuvla.api.resources.credential import Credential
-from nuvla.api import NuvlaError
+from nuvla.connector import docker_machine_connector
 from ..actions import action
 
 COE_TYPE_SWARM = docker_machine_connector.COE_TYPE_SWARM
@@ -27,8 +25,9 @@ class COETerminateJob(object):
             raise Exception(f'Unknown COE type: {coe_type}')
 
         cloud_creds_id = infra_service_coe.get('management-credential')
-        coe = connector_factory(docker_machine_connector, self.api,
-                                cloud_creds_id, infra_service_coe)
+        credential_coe = self.api.get(cloud_creds_id).data
+
+        coe = docker_machine_connector.instantiate_from_cimi(infra_service_coe, credential_coe)
 
         infra_service_id = infra_service_coe['id']
 

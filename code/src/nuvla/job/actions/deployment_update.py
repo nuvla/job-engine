@@ -2,27 +2,20 @@
 
 import logging
 
-from nuvla.connector import (connector_factory,
-                             docker_connector,
-                             docker_cli_connector,
-                             docker_compose_cli_connector,
-                             kubernetes_cli_connector)
+from nuvla.connector import docker_connector, docker_cli_connector, \
+    docker_compose_cli_connector, kubernetes_cli_connector
 from nuvla.api.resources import Deployment
 from ..actions import action
-from .deployment_start import (DeploymentBase,
-                               application_params_update,
-                               get_env)
+from .deployment_start import DeploymentBase, \
+    application_params_update, get_env, initialize_connector
 
 action_name = 'update_deployment'
 
 log = logging.getLogger(action_name)
 
 
-@action(action_name)
+@action(action_name, True)
 class DeploymentUpdateJob(DeploymentBase):
-
-    def __init__(self, _, job):
-        super().__init__(job)
 
     def get_update_params_docker_service(self, deployment, registries_auth):
         module_content = Deployment.module_content(deployment)
@@ -57,7 +50,6 @@ class DeploymentUpdateJob(DeploymentBase):
     def get_update_params_kubernetes(self, deployment, registries_auth):
         return self.get_update_params_docker_stack(deployment, registries_auth)
 
-
     @staticmethod
     def get_connector_name(deployment):
         if Deployment.is_component(deployment):
@@ -68,7 +60,6 @@ class DeploymentUpdateJob(DeploymentBase):
         elif Deployment.is_application_kubernetes(deployment):
             return 'kubernetes'
 
-
     @staticmethod
     def get_connector_class(connector_name):
         return {
@@ -78,19 +69,17 @@ class DeploymentUpdateJob(DeploymentBase):
             'kubernetes'    : kubernetes_cli_connector
         }[connector_name]
 
-
     def update_deployment(self, deployment_id):
         log.info('Job update_deployment started for {}.'.format(deployment_id))
         self.job.set_progress(10)
 
         deployment      = self.api_dpl.get(deployment_id).data
-        credential_id   = Deployment.credential_id(deployment)
         connector_name  = self.get_connector_name(deployment)
         connector_class = self.get_connector_class(connector_name)
         registries_auth = self.private_registries_auth(deployment)
-        self.job.set_progress(20)
+        connector       = initialize_connector(connector_class, self.job, deployment)
 
-        connector = connector_factory(connector_class, self.api, credential_id)
+        self.job.set_progress(20)
 
         kwargs = {
             'docker_service': self.get_update_params_docker_service,
@@ -114,11 +103,9 @@ class DeploymentUpdateJob(DeploymentBase):
         self.api_dpl.set_state_started(deployment_id)
         return 0
 
-
     def do_work(self):
-        deployment_id = self.job['target-resource']['href']
         try:
-            return self.update_deployment(deployment_id)
+            return self.update_deployment(self.deployment_id)
         except Exception as e:
-            self.api_dpl.set_state_error(deployment_id)
+            self.api_dpl.set_state_error(self.deployment_id)
             raise

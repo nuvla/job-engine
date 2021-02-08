@@ -9,9 +9,24 @@ from requests.adapters import HTTPAdapter
 from .actions import get_action, ActionNotImplemented
 from .base import Base
 from .job import Job, JobUpdateError
-from .util import override
+from .util import override, retry_kazoo_queue_op
 
 CONNECTION_POOL_SIZE = 4
+
+
+class LocalOneJobQueue(object):
+
+    def __init__(self, job_id):
+        self.job_id = job_id
+
+    def get(self, *args, **kwargs):
+        return self.job_id
+
+    def noop(self):
+        return True
+
+    consume = noop
+    release = noop
 
 
 class Executor(Base):
@@ -28,8 +43,12 @@ class Executor(Base):
 
         return action(self, job)
 
-    def _process_jobs(self):
-        queue = self._kz.LockingQueue('/job')
+    def _set_command_specific_options(self, parser):
+        parser.add_argument('--job-id', dest='job_id', metavar='ID',
+                            help='Pull mode single job id to execute')
+
+    def _process_jobs(self, queue):
+        is_single_job_only = isinstance(queue, LocalOneJobQueue)
         api_http_adapter = HTTPAdapter(pool_maxsize=CONNECTION_POOL_SIZE,
                                        pool_connections=CONNECTION_POOL_SIZE)
         self.api.session.mount('http://', api_http_adapter)
@@ -39,7 +58,10 @@ class Executor(Base):
             job = Job(self.api, queue)
 
             if job.nothing_to_do:
-                continue
+                if is_single_job_only:
+                    break
+                else:
+                    continue
 
             logging.info('Got new {}.'.format(job.id))
 
@@ -60,16 +82,31 @@ class Executor(Base):
                 ex_type, ex_msg, ex_tb = sys.exc_info()
                 status_message = type(ex).__name__ + '-' + ''.join(traceback.format_exception(
                     etype=ex_type, value=ex_msg, tb=ex_tb))
+                if job.get('execution-mode', '').lower() == 'mixed':
+                    status_message = f'Re-running job in pull mode after failed first attempt: {status_message}'
+                    job._edit_job_multi({"state": 'QUEUED',
+                                         "status-message": status_message,
+                                         "execution-mode": "pull"})
+                    retry_kazoo_queue_op(job.queue, "consume")
+                else:
+                    job.update_job(state='FAILED', status_message=status_message, return_code=1)
                 logging.error('Failed to process {}, with error: {}'.format(job.id, status_message))
-                job.update_job(state='FAILED', status_message=status_message, return_code=1)
             else:
                 state = 'SUCCESS' if return_code == 0 else 'FAILED'
                 job.update_job(state=state, return_code=return_code)
                 logging.info('Finished {} with return_code {}.'.format(job.id, return_code))
+
+            if is_single_job_only:
+                break
+
         logging.info('Executor {} properly stopped.'.format(self.name))
         sys.exit(0)
 
     @override
     def do_work(self):
         logging.info('I am executor {}.'.format(self.name))
-        self._process_jobs()
+
+        job_id = self.args.job_id
+        queue = LocalOneJobQueue(job_id) if job_id else self._kz.LockingQueue('/job')
+
+        self._process_jobs(queue)

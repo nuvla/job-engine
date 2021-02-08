@@ -7,7 +7,7 @@ from ..actions import action
 from nuvla.connector import nuvlabox_connector as NB
 
 
-@action('nuvlabox_add_ssh_key')
+@action('nuvlabox_add_ssh_key', True)
 class NBAddSSHKey(object):
 
     def __init__(self, _, job):
@@ -30,7 +30,7 @@ class NBAddSSHKey(object):
                 break
 
         if credential_id:
-            pubkey = self.api.get(credential_id).data['public-key']
+            pubkey = self.job.context[credential_id]['public-key']
             connector.connect()
             ssh_keys = connector.nuvlabox.get('ssh-keys', [])
 
@@ -40,7 +40,8 @@ class NBAddSSHKey(object):
 
                 update_payload = ssh_keys + [credential_id]
 
-                connector.update({"ssh-keys": update_payload})
+                connector.commission({"ssh-keys": update_payload})
+                self.job.set_progress(100)
             else:
                 r = "Requested SSH key has already been added to the NuvlaBox in the past. Nothing to do..."
         else:

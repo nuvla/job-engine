@@ -7,7 +7,7 @@ from ..actions import action
 from nuvla.connector import nuvlabox_connector as NB
 
 
-@action('nuvlabox_revoke_ssh_key')
+@action('nuvlabox_revoke_ssh_key', True)
 class NBRevokeSSHKey(object):
 
     def __init__(self, _, job):
@@ -30,7 +30,7 @@ class NBRevokeSSHKey(object):
                 break
 
         if credential_id:
-            pubkey = self.api.get(credential_id).data['public-key']
+            pubkey = self.job.context[credential_id]['public-key']
             r = connector.start(api_action_name="revoke-ssh-key", method='post',
                                 payload=pubkey, headers={"Content-Type": "text/plain"})
 
@@ -42,7 +42,8 @@ class NBRevokeSSHKey(object):
                 # for some reason the key is not in this list...continue anyway, but no need to edit the NB resource
                 update_payload = {}
 
-            connector.update(update_payload)
+            connector.commission({"ssh-keys": update_payload})
+            self.job.set_progress(100)
         else:
             raise Exception('Cannot find any reference to an existing credential ID')
 

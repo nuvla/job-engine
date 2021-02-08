@@ -1,16 +1,37 @@
 # -*- coding: utf-8 -*-
 
+import re
+import copy
 import logging
 
+from nuvla.api import Api
 from nuvla.api.resources import Deployment, DeploymentParameter
 from nuvla.api.resources.base import ResourceNotFound
-from nuvla.connector import connector_factory, docker_connector, \
-    docker_cli_connector, docker_compose_cli_connector, kubernetes_cli_connector
+from nuvla.connector import docker_connector, docker_cli_connector, \
+    docker_compose_cli_connector, kubernetes_cli_connector
 from ..actions import action
 
 action_name = 'start_deployment'
 
 log = logging.getLogger(action_name)
+
+
+def initialize_connector(connector_class, job, deployment):
+    credential_id = Deployment.credential_id(deployment)
+    credential = get_from_context(job, credential_id)
+    infrastructure_service = copy.deepcopy(get_from_context(job, credential['parent']))
+    # if you uncomment this, the pull-mode deployment_* will only work with the NB compute-api.
+    # Which means standalone ISs and k8s capable NuvlaBoxes, are not supported
+    if job.is_in_pull_mode and infrastructure_service.get('subtype', '') == 'swarm':
+        infrastructure_service['endpoint'] = 'https://compute-api:5000'
+    return connector_class.instantiate_from_cimi(infrastructure_service, credential)
+
+
+def get_from_context(job, resource_id):
+    try:
+        return job.context[resource_id]
+    except KeyError:
+        raise Exception(f'{resource_id} not found in job context')
 
 
 def get_env(deployment: dict):
@@ -41,18 +62,37 @@ def application_params_update(api_dpl, deployment, services):
 
 class DeploymentBase(object):
 
-    def __init__(self, job):
+    def __init__(self, _, job):
         self.job = job
         self.api = job.api
-        self.api_dpl = Deployment(self.api)
+        self.deployment_id = self.job['target-resource']['href']
+        self.api_dpl = self.get_deployment_api(self.deployment_id)
+        self.deployment = self.api_dpl.get(self.deployment_id)
+
+    def get_from_context(self, resource_id):
+        return get_from_context(self.job, resource_id)
+
+    def get_hostname(self):
+        credential_id = Deployment.credential_id(self.deployment)
+        credential = self.get_from_context(credential_id)
+        endpoint   = self.get_from_context(credential['parent'])['endpoint']
+        return re.search('(?:http.*://)?(?P<host>[^:/ ]+)', endpoint).group('host')
+
+    def get_deployment_api(self, deployment_id):
+        creds = Deployment._get_attr(Deployment(self.api).get(deployment_id), 'api-credentials')
+        insecure = not self.api.session.verify
+        api = Api(endpoint=self.api.endpoint, insecure=insecure,
+                  persist_cookie=False, reauthenticate=True)
+        api.login_apikey(creds['api-key'], creds['api-secret'])
+        return Deployment(api)
 
     def private_registries_auth(self, deployment):
         registries_credentials = deployment.get('registries-credentials')
         if registries_credentials:
             list_cred_infra = []
             for registry_cred in registries_credentials:
-                credential = self.api.get(registry_cred).data
-                infra_service = self.api.get(credential['parent']).data
+                credential = self.job.context[registry_cred]
+                infra_service = self.job.context[credential['parent']]
                 registry_auth = {'username': credential['username'],
                                  'password': credential['password'],
                                  'serveraddress': infra_service['endpoint'].replace('https://', '')}
@@ -80,16 +120,11 @@ class DeploymentBase(object):
                 param_description=output_param.get('description'))
 
 
-@action(action_name)
+@action(action_name, True)
 class DeploymentStartJob(DeploymentBase):
 
-    def __init__(self, _, job):
-        super().__init__(job)
-
-
     def start_component(self, deployment: dict):
-        connector = connector_factory(docker_connector, self.api,
-                                      Deployment.credential_id(deployment))
+        connector = initialize_connector(docker_connector, self.job, deployment)
 
         deployment_id = Deployment.id(deployment)
         node_instance_name = Deployment.uuid(deployment)
@@ -132,7 +167,7 @@ class DeploymentStartJob(DeploymentBase):
 
         deployment_parameters = (
             (DeploymentParameter.SERVICE_ID, connector.extract_vm_id(service)),
-            (DeploymentParameter.HOSTNAME,   connector.extract_vm_ip(service)),
+            (DeploymentParameter.HOSTNAME,   self.get_hostname()),
             (DeploymentParameter.REPLICAS_DESIRED,  str(desired)),
             (DeploymentParameter.REPLICAS_RUNNING,  '0'),
             (DeploymentParameter.CURRENT_DESIRED,   ''),
@@ -160,12 +195,11 @@ class DeploymentStartJob(DeploymentBase):
 
     def start_application(self, deployment: dict):
         deployment_id = Deployment.id(deployment)
-        credential_id = Deployment.credential_id(deployment)
 
         if Deployment.is_compatibility_docker_compose(deployment):
-            connector = connector_factory(docker_compose_cli_connector, self.api, credential_id)
+            connector = initialize_connector(docker_compose_cli_connector, self.job, deployment)
         else:
-            connector = connector_factory(docker_cli_connector, self.api, credential_id)
+            connector = initialize_connector(docker_cli_connector, self.job, deployment)
 
         module_content   = Deployment.module_content(deployment)
         deployment_owner = Deployment.owner(deployment)
@@ -183,7 +217,7 @@ class DeploymentStartJob(DeploymentBase):
             deployment_id=deployment_id,
             user_id=deployment_owner,
             param_name=DeploymentParameter.HOSTNAME['name'],
-            param_value=connector.extract_vm_ip(services),
+            param_value=self.get_hostname(),
             param_description=DeploymentParameter.HOSTNAME['description'])
 
         application_params_update(self.api_dpl, deployment, services)
@@ -191,8 +225,7 @@ class DeploymentStartJob(DeploymentBase):
     def start_application_kubernetes(self, deployment: dict):
         deployment_id = Deployment.id(deployment)
 
-        connector = connector_factory(kubernetes_cli_connector, self.api,
-                                      Deployment.credential_id(deployment))
+        connector = initialize_connector(kubernetes_cli_connector, self.job, deployment)
 
         module_content   = Deployment.module_content(deployment)
         deployment_owner = Deployment.owner(deployment)
@@ -211,7 +244,7 @@ class DeploymentStartJob(DeploymentBase):
             deployment_id=deployment_id,
             user_id=deployment_owner,
             param_name=DeploymentParameter.HOSTNAME['name'],
-            param_value=connector.extract_vm_ip(None),
+            param_value=self.get_hostname(),
             param_description=DeploymentParameter.HOSTNAME['description'])
 
         application_params_update(self.api_dpl, deployment, services)

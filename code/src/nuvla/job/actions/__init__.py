@@ -2,6 +2,8 @@
 
 import glob
 import logging
+import os
+import importlib
 
 from os.path import dirname, basename, isfile
 
@@ -19,8 +21,6 @@ Examples:
 
 modules = glob.glob(dirname(__file__) + "/*.py")
 
-__all__ = [basename(f)[:-3] for f in modules if isfile(f) and not f.endswith('__init__.py')]
-
 
 class Actions(object):
 
@@ -37,7 +37,7 @@ class Actions(object):
         cls.actions[action_name] = action
 
     @classmethod
-    def action(cls, action_name=None):
+    def action(cls, action_name=None, pull_mode_support=False):
 
         def decorator(f):
             _action_name = action_name
@@ -47,7 +47,11 @@ class Actions(object):
             if _action_name in cls.actions:
                 logging.error('Action "{}" is already defined'.format(_action_name))
             else:
-                cls.register_action(_action_name, f)
+                if os.getenv('IMAGE_NAME', '') == 'job-lite':
+                    if pull_mode_support:
+                        cls.register_action(_action_name, f)
+                else:
+                    cls.register_action(_action_name, f)
 
             return f
 
@@ -62,4 +66,11 @@ action = Actions.action
 get_action = Actions.get_action
 register_action = Actions.register_action
 
-from . import *
+for f in modules:
+    if isfile(f) and not f.endswith('__init__.py'):
+        __all__ = [basename(f)[:-3]]
+        try:
+            from . import *
+        except ModuleNotFoundError:
+            logging.exception(f'Unable to load module {__all__[0]}')
+            pass

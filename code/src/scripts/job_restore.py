@@ -29,11 +29,10 @@ if __name__ == '__main__':
 
     queue = LockingQueue(kz, '/job')
 
-    data = es.search(index='nuvla-job', body={"query": {
-        "bool": {
-            "should": [
-                {"term": {"state": "QUEUED"}},
-                {"term": {"state": "RUNNING"}}]}},
+    data = es.search(index='nuvla-job', body={
+        "query": {"bool": {"should": [{"term": {"state": "QUEUED"}},
+                                      {"term": {"state": "RUNNING"}}],
+                           "must_not": {"term": {"execution-mode": "pull"}}}},
         "sort": {"created": "asc"},
         "from": 0,
         "size": 10000})
