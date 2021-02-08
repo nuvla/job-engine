@@ -41,7 +41,9 @@ def docker_info_error_msg_infer(error_msg):
         # dial tcp: lookup swarm.nuvdla.io on ...: no such host
         # it means the endpoint is unreachable and thus not usable -> offline
         return False, False, 'UNKNOWN'
-    elif "remote error: tls" in error_msg_lowercase:
+    elif any(error_substr in error_msg_lowercase
+             for error_substr in ['remote error: tls',
+                                  'seems invalid']):
         # "error during connect: Get <endpoint>/v1.40/info:
         # remote error: tls: unknown certificate authority"
         # in this case the infra is running, reachable, and Docker has replied.
