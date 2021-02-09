@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## [2.11.0] - 2021-02-09
+
 ### Added
 
  - New distributor for setting nuvlabox status to offline
