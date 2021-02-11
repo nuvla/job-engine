@@ -6,7 +6,7 @@ from ..actions import action
 from nuvla.connector.nuvlabox_connector import NuvlaBoxConnector
 
 
-@action('restart-stream')
+@action('restart-stream', True)
 class NBRestartStreamJob(object):
 
     def __init__(self, _, job):

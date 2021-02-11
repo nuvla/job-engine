@@ -40,8 +40,10 @@ class Job(dict):
         super(Job, self).__init__()
         self.nothing_to_do = False
         self.id = None
+        self.cimi_job = None
         self.queue = queue
         self.api = api
+        self._context = None
         self._engine_version = version_to_tuple(engine_version)
         if self._engine_version[0] < 2:
             self._engine_version_min = (0, 0, 1)
@@ -55,9 +57,11 @@ class Job(dict):
             if self.id is None:
                 self.nothing_to_do = True
             else:
-                self.id = self.id.decode()
-                cimi_job = self.get_cimi_job(self.id)
-                dict.__init__(self, cimi_job)
+                if isinstance(self.id, bytes):
+                    self.id = self.id.decode()
+                
+                self.cimi_job = self.get_cimi_job(self.id)
+                dict.__init__(self, self.cimi_job.data)
                 self._job_version_check()
                 if self.is_in_final_state():
                     retry_kazoo_queue_op(self.queue, "consume")
@@ -114,7 +118,7 @@ class Job(dict):
         reason = None
         for attempt in range(max_attempt):
             try:
-                return self.api.get(job_uri).data
+                return self.api.get(job_uri)
             except NuvlaError as e:
                 reason = e.reason
                 if e.response.status_code == 404:
@@ -213,6 +217,16 @@ class Job(dict):
         else:
             self.update(response.data)
             self.consume_when_final_state()
+
+    @property
+    def context(self):
+        if self._context is None:
+            self._context = self.api.operation(self.cimi_job, 'get-context').data
+        return self._context
+
+    @property
+    def is_in_pull_mode(self):
+        return self.cimi_job.data.get('execution-mode', 'push') == 'pull'
 
     def __setitem(self, key, value):
         dict.__setitem__(self, key, value)

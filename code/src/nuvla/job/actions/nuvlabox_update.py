@@ -6,7 +6,7 @@ from ..actions import action
 from nuvla.connector import nuvlabox_connector as NB
 
 
-@action('nuvlabox_update')
+@action('nuvlabox_update', True)
 class NBUpdateJob(object):
 
     def __init__(self, _, job):

@@ -2,9 +2,10 @@
 
 import logging
 
-from nuvla.connector import connector_factory, docker_cli_connector, \
+from nuvla.connector import docker_cli_connector, \
     docker_compose_cli_connector, kubernetes_cli_connector
 from nuvla.api.resources import Deployment
+from .deployment_start import initialize_connector
 from ..actions import action
 
 action_name = 'fetch_deployment_log'
@@ -45,19 +46,18 @@ class DeploymentLogFetchJob(object):
         tmp_since = last_timestamp or since
 
         if Deployment.is_application_kubernetes(deployment):
-            connector = connector_factory(kubernetes_cli_connector,
-                                          self.api, Deployment.credential_id(deployment))
+            connector = initialize_connector(kubernetes_cli_connector, self.job, deployment)
             since_opt = ['--since-time', tmp_since] if tmp_since else []
             list_opts = [service_name, '--timestamps=true', '--tail', str(lines),
                          '--namespace', deployment_uuid] + since_opt
         else:
             is_docker_compose = Deployment.is_compatibility_docker_compose(deployment)
-            credential_id = Deployment.credential_id(deployment)
+
             if is_docker_compose:
-                connector = connector_factory(docker_compose_cli_connector, self.api, credential_id)
+                connector = initialize_connector(docker_compose_cli_connector, self.job, deployment)
                 no_trunc = []
             else:
-                connector = connector_factory(docker_cli_connector, self.api, credential_id)
+                connector = initialize_connector(docker_cli_connector, self.job, deployment)
                 no_trunc = ['--no-trunc']
 
             if Deployment.is_application(deployment):

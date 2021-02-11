@@ -433,3 +433,16 @@ class DockerConnector(Connector):
                     mount_map['VolumeOptions']['DriverConfig']['Options'] = volume_opts
                 mounts.append(mount_map)
         return mounts
+
+    @should_connect
+    def info(self):
+        """
+        Returns node system info as JSON.
+
+        :return: json
+        """
+        info = self.docker_api.get(self._get_full_url("info")).json()
+        server_errors = info.get('ServerErrors', [])
+        if len(server_errors) > 0:
+            raise Exception(server_errors[0])
+        return info
