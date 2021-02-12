@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+### Changed
+
+ - Vulnerabilities database distributor exit on failure
+ - Nuvlabox releases distributor exit on failure
+ - Distributor - Exit-on-failure option
+
 ## [2.11.0] - 2021-02-09
 
 ### Added
