@@ -11,6 +11,7 @@ class Distributor(Base):
     def __init__(self):
         super(Distributor, self).__init__()
         self.collect_interval = None
+        self.exit_on_failure = False
 
     def _job_distributor(self):
         logging.info('I am {} and I have been elected to distribute "{}" jobs'
@@ -23,6 +24,8 @@ class Distributor(Base):
                 except Exception:
                     logging.error('Failed to distribute job: {}.'.format(cimi_job))
                     time.sleep(0.1)
+                    if self.exit_on_failure:
+                        exit(1)
             time.sleep(self.collect_interval)
         logging.info('Distributor properly stopped.')
         sys.exit(0)
