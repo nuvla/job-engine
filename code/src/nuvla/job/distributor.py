@@ -21,8 +21,8 @@ class Distributor(Base):
                 try:
                     logging.info('Distribute job: {}'.format(cimi_job))
                     self.api.add('job', cimi_job)
-                except Exception:
-                    logging.error('Failed to distribute job: {}.'.format(cimi_job))
+                except Exception as ex:
+                    logging.error(f'Failed to distribute job {cimi_job}: {ex}')
                     time.sleep(0.1)
                     if self.exit_on_failure:
                         exit(1)
