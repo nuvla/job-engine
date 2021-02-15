@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Added
+
+ - Distributor job to create/delete individual notification subscriptions.
+
 ### Changed
 
  - Vulnerabilities database distributor exit on failure

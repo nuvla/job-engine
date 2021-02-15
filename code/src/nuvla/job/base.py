@@ -22,10 +22,10 @@ class Base(object):
     def __init__(self):
         self.args = None
         self._init_args_parser()
-        self._kz = None
-        self.api = None
+        self._kz: KazooClient = None
+        self.api: Api = None
         self.name = None
-        self.statsd = None
+        self.statsd: StatsClient = None
 
         self._init_logger()
 
