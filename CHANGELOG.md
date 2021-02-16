@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## [2.12.0] - 2021-02-16
+
 ### Added
 
  - Distributor job to create/delete individual notification subscriptions.
