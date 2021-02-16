@@ -204,7 +204,7 @@ class NuvlaBoxConnector(Connector):
 
         nb_status = self.get_nuvlabox_status()
         if 'installation-parameters' not in nb_status:
-            raise Exception(f'Installation parameters are required, but are not present in NuvlaBox status {nb_status.id}')
+            raise Exception(f'Installation parameters are required, but are not present in NuvlaBox status {nb_status.get("id")}')
 
         installation_parameters = nb_status['installation-parameters']
         if installation_parameters.get('working-dir'):
