@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-### Changed
+## [2.12.1] - 2021-02-17
 
  - Fix: include owner when subscription job searches for resources.
 
