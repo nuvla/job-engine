@@ -1,0 +1,20 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: anything
+  labels:
+    app: anything
+spec:
+  selector:
+    matchLabels:
+      app: anything
+  template:
+    metadata:
+      labels:
+        app: anything
+    spec:
+      containers:
+        - name: anything
+          image: docker:latest
+          command: ["tail", "-f", "anything"]
