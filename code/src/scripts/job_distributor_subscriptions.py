@@ -59,8 +59,13 @@ class SubscriptionsManager(Distributor):
             logging.debug(f'Deleted subscription {subs_id}')
 
     def _resources_by_filter(self, subs_conf):
+        owner = subs_conf.get('acl').get('owners')[0]
+        flt = f"acl/owners='{owner}' or acl/view-data='{owner}'"
+        rf = subs_conf.get('resource-filter') or None
+        if rf:
+            flt = f'({flt}) and {rf}'
         resources = self.api.search(subs_conf.get('resource-kind'),
-                                    filter=subs_conf.get('resource-filter') or None, last=LAST)
+                                    filter=flt, last=LAST)
         return set(map(lambda x: x.id, resources))
 
     def _get_individual_subscriptions(self, subs_conf):
