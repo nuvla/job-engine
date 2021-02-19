@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Changed
+ 
+ - Fix: SSH key revoke action for the NuvlaBox fixed
+
 ## [2.12.1] - 2021-02-17
 
  - Fix: include owner when subscription job searches for resources.
