@@ -202,24 +202,39 @@ class NuvlaBoxConnector(Connector):
         # action args
         command.append('--quiet')
 
+        install_params_from_payload = self.job.get('payload', {})
+
         nb_status = self.get_nuvlabox_status()
-        if 'installation-parameters' not in nb_status:
-            raise Exception(f'Installation parameters are required, but are not present in NuvlaBox status {nb_status.get("id")}')
+        install_params_from_nb_status = nb_status.get('installation-parameters', {})
 
-        installation_parameters = nb_status['installation-parameters']
-        if installation_parameters.get('working-dir'):
-            command.append(f'--working-dir={installation_parameters.get("working-dir")}')
+        if not install_params_from_nb_status:
+            mandatory_update_args = ['project-name', 'working-dir', 'config-files']
+            mandatory_update_args.sort()
+            payload_keys = list(install_params_from_payload.keys())
+            payload_keys.sort()
+            if mandatory_update_args != list(filter(lambda x: x in mandatory_update_args, payload_keys)):
+                raise Exception(f'Installation parameters are required, '
+                                f'but are not present in NuvlaBox status {nb_status.get("id")}, '
+                                f'nor given via the operation payload attribute')
 
-        if installation_parameters.get('project-name'):
-            command.append(f'--project={installation_parameters.get("project-name")}')
+        working_dir = install_params_from_payload.get("working-dir", install_params_from_nb_status["working-dir"])
+        command.append(f'--working-dir={working_dir}')
 
-        if installation_parameters.get('config-files'):
-            compose_files = ','.join(installation_parameters.get("config-files"))
-            command.append(f'--compose-files={compose_files}')
+        project_name = install_params_from_payload.get("project-name", install_params_from_nb_status["project-name"])
+        command.append(f'--project={project_name}')
 
-        if installation_parameters.get('environment'):
-            environment = ','.join(installation_parameters.get("environment"))
-            command += [f'--current-environment={environment}', f'--new-environment={environment}']
+        config_files = install_params_from_payload.get("config-files", install_params_from_nb_status["config-files"])
+        compose_files = ','.join(config_files)
+        command.append(f'--compose-files={compose_files}')
+
+        current_env = install_params_from_nb_status.get('environment', [])
+        new_env = install_params_from_payload.get('environment', [])
+
+        if current_env:
+            command += [f'--current-environment={",".join(current_env)}']
+
+        if new_env:
+            command += [f'--new-environment={",".join(new_env)}']
 
         target_release = kwargs.get('target_release')
         command.append(f'--target-version={target_release}')
