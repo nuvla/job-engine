@@ -4,7 +4,11 @@
 
 ### Added
 
- - nuvlabox_update job: add support for job payload attribute 
+ - nuvlabox_update job: add support for job payload attribute
+ 
+### Changed
+
+ - nuvlabox_update job: fix escaping of complex environment strings 
 
 ## [2.12.1] - 2021-02-17
 
