@@ -231,10 +231,10 @@ class NuvlaBoxConnector(Connector):
         new_env = install_params_from_payload.get('environment', [])
 
         if current_env:
-            command += [f'--current-environment={",".join(current_env)}']
+            command += [f'--current-environment={repr(",".join(current_env))}']
 
         if new_env:
-            command += [f'--new-environment={",".join(new_env)}']
+            command += [f'--new-environment={repr(",".join(new_env))}']
 
         target_release = kwargs.get('target_release')
         command.append(f'--target-version={target_release}')
