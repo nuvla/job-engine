@@ -2,12 +2,11 @@
 
 ## Unreleased
 
-### Added
+## [2.13.0] - 2021-02-22
 
- - nuvlabox_update job: add support for job payload attribute
- 
 ### Changed
  
+ - nuvlabox_update job: add support for job payload attribute
  - Fix: SSH key revoke action for the NuvlaBox fixed
  - nuvlabox_update job: fix escaping of complex environment strings 
 
