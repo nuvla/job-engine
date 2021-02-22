@@ -7,7 +7,8 @@
  - nuvlabox_update job: add support for job payload attribute
  
 ### Changed
-
+ 
+ - Fix: SSH key revoke action for the NuvlaBox fixed
  - nuvlabox_update job: fix escaping of complex environment strings 
 
 ## [2.12.1] - 2021-02-17
