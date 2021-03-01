@@ -59,7 +59,7 @@ class Job(dict):
             else:
                 if isinstance(self.id, bytes):
                     self.id = self.id.decode()
-                
+
                 self.cimi_job = self.get_cimi_job(self.id)
                 dict.__init__(self, self.cimi_job.data)
                 self._job_version_check()
@@ -157,22 +157,29 @@ class Job(dict):
 
         self._edit_job('state', state)
 
-    def add_affected_resource(self, affected_resource):
-        self.add_affected_resources([affected_resource])
-
-    def add_affected_resources(self, affected_resources):
+    def _add_resources_to_list(self, field_name, resources, resource_link=False):
         has_to_update = False
-        current_affected_resources_ids = [resource['href'] for resource in
-                                          self.get('affected-resources', [])]
+        current_resources_ids = [resource['href'] for resource in self.get(field_name, [])]
 
-        for affected_resource in affected_resources:
-            if affected_resource not in current_affected_resources_ids:
-                current_affected_resources_ids.append(affected_resource)
+        for resource in resources:
+            if resource not in current_resources_ids:
+                current_resources_ids.append(resource)
                 has_to_update = True
 
         if has_to_update:
-            self._edit_job('affected-resources',
-                           [{'href': res_id} for res_id in current_affected_resources_ids])
+            self._edit_job(field_name, [{'href': res_id} for res_id in current_resources_ids])
+
+    def add_affected_resource(self, affected_resource):
+        self._add_resources_to_list('affected-resources', [affected_resource])
+
+    def add_affected_resources(self, affected_resources):
+        self._add_resources_to_list('affected-resources', affected_resources)
+
+    def add_nested_job(self, nested_job):
+        self._add_resources_to_list('nested-jobs', [nested_job])
+
+    def add_nested_jobs(self, nested_jobs):
+        self._add_resources_to_list('nested-jobs', nested_jobs)
 
     def update_job(self, state=None, return_code=None, status_message=None):
         attributes = {}
