@@ -157,17 +157,20 @@ class Job(dict):
 
         self._edit_job('state', state)
 
-    def _add_resources_to_list(self, field_name, resources, resource_link=False):
+    def _add_resources_to_list(self, field_name, resources_ids, href_format=True):
         has_to_update = False
-        current_resources_ids = [resource['href'] for resource in self.get(field_name, [])]
+        current_resources_ids = [resource['href'] if href_format else resource
+                                 for resource in self.get(field_name, [])]
 
-        for resource in resources:
-            if resource not in current_resources_ids:
-                current_resources_ids.append(resource)
+        for resource_id in resources_ids:
+            if resource_id not in current_resources_ids:
+                current_resources_ids.append(resource_id)
                 has_to_update = True
 
         if has_to_update:
-            self._edit_job(field_name, [{'href': res_id} for res_id in current_resources_ids])
+            field_data = [{'href': res_id} for res_id in current_resources_ids] \
+                if href_format else current_resources_ids
+            self._edit_job(field_name, field_data)
 
     def add_affected_resource(self, affected_resource):
         self._add_resources_to_list('affected-resources', [affected_resource])
@@ -176,10 +179,10 @@ class Job(dict):
         self._add_resources_to_list('affected-resources', affected_resources)
 
     def add_nested_job(self, nested_job):
-        self._add_resources_to_list('nested-jobs', [nested_job])
+        self._add_resources_to_list('nested-jobs', [nested_job], False)
 
     def add_nested_jobs(self, nested_jobs):
-        self._add_resources_to_list('nested-jobs', nested_jobs)
+        self._add_resources_to_list('nested-jobs', nested_jobs, False)
 
     def update_job(self, state=None, return_code=None, status_message=None):
         attributes = {}
@@ -204,10 +207,10 @@ class Job(dict):
     def _edit_job(self, attribute_name, attribute_value):
         try:
             response = self.api.edit(self.id, {attribute_name: attribute_value})
-        except (NuvlaError, ConnectionError):
+        except (NuvlaError, ConnectionError) as ex:
             retry_kazoo_queue_op(self.queue, 'release')
-            reason = 'Failed to update attribute "{}" for {}! Put it back in queue.'.format(
-                attribute_name, self.id)
+            reason = f'Failed to update attribute "{attribute_name}" for {self.id}! ' \
+                     f'Put it back in queue. Exception: {repr(ex)}'
             raise JobUpdateError(reason)
         else:
             self.update(response.data)

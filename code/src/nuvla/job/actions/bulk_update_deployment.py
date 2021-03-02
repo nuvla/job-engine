@@ -61,10 +61,9 @@ class DeploymentBulkUpdateJob(object):
     def _build_monitored_jobs_filter(self):
         filter_jobs_ids = ' or '.join(map(lambda job: f'id="{job}"', self.monitored_jobs))
         filter_finished_jobs = 'progress=100'
-        return f'({filter_jobs_ids}) and {filter_finished_jobs}' \
-            if filter_jobs_ids else filter_finished_jobs
+        return f'({filter_jobs_ids}) and {filter_finished_jobs}'
 
-    def _progress_increment(self):
+    def _update_progress(self):
         new_progress = int(100 - (len(self.monitored_jobs) / self.progress_increment))
         if new_progress != self.job['progress']:
             self.job.set_progress(new_progress)
@@ -80,7 +79,7 @@ class DeploymentBulkUpdateJob(object):
                 deployment_id = resource.data['target-resource']['href']
                 if deployment_id not in self.result[resource.data['state']]:
                     self.result[resource.data['state']].append(deployment_id)
-                    self.monitored_jobs.remove(deployment_id)
+                    self.monitored_jobs.remove(resource.id)
         except Exception:
             pass
 
@@ -90,13 +89,15 @@ class DeploymentBulkUpdateJob(object):
         self._call_action()
         self._push_result()
         self.job.set_progress(20)
-        self.monitored_jobs = [job['href'] for job in self.job.get('nested-jobs', [])]
+        self.monitored_jobs = self.job.get('nested-jobs', [])
         self.progress_increment = len(self.monitored_jobs) / 80
         while self.monitored_jobs:
+            time.sleep(10)
+            logging.info(f'Bulk deployment update {self.job.id}: '
+                         f'{len(self.monitored_jobs)} jobs left')
             self._check_monitored_jobs()
             self._push_result()
             self._update_progress()
-            time.sleep(10)
 
         logging.info(f'End of bulk deployment update {self.job.id}')
         return 0
