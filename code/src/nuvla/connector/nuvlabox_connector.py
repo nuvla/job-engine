@@ -26,6 +26,8 @@ class NuvlaBoxConnector(Connector):
         self.nuvlabox_id = kwargs.get("nuvlabox_id")
         self.nuvlabox_resource = None
         self.nuvlabox = None
+        self.nuvlabox_status = None
+        self.nb_api_endpoint = None
         self.timeout = 60
         self.acl = None
         self.cert_file = None
@@ -41,12 +43,7 @@ class NuvlaBoxConnector(Connector):
                 '--tlscacert', self.cert_file.name] + list_cmd
 
     def get_nuvlabox_status(self):
-        return self.api.get(self.nuvlabox.get("nuvlabox-status")).data
-
-    def get_nuvlabox_api_endpoint(self):
-        nb_status = self.get_nuvlabox_status()
-
-        return nb_status.get("nuvlabox-api-endpoint")
+        self.nuvlabox_status = self.api.get(self.nuvlabox.get("nuvlabox-status")).data
 
     def get_credential(self):
         infra_service_groups = self.api.search('infrastructure-service-group',
@@ -113,6 +110,15 @@ class NuvlaBoxConnector(Connector):
         self.nuvlabox_resource = self.api.get(self.nuvlabox_id)
         self.nuvlabox = self.nuvlabox_resource.data
         self.acl = self.nuvlabox.get('acl')
+        self.get_nuvlabox_status()
+
+        if self.job.get('execution-mode', '').lower() != 'pull':
+            self.nb_api_endpoint = self.nuvlabox_status.get("nuvlabox-api-endpoint")
+            if not self.nb_api_endpoint:
+                msg = f'NuvlaBox {self.nuvlabox.get("id")} missing API endpoint in its status resource. ' \
+                    f'Cannot run in push mode'
+                logging.warning(msg)
+                raise Exception(msg)
 
     def clear_connection(self, connect_result):
         if self.ssl_file:
@@ -126,20 +132,73 @@ class NuvlaBoxConnector(Connector):
             self.key_file = None
 
     @should_connect
+    def nuvlabox_manage_ssh_key(self, action: str, pubkey: str):
+        """
+        Deletes an SSH key from the NuvlaBox
+
+        :param pubkey: SSH public key string
+        :param action: name of the action, as in the mgmt API endpoint
+        :return:
+        """
+
+        self.job.set_progress(10)
+
+        if self.nb_api_endpoint:
+            self.setup_ssl_credentials()
+            self.job.set_progress(90)
+
+            action_endpoint = f'{self.nb_api_endpoint}/{action}'
+
+            r = self.nuvlabox_api.request('POST', action_endpoint, data=pubkey, headers={"Content-Type": "text/plain"},
+                                          timeout=self.timeout)
+
+            r.raise_for_status()
+            r = r.json()
+        else:
+            user_home = self.nuvlabox_status.get('host-user-home')
+            if not user_home:
+                raise Exception(f'Cannot manage SSH keys unless the parameter host-user-home is set')
+
+            if action.startswith('revoke'):
+                cmd = "sh -c 'grep -v \"${SSH_PUB}\" %s > /tmp/temp && mv /tmp/temp %s && echo Success'" \
+                      % (f'/rootfs/{user_home}/.ssh/authorized_keys', f'/rootfs/{user_home}/.ssh/authorized_keys')
+            else:
+                cmd = "sh -c 'echo -e \"${SSH_PUB}\" >> %s && echo Success'" \
+                      % f'/rootfs/{user_home}/.ssh/authorized_keys'
+
+            self.job.set_progress(90)
+
+            r = self.docker_client.containers.run(
+                'alpine',
+                remove=True,
+                command=cmd,
+                environment={
+                    'SSH_PUB': pubkey
+                },
+                volumes={
+                    user_home: {
+                        'bind': f'/rootfs/{user_home}'
+                    }
+                }
+            )
+
+            try:
+                r = r.decode()
+            except AttributeError:
+                pass
+
+        self.job.set_progress(95)
+
+        return r
+
+    @should_connect
     def start(self, **kwargs):
         self.job.set_progress(10)
 
         # 1st - get the NuvlaBox Mgmt API endoint
-        nb_api_endpoint = self.get_nuvlabox_api_endpoint()
-        if nb_api_endpoint:
-            self.job.set_progress(50)
-        else:
-            msg = "NuvlaBox {} missing API endpoint in its status resource".format(self.nuvlabox.get("id"))
-            logging.warning(msg)
-            raise Exception(msg)
+
 
         # 2nd - get the corresponding credential and prepare the SSL environment
-        self.setup_ssl_credentials()
 
         self.job.set_progress(90)
         action_endpoint = '{}/{}'.format(nb_api_endpoint,

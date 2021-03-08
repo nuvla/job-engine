@@ -31,8 +31,8 @@ class NBRevokeSSHKey(object):
 
         if credential_id:
             pubkey = self.job.context[credential_id]['public-key']
-            r = connector.start(api_action_name="revoke-ssh-key", method='post',
-                                payload=pubkey, headers={"Content-Type": "text/plain"})
+
+            r = connector.nuvlabox_manage_ssh_key('revoke-ssh-key', pubkey)
 
             ssh_keys = connector.nuvlabox.get('ssh-keys', [])
             try:
