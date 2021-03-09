@@ -131,6 +131,21 @@ class NuvlaBoxConnector(Connector):
             self.key_file.close()
             self.key_file = None
 
+    def mgmt_api_request(self, endpoint, method, data, headers):
+        self.setup_ssl_credentials()
+
+        if isinstance(data, str):
+            r = self.nuvlabox_api.request(method, endpoint, data=data, headers=headers,
+                                          timeout=self.timeout)
+        else:
+            r = self.nuvlabox_api.request(method, endpoint, json=data, headers=headers,
+                                          timeout=self.timeout)
+
+        r.raise_for_status()
+        r = r.json()
+
+        return r
+
     @should_connect
     def nuvlabox_manage_ssh_key(self, action: str, pubkey: str):
         """
@@ -144,16 +159,10 @@ class NuvlaBoxConnector(Connector):
         self.job.set_progress(10)
 
         if self.nb_api_endpoint:
-            self.setup_ssl_credentials()
-            self.job.set_progress(90)
-
             action_endpoint = f'{self.nb_api_endpoint}/{action}'
 
-            r = self.nuvlabox_api.request('POST', action_endpoint, data=pubkey, headers={"Content-Type": "text/plain"},
-                                          timeout=self.timeout)
-
-            r.raise_for_status()
-            r = r.json()
+            r = self.mgmt_api_request(action_endpoint, 'POST', pubkey, {"Content-Type": "text/plain"})
+            self.job.set_progress(90)
         else:
             user_home = self.nuvlabox_status.get('host-user-home')
             if not user_home:
@@ -192,35 +201,58 @@ class NuvlaBoxConnector(Connector):
         return r
 
     @should_connect
+    def reboot(self):
+        self.job.set_progress(10)
+        if self.nb_api_endpoint:
+            action_endpoint = f'{self.nb_api_endpoint}/reboot'
+
+            r = self.mgmt_api_request(action_endpoint, 'POST', {}, None)
+            self.job.set_progress(90)
+        else:
+            cmd = "sh -c 'sleep 10 && echo b > /sysrq"
+            self.docker_client.containers.run('alpine',
+                                              command=cmd,
+                                              detach=True,
+                                              remove=True,
+                                              volumes={
+                                                  '/proc/sysrq-trigger': {
+                                                      'bind': '/sysrq'
+                                                  }
+                                              }
+                                              )
+            r = 'Reboot ongoing'
+
+        return r
+
+    @should_connect
     def start(self, **kwargs):
+        """
+        This method is being kept as a generic Mgmt API function, for backward compatibility with NB v1
+
+        :param kwargs:
+        :return:
+        """
         self.job.set_progress(10)
 
-        # 1st - get the NuvlaBox Mgmt API endoint
+        if self.nb_api_endpoint:
+            self.job.set_progress(50)
+        else:
+            msg = "NuvlaBox {} missing API endpoint in its status resource".format(self.nuvlabox.get("id"))
+            logging.warning(msg)
+            raise Exception(msg)
 
-
-        # 2nd - get the corresponding credential and prepare the SSL environment
-
-        self.job.set_progress(90)
-        action_endpoint = '{}/{}'.format(nb_api_endpoint,
+        action_endpoint = '{}/{}'.format(self.nb_api_endpoint,
                                          kwargs.get('api_action_name', '')).rstrip('/')
 
         method = kwargs.get('method', 'GET').upper()
         payload = kwargs.get('payload', {})
         headers = kwargs.get('headers', None)
 
-        # 3rd - make the request
-        if isinstance(payload, str):
-            r = self.nuvlabox_api.request(method, action_endpoint, data=payload, headers=headers,
-                                          timeout=self.timeout)
-        else:
-            r = self.nuvlabox_api.request(method, action_endpoint, json=payload, headers=headers,
-                                          timeout=self.timeout)
+        r = self.mgmt_api_request(action_endpoint, method, payload, headers)
 
-        r.raise_for_status()
+        self.job.set_progress(90)
 
-        self.job.set_progress(95)
-
-        return r.json()
+        return r
 
     @should_connect
     def stop(self, **kwargs):
