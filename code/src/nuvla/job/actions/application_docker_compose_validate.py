@@ -19,7 +19,7 @@ class ApplicationDockerComposeValidate(object):
 
     @staticmethod
     def get_env_to_mute_undefined(module_content):
-        value = "some-value"
+        value = '1'  # Some value that make docker-compose config happy, even for port number field
         env_variables = {'NUVLA_DEPLOYMENT_ID': value,
                          'NUVLA_DEPLOYMENT_UUID': value,
                          'NUVLA_API_KEY': value,
