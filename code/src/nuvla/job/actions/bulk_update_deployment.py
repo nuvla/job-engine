@@ -42,21 +42,28 @@ class DeploymentBulkUpdateJob(object):
     def _push_result(self):
         self.job.set_status_message(json.dumps(self.result))
 
-    def _call_action(self):
+    def _call_sub_actions(self):
         deployments = self.user_api.search('deployment',
                                            filter=self.payload['filter'],
                                            orderby='updated:desc',
-                                           select='id, state ')
+                                           select='id, state')
         self.result['ALL'] = [deployment.id for deployment in deployments]
         for deployment in deployments.resources:
+            nested_job_id = None
             try:
+                module_href = self.payload.get('module-href')
+                if module_href:
+                    self.user_api.operation(deployment, 'fetch-module',
+                                            {'module-href': module_href})
                 response = self.user_api.operation(deployment, 'update')
                 nested_job_id = response.data['location']
-                self.job.add_affected_resource(deployment.id)
-                self.job.add_nested_job(nested_job_id)
             except Exception as ex:
                 self.result['bootstrap-exceptions'][deployment.id] = repr(ex)
                 self.result['FAILED'].append(deployment.id)
+
+            if nested_job_id:
+                self.job.add_affected_resource(deployment.id)
+                self.job.add_nested_job(nested_job_id)
 
     def _build_monitored_jobs_filter(self):
         filter_jobs_ids = ' or '.join(map(lambda job: f'id="{job}"', self.monitored_jobs))
@@ -86,7 +93,7 @@ class DeploymentBulkUpdateJob(object):
     def bulk_update_deployment(self):
         logging.info(f'Start bulk deployment update {self.job.id}')
         self.job.set_progress(10)
-        self._call_action()
+        self._call_sub_actions()
         self._push_result()
         self.job.set_progress(20)
         self.monitored_jobs = self.job.get('nested-jobs', [])
