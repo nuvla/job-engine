@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Changed
+
+ - docker-compose validation - support port env var substitution
+
 ## [2.13.0] - 2021-02-22
 
 ### Changed
