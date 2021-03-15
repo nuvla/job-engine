@@ -30,6 +30,7 @@ class NBAddSSHKey(object):
                 break
 
         if credential_id:
+            connector.connect()
             pubkey = self.job.context[credential_id]['public-key']
             ssh_keys = connector.nuvlabox.get('ssh-keys', [])
 
