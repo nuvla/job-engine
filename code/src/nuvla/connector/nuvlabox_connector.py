@@ -193,7 +193,7 @@ class NuvlaBoxConnector(Connector):
             )
 
             try:
-                r = r.decode()
+                r = r.decode().rstrip()
             except AttributeError:
                 pass
 
@@ -272,7 +272,9 @@ class NuvlaBoxConnector(Connector):
         # 2nd - set the Docker args
         # image name
         logging.info('Preparing parameters for NuvlaBox update')
-        image = 'nuvlabox/installer:master'
+        tag = self.nuvlabox_status.get('nuvlabox-engine-version')
+        image_base_name = 'nuvlabox/installer'
+        image = f'{image_base_name}:{tag}'
         detach = True
 
         # container name
@@ -297,8 +299,7 @@ class NuvlaBoxConnector(Connector):
 
         install_params_from_payload = self.job.get('payload', {})
 
-        nb_status = self.get_nuvlabox_status()
-        install_params_from_nb_status = nb_status.get('installation-parameters', {})
+        install_params_from_nb_status = self.nuvlabox_status.get('installation-parameters', {})
 
         if not install_params_from_nb_status:
             mandatory_update_args = ['project-name', 'working-dir', 'config-files']
@@ -307,7 +308,7 @@ class NuvlaBoxConnector(Connector):
             payload_keys.sort()
             if mandatory_update_args != list(filter(lambda x: x in mandatory_update_args, payload_keys)):
                 raise Exception(f'Installation parameters are required, '
-                                f'but are not present in NuvlaBox status {nb_status.get("id")}, '
+                                f'but are not present in NuvlaBox status {self.nuvlabox_status.get("id")}, '
                                 f'nor given via the operation payload attribute')
 
         working_dir = install_params_from_payload.get("working-dir", install_params_from_nb_status["working-dir"])
@@ -334,7 +335,13 @@ class NuvlaBoxConnector(Connector):
 
         # 3rd - run the Docker command
         logging.info(f'Running NuvlaBox update container {image}')
-        self.docker_client.images.pull(image)
+        try:
+            self.docker_client.images.pull(image)
+        except docker.errors.ImageNotFound:
+            tag = 'master'
+            logging.warning(f'Cannot pull image {image} for update.')
+            image = f'{image_base_name}:{tag}'
+            logging.info(f'Trying update with image {image}')
         try:
             self.docker_client.containers.run(image,
                                               detach=detach,
