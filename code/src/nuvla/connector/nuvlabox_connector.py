@@ -164,6 +164,7 @@ class NuvlaBoxConnector(Connector):
             r = self.mgmt_api_request(action_endpoint, 'POST', pubkey, {"Content-Type": "text/plain"})
             self.job.set_progress(90)
         else:
+            # running in pull, thus the docker socket is being shared
             user_home = self.nuvlabox_status.get('host-user-home')
             if not user_home:
                 raise Exception(f'Cannot manage SSH keys unless the parameter host-user-home is set')
@@ -177,7 +178,7 @@ class NuvlaBoxConnector(Connector):
 
             self.job.set_progress(90)
 
-            r = self.docker_client.containers.run(
+            r = docker.from_env().containers.run(
                 'alpine',
                 remove=True,
                 command=cmd,
@@ -209,17 +210,18 @@ class NuvlaBoxConnector(Connector):
             r = self.mgmt_api_request(action_endpoint, 'POST', {}, None)
             self.job.set_progress(90)
         else:
+            # running in pull, thus the docker socket is being shared
             cmd = "sh -c 'sleep 10 && echo b > /sysrq"
-            self.docker_client.containers.run('alpine',
-                                              command=cmd,
-                                              detach=True,
-                                              remove=True,
-                                              volumes={
-                                                  '/proc/sysrq-trigger': {
-                                                      'bind': '/sysrq'
-                                                  }
-                                              }
-                                              )
+            docker.from_env().containers.run('alpine',
+                                             command=cmd,
+                                             detach=True,
+                                             remove=True,
+                                             volumes={
+                                                 '/proc/sysrq-trigger': {
+                                                     'bind': '/sysrq'
+                                                 }
+                                             }
+                                             )
             r = 'Reboot ongoing'
 
         return r
