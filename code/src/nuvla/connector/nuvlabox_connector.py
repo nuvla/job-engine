@@ -211,7 +211,7 @@ class NuvlaBoxConnector(Connector):
             self.job.set_progress(90)
         else:
             # running in pull, thus the docker socket is being shared
-            cmd = "sh -c 'sleep 10 && echo b > /sysrq"
+            cmd = "sh -c 'sleep 10 && echo b > /sysrq'"
             docker.from_env().containers.run('alpine',
                                              command=cmd,
                                              detach=True,
