@@ -3,6 +3,7 @@
 import requests
 import logging
 import docker
+import json
 import re
 import time
 from .connector import Connector, should_connect
@@ -361,7 +362,7 @@ class NuvlaBoxConnector(Connector):
         # action
         command = ['cluster']
 
-        cluster_params_from_payload = self.job.get('payload', {})
+        cluster_params_from_payload = json.loads(self.job.get('payload', '{}'))
         # cluster-action
         cluster_action = cluster_params_from_payload.get('cluster-action')
         if not cluster_action:
@@ -426,7 +427,7 @@ class NuvlaBoxConnector(Connector):
         # action args
         command.append('--quiet')
 
-        install_params_from_payload = self.job.get('payload', {})
+        install_params_from_payload = json.loads(self.job.get('payload', '{}'))
 
         install_params_from_nb_status = self.nuvlabox_status.get('installation-parameters', {})
 
