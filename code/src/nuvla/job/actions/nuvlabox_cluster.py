@@ -16,8 +16,6 @@ class NBClusterJob(object):
     def nuvlabox_cluster(self):
         nuvlabox_id = self.job['target-resource']['href']
 
-        logging.info('Run cluster action {} on NuvlaBox {}'.format(self.job.get('payload', {}).get('cluster-action'),
-                                                                   nuvlabox_id))
         connector = NB.NuvlaBoxConnector(api=self.api, nuvlabox_id=nuvlabox_id, job=self.job)
 
         # IMPORTANT BIT THAT MUST CHANGE FOR EVERY NUVLABOX API ACTION

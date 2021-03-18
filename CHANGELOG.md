@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Added
+
+ - new action for clustering nuvlaboxes
+
 ### Changed
 
  - docker-compose validation - support port env var substitution
