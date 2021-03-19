@@ -353,7 +353,7 @@ class NuvlaBoxConnector(Connector):
         self.job.set_progress(10)
 
         # 1st - get the NuvlaBox Compute API endpoint and credentials
-        if self.job.get('execution-mode', '').lower() in ['mixed', 'pull']:
+        if self.job.get('execution-mode', '').lower() in ['mixed', 'push']:
             self.setup_ssl_credentials()
 
         self.job.set_progress(50)
@@ -414,7 +414,7 @@ class NuvlaBoxConnector(Connector):
         self.job.set_progress(10)
 
         # 1st - get the NuvlaBox Compute API endpoint and credentials
-        if self.job.get('execution-mode', '').lower() in ['mixed', 'pull']:
+        if self.job.get('execution-mode', '').lower() in ['mixed', 'push']:
             self.setup_ssl_credentials()
 
         self.job.set_progress(50)
