@@ -75,7 +75,11 @@ class NuvlaBoxConnector(Connector):
                     return credentials[0].data, infra_service.get("endpoint")
 
     def setup_ssl_credentials(self):
-        credential, is_endpoint = self.get_credential()
+        try:
+            credential, is_endpoint = self.get_credential()
+        except TypeError:
+            raise Exception('Error: could not find infrastructure service credential for this NuvlaBox')
+
         try:
             secret = credential['cert'] + '\n' + credential['key']
         except KeyError:
@@ -119,6 +123,10 @@ class NuvlaBoxConnector(Connector):
         installer_tag = self.nuvlabox_status.get('nuvlabox-engine-version')
         self.installer_image_name = f'{self.installer_base_name}:{installer_tag}' if installer_tag \
             else f'{self.installer_base_name}:master'
+
+        if self.nuvlabox_status.get('cluster-node-role', '').lower() == 'worker':
+            # workers don't have an IS
+            self.docker_client = self.local_docker_client
 
         if self.job.get('execution-mode', '').lower() != 'pull':
             self.nb_api_endpoint = self.nuvlabox_status.get("nuvlabox-api-endpoint")
