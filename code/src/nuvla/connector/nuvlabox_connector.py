@@ -270,11 +270,11 @@ class NuvlaBoxConnector(Connector):
     def pull_docker_image(self, image_name, fallback_image_name=None):
         try:
             self.docker_client.images.pull(image_name)
-        except docker.errors.ImageNotFound:
+        except (docker.errors.ImageNotFound, docker.errors.NotFound):
             if fallback_image_name:
                 logging.warning(f'Cannot pull image {image_name}')
                 image_name = fallback_image_name
-                logging.info(f'Trying clustering with image {image_name}')
+                logging.info(f'Trying operation with image {image_name}')
                 self.docker_client.images.pull(image_name)
             else:
                 raise
@@ -465,15 +465,9 @@ class NuvlaBoxConnector(Connector):
 
         # 3rd - run the Docker command
         logging.info(f'Running NuvlaBox update container {self.installer_image_name}')
+        image = self.pull_docker_image(self.installer_image_name, f'{self.installer_base_name}:master')
         try:
-            self.docker_client.images.pull(self.installer_image_name)
-        except docker.errors.ImageNotFound:
-            tag = 'master'
-            logging.warning(f'Cannot pull image {self.installer_image_name} for update.')
-            self.installer_image_name = f'{self.installer_base_name}:{tag}'
-            logging.info(f'Trying update with image {self.installer_image_name}')
-        try:
-            self.docker_client.containers.run(self.installer_image_name,
+            self.docker_client.containers.run(image,
                                               detach=detach,
                                               name=container_name,
                                               volumes=volumes,
