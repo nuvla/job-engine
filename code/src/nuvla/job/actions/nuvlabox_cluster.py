@@ -24,7 +24,7 @@ class NBClusterJob(object):
 
         self.job.update_job(status_message=r)
         #
-        # return e_code
+        return e_code
 
     def do_work(self):
         return self.nuvlabox_cluster()

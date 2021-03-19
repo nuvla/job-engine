@@ -131,10 +131,8 @@ class NuvlaBoxConnector(Connector):
         if self.job.get('execution-mode', '').lower() != 'pull':
             self.nb_api_endpoint = self.nuvlabox_status.get("nuvlabox-api-endpoint")
             if not self.nb_api_endpoint:
-                msg = f'NuvlaBox {self.nuvlabox.get("id")} missing API endpoint in its status resource. ' \
-                    f'Cannot run in push mode'
+                msg = f'NuvlaBox {self.nuvlabox.get("id")} missing API endpoint in its status resource.'
                 logging.warning(msg)
-                raise Exception(msg)
 
     def clear_connection(self, connect_result):
         if self.ssl_file:
@@ -322,7 +320,7 @@ class NuvlaBoxConnector(Connector):
         try:
             with timeout(timeout_after):
                 tries = 0
-                logging.info(f'Waiting {timeout_after} sec for NuvlaBox cluster operation to finish...')
+                logging.info(f'Waiting {timeout_after} sec for NuvlaBox operation to finish...')
                 while True:
                     if tries > 3:
                         raise Exception(f'Lost connection with the NuvlaBox Docker API at {self.docker_api_endpoint}')
