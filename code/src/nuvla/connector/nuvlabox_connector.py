@@ -345,7 +345,8 @@ class NuvlaBoxConnector(Connector):
         self.job.set_progress(10)
 
         # 1st - get the NuvlaBox Compute API endpoint and credentials
-        self.setup_ssl_credentials()
+        if self.job.get('execution-mode', '').lower() in ['mixed', 'pull']:
+            self.setup_ssl_credentials()
 
         self.job.set_progress(50)
 
@@ -366,7 +367,7 @@ class NuvlaBoxConnector(Connector):
 
         # command
         # action
-        command = ['cluster']
+        command = ['cluster', '--quiet']
 
         cluster_params_from_payload = json.loads(self.job.get('payload', '{}'))
         # cluster-action
@@ -405,7 +406,8 @@ class NuvlaBoxConnector(Connector):
         self.job.set_progress(10)
 
         # 1st - get the NuvlaBox Compute API endpoint and credentials
-        self.setup_ssl_credentials()
+        if self.job.get('execution-mode', '').lower() in ['mixed', 'pull']:
+            self.setup_ssl_credentials()
 
         self.job.set_progress(50)
 
