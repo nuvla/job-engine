@@ -370,7 +370,7 @@ class NuvlaBoxConnector(Connector):
 
         if cluster_action.startswith('join-'):
             token = cluster_params_from_payload.get('token')
-            join_address = cluster_params_from_payload.get('nuvlabox-manager-status', {}).get('nuvlabox-manager-status')
+            join_address = cluster_params_from_payload.get('nuvlabox-manager-status', {}).get('cluster-join-address')
             if not token or not join_address:
                 raise Exception(f'Cluster join requires both a token and address: {cluster_params_from_payload}')
 
