@@ -18,6 +18,7 @@ class NuvlaBoxConnector(Connector):
         self.job = kwargs.get("job")
         self.ssl_file = None
         self.docker_client = None
+        self.local_docker_client = docker.from_env()
         self.docker_api_endpoint = None
         self.nuvlabox_api = requests.Session()
         self.nuvlabox_api.verify = False
@@ -269,34 +270,39 @@ class NuvlaBoxConnector(Connector):
 
     def pull_docker_image(self, image_name, fallback_image_name=None):
         try:
-            self.docker_client.images.pull(image_name)
+            self.infer_docker_client().images.pull(image_name)
         except (docker.errors.ImageNotFound, docker.errors.NotFound):
             if fallback_image_name:
                 logging.warning(f'Cannot pull image {image_name}')
                 image_name = fallback_image_name
                 logging.info(f'Trying operation with image {image_name}')
-                self.docker_client.images.pull(image_name)
+                self.infer_docker_client().images.pull(image_name)
             else:
                 raise
 
         return image_name
 
+    def infer_docker_client(self):
+        dc = self.local_docker_client if self.job.get('execution-mode', '') == 'pull' else self.docker_client
+        return dc
+
     def run_container_from_installer(self, image, detach, container_name, volumes, command):
         try:
-            self.docker_client.containers.run(image,
-                                              detach=detach,
-                                              name=container_name,
-                                              volumes=volumes,
-                                              command=command)
+            self.infer_docker_client().containers.run(image,
+                                                    detach=detach,
+                                                    name=container_name,
+                                                    volumes=volumes,
+                                                    command=command)
         except docker.errors.NotFound as e:
-            raise Exception(f'Unable to reach NuvlaBox Docker API at {self.docker_api_endpoint}: {str(e)}')
+            raise Exception(f'Unable to reach NuvlaBox Docker API: {str(e)}')
         except docker.errors.APIError as e:
             if '409' in str(e) and container_name in str(e):
                 try:
-                    existing = self.docker_client.containers.get(container_name)
+                    existing = self.infer_docker_client().containers.get(container_name)
                     if existing.status.lower() != 'running':
                         logging.info(f'Deleting old {container_name} container because its status is {existing.status}')
                         existing.remove(force=True)
+                        self.run_container_from_installer(image, detach, container_name, volumes, command)
                 except Exception as ee:
                     raise Exception(f'Operation is already taking place and could not stop it: {str(e)} | {str(ee)}')
             else:
@@ -313,7 +319,7 @@ class NuvlaBoxConnector(Connector):
                     if tries > 3:
                         raise Exception(f'Lost connection with the NuvlaBox Docker API at {self.docker_api_endpoint}')
                     try:
-                        this_container = self.docker_client.containers.get(container_name)
+                        this_container = self.infer_docker_client().containers.get(container_name)
                         if this_container.status == 'exited':
                             # trick to get rid of bash ASCII chars
                             try:
@@ -330,7 +336,7 @@ class NuvlaBoxConnector(Connector):
         except TimeoutError:
             raise Exception(f'NuvlaBox operation timed out after {timeout_after} sec. Operation is incomplete!')
         finally:
-            self.docker_client.api.remove_container(container_name, force=True)
+            self.infer_docker_client().api.remove_container(container_name, force=True)
 
         return result, exit_code
 
@@ -379,10 +385,9 @@ class NuvlaBoxConnector(Connector):
             command.append(f'--{cluster_action}')
 
         # 3rd - run the Docker command
-        logging.info(f'Running NuvlaBox clustering via container from {self.installer_image_name}, '
-                     f'with args {" ".join(command)}')
-
         image = self.pull_docker_image(self.installer_image_name, f'{self.installer_base_name}:master')
+        logging.info(f'Running NuvlaBox clustering via container from {image}, with args {" ".join(command)}')
+
         self.run_container_from_installer(image, detach, container_name, volumes, command)
 
         # 4th - monitor the op, waiting for it to finish to capture the output
@@ -464,52 +469,16 @@ class NuvlaBoxConnector(Connector):
         command.append(f'--target-version={target_release}')
 
         # 3rd - run the Docker command
+
         logging.info(f'Running NuvlaBox update container {self.installer_image_name}')
         image = self.pull_docker_image(self.installer_image_name, f'{self.installer_base_name}:master')
-        try:
-            self.docker_client.containers.run(image,
-                                              detach=detach,
-                                              name=container_name,
-                                              volumes=volumes,
-                                              command=command)
-        except docker.errors.NotFound as e:
-            raise Exception(f'Unable to reach NuvlaBox Docker API at {self.docker_api_endpoint}: {str(e)}')
-        except docker.errors.APIError as e:
-            if '409' in str(e) and container_name in str(e):
-                raise Exception(f'A NuvlaBox update is already taking place. Please wait for it to finish.')
-            else:
-                raise
+        self.run_container_from_installer(image, detach, container_name, volumes, command)
 
         # 4th - monitor the update, waiting for it to finish to capture the output
         timeout_after = 600     # 10 minutes
-        try:
-            result = f'[NuvlaBox Engine update to {target_release}] '
-            exit_code = 0
-            with timeout(timeout_after):
-                tries = 0
-                logging.info(f'Waiting {timeout_after} sec for NuvlaBox update operation to finish...')
-                while True:
-                    if tries > 3:
-                        raise Exception(f'Lost connection with the NuvlaBox Docker API at {self.docker_api_endpoint}')
-                    try:
-                        this_container = self.docker_client.containers.get(container_name)
-                        if this_container.status == 'exited':
-                            # trick to get rid of bash ASCII chars
-                            try:
-                                result += re.sub(r'\[.*?;.*?m', '\n', this_container.logs().decode())
-                            except:
-                                result += this_container.logs().decode()
-                            exit_code = this_container.wait().get('StatusCode', 0)
-                            break
-                    except requests.exceptions.ConnectionError:
-                        # the compute-api might be being recreated...keep trying
-                        tries += 1
-                        time.sleep(5)
-                    time.sleep(1)
-        except TimeoutError:
-            raise Exception(f'NuvlaBox update timed out after {timeout_after} sec. Operation is incomplete!')
-        finally:
-            self.docker_client.api.remove_container(container_name, force=True)
+        result = f'[NuvlaBox Engine update to {target_release}] '
+        wait_result, exit_code = self.wait_for_container_output(container_name, timeout_after)
+        result += wait_result
 
         self.job.set_progress(95)
 
