@@ -39,6 +39,7 @@ class Job(dict):
     def __init__(self, api, queue):
         super(Job, self).__init__()
         self.nothing_to_do = False
+        self.released = False
         self.id = None
         self.cimi_job = None
         self.queue = queue
@@ -64,7 +65,7 @@ class Job(dict):
                 dict.__init__(self, self.cimi_job.data)
                 self._job_version_check()
                 if self.is_in_final_state():
-                    retry_kazoo_queue_op(self.queue, "consume")
+                    retry_kazoo_queue_op(self.queue, 'consume')
                     log.warning('Newly retrieved {} already in final state! Removed from queue.'
                                 .format(self.id))
                     self.nothing_to_do = True
@@ -73,19 +74,23 @@ class Job(dict):
                     # let job actions decide what to do with it.
                     log.warning('Newly retrieved {} in running state!'.format(self.id))
         except NonexistentJobError as e:
-            retry_kazoo_queue_op(self.queue, "consume")
+            retry_kazoo_queue_op(self.queue, 'consume')
             log.warning('Newly retrieved {} does not exist in cimi; '.format(self.id) +
                         'Message: {}; Removed from queue: success.'.format(e.reason))
             self.nothing_to_do = True
         except Exception as e:
             timeout = 30
-            retry_kazoo_queue_op(self.queue, "release")
+            self.release()
             log.error(
                 'Fatal error when trying to retrieve {}! Put it back in queue. '.format(self.id) +
                 'Will go back to work after {}s.'.format(timeout))
             log.exception(e)
             time.sleep(timeout)
             self.nothing_to_do = True
+
+    def release(self):
+        retry_kazoo_queue_op(self.queue, 'release')
+        self.released = True
 
     def _job_version_check(self):
         """Skips the job by setting `self.nothing_to_do = True` when the job's
@@ -103,13 +108,13 @@ class Job(dict):
             evm_str = '.'.join(map(str, self._engine_version_min))
             msg = f"Job version {job_version_str} is smaller than min supported {evm_str}"
             log.warning(msg)
-            retry_kazoo_queue_op(self.queue, "consume")
+            retry_kazoo_queue_op(self.queue, 'consume')
             self.update_job(state='FAILED', status_message=msg)
             self.nothing_to_do = True
         elif job_version > self._engine_version:
             log.debug(f"Job version {job_version_str} is higher than engine's {engine_version}. "
                       "Putting job back to the queue.")
-            retry_kazoo_queue_op(self.queue, "release")
+            self.release()
             self.nothing_to_do = True
 
     def get_cimi_job(self, job_uri):
@@ -208,7 +213,7 @@ class Job(dict):
         try:
             response = self.api.edit(self.id, {attribute_name: attribute_value})
         except (NuvlaError, ConnectionError) as ex:
-            retry_kazoo_queue_op(self.queue, 'release')
+            self.release()
             reason = f'Failed to update attribute "{attribute_name}" for {self.id}! ' \
                      f'Put it back in queue. Exception: {repr(ex)}'
             raise JobUpdateError(reason)
@@ -220,7 +225,7 @@ class Job(dict):
         try:
             response = self.api.edit(self.id, attributes)
         except (NuvlaError, ConnectionError):
-            retry_kazoo_queue_op(self.queue, 'release')
+            self.release()
             reason = 'Failed to update following attributes "{}" for {}! ' \
                      'Put it back in queue.'.format(attributes, self.id)
             raise JobUpdateError(reason)
