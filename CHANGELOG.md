@@ -10,6 +10,7 @@
 
  - Allow a job to be released explicitly by job executor
  - Switch group to group/nuvla_admin when api key is used for job-engine 
+ - docker-compose validation - support port env var substitution
 
 ## [2.13.0] - 2021-02-22
 
