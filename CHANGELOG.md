@@ -2,8 +2,14 @@
 
 ## Unreleased
 
+### Added
+
+ - Action - Bulk update for deployment
+ 
 ### Changed
 
+ - Allow a job to be released explicitly by job executor
+ - Switch group to group/nuvla_admin when api key is used for job-engine 
  - docker-compose validation - support port env var substitution
 
 ## [2.13.0] - 2021-02-22
@@ -35,8 +41,10 @@
 ### Added
 
  - New distributor for setting nuvlabox status to offline
- - New Job Engine Lite Docker image build, optimized for running jobs from within an infrastructure, with multi-arch support
- - When a job with execution-mode=mixed fails, it get back in the job queue in pull-mode
+ - New Job Engine Lite Docker image build, optimized for running jobs from
+   within an infrastructure, with multi-arch support
+ - When a job with execution-mode=mixed fails, it get back in the job queue in
+   pull-mode
  - Create deployment_state jobs with execution-mode 
  - Add pause entrypoint
  
