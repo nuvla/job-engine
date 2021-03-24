@@ -1,1 +1,1 @@
-version = '2.20'
+version = '${project.version}'
