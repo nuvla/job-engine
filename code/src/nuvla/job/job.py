@@ -39,7 +39,6 @@ class Job(dict):
     def __init__(self, api, queue):
         super(Job, self).__init__()
         self.nothing_to_do = False
-        self.released = False
         self.id = None
         self.cimi_job = None
         self.queue = queue
@@ -80,17 +79,13 @@ class Job(dict):
             self.nothing_to_do = True
         except Exception as e:
             timeout = 30
-            self.release()
+            retry_kazoo_queue_op(self.queue, 'release')
             log.error(
                 'Fatal error when trying to retrieve {}! Put it back in queue. '.format(self.id) +
                 'Will go back to work after {}s.'.format(timeout))
             log.exception(e)
             time.sleep(timeout)
             self.nothing_to_do = True
-
-    def release(self):
-        retry_kazoo_queue_op(self.queue, 'release')
-        self.released = True
 
     def _job_version_check(self):
         """Skips the job by setting `self.nothing_to_do = True` when the job's
@@ -114,7 +109,7 @@ class Job(dict):
         elif job_version > self._engine_version:
             log.debug(f"Job version {job_version_str} is higher than engine's {engine_version}. "
                       "Putting job back to the queue.")
-            self.release()
+            retry_kazoo_queue_op(self.queue, 'release')
             self.nothing_to_do = True
 
     def get_cimi_job(self, job_uri):
@@ -213,7 +208,7 @@ class Job(dict):
         try:
             response = self.api.edit(self.id, {attribute_name: attribute_value})
         except (NuvlaError, ConnectionError) as ex:
-            self.release()
+            retry_kazoo_queue_op(self.queue, 'release')
             reason = f'Failed to update attribute "{attribute_name}" for {self.id}! ' \
                      f'Put it back in queue. Exception: {repr(ex)}'
             raise JobUpdateError(reason)
@@ -225,7 +220,7 @@ class Job(dict):
         try:
             response = self.api.edit(self.id, attributes)
         except (NuvlaError, ConnectionError):
-            self.release()
+            retry_kazoo_queue_op(self.queue, 'release')
             reason = 'Failed to update following attributes "{}" for {}! ' \
                      'Put it back in queue.'.format(attributes, self.id)
             raise JobUpdateError(reason)

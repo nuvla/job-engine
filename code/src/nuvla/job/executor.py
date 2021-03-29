@@ -93,10 +93,9 @@ class Executor(Base):
                     job.update_job(state='FAILED', status_message=status_message, return_code=1)
                 logging.error('Failed to process {}, with error: {}'.format(job.id, status_message))
             else:
-                if not job.released:
-                    state = 'SUCCESS' if return_code == 0 else 'FAILED'
-                    job.update_job(state=state, return_code=return_code)
-                    logging.info('Finished {} with return_code {}.'.format(job.id, return_code))
+                state = 'SUCCESS' if return_code == 0 else 'FAILED'
+                job.update_job(state=state, return_code=return_code)
+                logging.info('Finished {} with return_code {}.'.format(job.id, return_code))
 
             if is_single_job_only:
                 break

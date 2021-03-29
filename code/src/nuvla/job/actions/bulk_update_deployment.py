@@ -92,7 +92,8 @@ class DeploymentBulkUpdateJob(object):
         return f'({filter_jobs_ids}) and {filter_finished_jobs}'
 
     def _update_progress(self):
-        new_progress = int(100 - (len(self.monitored_jobs) / self.progress_increment))
+        new_progress = 100 if self.progress_increment == 0 else int(
+            100 - (len(self.monitored_jobs) / self.progress_increment))
         if new_progress != self.job['progress']:
             self.job.set_progress(new_progress)
 
@@ -104,17 +105,17 @@ class DeploymentBulkUpdateJob(object):
 
     def _check_monitored_jobs(self):
         try:
-            query_result = self.query_jobs(self._build_monitored_jobs_filter())
-            for resource in query_result.resources:
+            completed_jobs = self.query_jobs(self._build_monitored_jobs_filter())
+            for resource in completed_jobs.resources:
                 deployment_id = resource.data['target-resource']['href']
                 if deployment_id not in self.deployment_done():
-                    if resource.data['return-code'] == 0:
+                    if resource.data.get('return-code') == 0:
                         self.result['SUCCESS'].append(deployment_id)
                     else:
                         self.result['FAILED'].append(deployment_id)
-                    self.monitored_jobs.remove(resource.id)
-        except Exception:
-            pass
+                self.monitored_jobs.remove(resource.id)
+        except Exception as ex:
+            logging.error(ex)
 
     def reload_result(self):
         try:
@@ -135,16 +136,15 @@ class DeploymentBulkUpdateJob(object):
             self.job.set_progress(20)
         self.monitored_jobs = self.job.get('nested-jobs', [])
         self.progress_increment = len(self.monitored_jobs) / 80
-        self._check_monitored_jobs()
-        logging.info(f'Bulk deployment update {self.job.id}: '
-                     f'{len(self.monitored_jobs)} jobs left')
-        self._push_result()
-        self._update_progress()
-        if self.monitored_jobs:
-            self.job.release()
-        else:
-            logging.info(f'End of bulk deployment update {self.job.id}')
-            return 0
+        while self.monitored_jobs:
+            time.sleep(5)
+            self._check_monitored_jobs()
+            logging.info(f'Bulk deployment update {self.job.id}: '
+                         f'{len(self.monitored_jobs)} jobs left')
+            self._push_result()
+            self._update_progress()
+        logging.info(f'End of bulk deployment update {self.job.id}')
+        return 0
 
     def do_work(self):
         return self.bulk_update_deployment()
