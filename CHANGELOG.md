@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## [2.14.0] - 2021-04-09
+
 ### Added
 
  - Action - Bulk update for deployment
