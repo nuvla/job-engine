@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## [2.14.1] - 2021-04-09
+
+### Changed
+
+ - docker compose cli connector - Bugfix custom registries
+
 ## [2.14.0] - 2021-04-09
 
 ### Added
