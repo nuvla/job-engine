@@ -82,7 +82,7 @@ class DockerComposeCliConnector(Connector):
                 config = open(config_path, 'w')
                 config.write(generate_registry_config(registries_auth))
                 config.close()
-                env['DOCKER_CONFIG'] = config_path
+                env['DOCKER_CONFIG'] = tmp_dir_name
 
             cmd_deploy = self.build_cmd_line(
                 ['-p', project_name, '-f', compose_file_path, 'up', '-d',
