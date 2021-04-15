@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+## [2.14.2] - 2021-04-15
+
+### Changed
+
+ - switch group - break job-engine lite fix
+ - container-lite: use alpine 3.12 to prevent issue with seccomp on Raspbian
+   Buster
+ - docker_compose_cli_connector.py: fix custom docker registries (#178)
+
 ## [2.14.1] - 2021-04-09
 
 ### Changed

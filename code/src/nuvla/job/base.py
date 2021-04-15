@@ -116,9 +116,10 @@ class Base(object):
                 if response.status_code == 403:
                     raise ConnectionError(
                         'Login with following user/apikey {} failed!'.format(self.args.api_user))
-                session_id = self.api.current_session()
-                self.api.operation(self.api.get(session_id), 'switch-group',
-                                   {'claim': "group/nuvla-admin"})
+                # Uncomment following lines for manual remote test
+                # session_id = self.api.current_session()
+                # self.api.operation(self.api.get(session_id), 'switch-group',
+                #                    {'claim': "group/nuvla-admin"})
         except ConnectionError as e:
             logging.error('Unable to connect to Nuvla endpoint {}! {}'.format(self.api.endpoint, e))
             exit(1)
