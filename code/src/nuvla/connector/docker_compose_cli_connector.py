@@ -60,7 +60,7 @@ class DockerComposeCliConnector(Connector):
         try:
             return self.sanitize_command_output(execute_cmd(cmd, **kwargs))
         except Exception as e:
-            error = self.sanitize_command_output(e.args[0])
+            error = self.sanitize_command_output(str(e))
             raise Exception(error)
 
     @should_connect
@@ -77,16 +77,14 @@ class DockerComposeCliConnector(Connector):
             compose_file.write(docker_compose)
             compose_file.close()
 
-            docker_config_prefix = []
-
             if registries_auth:
                 config_path = tmp_dir_name + "/config.json"
                 config = open(config_path, 'w')
                 config.write(generate_registry_config(registries_auth))
                 config.close()
-                docker_config_prefix += ["export", "DOCKER_CONFIG=%s" % config_path, "&&"]
+                env['DOCKER_CONFIG'] = tmp_dir_name
 
-            cmd_deploy = docker_config_prefix + self.build_cmd_line(
+            cmd_deploy = self.build_cmd_line(
                 ['-p', project_name, '-f', compose_file_path, 'up', '-d',
                  '--remove-orphans'])
 
@@ -174,7 +172,7 @@ class DockerComposeCliConnector(Connector):
 
     @staticmethod
     def sanitize_command_output(output):
-        new_output = [ line for line in output.splitlines() if "InsecureRequestWarning" not in line ]
+        new_output = [ line for line in str(output).splitlines() if "InsecureRequestWarning" not in line ]
         return '\n'.join(new_output)
 
     def _stack_services(self, project_name, docker_compose_path):

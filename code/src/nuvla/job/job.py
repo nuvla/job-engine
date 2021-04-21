@@ -59,12 +59,12 @@ class Job(dict):
             else:
                 if isinstance(self.id, bytes):
                     self.id = self.id.decode()
-                
+
                 self.cimi_job = self.get_cimi_job(self.id)
                 dict.__init__(self, self.cimi_job.data)
                 self._job_version_check()
                 if self.is_in_final_state():
-                    retry_kazoo_queue_op(self.queue, "consume")
+                    retry_kazoo_queue_op(self.queue, 'consume')
                     log.warning('Newly retrieved {} already in final state! Removed from queue.'
                                 .format(self.id))
                     self.nothing_to_do = True
@@ -73,13 +73,13 @@ class Job(dict):
                     # let job actions decide what to do with it.
                     log.warning('Newly retrieved {} in running state!'.format(self.id))
         except NonexistentJobError as e:
-            retry_kazoo_queue_op(self.queue, "consume")
+            retry_kazoo_queue_op(self.queue, 'consume')
             log.warning('Newly retrieved {} does not exist in cimi; '.format(self.id) +
                         'Message: {}; Removed from queue: success.'.format(e.reason))
             self.nothing_to_do = True
         except Exception as e:
             timeout = 30
-            retry_kazoo_queue_op(self.queue, "release")
+            retry_kazoo_queue_op(self.queue, 'release')
             log.error(
                 'Fatal error when trying to retrieve {}! Put it back in queue. '.format(self.id) +
                 'Will go back to work after {}s.'.format(timeout))
@@ -103,13 +103,13 @@ class Job(dict):
             evm_str = '.'.join(map(str, self._engine_version_min))
             msg = f"Job version {job_version_str} is smaller than min supported {evm_str}"
             log.warning(msg)
-            retry_kazoo_queue_op(self.queue, "consume")
+            retry_kazoo_queue_op(self.queue, 'consume')
             self.update_job(state='FAILED', status_message=msg)
             self.nothing_to_do = True
         elif job_version > self._engine_version:
             log.debug(f"Job version {job_version_str} is higher than engine's {engine_version}. "
                       "Putting job back to the queue.")
-            retry_kazoo_queue_op(self.queue, "release")
+            retry_kazoo_queue_op(self.queue, 'release')
             self.nothing_to_do = True
 
     def get_cimi_job(self, job_uri):
@@ -157,22 +157,32 @@ class Job(dict):
 
         self._edit_job('state', state)
 
-    def add_affected_resource(self, affected_resource):
-        self.add_affected_resources([affected_resource])
-
-    def add_affected_resources(self, affected_resources):
+    def _add_resources_to_list(self, field_name, resources_ids, href_format=True):
         has_to_update = False
-        current_affected_resources_ids = [resource['href'] for resource in
-                                          self.get('affected-resources', [])]
+        current_resources_ids = [resource['href'] if href_format else resource
+                                 for resource in self.get(field_name, [])]
 
-        for affected_resource in affected_resources:
-            if affected_resource not in current_affected_resources_ids:
-                current_affected_resources_ids.append(affected_resource)
+        for resource_id in resources_ids:
+            if resource_id not in current_resources_ids:
+                current_resources_ids.append(resource_id)
                 has_to_update = True
 
         if has_to_update:
-            self._edit_job('affected-resources',
-                           [{'href': res_id} for res_id in current_affected_resources_ids])
+            field_data = [{'href': res_id} for res_id in current_resources_ids] \
+                if href_format else current_resources_ids
+            self._edit_job(field_name, field_data)
+
+    def add_affected_resource(self, affected_resource):
+        self._add_resources_to_list('affected-resources', [affected_resource])
+
+    def add_affected_resources(self, affected_resources):
+        self._add_resources_to_list('affected-resources', affected_resources)
+
+    def add_nested_job(self, nested_job):
+        self._add_resources_to_list('nested-jobs', [nested_job], False)
+
+    def add_nested_jobs(self, nested_jobs):
+        self._add_resources_to_list('nested-jobs', nested_jobs, False)
 
     def update_job(self, state=None, return_code=None, status_message=None):
         attributes = {}
@@ -197,10 +207,10 @@ class Job(dict):
     def _edit_job(self, attribute_name, attribute_value):
         try:
             response = self.api.edit(self.id, {attribute_name: attribute_value})
-        except (NuvlaError, ConnectionError):
+        except (NuvlaError, ConnectionError) as ex:
             retry_kazoo_queue_op(self.queue, 'release')
-            reason = 'Failed to update attribute "{}" for {}! Put it back in queue.'.format(
-                attribute_name, self.id)
+            reason = f'Failed to update attribute "{attribute_name}" for {self.id}! ' \
+                     f'Put it back in queue. Exception: {repr(ex)}'
             raise JobUpdateError(reason)
         else:
             self.update(response.data)

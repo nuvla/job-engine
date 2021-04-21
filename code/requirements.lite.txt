@@ -1,4 +1,4 @@
-nuvla-api==3.0.2
+nuvla-api==3.0.3
 docker
 pyyaml
 statsd

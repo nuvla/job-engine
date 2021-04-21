@@ -6,8 +6,31 @@
 
  - new action for clustering nuvlaboxes
 
+## [2.14.2] - 2021-04-15
+
 ### Changed
 
+ - switch group - break job-engine lite fix
+ - container-lite: use alpine 3.12 to prevent issue with seccomp on Raspbian
+   Buster
+ - docker_compose_cli_connector.py: fix custom docker registries (#178)
+
+## [2.14.1] - 2021-04-09
+
+### Changed
+
+ - docker compose cli connector - Bugfix custom registries
+
+## [2.14.0] - 2021-04-09
+
+### Added
+
+ - Action - Bulk update for deployment
+ 
+### Changed
+
+ - Dependency - nuvla-api v3.0.3
+ - Switch group to group/nuvla_admin when api key is used for job-engine 
  - docker-compose validation - support port env var substitution
 
 ## [2.13.0] - 2021-02-22
@@ -39,8 +62,10 @@
 ### Added
 
  - New distributor for setting nuvlabox status to offline
- - New Job Engine Lite Docker image build, optimized for running jobs from within an infrastructure, with multi-arch support
- - When a job with execution-mode=mixed fails, it get back in the job queue in pull-mode
+ - New Job Engine Lite Docker image build, optimized for running jobs from
+   within an infrastructure, with multi-arch support
+ - When a job with execution-mode=mixed fails, it get back in the job queue in
+   pull-mode
  - Create deployment_state jobs with execution-mode 
  - Add pause entrypoint
  

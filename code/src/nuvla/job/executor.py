@@ -83,11 +83,12 @@ class Executor(Base):
                 status_message = type(ex).__name__ + '-' + ''.join(traceback.format_exception(
                     etype=ex_type, value=ex_msg, tb=ex_tb))
                 if job.get('execution-mode', '').lower() == 'mixed':
-                    status_message = f'Re-running job in pull mode after failed first attempt: {status_message}'
-                    job._edit_job_multi({"state": 'QUEUED',
-                                         "status-message": status_message,
-                                         "execution-mode": "pull"})
-                    retry_kazoo_queue_op(job.queue, "consume")
+                    status_message = 'Re-running job in pull mode after failed first attempt: ' \
+                                     f'{status_message}'
+                    job._edit_job_multi({'state': 'QUEUED',
+                                         'status-message': status_message,
+                                         'execution-mode': 'pull'})
+                    retry_kazoo_queue_op(job.queue, 'consume')
                 else:
                     job.update_job(state='FAILED', status_message=status_message, return_code=1)
                 logging.error('Failed to process {}, with error: {}'.format(job.id, status_message))
