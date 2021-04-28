@@ -372,9 +372,10 @@ class NuvlaBoxConnector(Connector):
                                               filter=current_cluster_filter).resources
 
             if current_cluster:
-                nuvlaboxes = current_cluster.get('nuvlabox-managers', []) + current_cluster.get('nuvlabox-workers', [])
+                nuvlaboxes = current_cluster[0].data.get('nuvlabox-managers', []) + \
+                             current_cluster[0].data.get('nuvlabox-workers', [])
                 if len(nuvlaboxes) == 1 and self.nuvlabox_id in nuvlaboxes:
-                    return current_cluster.id
+                    return current_cluster[0].id
 
         return None
 

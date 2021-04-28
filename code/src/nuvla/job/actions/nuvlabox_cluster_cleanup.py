@@ -15,8 +15,8 @@ class NBClusterCleanupJob(object):
 
         to_delete = []
         for cluster in existing_clusters:
-            nuvlaboxes = cluster.get('nuvlabox-managers', []) + cluster.get('nuvlabox-workers', [])
-            nodes = cluster.get('managers', []) + cluster.get('workers', [])
+            nuvlaboxes = cluster.data.get('nuvlabox-managers', []) + cluster.get('nuvlabox-workers', [])
+            nodes = cluster.data.get('managers', []) + cluster.get('workers', [])
             if len(nuvlaboxes) == 0:
                 # a cluster without NBs is not supported
                 to_delete.append(cluster.id)
@@ -33,8 +33,8 @@ class NBClusterCleanupJob(object):
             leftover = True
             for nb in underlying_nbs:
                 # all it takes is for one NuvlaBox to still be in Swarm mode, and be part of that cluster
-                if nb.get('cluster-id', '') == cluster.get('cluster-id') \
-                        or nb.get('node-id') in nodes:
+                if nb.data.get('cluster-id', '') == cluster.data.get('cluster-id') \
+                        or nb.data.get('node-id') in nodes:
                     leftover = False
                     break
 
