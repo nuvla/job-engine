@@ -10,6 +10,9 @@ from .connector import Connector, should_connect
 from .utils import execute_cmd, create_tmp_file, timeout
 
 
+class ClusterOperationNotAllowed(Exception):
+    pass
+
 class NuvlaBoxConnector(Connector):
     def __init__(self, **kwargs):
         super(NuvlaBoxConnector, self).__init__(**kwargs)
@@ -346,6 +349,43 @@ class NuvlaBoxConnector(Connector):
 
         return result, exit_code
 
+    def assert_clustering_operation(self, action: str):
+        """
+        Double checks if the clustering operation can go on. For example, trying to join an existing cluster is
+        only possible if the affected NuvlaBox has no active deployments
+
+        :param action: clustering action
+        :return: ID of cluster to delete, in case there's need
+        """
+
+        if action.lower().startswith("join"):
+            # joining is only possible if not deployments are active on the NB
+            active_deployments = self.api.search('deployment',
+                                                 filter=f'nuvlabox="{self.nuvlabox_id}" and state!="STOPPED"').resources
+
+            if len(active_deployments) > 0:
+                raise ClusterOperationNotAllowed(f"NuvlaBox {self.nuvlabox_id} "
+                                                 f"has {len(active_deployments)} active deployments")
+        elif action.lower() in ['leave', 'force-new-cluster']:
+            current_cluster_filter = f'nuvlabox-managers="{self.nuvlabox_id}" or nuvlabox-workers="{self.nuvlabox_id}"'
+            current_cluster = self.api.search('nuvlabox-cluster',
+                                              filter=current_cluster_filter).resources
+
+            if current_cluster:
+                nuvlaboxes = current_cluster.get('nuvlabox-managers', []) + current_cluster.get('nuvlabox-workers', [])
+                if len(nuvlaboxes) == 1 and self.nuvlabox_id in nuvlaboxes:
+                    return current_cluster.id
+
+        return None
+
+    def delete_cluster(self, cluster_id: str):
+        try:
+            self.api.delete(cluster_id)
+        except:
+            # we can ignore as it shall be cleanup up later on by the daily cleanup job
+            logging.exception(f'Cannot delete leftover NuvlaBox cluster {cluster_id}. Leaving it be')
+            pass
+
     @should_connect
     def cluster_nuvlabox(self, **kwargs):
         self.job.set_progress(10)
@@ -354,6 +394,11 @@ class NuvlaBoxConnector(Connector):
         if self.job.get('execution-mode', '').lower() in ['mixed', 'push']:
             self.setup_ssl_credentials()
 
+        # 1.1 - assert the conditions to run this operation
+        cluster_params_from_payload = json.loads(self.job.get('payload', '{}'))
+        cluster_action = cluster_params_from_payload.get('cluster-action')
+
+        delete_cluster_id = self.assert_clustering_operation(cluster_action)
         self.job.set_progress(50)
 
         # 2nd - set the Docker args
@@ -375,7 +420,6 @@ class NuvlaBoxConnector(Connector):
         # action
         command = ['cluster', '--quiet']
 
-        cluster_params_from_payload = json.loads(self.job.get('payload', '{}'))
         # cluster-action
         cluster_action = cluster_params_from_payload.get('cluster-action')
         if not cluster_action:
@@ -404,6 +448,9 @@ class NuvlaBoxConnector(Connector):
         result += wait_result
 
         self.job.set_progress(95)
+
+        if delete_cluster_id:
+            self.delete_cluster(delete_cluster_id)
 
         return result, exit_code
 
