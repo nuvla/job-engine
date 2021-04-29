@@ -53,7 +53,9 @@ class NBClusterCleanupJob(object):
         if warnings:
             msg += 'Had issues deleting the following clusters:\n%s' % " \n".join(warnings)
 
-        return msg
+        self.job.set_status_message(msg)
+
+        return 0
 
     def do_work(self):
         return self.nuvlabox_cluster_cleanup()
