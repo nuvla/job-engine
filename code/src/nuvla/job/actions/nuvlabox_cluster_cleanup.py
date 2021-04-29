@@ -15,7 +15,7 @@ class NBClusterCleanupJob(object):
 
         to_delete = []
         for cluster in existing_clusters:
-            nuvlaboxes = cluster.data.get('nuvlabox-managers', []) + cluster.get('nuvlabox-workers', [])
+            nuvlaboxes = cluster.data.get('nuvlabox-managers', []) + cluster.data.get('nuvlabox-workers', [])
             nodes = cluster.data.get('managers', []) + cluster.get('workers', [])
             if len(nuvlaboxes) == 0:
                 # a cluster without NBs is not supported
