@@ -23,7 +23,7 @@ class NBClusterCleanupJob(object):
                 continue
 
             underlying_nbs = self.api.search('nuvlabox-status',
-                                             filter=' or '.join(['parent=%s' % nbid for nbid in nuvlaboxes])).resources
+                                             filter=' or '.join(['parent="%s"' % nbid for nbid in nuvlaboxes])).resources
 
             if len(underlying_nbs) == 0:
                 # these NBs are gone, so should be the cluster
