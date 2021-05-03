@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+### Changed
+
+  - nuvlabox_decommission - remove online attribute when nuvlabox is
+    decommissioned
+
 ### Added
 
  - new action for clustering nuvlaboxes

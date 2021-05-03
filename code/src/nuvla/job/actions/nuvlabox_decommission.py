@@ -153,7 +153,7 @@ class NuvlaBoxDeleteJob(object):
 
             if self.error == 0:
                 try:
-                    self.api.edit(nuvlabox_id, {"state": "DECOMMISSIONED"})
+                    self.api.edit(nuvlabox_id, {"state": "DECOMMISSIONED"}, select='online')
                 except Exception:
                     self.error += 1
                     logging.warning('problem updating nuvlabox resource: {}'.format(nuvlabox_id))
