@@ -15,8 +15,8 @@ LABEL git.build.time=${GIT_BUILD_TIME}
 LABEL ci.build.number=${TRAVIS_BUILD_NUMBER}
 LABEL ci.build.web.url=${TRAVIS_BUILD_WEB_URL}
 
-COPY --from=nuvladev/job-docker-compose-client:master /usr/local/bin/docker-compose /usr/local/bin/
-COPY --from=nuvladev/job-docker-compose-client:master /usr/local/lib/python3.8/site-packages /usr/local/lib/python3.8/site-packages
+COPY --from=nuvla/job-docker-compose-client:master /usr/local/bin/docker-compose /usr/local/bin/
+COPY --from=nuvla/job-docker-compose-client:master /usr/local/lib/python3.8/site-packages /usr/local/lib/python3.8/site-packages
 
 ADD target/job /target/job
 
