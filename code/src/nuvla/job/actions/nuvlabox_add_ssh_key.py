@@ -30,13 +30,12 @@ class NBAddSSHKey(object):
                 break
 
         if credential_id:
-            pubkey = self.job.context[credential_id]['public-key']
             connector.connect()
+            pubkey = self.job.context[credential_id]['public-key']
             ssh_keys = connector.nuvlabox.get('ssh-keys', [])
 
             if credential_id not in ssh_keys:
-                r = connector.start(api_action_name="add-ssh-key", method='post',
-                                    payload=pubkey, headers={"Content-Type": "text/plain"})
+                r = connector.nuvlabox_manage_ssh_key('add-ssh-key', pubkey)
 
                 update_payload = ssh_keys + [credential_id]
 

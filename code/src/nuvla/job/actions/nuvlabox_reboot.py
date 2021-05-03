@@ -20,7 +20,7 @@ class NBRebootJob(object):
         connector = NB.NuvlaBoxConnector(api=self.api, nuvlabox_id=nuvlabox_id, job=self.job)
 
         # IMPORTANT BIT THAT MUST CHANGE FOR EVERY NUVLABOX API ACTION
-        r = connector.start(api_action_name="reboot", method='post')
+        r = connector.reboot()
 
         return 0
 
