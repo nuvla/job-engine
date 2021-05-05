@@ -39,25 +39,6 @@ class UsageReport(object):
                                                filter="updated > 'now-1h' and "
                                                       "({})".format(' or '.join(nb_ids_filter)),
                                                aggregation="value_count:id", last=0)
-
-        elif nickname == 'deployment':
-            dep_filter = "state='STARTED' and owner='{}' and infrastructure-service!=null".format(
-                owner_id)
-            nb_ids_filter = ["parent='{}'".format(nb.data.get('infrastructure-service-group')) for
-                             nb in
-                             self.api.search('nuvlabox', filter="owner='{}'".format(owner_id),
-                                             select='id, infrastructure-service-group'
-                                             ).resources]
-            if nb_ids_filter:
-                infra_nb_ids_filter = ["infrastructure-service !='{}'".format(infra.id) for infra in
-                                       self.api.search('infrastructure-service',
-                                                       filter="subtype='swarm' and ({})".format(
-                                                           ' or '.join(nb_ids_filter)),
-                                                       select='id').resources]
-                if infra_nb_ids_filter:
-                    dep_filter += " and {}".format(' and '.join(infra_nb_ids_filter))
-            query_result = self.api.search('deployment', filter=dep_filter,
-                                           aggregation="value_count:id", last=0)
         elif nickname == 'vpn':
             query_result = self.api.search('credential',
                                            filter="subtype='infrastructure-service-vpn' and "
@@ -90,7 +71,7 @@ class UsageReport(object):
                     price_item = item.price
                     usage_type = price_item.recurring.usage_type
                     nickname = price_item.nickname
-                    if usage_type == 'metered' and nickname in ['nuvlabox', 'vpn', 'deployment']:
+                    if usage_type == 'metered' and nickname in ['nuvlabox', 'vpn']:
                         self.usage_report(owner_id, item.id, nickname)
             except Exception as ex:
                 log.error('Failed to {0} {1}: {2}'.format(self.job['action'], resource_target, ex))
