@@ -4,6 +4,7 @@
 
 ### Changed
 
+  - usage_report - remove usage report by number of deployments
   - nuvlabox_decommission - remove online attribute when nuvlabox is
     decommissioned
 
