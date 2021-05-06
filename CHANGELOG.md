@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## [2.15.0] - 2021-05-06
+
 ### Changed
 
   - usage_report - remove usage report by number of deployments
