@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+## [2.15.1] - 2021-05-12
+
+### Added
+
+  - job-lite compatibility with arm64
+
+
 ## [2.15.0] - 2021-05-06
 
 ### Changed
