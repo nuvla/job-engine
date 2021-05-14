@@ -12,6 +12,7 @@ from nuvla.connector import docker_connector, docker_cli_connector, \
 from ..actions import action
 from .deployment_start import DeploymentBase, \
     application_params_update, get_env, initialize_connector
+from nuvla.connector import nuvlabox_connector as NB
 
 
 action_name = 'nuvlabox_scalability_start'
