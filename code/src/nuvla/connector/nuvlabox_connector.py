@@ -13,6 +13,7 @@ from .utils import execute_cmd, create_tmp_file, timeout
 class ClusterOperationNotAllowed(Exception):
     pass
 
+
 class NuvlaBoxConnector(Connector):
     def __init__(self, **kwargs):
         super(NuvlaBoxConnector, self).__init__(**kwargs)
@@ -43,6 +44,21 @@ class NuvlaBoxConnector(Connector):
     @property
     def connector_type(self):
         return 'nuvlabox'
+
+    def create_nuvlaboxes(self, number_of_nbs, vpn_server_id, basename="nuvlabox-conector-job", version=2, share_with=[]):
+        nuvlabox_ids = []
+        for count in range(1, number_of_nbs+1):
+            nuvlabox_body = {
+                'name': f'{basename}-{count}',
+                'description': f'Automatically created by {self.connector_type} connector in Nuvla',
+                'version': version,
+                'vpn-server-id': vpn_server_id
+            }
+            r = self.api.add('nuvlabox', nuvlabox_body).data
+
+            nb_id = r.get('resource-id')
+            self.api.edit(nb_id, {'acl': {'view-data': share_with}})
+            nuvlabox_ids.append(nb_id)
 
     def build_cmd_line(self, list_cmd):
         return ['docker', '-H', self.docker_api_endpoint.replace('https://', '').replace('http://', ''),

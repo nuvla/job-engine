@@ -1,17 +1,9 @@
 # -*- coding: utf-8 -*-
 
-import re
-import copy
+import json
 import logging
 
-from nuvla.api import Api
-from nuvla.api.resources import Deployment, DeploymentParameter
-from nuvla.api.resources.base import ResourceNotFound
-from nuvla.connector import docker_connector, docker_cli_connector, \
-    docker_compose_cli_connector, kubernetes_cli_connector
 from ..actions import action
-from .deployment_start import DeploymentBase, \
-    application_params_update, get_env, initialize_connector
 from nuvla.connector import nuvlabox_connector as NB
 
 
@@ -21,169 +13,55 @@ log = logging.getLogger(action_name)
 
 
 @action(action_name)
-class DeploymentStartJob(DeploymentBase):
+class DeploymentStartJob(object):
 
-    def start_component(self, deployment: dict):
-        connector = initialize_connector(docker_connector, self.job, deployment)
+    def __init__(self, _, job):
+        self.job = job
+        self.api = job.api
 
-        deployment_id = Deployment.id(deployment)
-        node_instance_name = Deployment.uuid(deployment)
-        deployment_owner = Deployment.owner(deployment)
-        module_content = Deployment.module_content(deployment)
+    def check_job_attributes(self):
+        payload = json.loads(self.job.get('payload', '{}'))
 
-        restart_policy = module_content.get('restart-policy', {})
+        size = payload.get('size')
+        module_id = payload.get('module-id')
+        vpn_server_id = payload.get('vpn-server-id')
+        release = payload.get('nuvlabox-release')
+        credential_id = payload.get('credential-id')
 
-        # create deployment parameters (with empty values) for all port mappings
-        module_ports = module_content.get('ports')
-        for port in (module_ports or []):
-            target_port = port.get('target-port')
-            protocol = port.get('protocol', 'tcp')
-            if target_port is not None:
-                self.create_deployment_parameter(
-                    deployment_id=deployment_id,
-                    user_id=deployment_owner,
-                    param_name="{}.{}".format(protocol, str(target_port)),
-                    param_description="mapping for {} port {}".format(protocol, str(target_port)),
-                    node_id=node_instance_name)
+        if not size or not module_id or not vpn_server_id or not release or not credential_id:
+            raise Exception(f'The {action_name} job needs a payload with the following fields: '
+                            f'size, application-id, vpn-server-id, nuvlabox-release, credential-id')
 
-        registries_auth = self.private_registries_auth(deployment)
+        return size, module_id, vpn_server_id, credential_id, \
+               payload.get('name', action_name), release, \
+               payload.get('share-with', [])
 
-        _, service = connector.start(
-            service_name=node_instance_name,
-            image=module_content['image'],
-            env=get_env(deployment),
-            mounts_opt=module_content.get('mounts'),
-            ports_opt=module_ports,
-            cpu_ratio=module_content.get('cpus'),
-            memory=module_content.get('memory'),
-            restart_policy_condition=restart_policy.get('condition'),
-            restart_policy_delay=restart_policy.get('delay'),
-            restart_policy_max_attempts=restart_policy.get('max-attempts'),
-            restart_policy_window=restart_policy.get('window'),
-            registry_auth=registries_auth[0] if registries_auth else None)
+    def start_scalability_test(self):
+        size, module_id, vpn_server_id, credential_id, basename, release, share_with = self.check_job_attributes()
 
-        # FIXME: get number of desired replicas of Replicated service from deployment. 1 for now.
-        desired = 1
+        nb_connector = NB.NuvlaBoxConnector(api=self.api, job=self.job)
 
-        deployment_parameters = (
-            (DeploymentParameter.SERVICE_ID, connector.extract_vm_id(service)),
-            (DeploymentParameter.HOSTNAME,   self.get_hostname()),
-            (DeploymentParameter.REPLICAS_DESIRED,  str(desired)),
-            (DeploymentParameter.REPLICAS_RUNNING,  '0'),
-            (DeploymentParameter.CURRENT_DESIRED,   ''),
-            (DeploymentParameter.CURRENT_STATE,     ''),
-            (DeploymentParameter.CURRENT_ERROR,     ''),
-            (DeploymentParameter.RESTART_EXIT_CODE, ''),
-            (DeploymentParameter.RESTART_ERR_MSG,   ''),
-            (DeploymentParameter.RESTART_TIMESTAMP, ''),
-            (DeploymentParameter.RESTART_NUMBER,    ''),
-            (DeploymentParameter.CHECK_TIMESTAMP,   ''),
-        )
+        nb_ids = nb_connector.create_nuvlaboxes(size, vpn_server_id, basename, int(release.split('.')[0]), share_with)
 
-        for deployment_parameter, value in deployment_parameters:
-            self.create_deployment_parameter(
-                param_name=deployment_parameter['name'],
-                param_value=value,
-                param_description=deployment_parameter['description'],
-                deployment_id=deployment_id,
-                node_id=node_instance_name,
-                user_id=deployment_owner)
+        for id in nb_ids:
+            depl = self.api.add('deployment', {'module': {'href': module_id}}).data
 
-        # immediately update any port mappings that are already available
-        ports_mapping = connector.extract_vm_ports_mapping(service)
-        self.api_dpl.update_port_parameters(deployment, ports_mapping)
+            depl_id = depl.id
 
-    def start_application(self, deployment: dict):
-        deployment_id = Deployment.id(deployment)
+            self.api.edit(depl_id, {
+                "module": {
+                    "content": {
+                        "environmental-variable": [
+                            {
+                                "name": "NUVLABOX_ENGINE_VERSION",
+                                "value": release
+                            },
+                            {
+                                "name": "NUVLABOX_UUID",
+                                "value": id}]}}})
 
-        if Deployment.is_compatibility_docker_compose(deployment):
-            connector = initialize_connector(docker_compose_cli_connector, self.job, deployment)
-        else:
-            connector = initialize_connector(docker_cli_connector, self.job, deployment)
+            self.api.get(depl_id + "/start")
 
-        module_content   = Deployment.module_content(deployment)
-        deployment_owner = Deployment.owner(deployment)
-        docker_compose   = module_content['docker-compose']
-        registries_auth  = self.private_registries_auth(deployment)
-
-        result, services = connector.start(docker_compose=docker_compose,
-                                           stack_name=Deployment.uuid(deployment),
-                                           env=get_env(deployment),
-                                           files=module_content.get('files'),
-                                           registries_auth=registries_auth)
-        self.job.set_status_message(result)
-
-        self.create_deployment_parameter(
-            deployment_id=deployment_id,
-            user_id=deployment_owner,
-            param_name=DeploymentParameter.HOSTNAME['name'],
-            param_value=self.get_hostname(),
-            param_description=DeploymentParameter.HOSTNAME['description'])
-
-        application_params_update(self.api_dpl, deployment, services)
-
-    def start_application_kubernetes(self, deployment: dict):
-        deployment_id = Deployment.id(deployment)
-
-        connector = initialize_connector(kubernetes_cli_connector, self.job, deployment)
-
-        module_content   = Deployment.module_content(deployment)
-        deployment_owner = Deployment.owner(deployment)
-        docker_compose   = module_content['docker-compose']
-        registries_auth  = self.private_registries_auth(deployment)
-
-        result, services = connector.start(docker_compose=docker_compose,
-                                           stack_name=Deployment.uuid(deployment),
-                                           env=get_env(deployment),
-                                           files=module_content.get('files'),
-                                           registries_auth=registries_auth)
-
-        self.job.set_status_message(result)
-
-        self.create_deployment_parameter(
-            deployment_id=deployment_id,
-            user_id=deployment_owner,
-            param_name=DeploymentParameter.HOSTNAME['name'],
-            param_value=self.get_hostname(),
-            param_description=DeploymentParameter.HOSTNAME['description'])
-
-        application_params_update(self.api_dpl, deployment, services)
-
-    def handle_deployment(self, deployment: dict):
-
-        if Deployment.is_component(deployment):
-            self.start_component(deployment)
-        elif Deployment.is_application(deployment):
-            self.start_application(deployment)
-        elif Deployment.is_application_kubernetes(deployment):
-            self.start_application_kubernetes(deployment)
-
-        self.create_user_output_params(deployment)
-
-    def start_deployment(self):
-        deployment_id = self.job['target-resource']['href']
-
-        log.info('Job started for {}.'.format(deployment_id))
-
-        deployment = self.api_dpl.get(deployment_id)
-
-        self.job.set_progress(10)
-
-        try:
-            self.handle_deployment(deployment.data)
-        except Exception as ex:
-            log.error('Failed to {0} {1}: {2}'.format(self.job['action'], deployment_id, ex))
-            try:
-                self.job.set_status_message(repr(ex))
-                self.api_dpl.set_state_error(deployment_id)
-            except Exception as ex_state:
-                log.error('Failed to set error state for {0}: {1}'.format(deployment_id, ex_state))
-
-            raise ex
-
-        self.api_dpl.set_state_started(deployment_id)
-
-        return 0
 
     def do_work(self):
         return self.start_deployment()
