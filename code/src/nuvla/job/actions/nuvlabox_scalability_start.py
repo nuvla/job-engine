@@ -13,7 +13,7 @@ log = logging.getLogger(action_name)
 
 
 @action(action_name)
-class DeploymentStartJob(object):
+class NuvlaBoxScalabilityStartJob(object):
 
     def __init__(self, _, job):
         self.job = job
@@ -62,6 +62,5 @@ class DeploymentStartJob(object):
 
             self.api.get(depl_id + "/start")
 
-
     def do_work(self):
-        return self.start_deployment()
+        return self.start_scalability_test()
