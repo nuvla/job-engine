@@ -59,6 +59,8 @@ class NuvlaBoxConnector(Connector):
             self.api.edit(nb_id, {'acl': {'view-data': share_with}})
             nuvlabox_ids.append(nb_id)
 
+        return nuvlabox_ids
+
     def build_cmd_line(self, list_cmd):
         return ['docker', '-H', self.docker_api_endpoint.replace('https://', '').replace('http://', ''),
                 '--tls', '--tlscert', self.cert_file.name, '--tlskey', self.key_file.name,
