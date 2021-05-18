@@ -57,10 +57,10 @@ class NuvlaBoxConnector(Connector):
 
             nb_id = r.get('resource-id')
             if share_with:
-                nb = self.api.get(nb_id).data
-                new_view_data = nb['acl'].get('view-data', []) + share_with
+                # nb = self.api.get(nb_id).data
+                # new_view_data = nb['acl'].get('view-data', []) + share_with
 
-                self.api.edit(nb_id, {'acl': nb['acl'].update({'view-data': new_view_data})})
+                self.api.edit(nb_id, {'acl': {'owners': ['group/scale-tests'], 'view-data': share_with}})
             nuvlabox_ids.append(nb_id)
 
         return nuvlabox_ids
