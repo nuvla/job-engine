@@ -47,9 +47,10 @@ class NuvlaBoxScalabilityStartJob(object):
         for id in nb_ids:
             depl = self.api.add('deployment', {'module': {'href': module_id}}).data
 
-            depl_id = depl.id
+            depl_id = depl.get('resource-id')
 
             self.api.edit(depl_id, {
+                "parent": credential_id,
                 "module": {
                     "content": {
                         "environmental-variable": [
