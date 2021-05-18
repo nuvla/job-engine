@@ -56,7 +56,10 @@ class NuvlaBoxConnector(Connector):
             r = self.api.add('nuvlabox', nuvlabox_body).data
 
             nb_id = r.get('resource-id')
-            self.api.edit(nb_id, {'acl': {'view-data': share_with}})
+            nb = self.api.get(nb_id).data
+            nb['acl'].get('view-data', []).append(share_with)
+
+            self.api.edit(nb_id, {'acl': nb['acl']})
             nuvlabox_ids.append(nb_id)
 
         return nuvlabox_ids

@@ -63,5 +63,7 @@ class NuvlaBoxScalabilityStartJob(object):
 
             self.api.get(depl_id + "/start")
 
+        return 0
+
     def do_work(self):
         return self.start_scalability_test()
