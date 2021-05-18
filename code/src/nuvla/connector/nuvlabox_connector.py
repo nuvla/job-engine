@@ -22,7 +22,6 @@ class NuvlaBoxConnector(Connector):
         self.job = kwargs.get("job")
         self.ssl_file = None
         self.docker_client = None
-        self.local_docker_client = docker.from_env()
         self.docker_api_endpoint = None
         self.nuvlabox_api = requests.Session()
         self.nuvlabox_api.verify = False
@@ -145,7 +144,7 @@ class NuvlaBoxConnector(Connector):
 
         if self.nuvlabox_status.get('cluster-node-role', '').lower() == 'worker':
             # workers don't have an IS
-            self.docker_client = self.local_docker_client
+            self.docker_client = docker.from_env()
 
         if self.job.get('execution-mode', '').lower() != 'pull':
             self.nb_api_endpoint = self.nuvlabox_status.get("nuvlabox-api-endpoint")
@@ -308,7 +307,7 @@ class NuvlaBoxConnector(Connector):
         return image_name
 
     def infer_docker_client(self):
-        dc = self.local_docker_client if self.job.get('execution-mode', '') == 'pull' else self.docker_client
+        dc = docker.from_env() if self.job.get('execution-mode', '') == 'pull' else self.docker_client
         return dc
 
     def run_container_from_installer(self, image, detach, container_name, volumes, command):
