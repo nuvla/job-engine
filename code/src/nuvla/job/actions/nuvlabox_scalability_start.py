@@ -49,18 +49,20 @@ class NuvlaBoxScalabilityStartJob(object):
 
             depl_id = depl.get('resource-id')
 
-            self.api.edit(depl_id, {
-                "parent": credential_id,
-                "module": {
-                    "content": {
-                        "environmental-variable": [
-                            {
-                                "name": "NUVLABOX_ENGINE_VERSION",
-                                "value": release
-                            },
-                            {
-                                "name": "NUVLABOX_UUID",
-                                "value": id}]}}})
+            depl = self.api.get(depl_id).data
+            depl['parent'] = credential_id
+            depl['module']['content']['environmental-variables'] = [
+                {
+                    "name": "NUVLABOX_ENGINE_VERSION",
+                    "value": release
+                },
+                {
+                    "name": "NUVLABOX_UUID",
+                    "value": id
+                }
+            ]
+
+            self.api.edit(depl_id, depl)
 
             self.api.get(depl_id + "/start")
 
