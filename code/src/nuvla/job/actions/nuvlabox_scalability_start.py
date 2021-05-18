@@ -28,9 +28,9 @@ class NuvlaBoxScalabilityStartJob(object):
         release = payload.get('nuvlabox-release')
         credential_id = payload.get('credential-id')
 
-        if not size or not module_id or not vpn_server_id or not release or not credential_id:
+        if size is None or not module_id or not vpn_server_id or not release or not credential_id:
             raise Exception(f'The {action_name} job needs a payload with the following fields: '
-                            f'size, module-id, vpn-server-id, nuvlabox-release, credential-id.'
+                            f'size, module-id, vpn-server-id, nuvlabox-release, credential-id. '
                             f'Payload provided: {payload}')
 
         return size, module_id, vpn_server_id, credential_id, \
