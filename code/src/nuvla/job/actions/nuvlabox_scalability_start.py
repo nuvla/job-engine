@@ -27,22 +27,23 @@ class NuvlaBoxScalabilityStartJob(object):
         vpn_server_id = payload.get('vpn-server-id')
         release = payload.get('nuvlabox-release')
         credential_id = payload.get('credential-id')
+        name_identifier = payload.get('name-identifier')
 
-        if size is None or not module_id or not vpn_server_id or not release or not credential_id:
+        if size is None or not module_id or not vpn_server_id or not release or not credential_id or not name_identifier:
             raise Exception(f'The {action_name} job needs a payload with the following fields: '
-                            f'size, module-id, vpn-server-id, nuvlabox-release, credential-id. '
+                            f'size, module-id, vpn-server-id, nuvlabox-release, credential-id, name-identifier '
                             f'Payload provided: {payload}')
 
         return size, module_id, vpn_server_id, credential_id, \
-               payload.get('name', action_name), release, \
+               name_identifier, release, \
                payload.get('share-with', [])
 
     def start_scalability_test(self):
-        size, module_id, vpn_server_id, credential_id, basename, release, share_with = self.check_job_attributes()
+        size, module_id, vpn_server_id, credential_id, name_identifier, release, share_with = self.check_job_attributes()
 
         nb_connector = NB.NuvlaBoxConnector(api=self.api, job=self.job)
 
-        nb_ids = nb_connector.create_nuvlaboxes(size, vpn_server_id, basename, int(release.split('.')[0]), share_with)
+        nb_ids = nb_connector.create_nuvlaboxes(size, vpn_server_id, name_identifier, int(release.split('.')[0]), share_with)
 
         for id in nb_ids:
             depl = self.api.add('deployment', {'module': {'href': module_id}}).data
@@ -51,6 +52,7 @@ class NuvlaBoxScalabilityStartJob(object):
 
             depl = self.api.get(depl_id).data
             depl['parent'] = credential_id
+            depl['tags'] = [name_identifier]
             depl['module']['content']['environmental-variables'] = [
                 {
                     "name": "NUVLABOX_ENGINE_VERSION",
