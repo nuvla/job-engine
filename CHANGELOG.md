@@ -5,15 +5,16 @@
 ## [2.15.0] - 2021-05-06
 
 ### Changed
-
   - usage_report - remove usage report by number of deployments
   - nuvlabox_decommission - remove online attribute when nuvlabox is
     decommissioned
 
 ### Added
 
- - new action for clustering nuvlaboxes
- - new action for cleaning up leftover NuvlaBox clusters
+ - Action - Bulk force restart deployment
+ - Action - Bulk stop deployment
+ - Action - Clustering nuvlaboxes
+ - Action - Cleaning up leftover NuvlaBox clusters
 
 ## [2.14.2] - 2021-04-15
 
