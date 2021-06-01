@@ -23,7 +23,7 @@
 
 ### Added
 
- - Action - Bulk force restart deployment
+ - Action - Bulk force delete deployment
  - Action - Bulk stop deployment
  - Action - Clustering nuvlaboxes
  - Action - Cleaning up leftover NuvlaBox clusters
