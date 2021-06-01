@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## [2.15.2] - 2021-06-01
+
+### Changed
+
+  - remove default local instantiation of Docker client for NuvlaBox connector
+  
 ## [2.15.1] - 2021-05-12
 
 ### Added
