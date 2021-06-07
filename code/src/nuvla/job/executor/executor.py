@@ -6,10 +6,10 @@ import traceback
 
 from requests.adapters import HTTPAdapter
 
-from .actions import get_action, ActionNotImplemented
-from .base import Base
-from .job import Job, JobUpdateError
-from .util import override, retry_kazoo_queue_op
+from nuvla.job.actions import get_action, ActionNotImplemented
+from nuvla.job.base import Base
+from nuvla.job.job import Job, JobUpdateError
+from nuvla.job.util import override, retry_kazoo_queue_op
 
 CONNECTION_POOL_SIZE = 4
 
@@ -108,6 +108,6 @@ class Executor(Base):
         logging.info('I am executor {}.'.format(self.name))
 
         job_id = self.args.job_id
-        queue = LocalOneJobQueue(job_id) if job_id else self._kz.LockingQueue('/job')
+        queue = LocalOneJobQueue(job_id) if job_id else self.kz.LockingQueue('/job')
 
         self._process_jobs(queue)

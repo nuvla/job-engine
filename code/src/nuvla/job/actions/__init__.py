@@ -3,7 +3,6 @@
 import glob
 import logging
 import os
-import importlib
 
 from os.path import dirname, basename, isfile
 
@@ -73,4 +72,3 @@ for f in modules:
             from . import *
         except ModuleNotFoundError:
             logging.exception(f'Unable to load module {__all__[0]}')
-            pass

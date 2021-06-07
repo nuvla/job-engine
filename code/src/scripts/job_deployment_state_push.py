@@ -49,7 +49,6 @@ def push_state(deployment):
             ds.get_application_kubernetes_state(nuvla_deployment)
     except Exception as ex:
         logging.exception('Failed to get deployment state for {}: {}'.format(Deployment.id(deployment), ex))
-        pass
 
 
 if __name__ == '__main__':

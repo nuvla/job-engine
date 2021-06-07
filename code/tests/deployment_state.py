@@ -1,17 +1,15 @@
 #!/usr/bin/env python
 
 import unittest
-from mock import Mock
-
 
 from nuvla.api import Api as Nuvla
-from scripts.job_distributor_deployment_state import DeploymentStateJobsDistributor
+from nuvla.job.distributions.deployment_state import DeploymentStateJobsDistribution
 
 
 class TestDeploymentStateJobsDistributor(unittest.TestCase):
 
     def test_collect_deployments(self):
-        jd = DeploymentStateJobsDistributor()
+        jd = DeploymentStateJobsDistribution()
 
         jd.api = Nuvla()
         jd.api.login_password('super', 'supeR8-supeR8')

@@ -22,7 +22,7 @@ class Base(object):
     def __init__(self):
         self.args = None
         self._init_args_parser()
-        self._kz: KazooClient = None
+        self.kz: KazooClient = None
         self.api: Api = None
         self.name = None
         self.statsd: StatsClient = None
@@ -85,7 +85,7 @@ class Base(object):
         logging.getLogger('nuvla').setLevel(logging.INFO)
         logging.getLogger('urllib3').setLevel(logging.WARN)
 
-    def _publish_metric(self, name, value):
+    def publish_metric(self, name, value):
         if self.statsd:
             self.statsd.gauge(name, value)
             logging.debug(f'published: {name} {value}')
@@ -126,10 +126,10 @@ class Base(object):
 
         if self.args.zk_hosts:
             from kazoo.client import KazooClient, KazooRetry
-            self._kz = KazooClient(','.join(self.args.zk_hosts),
-                                   connection_retry=KazooRetry(max_tries=-1),
-                                   command_retry=KazooRetry(max_tries=-1), timeout=30.0)
-            self._kz.start()
+            self.kz = KazooClient(','.join(self.args.zk_hosts),
+                                  connection_retry=KazooRetry(max_tries=-1),
+                                  command_retry=KazooRetry(max_tries=-1), timeout=30.0)
+            self.kz.start()
 
         if self.args.statsd:
             statsd_hp = self.args.statsd.split(':')
