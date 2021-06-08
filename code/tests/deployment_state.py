@@ -9,7 +9,7 @@ from nuvla.job.distributions.deployment_state import DeploymentStateJobsDistribu
 class TestDeploymentStateJobsDistributor(unittest.TestCase):
 
     def test_collect_deployments(self):
-        jd = DeploymentStateJobsDistribution()
+        jd = DeploymentStateJobsDistribution('')
 
         jd.api = Nuvla()
         jd.api.login_password('super', 'supeR8-supeR8')
