@@ -26,16 +26,14 @@ class DistributionBase():
         logging.info(f'I am {self.distributor.name} and I have been elected '
                      f'to distribute "{self.distribution_name}" jobs every {sleep_time}s')
         while not self.distributor.stop_event.is_set():
-            error = False
-            for cimi_job in self.job_generator():
-                try:
+            try:
+                for cimi_job in self.job_generator():
                     logging.info(f'Distribute job: {cimi_job}')
                     self.distributor.api.add('job', cimi_job)
-                except Exception as ex:
-                    logging.error(f'Failed to distribute job {cimi_job}: {ex}')
-                    error = True
-                    time.sleep(5)
-            time.sleep(5 if error else sleep_time)
+                time.sleep(sleep_time)
+            except Exception as ex:
+                logging.error(f'Failed to distribute job {self.distribution_name}: {ex}')
+                time.sleep(5)
 
     def _start_distribution(self):
         election = self.distributor.kz.Election(f'/election/{self.distribution_name}', self.distributor.name)
