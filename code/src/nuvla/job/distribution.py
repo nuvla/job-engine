@@ -34,7 +34,7 @@ class DistributionBase():
                 except Exception as ex:
                     logging.error(f'Failed to distribute job {cimi_job}: {ex}')
                     error = True
-                    time.sleep(0.1)
+                    time.sleep(5)
             time.sleep(5 if error else sleep_time)
 
     def _start_distribution(self):
