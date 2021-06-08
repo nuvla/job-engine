@@ -4,6 +4,7 @@
 
 ### Changed
 
+  - Update docker client to 20.10.7
   - Distributions refactor multi-threaded
 
 ## [2.15.2] - 2021-06-01
