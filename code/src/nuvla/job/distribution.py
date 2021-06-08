@@ -12,14 +12,13 @@ class DistributionBase():
 
     def _get_sleep_time(self):
         dist_interval = self.distributor.args.distribution_interval
-        if dist_interval:
-            for i in range(len(dist_interval)):
-                if dist_interval[i].startswith(f'{self.distribution_name}:'):
-                    try:
-                        return int(dist_interval[i].split(':')[1])
-                    except ValueError:
-                        logging.error(f'Bad argument: distribution_interval should be an integer')
-                        exit(1)
+        for i in range(len(dist_interval)):
+            if dist_interval[i].startswith(f'{self.distribution_name}:'):
+                try:
+                    return int(dist_interval[i].split(':')[1])
+                except ValueError:
+                    logging.error(f'Bad argument: distribution_interval should be an integer')
+                    exit(1)
         return self.collect_interval
 
     def _job_distribution(self):

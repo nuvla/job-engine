@@ -14,12 +14,14 @@ class Distributor(Base):
 
     def _set_command_specific_options(self, parser):
         parser.add_argument(
-            '--distribution-exclude', dest='distribution_exclude', default=None, nargs='+', metavar='DISTRIBUTION',
-            help='List of distributions to exclude (e.g. --distribution-exclude cleanup_jobs usage_report)')
+            '--distribution-exclude', dest='distribution_exclude', default=[], nargs='+', metavar='DISTRIBUTION',
+            help='List of distributions to exclude '
+                 '(e.g. --distribution-exclude cleanup_jobs usage_report)')
         parser.add_argument(
-            '--distribution-interval', dest='distribution_interval', default=None, nargs='+',
+            '--distribution-interval', dest='distribution_interval', default=[], nargs='+',
             metavar='DISTRIBUTION:INTERVAL',
-            help='Configure distributions interval in seconds (e.g. --distribution-interval usage_report:20)')
+            help='Configure distributions interval in seconds '
+                 '(e.g. --distribution-interval usage_report:20 deployment_state_new:5)')
 
     def do_work(self):
         logging.info('I am distributor {}.'.format(self.name))
