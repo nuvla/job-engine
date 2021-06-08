@@ -9,7 +9,6 @@ import threading
 from nuvla.api import Api
 from requests.exceptions import ConnectionError
 from statsd import StatsClient
-from kazoo.client import KazooClient
 
 STATSD_PORT = 8125
 
