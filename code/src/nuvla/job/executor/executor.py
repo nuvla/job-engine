@@ -6,10 +6,10 @@ import traceback
 
 from requests.adapters import HTTPAdapter
 
-from nuvla.job.actions import get_action, ActionNotImplemented
-from nuvla.job.base import Base
-from nuvla.job.job import Job, JobUpdateError
-from nuvla.job.util import override, retry_kazoo_queue_op
+from ..actions import get_action, ActionNotImplemented
+from ..base import Base
+from ..job import Job, JobUpdateError
+from ..util import override, retry_kazoo_queue_op
 
 CONNECTION_POOL_SIZE = 4
 

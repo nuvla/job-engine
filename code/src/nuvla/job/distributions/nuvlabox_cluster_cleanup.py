@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 from ..distributions import distribution
-from nuvla.job.distribution import DistributionBase
+from ..distribution import DistributionBase
 
 
 @distribution('nuvlabox_cluster_cleanup')

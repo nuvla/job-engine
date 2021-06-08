@@ -4,7 +4,7 @@ import logging
 import json
 
 from ..actions import action
-from nuvla.connector import nuvlabox_connector as NB
+from ...connector import nuvlabox_connector as NB
 
 
 @action('nuvlabox_revoke_ssh_key', True)

@@ -3,7 +3,7 @@
 import copy
 import logging
 
-from nuvla.connector import docker_machine_connector
+from ...connector import docker_machine_connector
 from nuvla.api.resources.credential import CredentialDockerSwarm, CredentialK8s
 from ..actions import action
 

@@ -2,9 +2,9 @@
 
 import logging
 
-from nuvla.job.util import override
+from ..util import override
 from ..distributions import distribution
-from nuvla.job.distribution import DistributionBase
+from ..distribution import DistributionBase
 
 
 @distribution('usage_report')

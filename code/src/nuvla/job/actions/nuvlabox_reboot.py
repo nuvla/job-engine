@@ -3,7 +3,7 @@
 import logging
 
 from ..actions import action
-from nuvla.connector import nuvlabox_connector as NB
+from ...connector import nuvlabox_connector as NB
 
 
 @action('reboot_nuvlabox', True)

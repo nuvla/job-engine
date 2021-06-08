@@ -2,7 +2,7 @@
 
 import logging
 
-from nuvla.connector import docker_cli_connector, kubernetes_cli_connector
+from ...connector import docker_cli_connector, kubernetes_cli_connector
 from ..actions import action
 
 action_name = 'credential_check'

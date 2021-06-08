@@ -3,9 +3,9 @@
 import sys
 import logging
 
-from nuvla.job.base import Base
 from concurrent.futures.thread import ThreadPoolExecutor
-from nuvla.job.distributions import get_distribution, distributions
+from ..base import Base
+from ..distributions import get_distribution, distributions
 
 
 class Distributor(Base):

@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 
 import time
-from nuvla.job.util import override
+from ..util import override
 from ..distributions import distribution
-from nuvla.job.distribution import DistributionBase
+from ..distribution import DistributionBase
 
 
 @distribution('service_image_state')

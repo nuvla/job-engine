@@ -2,9 +2,9 @@
 
 import logging
 from copy import copy
-from nuvla.job.util import override
+from ..util import override
 from ..distributions import distribution
-from nuvla.job.distribution import DistributionBase
+from ..distribution import DistributionBase
 
 LAST = 10000
 

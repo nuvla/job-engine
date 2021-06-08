@@ -2,8 +2,8 @@
 
 import logging
 from abc import abstractmethod
-from nuvla.job.util import override
-from nuvla.job.distribution import DistributionBase
+from ..util import override
+from ..distribution import DistributionBase
 
 
 class DeploymentStateJobsDistribution(DistributionBase):

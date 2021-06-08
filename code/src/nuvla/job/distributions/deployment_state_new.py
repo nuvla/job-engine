@@ -2,7 +2,7 @@
 
 import logging
 
-from nuvla.job.util import override
+from ..util import override
 from ..distributions import distribution
 from .deployment_state import DeploymentStateJobsDistribution
 

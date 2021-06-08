@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 
 import time
-from nuvla.job.distribution import DistributionBase
-from nuvla.job.util import override
+from ..distribution import DistributionBase
+from ..util import override
 
 
 class ServiceImageStateJobsDistribution(DistributionBase):

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-from nuvla.job.distribution import DistributionBase
+from ..distribution import DistributionBase
 
 
 # @distribution('dummy_test')

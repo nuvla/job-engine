@@ -1,9 +1,7 @@
 # -*- coding: utf-8 -*-
 
-import logging,os
-
 from ..actions import action
-from nuvla.connector import nuvlabox_connector as NB
+from ...connector import nuvlabox_connector as NB
 
 
 @action('nuvlabox_cluster', True)
