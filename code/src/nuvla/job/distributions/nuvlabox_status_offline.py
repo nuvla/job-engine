@@ -2,9 +2,11 @@
 
 import logging
 from nuvla.job.util import override
-from .DistributionBase import DistributionBase
+from ..distributions import distribution
+from nuvla.job.distribution import DistributionBase
 
 
+@distribution('update_nuvlabox_online')
 class NuvlaBoxStatusOfflineDistribution(DistributionBase):
     DISTRIBUTION_NAME = 'update_nuvlabox_online'
 

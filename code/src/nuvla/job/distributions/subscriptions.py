@@ -3,11 +3,13 @@
 import logging
 from copy import copy
 from nuvla.job.util import override
-from .DistributionBase import DistributionBase
+from ..distributions import distribution
+from nuvla.job.distribution import DistributionBase
 
 LAST = 10000
 
 
+@distribution('subscriptions_manager')
 class SubscriptionsManager(DistributionBase):
     DISTRIBUTION_NAME = 'subscriptions_manager'
 

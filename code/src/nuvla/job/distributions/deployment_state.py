@@ -1,62 +1,22 @@
 # -*- coding: utf-8 -*-
 
 import logging
-
-from nuvla.api import NuvlaError
+from abc import abstractmethod
 from nuvla.job.util import override
-from .DistributionBase import DistributionBase
-
-COLLECT_INTERVAL_SHORT = 10
-COLLECT_PAST_SEC = 120
+from nuvla.job.distribution import DistributionBase
 
 
 class DeploymentStateJobsDistribution(DistributionBase):
     DISTRIBUTION_NAME = 'deployment_state'
+    COLLECT_PAST_SEC = 120
 
-    def __init__(self, distributor):
-        super(DeploymentStateJobsDistribution, self).__init__(self.DISTRIBUTION_NAME, distributor)
-        self.collect_interval = COLLECT_INTERVAL_SHORT
-        self._start_distribution()
-
-    def _with_parent(self, active, with_parent):
-        for r in active.resources:
-            p_id = r.data['parent']
-            try:
-                self.distributor.api.get(p_id, select='')
-                with_parent.append(r)
-            except NuvlaError:
-                logging.warning(f'Parent {p_id} is missing for {r.id}')
-
-    def _old_deployments(self):
-        return self.collect_interval > COLLECT_INTERVAL_SHORT
-
+    @abstractmethod
     def _publish_metric(self, name, value):
-        interval = 'old' if self._old_deployments() else 'new'
-        mname = f'job_distributor.{self.DISTRIBUTION_NAME}.{interval}.{name}'
-        self.distributor.publish_metric(mname, value)
+        pass
 
-    def active_deployments(self):
-        # Collect old or new deployments.
-        if self._old_deployments():
-            filters = f"state='STARTED' and updated<'now-{COLLECT_PAST_SEC}s'"
-            select = 'id,execution-mode,nuvlabox,parent'
-        else:
-            filters = f"state='STARTED' and updated>='now-{COLLECT_PAST_SEC}s'"
-            select = 'id,execution-mode,nuvlabox'
-        logging.info(f'Filter: {filters}. Select: {select}')
-        active = self.distributor.api.search('deployment', filter=filters, select=select)
-        self._publish_metric('in_started', active.count)
-        logging.info(f'Deployments in STARTED: {active.count}')
-
-        # Check parents of long running deployments still exist.
-        if self._old_deployments():
-            with_parent = []
-            self._with_parent(active, with_parent)
-            self._publish_metric('in_started_with_parent', len(with_parent))
-            logging.info(f'Deployments in STARTED with parent: {len(with_parent)}')
-            return with_parent
-        else:
-            return active.resources
+    @abstractmethod
+    def get_deployments(self):
+        pass
 
     def job_exists(self, job):
         filters = "(state='QUEUED' or state='RUNNING')" \
@@ -69,8 +29,8 @@ class DeploymentStateJobsDistribution(DistributionBase):
     @override
     def job_generator(self):
         skipped = 0
-        for deployment in self.active_deployments():
-            job = {'action': self.DISTRIBUTION_NAME,
+        for deployment in self.get_deployments():
+            job = {'action': DeploymentStateJobsDistribution.DISTRIBUTION_NAME,
                    'target-resource': {'href': deployment.id}}
 
             nuvlabox = deployment.data.get('nuvlabox')

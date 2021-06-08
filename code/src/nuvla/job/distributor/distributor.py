@@ -14,14 +14,18 @@ class Distributor(Base):
 
     def _set_command_specific_options(self, parser):
         parser.add_argument(
-            '--dist-exclude', dest='dist_exclude', default=None, nargs='+', metavar='DISTRIBUTOR',
-            help='List of distributors to exclude (separated by space)')
+            '--distribution-exclude', dest='distribution_exclude', default=None, nargs='+', metavar='DISTRIBUTION',
+            help='List of distributions to exclude (e.g. --distribution-exclude cleanup_jobs usage_report)')
+        parser.add_argument(
+            '--distribution-interval', dest='distribution_interval', default=None, nargs='+',
+            metavar='DISTRIBUTION:INTERVAL',
+            help='Configure distributions interval in seconds (e.g. --distribution-interval usage_report:20)')
 
     def do_work(self):
         logging.info('I am distributor {}.'.format(self.name))
-        with ThreadPoolExecutor() as thread:
+        with ThreadPoolExecutor(max_workers=1000) as thread:
             for distribution_name in distributions:
-                if distribution_name not in self.args.dist_exclude:
+                if distribution_name not in self.args.distribution_exclude:
                     thread.submit(get_distribution(distribution_name), self)
             thread.shutdown(wait=True)
         logging.info('Distributor properly stopped.')

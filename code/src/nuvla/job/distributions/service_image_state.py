@@ -2,9 +2,11 @@
 
 import time
 from nuvla.job.util import override
-from .DistributionBase import DistributionBase
+from ..distributions import distribution
+from nuvla.job.distribution import DistributionBase
 
 
+@distribution('service_image_state')
 class ServiceImageStateJobsDistribution(DistributionBase):
     DISTRIBUTION_NAME = 'service_image_state'
 

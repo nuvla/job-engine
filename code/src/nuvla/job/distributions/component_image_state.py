@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import time
-from .DistributionBase import DistributionBase
+from nuvla.job.distribution import DistributionBase
 from nuvla.job.util import override
 
 

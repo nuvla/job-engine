@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Changed
+
+  - Distributions refactor multi-threaded
+
 ## [2.15.2] - 2021-06-01
 
 ### Changed

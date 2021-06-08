@@ -7,21 +7,36 @@ import time
 class DistributionBase():
     def __init__(self, distribution_name, distributor):
         self.distribution_name = distribution_name
-        self.collect_interval = 60.0  # one per minute
+        self.collect_interval = 60  # one per minute
         self.distributor = distributor
 
+    def _get_sleep_time(self):
+        dist_interval = self.distributor.args.distribution_interval
+        if dist_interval:
+            for i in range(len(dist_interval)):
+                if dist_interval[i].startswith(f'{self.distribution_name}:'):
+                    try:
+                        return int(dist_interval[i].split(':')[1])
+                    except ValueError:
+                        logging.error(f'Bad argument: distribution_interval should be an integer')
+                        exit(1)
+        return self.collect_interval
+
     def _job_distribution(self):
+        sleep_time = self._get_sleep_time()
         logging.info(f'I am {self.distributor.name} and I have been elected '
-                     f'to distribute "{self.distribution_name}" jobs')
+                     f'to distribute "{self.distribution_name}" jobs every {sleep_time}s')
         while not self.distributor.stop_event.is_set():
+            error = False
             for cimi_job in self.job_generator():
                 try:
                     logging.info(f'Distribute job: {cimi_job}')
                     self.distributor.api.add('job', cimi_job)
                 except Exception as ex:
                     logging.error(f'Failed to distribute job {cimi_job}: {ex}')
+                    error = True
                     time.sleep(0.1)
-            time.sleep(self.collect_interval)
+            time.sleep(5 if error else sleep_time)
 
     def _start_distribution(self):
         election = self.distributor.kz.Election(f'/election/{self.distribution_name}', self.distributor.name)

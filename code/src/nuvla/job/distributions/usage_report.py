@@ -3,9 +3,11 @@
 import logging
 
 from nuvla.job.util import override
-from .DistributionBase import DistributionBase
+from ..distributions import distribution
+from nuvla.job.distribution import DistributionBase
 
 
+@distribution('usage_report')
 class UsageReportJobsDistribution(DistributionBase):
     DISTRIBUTION_NAME = 'usage_report'
 

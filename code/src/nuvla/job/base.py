@@ -9,6 +9,7 @@ import threading
 from nuvla.api import Api
 from requests.exceptions import ConnectionError
 from statsd import StatsClient
+from kazoo.client import KazooClient
 
 STATSD_PORT = 8125
 
@@ -71,6 +72,7 @@ class Base(object):
         self.args = parser.parse_args()
 
     def _set_command_specific_options(self, parser):
+        """Optionnal command line arguments to be added by subclasses if needed"""
         pass
 
     @staticmethod
@@ -98,10 +100,30 @@ class Base(object):
     def do_work(self):
         raise NotImplementedError()
 
-    def execute(self):
-        self.name = self.args.name if self.args.name is not None else names[
-            int(random.uniform(1, len(names) - 1))]
+    def _init_kazoo(self):
+        if self.args.zk_hosts:
+            from kazoo.client import KazooClient, KazooRetry
+            self.kz = KazooClient(','.join(self.args.zk_hosts),
+                                  connection_retry=KazooRetry(max_tries=-1),
+                                  command_retry=KazooRetry(max_tries=-1), timeout=30.0)
+            self.kz.start()
 
+    def _init_statsd(self):
+        if self.args.statsd:
+            statsd_hp = self.args.statsd.split(':')
+            statsd_port = STATSD_PORT
+            statsd_host = statsd_hp[0]
+            if len(statsd_hp) > 1:
+                statsd_port = statsd_hp[1]
+            try:
+                self.statsd = StatsClient(host=statsd_host,
+                                          port=statsd_port,
+                                          prefix=None,
+                                          ipv6=False)
+            except Exception as ex:
+                logging.error(f'Failed to initialise StatsD client for {self.args.statsd}: {ex}')
+
+    def _init_nuvla_api(self):
         # true unless header authentication is used
         reauthenticate = self.args.api_authn_header is None
         self.api = Api(endpoint=self.args.api_url, insecure=self.args.api_insecure,
@@ -124,27 +146,12 @@ class Base(object):
             logging.error('Unable to connect to Nuvla endpoint {}! {}'.format(self.api.endpoint, e))
             exit(1)
 
-        if self.args.zk_hosts:
-            from kazoo.client import KazooClient, KazooRetry
-            self.kz = KazooClient(','.join(self.args.zk_hosts),
-                                  connection_retry=KazooRetry(max_tries=-1),
-                                  command_retry=KazooRetry(max_tries=-1), timeout=30.0)
-            self.kz.start()
-
-        if self.args.statsd:
-            statsd_hp = self.args.statsd.split(':')
-            statsd_port = STATSD_PORT
-            statsd_host = statsd_hp[0]
-            if len(statsd_hp) > 1:
-                statsd_port = statsd_hp[1]
-            try:
-                self.statsd = StatsClient(host=statsd_host,
-                                          port=statsd_port,
-                                          prefix=None,
-                                          ipv6=False)
-            except Exception as ex:
-                logging.error(f'Failed to initialise StatsD client for {self.args.statsd}: {ex}')
-
+    def execute(self):
+        self.name = self.args.name if self.args.name is not None else names[
+            int(random.uniform(1, len(names) - 1))]
+        self._init_nuvla_api()
+        self._init_kazoo()
+        self._init_statsd()
         self.do_work()
 
         while True:
