@@ -2,10 +2,10 @@
 
 import logging
 
-from nuvla.connector.registry import (new_image_semantic_tag,
-                                      image_dict_to_str,
-                                      is_semantic_version)
-from nuvla.connector.utils import unique_id, utc_from_now_iso
+from ...connector.registry import (new_image_semantic_tag,
+                                   image_dict_to_str,
+                                   is_semantic_version)
+from ...connector.utils import unique_id, utc_from_now_iso
 from nuvla.api.resources.deployment import Deployment
 from nuvla.api.resources.callback import Callback
 from nuvla.api.resources.notification import Notification

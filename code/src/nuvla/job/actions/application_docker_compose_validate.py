@@ -2,7 +2,7 @@
 
 import logging
 
-from nuvla.connector.docker_compose_cli_connector import DockerComposeCliConnector
+from ...connector.docker_compose_cli_connector import DockerComposeCliConnector
 from ..actions import action
 
 action_name = 'validate-docker-compose'

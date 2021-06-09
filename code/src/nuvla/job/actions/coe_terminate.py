@@ -4,7 +4,7 @@ from __future__ import print_function
 
 import logging
 
-from nuvla.connector import docker_machine_connector
+from ...connector import docker_machine_connector
 from nuvla.api.resources.credential import Credential
 from nuvla.api import NuvlaError
 from ..actions import action

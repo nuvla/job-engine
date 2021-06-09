@@ -1,25 +1,22 @@
-#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
 import logging
 from copy import copy
-from nuvla.job.base import main
-from nuvla.job.distributor import Distributor
-from nuvla.job.util import override
+from ..util import override
+from ..distributions import distribution
+from ..distribution import DistributionBase
 
 LAST = 10000
 
 
-class SubscriptionsManager(Distributor):
-    ACTION_NAME = 'subscriptions_manager'
+@distribution('subscriptions_manager')
+class SubscriptionsManager(DistributionBase):
+    DISTRIBUTION_NAME = 'subscriptions_manager'
 
-    def __init__(self):
-        super(SubscriptionsManager, self).__init__()
+    def __init__(self, distributor):
+        super(SubscriptionsManager, self).__init__(self.DISTRIBUTION_NAME, distributor)
         self.collect_interval = 30
-
-    @override
-    def _get_jobs_type(self):
-        return SubscriptionsManager.ACTION_NAME
+        self._start_distribution()
 
     @override
     def job_generator(self):
@@ -36,7 +33,7 @@ class SubscriptionsManager(Distributor):
         return []
 
     def _get_subscription_configs(self) -> dict:
-        subs_configs = self.api.search('subscription-config', last=LAST)
+        subs_configs = self.distributor.api.search('subscription-config', last=LAST)
         logging.info(f'Subscription configs number: {subs_configs.count}')
         for r in subs_configs.resources:
             yield r.data
@@ -45,14 +42,14 @@ class SubscriptionsManager(Distributor):
         subs = copy(subs_conf)
         subs['parent'] = subs_conf['id']
         subs['resource-id'] = r_id
-        result = self.api.add("subscription", subs).data
+        result = self.distributor.api.add("subscription", subs).data
         if result['status'] != 201:
             logging.error(f'Failed adding subscription for {r_id} with: {result}')
         else:
             logging.debug(f'Added subscription for {r_id}')
 
     def _delete_subscription(self, subs_id):
-        result = self.api.delete(subs_id).data
+        result = self.distributor.api.delete(subs_id).data
         if result['status'] != 200:
             logging.error(f'Failed deleting {subs_id} with: {result}')
         else:
@@ -64,19 +61,15 @@ class SubscriptionsManager(Distributor):
         rf = subs_conf.get('resource-filter') or None
         if rf:
             flt = f'({flt}) and {rf}'
-        resources = self.api.search(subs_conf.get('resource-kind'),
-                                    filter=flt, last=LAST)
+        resources = self.distributor.api.search(subs_conf.get('resource-kind'),
+                                                filter=flt, last=LAST)
         return set(map(lambda x: x.id, resources))
 
     def _get_individual_subscriptions(self, subs_conf):
         filters = f"parent = '{subs_conf.get('id')}'"
         select = 'id,resource-id'
-        subs = self.api.search('subscription', filter=filters, select=select, last=LAST)
+        subs = self.distributor.api.search('subscription', filter=filters, select=select, last=LAST)
         sub_res = {}
         for s in map(lambda x: x.data, subs.resources):
             sub_res[s.get('resource-id')] = s.get('id')
         return sub_res
-
-
-if __name__ == '__main__':
-    main(SubscriptionsManager)

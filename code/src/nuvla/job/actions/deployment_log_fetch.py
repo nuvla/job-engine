@@ -2,7 +2,7 @@
 
 import logging
 
-from nuvla.connector import docker_cli_connector, \
+from ...connector import docker_cli_connector, \
     docker_compose_cli_connector, kubernetes_cli_connector
 from nuvla.api.resources import Deployment
 from .deployment_start import initialize_connector

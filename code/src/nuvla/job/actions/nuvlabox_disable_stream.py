@@ -3,7 +3,7 @@
 import logging
 
 from ..actions import action
-from nuvla.connector.nuvlabox_connector import NuvlaBoxConnector
+from ...connector.nuvlabox_connector import NuvlaBoxConnector
 from nuvla.api import NuvlaError
 
 

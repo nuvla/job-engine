@@ -4,7 +4,7 @@ from __future__ import print_function
 
 import logging
 
-from nuvla.connector import docker_machine_connector
+from ...connector import docker_machine_connector
 from ..actions import action
 
 COE_TYPE_SWARM = docker_machine_connector.COE_TYPE_SWARM

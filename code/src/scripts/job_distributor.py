@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 from nuvla.job.base import main
-from nuvla.job.executor.executor import Executor
+from nuvla.job.distributor.distributor import Distributor
 
 if __name__ == '__main__':
-    main(Executor)
+    main(Distributor)

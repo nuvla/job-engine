@@ -29,7 +29,7 @@ RUN apk add --no-cache ca-certificates curl
 RUN [ ! -e /etc/nsswitch.conf ] && echo 'hosts: files dns' > /etc/nsswitch.conf
 
 ENV DOCKER_CHANNEL stable
-ENV DOCKER_VERSION 19.03.5
+ENV DOCKER_VERSION 20.10.7
 ENV PYTHONWARNINGS "ignore:Unverified HTTPS request"
 ENV IMAGE_NAME ${IMAGE_NAME}
 
@@ -61,7 +61,7 @@ RUN set -eux; \
 	dockerd --version; \
 	docker --version
 
-ADD https://raw.githubusercontent.com/docker-library/docker/65fab2cd767c10f22ee66afa919eda80dbdc8872/18.09/modprobe.sh /usr/local/bin/modprobe
+ADD https://raw.githubusercontent.com/docker-library/docker/master/20.10/modprobe.sh /usr/local/bin/modprobe
 
 # This only works for amd64 but it also isn't necessary for push mode
 # since its only use is for infrastructure_service_swarm_start/stop, and that's a server-side feature
