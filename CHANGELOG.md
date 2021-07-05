@@ -6,6 +6,7 @@
 
   - Update docker client to 20.10.7
   - Distributions refactor multi-threaded
+  - Fix join-manager typo in action name
 
 ## [2.15.2] - 2021-06-01
 
