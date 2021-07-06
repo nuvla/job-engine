@@ -367,14 +367,18 @@ class NuvlaBoxConnector(Connector):
                                                  f"has {len(active_deployments)} active deployments")
         elif action.lower() in ['leave', 'force-new-cluster']:
             current_cluster_filter = f'nuvlabox-managers="{self.nuvlabox_id}" or nuvlabox-workers="{self.nuvlabox_id}"'
-            current_cluster = self.api.search('nuvlabox-cluster',
+            current_clusters = self.api.search('nuvlabox-cluster',
                                               filter=current_cluster_filter).resources
 
-            if current_cluster:
-                nuvlaboxes = current_cluster[0].data.get('nuvlabox-managers', []) + \
-                             current_cluster[0].data.get('nuvlabox-workers', [])
+            delete_clusters = []
+            for cl in current_clusters:
+                nuvlaboxes = cl.data.get('nuvlabox-managers', []) + \
+                             cl.data.get('nuvlabox-workers', [])
                 if len(nuvlaboxes) == 1 and self.nuvlabox_id in nuvlaboxes:
-                    return current_cluster[0].id
+                    delete_clusters.append(cl.id)
+
+            if delete_clusters:
+                return delete_clusters
 
         return None
 
@@ -398,7 +402,7 @@ class NuvlaBoxConnector(Connector):
         cluster_params_from_payload = json.loads(self.job.get('payload', '{}'))
         cluster_action = cluster_params_from_payload.get('cluster-action')
 
-        delete_cluster_id = self.assert_clustering_operation(cluster_action)
+        delete_cluster_ids = self.assert_clustering_operation(cluster_action)
         self.job.set_progress(50)
 
         # 2nd - set the Docker args
@@ -449,8 +453,8 @@ class NuvlaBoxConnector(Connector):
 
         self.job.set_progress(95)
 
-        if delete_cluster_id:
-            self.delete_cluster(delete_cluster_id)
+        for cluster_id in delete_cluster_ids:
+            self.delete_cluster(cluster_id)
 
         return result, exit_code
 
