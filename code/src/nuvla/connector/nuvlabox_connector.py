@@ -148,11 +148,9 @@ class NuvlaBoxConnector(Connector):
         self.installer_image_name = f'{self.installer_base_name}:{installer_tag}' if installer_tag \
             else f'{self.installer_base_name}:master'
 
-        if self.nuvlabox_status.get('cluster-node-role', '').lower() == 'worker':
-            # workers don't have an IS
+        if self.job.get('execution-mode', '').lower() == 'pull':
             self.docker_client = docker.from_env()
-
-        if self.job.get('execution-mode', '').lower() != 'pull':
+        else:
             self.nb_api_endpoint = self.nuvlabox_status.get("nuvlabox-api-endpoint")
             if not self.nb_api_endpoint:
                 msg = f'NuvlaBox {self.nuvlabox.get("id")} missing API endpoint in its status resource.'
