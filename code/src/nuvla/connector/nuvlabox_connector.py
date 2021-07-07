@@ -50,9 +50,10 @@ class NuvlaBoxConnector(Connector):
             nuvlabox_body = {
                 'name': f'{basename}-{count}',
                 'description': f'Automatically created by {self.connector_type} connector in Nuvla',
-                'version': version,
-                'vpn-server-id': vpn_server_id
+                'version': version
             }
+            if vpn_server_id:
+                nuvlabox_body['vpn-server-id'] = vpn_server_id
             r = self.api.add('nuvlabox', nuvlabox_body).data
 
             nb_id = r.get('resource-id')
