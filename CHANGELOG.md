@@ -9,6 +9,9 @@
   - Execute_command separate stdout from stderr
   - Update docker client to 20.10.7
   - Distributions refactor multi-threaded
+  - Fix join-manager typo in action name
+  - Fix delete NuvlaBox cluster on last member leaving
+  - Generalize use of Docker Socket for NB pull jobs
 
 ## [2.15.2] - 2021-06-01
 

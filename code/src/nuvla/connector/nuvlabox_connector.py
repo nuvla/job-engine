@@ -13,6 +13,7 @@ from .utils import execute_cmd, create_tmp_file, timeout
 class ClusterOperationNotAllowed(Exception):
     pass
 
+
 class NuvlaBoxConnector(Connector):
     def __init__(self, **kwargs):
         super(NuvlaBoxConnector, self).__init__(**kwargs)
@@ -42,6 +43,28 @@ class NuvlaBoxConnector(Connector):
     @property
     def connector_type(self):
         return 'nuvlabox'
+
+    def create_nuvlaboxes(self, number_of_nbs, vpn_server_id, basename="nuvlabox-conector-job", version=2, share_with=[]):
+        nuvlabox_ids = []
+        for count in range(1, number_of_nbs+1):
+            nuvlabox_body = {
+                'name': f'{basename}-{count}',
+                'description': f'Automatically created by {self.connector_type} connector in Nuvla',
+                'version': version
+            }
+            if vpn_server_id:
+                nuvlabox_body['vpn-server-id'] = vpn_server_id
+            r = self.api.add('nuvlabox', nuvlabox_body).data
+
+            nb_id = r.get('resource-id')
+            if share_with:
+                # nb = self.api.get(nb_id).data
+                # new_view_data = nb['acl'].get('view-data', []) + share_with
+
+                self.api.edit(nb_id, {'acl': {'owners': ['group/scale-tests'], 'view-data': share_with}})
+            nuvlabox_ids.append(nb_id)
+
+        return nuvlabox_ids
 
     def build_cmd_line(self, list_cmd):
         return ['docker', '-H', self.docker_api_endpoint.replace('https://', '').replace('http://', ''),
@@ -126,11 +149,9 @@ class NuvlaBoxConnector(Connector):
         self.installer_image_name = f'{self.installer_base_name}:{installer_tag}' if installer_tag \
             else f'{self.installer_base_name}:master'
 
-        if self.nuvlabox_status.get('cluster-node-role', '').lower() == 'worker':
-            # workers don't have an IS
+        if self.job.get('execution-mode', '').lower() == 'pull':
             self.docker_client = docker.from_env()
-
-        if self.job.get('execution-mode', '').lower() != 'pull':
+        else:
             self.nb_api_endpoint = self.nuvlabox_status.get("nuvlabox-api-endpoint")
             if not self.nb_api_endpoint:
                 msg = f'NuvlaBox {self.nuvlabox.get("id")} missing API endpoint in its status resource.'
@@ -367,14 +388,18 @@ class NuvlaBoxConnector(Connector):
                                                  f"has {len(active_deployments)} active deployments")
         elif action.lower() in ['leave', 'force-new-cluster']:
             current_cluster_filter = f'nuvlabox-managers="{self.nuvlabox_id}" or nuvlabox-workers="{self.nuvlabox_id}"'
-            current_cluster = self.api.search('nuvlabox-cluster',
+            current_clusters = self.api.search('nuvlabox-cluster',
                                               filter=current_cluster_filter).resources
 
-            if current_cluster:
-                nuvlaboxes = current_cluster[0].data.get('nuvlabox-managers', []) + \
-                             current_cluster[0].data.get('nuvlabox-workers', [])
+            delete_clusters = []
+            for cl in current_clusters:
+                nuvlaboxes = cl.data.get('nuvlabox-managers', []) + \
+                             cl.data.get('nuvlabox-workers', [])
                 if len(nuvlaboxes) == 1 and self.nuvlabox_id in nuvlaboxes:
-                    return current_cluster[0].id
+                    delete_clusters.append(cl.id)
+
+            if delete_clusters:
+                return delete_clusters
 
         return None
 
@@ -398,7 +423,7 @@ class NuvlaBoxConnector(Connector):
         cluster_params_from_payload = json.loads(self.job.get('payload', '{}'))
         cluster_action = cluster_params_from_payload.get('cluster-action')
 
-        delete_cluster_id = self.assert_clustering_operation(cluster_action)
+        delete_cluster_ids = self.assert_clustering_operation(cluster_action)
         self.job.set_progress(50)
 
         # 2nd - set the Docker args
@@ -449,8 +474,8 @@ class NuvlaBoxConnector(Connector):
 
         self.job.set_progress(95)
 
-        if delete_cluster_id:
-            self.delete_cluster(delete_cluster_id)
+        for cluster_id in delete_cluster_ids:
+            self.delete_cluster(cluster_id)
 
         return result, exit_code
 

@@ -6,7 +6,7 @@ from ...connector import nuvlabox_connector as NB
 
 @action('nuvlabox_cluster', True)
 @action('nuvlabox_cluster_join_worker', True)
-@action('nuvlabox_cluster_join_master', True)
+@action('nuvlabox_cluster_join_manager', True)
 @action('nuvlabox_cluster_leave', True)
 @action('nuvlabox_cluster_force_new_cluster', True)
 class NBClusterJob(object):

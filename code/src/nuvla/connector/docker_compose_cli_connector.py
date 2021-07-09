@@ -84,11 +84,15 @@ class DockerComposeCliConnector(Connector):
                 config.close()
                 env['DOCKER_CONFIG'] = tmp_dir_name
 
+            cmd_pull = self.build_cmd_line(
+                ['-p', project_name, '-f', compose_file_path, 'pull'])
+
             cmd_deploy = self.build_cmd_line(
                 ['-p', project_name, '-f', compose_file_path, 'up', '-d',
                  '--remove-orphans'])
 
-            result = self._execute_clean_command(cmd_deploy, env=env)
+            result = self._execute_clean_command(cmd_pull, env=env)
+            result += self._execute_clean_command(cmd_deploy, env=env)
 
             services = self._stack_services(project_name, compose_file_path)
 
