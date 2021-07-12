@@ -58,7 +58,7 @@ class DockerComposeCliConnector(Connector):
 
     def _execute_clean_command(self, cmd, **kwargs):
         try:
-            return self.sanitize_command_output(execute_cmd(cmd, **kwargs))
+            return execute_cmd(cmd, **kwargs).stdout
         except Exception as e:
             error = self.sanitize_command_output(str(e))
             raise Exception(error)
@@ -180,7 +180,7 @@ class DockerComposeCliConnector(Connector):
         return '\n'.join(new_output)
 
     def _stack_services(self, project_name, docker_compose_path):
-        cmd = self.build_cmd_line(['-f', docker_compose_path, 'config', '--services', '--no-interpolate'], local=True)
+        cmd = self.build_cmd_line(['-f', docker_compose_path, 'config', '--services'], local=True)
 
         stdout = self._execute_clean_command(cmd)
 
@@ -202,7 +202,7 @@ class DockerComposeCliConnector(Connector):
     def info(self):
         cmd = self.build_cmd_line(['info', '--format', '{{ json . }}'], binary='docker')
 
-        info = json.loads(execute_cmd(cmd, timeout=5))
+        info = json.loads(execute_cmd(cmd, timeout=5).stdout)
         server_errors = info.get('ServerErrors', [])
         if len(server_errors) > 0:
             raise Exception(server_errors[0])
@@ -235,7 +235,7 @@ class DockerComposeCliConnector(Connector):
             cmd_login = ['docker', '--config', tmp_dir_name, 'login',
                          '--username', username, '--password-stdin',
                          'https://' + serveraddress.replace('https://', '')]
-            return execute_cmd(cmd_login, input=password)
+            return execute_cmd(cmd_login, input=password).stdout
 
     @staticmethod
     def config(**kwargs):
@@ -250,6 +250,6 @@ class DockerComposeCliConnector(Connector):
             compose_file.close()
 
             cmd = ["docker-compose", "-f", compose_file_path, "config", "-q"]
-            result = execute_cmd(cmd, env=env)
+            result = execute_cmd(cmd, env=env).stdout
 
         return result

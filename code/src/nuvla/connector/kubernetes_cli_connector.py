@@ -6,7 +6,7 @@ import yaml
 import base64
 import logging
 from tempfile import TemporaryDirectory
-from .utils import execute_cmd, create_tmp_file, generate_registry_config
+from .utils import execute_cmd, join_stderr_stdout, create_tmp_file, generate_registry_config
 from .connector import Connector, should_connect
 
 log = logging.getLogger('kubernetes_cli_connector')
@@ -113,7 +113,7 @@ class KubernetesCliConnector(Connector):
         docker_compose = kwargs['docker_compose']
         envsubst_shell_format = ' '.join(['${}'.format(k) for k in env.keys()])
         docker_compose_env_subs = execute_cmd(['envsubst', envsubst_shell_format],
-                                              env=env, input=docker_compose)
+                                              env=env, input=docker_compose).stdout
         registries_auth = kwargs['registries_auth']
         stack_name = kwargs['stack_name']
         files = kwargs['files']
@@ -125,7 +125,7 @@ class KubernetesCliConnector(Connector):
 
             cmd_deploy = self.build_cmd_line(['apply', '-k', tmp_dir_name])
 
-            result = execute_cmd(cmd_deploy)
+            result = join_stderr_stdout(execute_cmd(cmd_deploy))
 
             services = self._stack_services(stack_name)
 
@@ -147,7 +147,7 @@ class KubernetesCliConnector(Connector):
         cmd_stop = self.build_cmd_line(['delete', 'namespace', stack_name])
 
         try:
-            return execute_cmd(cmd_stop)
+            return join_stderr_stdout(execute_cmd(cmd_stop))
         except Exception as ex:
             if 'NotFound' in ex.args[0] if len(ex.args) > 0 else '':
                 return 'namespace "{}" already stopped (not found)'.format(stack_name)
@@ -163,7 +163,7 @@ class KubernetesCliConnector(Connector):
     @should_connect
     def log(self, list_opts):
         cmd = self.build_cmd_line(['logs'] + list_opts)
-        return execute_cmd(cmd)
+        return execute_cmd(cmd).stdout
 
     @staticmethod
     def _extract_service_info(kube_resource):
@@ -189,11 +189,11 @@ class KubernetesCliConnector(Connector):
     def _stack_services(self, stack_name):
         cmd_services = self.build_cmd_line(['get', 'services', '--namespace',
                                             stack_name, '-o', 'json'])
-        kube_services = json.loads(execute_cmd(cmd_services)).get('items', [])
+        kube_services = json.loads(execute_cmd(cmd_services).stdout).get('items', [])
 
         cmd_deployments = self.build_cmd_line(['get', 'deployments', '--namespace',
                                                stack_name, '-o', 'json'])
-        kube_deployments = json.loads(execute_cmd(cmd_deployments)).get('items', [])
+        kube_deployments = json.loads(execute_cmd(cmd_deployments).stdout).get('items', [])
 
         services = [KubernetesCliConnector._extract_service_info(kube_resource)
                     for kube_resource in kube_services + kube_deployments]
@@ -203,7 +203,7 @@ class KubernetesCliConnector(Connector):
     @should_connect
     def version(self):
         cmd = self.build_cmd_line(['version', '-o', 'json'])
-        version = execute_cmd(cmd, timeout=5)
+        version = execute_cmd(cmd, timeout=5).stdout
         return json.loads(version)
 
     @should_connect

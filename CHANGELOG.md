@@ -6,6 +6,9 @@
 
   - Deployment - Mixed jobs shouldn't set deployment to
     error state on first try
+  - docker-compose-cli connector substitue env variables
+    to avoid failures during start listing containers
+  - Execute_command separate stdout from stderr
   - Update docker client to 20.10.7
   - Distributions refactor multi-threaded
   - Fix join-manager typo in action name

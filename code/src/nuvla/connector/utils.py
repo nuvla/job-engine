@@ -6,7 +6,7 @@ import hashlib
 import signal
 from contextlib import contextmanager
 from datetime import datetime, timedelta
-from subprocess import run, PIPE, STDOUT, TimeoutExpired
+from subprocess import run, PIPE, TimeoutExpired, CompletedProcess
 from tempfile import NamedTemporaryFile
 
 
@@ -44,7 +44,7 @@ def append_os_env(env):
     return final_env
 
 
-def execute_cmd(cmd, **kwargs):
+def execute_cmd(cmd, **kwargs) -> CompletedProcess:
     if kwargs.get('env'):
         opt_env = append_os_env(kwargs.get('env'))
     else:
@@ -52,14 +52,18 @@ def execute_cmd(cmd, **kwargs):
     opt_input = kwargs.get('input')
     timeout = kwargs.get('timeout', 120)
     try:
-        result = run(cmd, stdout=PIPE, stderr=STDOUT, env=opt_env, input=opt_input,
+        result = run(cmd, stdout=PIPE, stderr=PIPE, env=opt_env, input=opt_input,
                      timeout=timeout, encoding='UTF-8')
     except TimeoutExpired:
         raise Exception('Command execution timed out after {} seconds'.format(timeout))
     if result.returncode == 0:
-        return result.stdout
+        return result
     else:
-        raise Exception(result.stdout)
+        raise Exception(result.stderr)
+
+
+def join_stderr_stdout(process_result: CompletedProcess):
+    return f'{process_result.stdout}\n{process_result.stderr}'
 
 
 def create_tmp_file(content):
