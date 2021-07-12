@@ -3,7 +3,7 @@ import re
 import json
 import logging
 from tempfile import TemporaryDirectory
-from .utils import execute_cmd, create_tmp_file, generate_registry_config
+from .utils import execute_cmd, join_stderr_stdout, create_tmp_file, generate_registry_config
 from .connector import Connector, should_connect
 
 log = logging.getLogger('docker_cli_connector')
@@ -82,7 +82,7 @@ class DockerCliConnector(Connector):
                 ['--config', tmp_dir_name, 'stack', 'deploy',
                  '--with-registry-auth', '--prune', '-c', compose_file_path, stack_name])
 
-            result = execute_cmd(cmd_deploy, env=env)
+            result = join_stderr_stdout(execute_cmd(cmd_deploy, env=env))
 
             services = self._stack_services(stack_name)
 
@@ -94,19 +94,19 @@ class DockerCliConnector(Connector):
         stack_name = kwargs['stack_name']
 
         cmd = self.build_cmd_line(['stack', 'rm', stack_name])
-        return execute_cmd(cmd)
+        return join_stderr_stdout(execute_cmd(cmd))
 
     update = start
 
     @should_connect
     def list(self, filters=None):
         cmd = self.build_cmd_line(['stack', 'ls'])
-        return execute_cmd(cmd)
+        return execute_cmd(cmd).stdout
 
     @should_connect
     def log(self, list_opts):
         cmd = self.build_cmd_line(['service', 'logs'] + list_opts)
-        return execute_cmd(cmd)
+        return execute_cmd(cmd).stdout
 
     @staticmethod
     def ports_info(port):
@@ -116,10 +116,10 @@ class DockerCliConnector(Connector):
         return protocol, internal_port, external_port
 
     def resolve_task_host_ip(self, task_id):
-        json_task = json.loads(execute_cmd(self.build_cmd_line(['inspect', task_id])))
+        json_task = json.loads(execute_cmd(self.build_cmd_line(['inspect', task_id])).stdout)
         node_id = json_task[0]['NodeID'] if len(json_task) > 0 else None
         if node_id:
-            json_node = json.loads(execute_cmd(self.build_cmd_line(['node', 'inspect', node_id])))
+            json_node = json.loads(execute_cmd(self.build_cmd_line(['node', 'inspect', node_id])).stdout)
             return json_node[0].get('Status', {}).get('Addr') if len(json_node) > 0 else ''
         return ''
 
@@ -145,7 +145,7 @@ class DockerCliConnector(Connector):
         # Check if service has host ports published
         cmd = self.build_cmd_line(['service', 'ps', '--filter', 'desired-state=running',
                                    '--format', '{{ json . }}', service_id])
-        tasks = [json.loads(task_line) for task_line in execute_cmd(cmd).splitlines()]
+        tasks = [json.loads(task_line) for task_line in execute_cmd(cmd).stdout.splitlines()]
         for task_json in tasks:
             task_ports = filter(None, task_json['Ports'].split(','))
             task_id = task_json['ID']
@@ -162,9 +162,8 @@ class DockerCliConnector(Connector):
     def _stack_services(self, stack_name):
         cmd = self.build_cmd_line(['stack', 'services', '--format',
                                    '{{ json . }}', stack_name])
-        stdout = execute_cmd(cmd)
         services = [self._extract_service_info(stack_name, service)
-                    for service in stdout.splitlines()]
+                    for service in execute_cmd(cmd).stdout.splitlines()]
         return services
 
     @should_connect
@@ -174,7 +173,7 @@ class DockerCliConnector(Connector):
     @should_connect
     def info(self):
         cmd = self.build_cmd_line(['info', '--format', '{{ json . }}'])
-        info = json.loads(execute_cmd(cmd, timeout=5))
+        info = json.loads(execute_cmd(cmd, timeout=5).stdout)
         server_errors = info.get('ServerErrors', [])
         if len(server_errors) > 0:
             raise Exception(server_errors[0])
@@ -207,4 +206,4 @@ class DockerCliConnector(Connector):
             cmd_login = ['docker', '--config', tmp_dir_name, 'login',
                          '--username', username, '--password-stdin',
                          'https://' + serveraddress.replace('https://', '')]
-            return execute_cmd(cmd_login, input=password)
+            return execute_cmd(cmd_login, input=password).stdout
