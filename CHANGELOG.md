@@ -4,6 +4,8 @@
 
 ### Changed
 
+  - Deployment - Mixed jobs shouldn't set deployment to
+    error state on first try
   - Update docker client to 20.10.7
   - Distributions refactor multi-threaded
   - Fix join-manager typo in action name

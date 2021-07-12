@@ -69,15 +69,14 @@ class DeploymentUpdateJob(DeploymentBase):
             'kubernetes'    : kubernetes_cli_connector
         }[connector_name]
 
-    def update_deployment(self, deployment_id):
-        log.info('Job update_deployment started for {}.'.format(deployment_id))
+    def handle_deployment(self):
+        log.info('Job update_deployment started for {}.'.format(self.deployment_id))
         self.job.set_progress(10)
 
-        deployment      = self.api_dpl.get(deployment_id).data
-        connector_name  = self.get_connector_name(deployment)
+        connector_name  = self.get_connector_name(self.deployment)
         connector_class = self.get_connector_class(connector_name)
-        registries_auth = self.private_registries_auth(deployment)
-        connector       = initialize_connector(connector_class, self.job, deployment)
+        registries_auth = self.private_registries_auth(self.deployment)
+        connector       = initialize_connector(connector_class, self.job, self.deployment)
 
         self.job.set_progress(20)
 
@@ -86,7 +85,7 @@ class DeploymentUpdateJob(DeploymentBase):
             'docker_stack'  : self.get_update_params_docker_stack,
             'docker_compose': self.get_update_params_docker_compose,
             'kubernetes'    : self.get_update_params_kubernetes
-        }[connector_name](deployment, registries_auth)
+        }[connector_name](self.deployment, registries_auth)
 
         result, services = connector.update(**kwargs)
         self.job.set_progress(80)
@@ -100,12 +99,8 @@ class DeploymentUpdateJob(DeploymentBase):
             application_params_update(self.api_dpl, deployment, services)
         self.create_user_output_params(deployment)
 
-        self.api_dpl.set_state_started(deployment_id)
+        self.api_dpl.set_state_started(self.deployment_id)
         return 0
 
     def do_work(self):
-        try:
-            return self.update_deployment(self.deployment_id)
-        except Exception as e:
-            self.api_dpl.set_state_error(self.deployment_id)
-            raise
+        return self.try_handle_raise_exception()
