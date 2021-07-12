@@ -3,8 +3,10 @@
 import re
 import copy
 import logging
+from abc import abstractmethod
 
 from nuvla.api import Api
+from ..util import override
 from nuvla.api.resources import Deployment, DeploymentParameter
 from nuvla.api.resources.base import ResourceNotFound
 from ...connector import docker_connector, docker_cli_connector, \
@@ -118,6 +120,24 @@ class DeploymentBase(object):
                 user_id=Deployment.owner(deployment),
                 param_name=output_param['name'],
                 param_description=output_param.get('description'))
+
+    @abstractmethod
+    def handle_deployment(self):
+        pass
+
+    def try_handle_raise_exception(self):
+        try:
+            return self.handle_deployment()
+        except Exception as ex:
+            log.error(f"Failed to {self.job['action']} {self.deployment_id}: {ex}")
+            try:
+                self.job.set_status_message(repr(ex))
+                if self.job.get('execution-mode', '').lower() != 'pull':
+                    self.api_dpl.set_state_error(self.deployment_id)
+            except Exception as ex_state:
+                log.error(f'Failed to set error state for {self.deployment_id}: {ex_state}')
+
+            raise ex
 
 
 @action(action_name, True)
@@ -249,39 +269,27 @@ class DeploymentStartJob(DeploymentBase):
 
         application_params_update(self.api_dpl, deployment, services)
 
-    def handle_deployment(self, deployment: dict):
+    @override
+    def handle_deployment(self):
 
-        if Deployment.is_component(deployment):
-            self.start_component(deployment)
-        elif Deployment.is_application(deployment):
-            self.start_application(deployment)
-        elif Deployment.is_application_kubernetes(deployment):
-            self.start_application_kubernetes(deployment)
+        if Deployment.is_component(self.deployment):
+            self.start_component(self.deployment)
+        elif Deployment.is_application(self.deployment):
+            self.start_application(self.deployment)
+        elif Deployment.is_application_kubernetes(self.deployment):
+            self.start_application_kubernetes(self.deployment)
 
-        self.create_user_output_params(deployment)
+        self.create_user_output_params(self.deployment)
 
     def start_deployment(self):
-        deployment_id = self.job['target-resource']['href']
 
-        log.info('Job started for {}.'.format(deployment_id))
-
-        deployment = self.api_dpl.get(deployment_id)
+        log.info('Job started for {}.'.format(self.deployment_id))
 
         self.job.set_progress(10)
 
-        try:
-            self.handle_deployment(deployment.data)
-        except Exception as ex:
-            log.error('Failed to {0} {1}: {2}'.format(self.job['action'], deployment_id, ex))
-            try:
-                self.job.set_status_message(repr(ex))
-                self.api_dpl.set_state_error(deployment_id)
-            except Exception as ex_state:
-                log.error('Failed to set error state for {0}: {1}'.format(deployment_id, ex_state))
+        self.try_handle_raise_exception()
 
-            raise ex
-
-        self.api_dpl.set_state_started(deployment_id)
+        self.api_dpl.set_state_started(self.deployment_id)
 
         return 0
 

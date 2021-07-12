@@ -7,6 +7,7 @@ from ...connector import docker_connector, docker_cli_connector, \
 from nuvla.api import NuvlaError, ConnectionError
 from nuvla.api.resources import Deployment, Credential
 from .deployment_start import DeploymentBase, initialize_connector
+from ..util import override
 from ..actions import action
 
 action_name = 'stop_deployment'
@@ -64,27 +65,21 @@ class DeploymentStopJob(DeploymentBase):
 
         self.job.set_status_message(result)
 
+    @override
+    def handle_deployment(self, deployment: dict):
+        if Deployment.is_component(self.deployment):
+            self.stop_component()
+        elif Deployment.is_application(self.deployment):
+            self.stop_application()
+        elif Deployment.is_application_kubernetes(self.deployment):
+            self.stop_application_kubernetes()
+
     def stop_deployment(self):
         log.info('Job started for {}.'.format(self.deployment_id))
 
         self.job.set_progress(10)
 
-        try:
-            if Deployment.is_component(self.deployment):
-                self.stop_component()
-            elif Deployment.is_application(self.deployment):
-                self.stop_application()
-            elif Deployment.is_application_kubernetes(self.deployment):
-                self.stop_application_kubernetes()
-        except Exception as ex:
-            log.error('Failed to {0} {1}: {2}'.format(self.job['action'], self.deployment_id, ex))
-            try:
-                self.job.set_status_message(repr(ex))
-                self.api_dpl.set_state_error(self.deployment_id)
-            except Exception as ex_state:
-                log.error('Failed to set error state for {0}: {1}'.format(self.deployment_id, ex_state))
-
-            raise ex
+        self.try_handle_raise_exception()
 
         self.try_delete_deployment_credentials(self.deployment_id)
 
