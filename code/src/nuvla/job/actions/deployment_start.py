@@ -127,7 +127,7 @@ class DeploymentBase(object):
 
     def try_handle_raise_exception(self):
         try:
-            self.handle_deployment()
+            return self.handle_deployment()
         except Exception as ex:
             log.error(f"Failed to {self.job['action']} {self.deployment_id}: {ex}")
             try:
