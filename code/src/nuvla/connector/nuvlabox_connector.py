@@ -501,8 +501,10 @@ class NuvlaBoxConnector(Connector):
                 'bind': '/var/run/docker.sock',
                 'mode': 'ro'
             },
-            '/': {'bind': '/rootfs',
-                  'mode': 'ro'}
+            '/': {
+                'bind': '/rootfs',
+                'mode': 'ro'
+            }
         }
 
         # command
@@ -528,6 +530,10 @@ class NuvlaBoxConnector(Connector):
 
         working_dir = install_params_from_payload.get("working-dir", install_params_from_nb_status["working-dir"])
         command.append(f'--working-dir={working_dir}')
+        volumes[working_dir] = {
+            'bind': '/rootfs-working-dir',
+            'mode': 'ro'
+        }
 
         project_name = install_params_from_payload.get("project-name", install_params_from_nb_status["project-name"])
         command.append(f'--project={project_name}')
