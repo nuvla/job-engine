@@ -73,9 +73,10 @@ class DeploymentUpdateJob(DeploymentBase):
         log.info('Job update_deployment started for {}.'.format(self.deployment_id))
         self.job.set_progress(10)
 
-        connector_name  = self.get_connector_name(self.deployment)
+        deployment      = self.deployment.data
+        connector_name  = self.get_connector_name(deployment)
         connector_class = self.get_connector_class(connector_name)
-        registries_auth = self.private_registries_auth(self.deployment)
+        registries_auth = self.private_registries_auth(deployment)
         connector       = initialize_connector(connector_class, self.job, self.deployment)
 
         self.job.set_progress(20)
@@ -85,7 +86,7 @@ class DeploymentUpdateJob(DeploymentBase):
             'docker_stack'  : self.get_update_params_docker_stack,
             'docker_compose': self.get_update_params_docker_compose,
             'kubernetes'    : self.get_update_params_kubernetes
-        }[connector_name](self.deployment, registries_auth)
+        }[connector_name](deployment, registries_auth)
 
         result, services = connector.update(**kwargs)
         self.job.set_progress(80)

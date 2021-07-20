@@ -271,15 +271,15 @@ class DeploymentStartJob(DeploymentBase):
 
     @override
     def handle_deployment(self):
-
+        deployment = self.deployment.data
         if Deployment.is_component(self.deployment):
-            self.start_component(self.deployment)
+            self.start_component(deployment)
         elif Deployment.is_application(self.deployment):
-            self.start_application(self.deployment)
+            self.start_application(deployment)
         elif Deployment.is_application_kubernetes(self.deployment):
-            self.start_application_kubernetes(self.deployment)
+            self.start_application_kubernetes(deployment)
 
-        self.create_user_output_params(self.deployment)
+        self.create_user_output_params(deployment)
 
     def start_deployment(self):
 
