@@ -66,7 +66,7 @@ class DeploymentStopJob(DeploymentBase):
         self.job.set_status_message(result)
 
     @override
-    def handle_deployment(self, deployment: dict):
+    def handle_deployment(self):
         if Deployment.is_component(self.deployment):
             self.stop_component()
         elif Deployment.is_application(self.deployment):
