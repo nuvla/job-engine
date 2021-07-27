@@ -7,7 +7,7 @@ import json
 import re
 import time
 from .connector import Connector, should_connect
-from .utils import execute_cmd, create_tmp_file, timeout
+from .utils import create_tmp_file, timeout
 
 
 class ClusterOperationNotAllowed(Exception):

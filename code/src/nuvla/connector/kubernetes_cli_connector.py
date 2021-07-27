@@ -163,7 +163,7 @@ class KubernetesCliConnector(Connector):
     @should_connect
     def log(self, list_opts):
         cmd = self.build_cmd_line(['logs'] + list_opts)
-        return execute_cmd(cmd).stdout
+        return execute_cmd(cmd, sterr_in_stdout=True).stdout
 
     @staticmethod
     def _extract_service_info(kube_resource):
