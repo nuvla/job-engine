@@ -3,11 +3,14 @@ import os
 import json
 import base64
 import hashlib
+import logging
 import signal
 from contextlib import contextmanager
 from datetime import datetime, timedelta
-from subprocess import run, PIPE, TimeoutExpired, CompletedProcess
+from subprocess import run, STDOUT, PIPE, TimeoutExpired, CompletedProcess
 from tempfile import NamedTemporaryFile
+
+log = logging.getLogger('connector_utils')
 
 
 def _time_rm_nanos(time_str):
@@ -51,19 +54,25 @@ def execute_cmd(cmd, **kwargs) -> CompletedProcess:
         opt_env = None
     opt_input = kwargs.get('input')
     timeout = kwargs.get('timeout', 120)
+    stderr = STDOUT if kwargs.get('sterr_in_stdout', False) else PIPE
+    log.debug(f'Run command: {cmd}')
     try:
-        result = run(cmd, stdout=PIPE, stderr=PIPE, env=opt_env, input=opt_input,
+        result = run(cmd, stdout=PIPE, stderr=stderr, env=opt_env, input=opt_input,
                      timeout=timeout, encoding='UTF-8')
+        log.debug(f'Command result: {result}')
     except TimeoutExpired:
-        raise Exception('Command execution timed out after {} seconds'.format(timeout))
+        message = 'Command execution timed out after {} seconds'.format(timeout)
+        log.exception(message)
+        raise Exception(message)
     if result.returncode == 0:
         return result
     else:
+        log.exception(result)
         raise Exception(result.stderr)
 
 
 def join_stderr_stdout(process_result: CompletedProcess):
-    return f'{process_result.stdout}\n{process_result.stderr}'
+    return f'StdOut: \n{process_result.stdout} \n\nStdErr: \n{process_result.stderr}'
 
 
 def create_tmp_file(content):

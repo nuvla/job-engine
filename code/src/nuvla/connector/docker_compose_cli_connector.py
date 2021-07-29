@@ -4,10 +4,10 @@ import json
 import logging
 import yaml
 from tempfile import TemporaryDirectory
-from .utils import execute_cmd, create_tmp_file, generate_registry_config
+from .utils import execute_cmd, create_tmp_file, generate_registry_config, join_stderr_stdout
 from .connector import Connector, should_connect
 
-log = logging.getLogger('docker_cli_connector')
+log = logging.getLogger('docker_compose_cli_connector')
 
 
 def instantiate_from_cimi(api_infrastructure_service, api_credential):
@@ -58,7 +58,7 @@ class DockerComposeCliConnector(Connector):
 
     def _execute_clean_command(self, cmd, **kwargs):
         try:
-            return execute_cmd(cmd, **kwargs).stdout
+            return execute_cmd(cmd, **kwargs)
         except Exception as e:
             error = self.sanitize_command_output(str(e))
             raise Exception(error)
@@ -91,8 +91,8 @@ class DockerComposeCliConnector(Connector):
                 ['-p', project_name, '-f', compose_file_path, 'up', '-d',
                  '--remove-orphans'])
 
-            result = self._execute_clean_command(cmd_pull, env=env)
-            result += self._execute_clean_command(cmd_deploy, env=env)
+            result = join_stderr_stdout(self._execute_clean_command(cmd_pull, env=env))
+            result += join_stderr_stdout(self._execute_clean_command(cmd_deploy, env=env))
 
             services = self._stack_services(project_name, compose_file_path)
 
@@ -111,7 +111,7 @@ class DockerComposeCliConnector(Connector):
             compose_file.close()
 
             cmd = self.build_cmd_line(['-p', project_name, '-f', compose_file_path, 'down', '-v'])
-            return self._execute_clean_command(cmd)
+            return join_stderr_stdout(self._execute_clean_command(cmd))
 
     update = start
 
@@ -122,7 +122,7 @@ class DockerComposeCliConnector(Connector):
     @should_connect
     def log(self, list_opts):
         cmd = self.build_cmd_line(['logs'] + list_opts, binary='docker')
-        return self._execute_clean_command(cmd)
+        return self._execute_clean_command(cmd, sterr_in_stdout=True).stdout
 
     @staticmethod
     def _get_image(container_info):
@@ -134,7 +134,7 @@ class DockerComposeCliConnector(Connector):
     def _get_service_id(self, project_name, service, docker_compose_path):
         cmd = self.build_cmd_line(['-p', project_name, '-f', docker_compose_path,
                                    'ps', '-q', service])
-        stdout = self._execute_clean_command(cmd)
+        stdout = self._execute_clean_command(cmd).stdout
 
         return yaml.load(stdout, Loader=yaml.FullLoader)
 
@@ -148,7 +148,7 @@ class DockerComposeCliConnector(Connector):
     def _get_container_inspect(self, service_id):
         cmd = self.build_cmd_line(['inspect', service_id], binary='docker')
 
-        return json.loads(self._execute_clean_command(cmd))
+        return json.loads(self._execute_clean_command(cmd).stdout)
 
     def _extract_service_info(self, project_name, service, docker_compose_path):
         service_id = self._get_service_id(project_name, service, docker_compose_path)
@@ -182,7 +182,7 @@ class DockerComposeCliConnector(Connector):
     def _stack_services(self, project_name, docker_compose_path):
         cmd = self.build_cmd_line(['-f', docker_compose_path, 'config', '--services'], local=True)
 
-        stdout = self._execute_clean_command(cmd)
+        stdout = self._execute_clean_command(cmd).stdout
 
         services = [self._extract_service_info(project_name, service, docker_compose_path)
                     for service in stdout.splitlines()]
