@@ -315,13 +315,14 @@ class NuvlaBoxConnector(Connector):
         dc = docker.from_env() if self.job.get('execution-mode', '') == 'pull' else self.docker_client
         return dc
 
-    def run_container_from_installer(self, image, detach, container_name, volumes, command):
+    def run_container_from_installer(self, image, detach, container_name, volumes, command, container_env):
         try:
             self.infer_docker_client().containers.run(image,
-                                                    detach=detach,
-                                                    name=container_name,
-                                                    volumes=volumes,
-                                                    command=command)
+                                                      detach=detach,
+                                                      name=container_name,
+                                                      volumes=volumes,
+                                                      environment=container_env,
+                                                      command=command)
         except docker.errors.NotFound as e:
             raise Exception(f'Unable to reach NuvlaBox Docker API: {str(e)}')
         except docker.errors.APIError as e:
@@ -554,11 +555,19 @@ class NuvlaBoxConnector(Connector):
         target_release = kwargs.get('target_release')
         command.append(f'--target-version={target_release}')
 
+        if all(k in self.api.login_params for k in ['key', 'secret']):
+            updater_env = {
+                'NUVLABOX_API_KEY': self.api.login_params['key'],
+                'NUVLABOX_API_SECRET': self.api.login_params['secret']
+            }
+        else:
+            updater_env = {}
+
         # 3rd - run the Docker command
 
         logging.info(f'Running NuvlaBox update container {self.installer_image_name}')
         image = self.pull_docker_image(self.installer_image_name, f'{self.installer_base_name}:master')
-        self.run_container_from_installer(image, detach, container_name, volumes, command)
+        self.run_container_from_installer(image, detach, container_name, volumes, command, updater_env)
 
         # 4th - monitor the update, waiting for it to finish to capture the output
         timeout_after = 600     # 10 minutes
