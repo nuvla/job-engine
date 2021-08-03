@@ -15,6 +15,7 @@
   - Fix delete NuvlaBox cluster on last member leaving
   - Generalize use of Docker Socket for NB pull jobs
   - Add new legacy bind mount for NuvlaBox Update jobs
+  - Add environemnt vars to NuvlaBox Update sidecar container
 
 ## [2.15.2] - 2021-06-01
 
