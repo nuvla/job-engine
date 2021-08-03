@@ -332,7 +332,7 @@ class NuvlaBoxConnector(Connector):
                     if existing.status.lower() != 'running':
                         logging.info(f'Deleting old {container_name} container because its status is {existing.status}')
                         existing.remove(force=True)
-                        self.run_container_from_installer(image, detach, container_name, volumes, command)
+                        self.run_container_from_installer(image, detach, container_name, volumes, command, container_env)
                 except Exception as ee:
                     raise Exception(f'Operation is already taking place and could not stop it: {str(e)} | {str(ee)}')
             else:
@@ -465,7 +465,7 @@ class NuvlaBoxConnector(Connector):
         image = self.pull_docker_image(self.installer_image_name, f'{self.installer_base_name}:master')
         logging.info(f'Running NuvlaBox clustering via container from {image}, with args {" ".join(command)}')
 
-        self.run_container_from_installer(image, detach, container_name, volumes, command)
+        self.run_container_from_installer(image, detach, container_name, volumes, command, [])
 
         # 4th - monitor the op, waiting for it to finish to capture the output
         timeout_after = 600     # 10 minutes
@@ -555,10 +555,10 @@ class NuvlaBoxConnector(Connector):
         target_release = kwargs.get('target_release')
         command.append(f'--target-version={target_release}')
 
-        if all(k in self.api.login_params for k in ['key', 'secret']):
+        if all(k in self.api.session.login_params for k in ['key', 'secret']):
             updater_env = {
-                'NUVLABOX_API_KEY': self.api.login_params['key'],
-                'NUVLABOX_API_SECRET': self.api.login_params['secret']
+                'NUVLABOX_API_KEY': self.api.session.login_params['key'],
+                'NUVLABOX_API_SECRET': self.api.session.login_params['secret']
             }
         else:
             updater_env = {}
