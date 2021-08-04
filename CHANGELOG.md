@@ -4,6 +4,10 @@
 
 ### Changed
 
+## [2.16.0] - 2021-08-04
+
+### Changed
+
   - Deployment - Mixed jobs shouldn't set deployment to
     error state on first try
   - docker-compose-cli connector substitue env variables
