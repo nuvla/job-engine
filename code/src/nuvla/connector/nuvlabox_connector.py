@@ -563,6 +563,15 @@ class NuvlaBoxConnector(Connector):
         else:
             updater_env = {}
 
+        current_version = self.nuvlabox_status.get('nuvlabox-engine-version',
+                                                   install_params_from_payload.get('current-version'))
+
+        if current_version:
+            command.append(f'--current-version={current_version}')
+
+        if not install_params_from_payload.get('force-restart'):
+            command.append('--no-restart')
+
         # 3rd - run the Docker command
 
         logging.info(f'Running NuvlaBox update container {self.installer_image_name}')
