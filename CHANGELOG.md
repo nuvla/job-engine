@@ -4,6 +4,12 @@
 
 ### Changed
 
+## [2.16.1] - 2021-08-10
+
+### Changed
+
+  - Make NuvlaBox Engine update job account for new update parameters
+
 ## [2.16.0] - 2021-08-04
 
 ### Changed
