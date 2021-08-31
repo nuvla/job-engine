@@ -54,7 +54,7 @@ class DockerComposeCliConnector(Connector):
             remote_tls = ['-H', endpoint, '--tls', '--tlscert', self.cert_file.name,
                           '--tlskey', self.key_file.name, '--tlscacert', self.cert_file.name]
 
-        return ["DOCKER_CLIENT_TIMEOUT=300", "COMPOSE_HTTP_TIMEOUT=300"] + [binary] + remote_tls + list_cmd
+        return [binary] + remote_tls + list_cmd
 
     def _execute_clean_command(self, cmd, **kwargs):
         try:
@@ -83,6 +83,8 @@ class DockerComposeCliConnector(Connector):
                 config.write(generate_registry_config(registries_auth))
                 config.close()
                 env['DOCKER_CONFIG'] = tmp_dir_name
+                env['DOCKER_CLIENT_TIMEOUT'] =300
+                env['COMPOSE_HTTP_TIMEOUT'] = 300
 
             cmd_pull = self.build_cmd_line(
                 ['-p', project_name, '-f', compose_file_path, 'pull'])
