@@ -54,7 +54,7 @@ class DockerComposeCliConnector(Connector):
             remote_tls = ['-H', endpoint, '--tls', '--tlscert', self.cert_file.name,
                           '--tlskey', self.key_file.name, '--tlscacert', self.cert_file.name]
 
-        return [binary] + remote_tls + list_cmd
+        return ["DOCKER_CLIENT_TIMEOUT=300", "COMPOSE_HTTP_TIMEOUT=300"] + [binary] + remote_tls + list_cmd
 
     def _execute_clean_command(self, cmd, **kwargs):
         try:
