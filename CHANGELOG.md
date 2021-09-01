@@ -4,6 +4,8 @@
 
 ### Changed
 
+  - Fix Docker Compose timeout issue
+
 ## [2.16.1] - 2021-08-10
 
 ### Changed

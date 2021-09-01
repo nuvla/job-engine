@@ -83,8 +83,9 @@ class DockerComposeCliConnector(Connector):
                 config.write(generate_registry_config(registries_auth))
                 config.close()
                 env['DOCKER_CONFIG'] = tmp_dir_name
-                env['DOCKER_CLIENT_TIMEOUT'] = 300
-                env['COMPOSE_HTTP_TIMEOUT'] = 300
+
+            env['DOCKER_CLIENT_TIMEOUT'] = 300
+            env['COMPOSE_HTTP_TIMEOUT'] = 300
 
             cmd_pull = self.build_cmd_line(
                 ['-p', project_name, '-f', compose_file_path, 'pull'])
