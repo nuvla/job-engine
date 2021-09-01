@@ -84,8 +84,8 @@ class DockerComposeCliConnector(Connector):
                 config.close()
                 env['DOCKER_CONFIG'] = tmp_dir_name
 
-            env['DOCKER_CLIENT_TIMEOUT'] = 300
-            env['COMPOSE_HTTP_TIMEOUT'] = 300
+            env['DOCKER_CLIENT_TIMEOUT'] = "300"
+            env['COMPOSE_HTTP_TIMEOUT'] = "300"
 
             cmd_pull = self.build_cmd_line(
                 ['-p', project_name, '-f', compose_file_path, 'pull'])
@@ -94,8 +94,12 @@ class DockerComposeCliConnector(Connector):
                 ['-p', project_name, '-f', compose_file_path, 'up', '-d',
                  '--remove-orphans'])
 
-            result = join_stderr_stdout(self._execute_clean_command(cmd_pull, env=env, timeout=env['DOCKER_CLIENT_TIMEOUT']))
-            result += join_stderr_stdout(self._execute_clean_command(cmd_deploy, env=env, timeout=env['DOCKER_CLIENT_TIMEOUT']))
+            result = join_stderr_stdout(self._execute_clean_command(cmd_pull,
+                                                                    env=env,
+                                                                    timeout=int(env['DOCKER_CLIENT_TIMEOUT'])))
+            result += join_stderr_stdout(self._execute_clean_command(cmd_deploy,
+                                                                     env=env,
+                                                                     timeout=int(env['DOCKER_CLIENT_TIMEOUT'])))
 
             services = self._stack_services(project_name, compose_file_path)
 
