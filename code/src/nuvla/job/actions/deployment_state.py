@@ -141,3 +141,13 @@ class DeploymentStateJob(DeploymentBase):
             raise ex
 
         return 0
+
+
+@action(action_name + '_10', True)
+class DeploymentStateJob10(DeploymentStateJob):
+    pass
+
+
+@action(action_name + '_60', True)
+class DeploymentStateJob60(DeploymentStateJob):
+    pass
