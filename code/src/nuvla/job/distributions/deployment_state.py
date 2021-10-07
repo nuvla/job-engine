@@ -9,6 +9,7 @@ from ..distribution import DistributionBase
 class DeploymentStateJobsDistribution(DistributionBase):
     DISTRIBUTION_NAME = 'deployment_state'
     COLLECT_PAST_SEC = 120
+    ACTION_NAME = 'deployment_state'
 
     @abstractmethod
     def _publish_metric(self, name, value):
@@ -30,7 +31,7 @@ class DeploymentStateJobsDistribution(DistributionBase):
     def job_generator(self):
         skipped = 0
         for deployment in self.get_deployments():
-            job = {'action': DeploymentStateJobsDistribution.DISTRIBUTION_NAME,
+            job = {'action': self.ACTION_NAME,
                    'target-resource': {'href': deployment.id}}
 
             nuvlabox = deployment.data.get('nuvlabox')

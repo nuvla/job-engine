@@ -15,6 +15,7 @@ from .deployment_state import DeploymentStateJobsDistribution
 @distribution('deployment_state_old')
 class DeploymentStateOldJobsDistribution(DeploymentStateJobsDistribution):
     DISTRIBUTION_NAME = 'deployment_state_old'
+    ACTION_NAME = 'deployment_state_60'
 
     def __init__(self, distributor):
         super(DeploymentStateJobsDistribution, self).__init__(self.DISTRIBUTION_NAME, distributor)
