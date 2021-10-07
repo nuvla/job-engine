@@ -4,6 +4,12 @@
 
 ### Changed
 
+## [2.16.2] - 2021-10-07
+
+### Changed
+
+  - Fix deployment_state actions
+
 ## [2.16.1] - 2021-08-10
 
 ### Changed
