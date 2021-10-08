@@ -10,6 +10,7 @@ from .deployment_state import DeploymentStateJobsDistribution
 @distribution('deployment_state_new')
 class DeploymentStateNewJobsDistribution(DeploymentStateJobsDistribution):
     DISTRIBUTION_NAME = 'deployment_state_new'
+    ACTION_NAME = 'deployment_state_10'
 
     def __init__(self, distributor):
         super(DeploymentStateJobsDistribution, self).__init__(self.DISTRIBUTION_NAME, distributor)
