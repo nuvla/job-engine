@@ -24,6 +24,5 @@ class TestJobUtil(unittest.TestCase):
     def test_status_message_from_custom_exception_in_trycatch(self):
         try: raise CustomException('custom exception')
         except Exception as ex: msg = status_message_from_exception(ex)
-        print(msg)
         assert msg.startswith('CustomException')
         assert msg.__contains__('custom exception')
