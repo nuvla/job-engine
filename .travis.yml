@@ -2,6 +2,9 @@ language: java
 dist: focal
 before_install: ./.travis.before_install.sh
 install:
+  - apt install software-properties-common -y
+  - add-apt-repository ppa:deadsnakes/ppa -y
+  - apt install python3.10 -y
   - python3 --version
   - cd code/; pip3 install -r requirements.test.txt
   - pip3 freeze
