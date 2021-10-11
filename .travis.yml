@@ -4,6 +4,7 @@ before_install: ./.travis.before_install.sh
 install:
   - python3 --version
   - cd code/; pip3 install -r requirements.test.txt
+  - pip3 freeze
 deploy:
   provider: script
   script: cp .travis.settings.xml $HOME/.m2/settings.xml && mvn deploy
