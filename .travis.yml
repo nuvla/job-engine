@@ -1,6 +1,9 @@
 language: java
-dist: xenial
+dist: focal
 before_install: ./.travis.before_install.sh
+install:
+  - python3 --version
+  - cd code/; pip3 install -r requirements.test.txt
 deploy:
   provider: script
   script: cp .travis.settings.xml $HOME/.m2/settings.xml && mvn deploy
