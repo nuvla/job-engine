@@ -5,6 +5,14 @@
 ### Changed
 
   - Fix Docker Compose timeout issue
+  - Fix Python 3.10 incompatible call to traceback.format_exception() in executor.py
+  - Changed base image tag to 3.10-alpine
+
+## [2.16.2] - 2021-10-07
+
+### Changed
+
+  - Fix deployment_state actions
 
 ## [2.16.1] - 2021-08-10
 

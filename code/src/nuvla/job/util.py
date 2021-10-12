@@ -6,6 +6,7 @@ import uuid
 import time
 import random
 import logging
+import traceback
 import warnings
 from datetime import datetime
 
@@ -60,3 +61,7 @@ def retry_kazoo_queue_op(queue, function_name):
 
 def parse_cimi_date(date):
     return datetime.fromisoformat(date[:-1] + '+00:00')
+
+
+def status_message_from_exception(ex: Exception):
+    return type(ex).__name__ + '-' + ''.join(traceback.format_exception(ex))
