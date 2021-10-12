@@ -4,6 +4,11 @@
 
 ### Changed
 
+  - Fix Python 3.10 incompatible call to traceback.format_exception() in executor.py
+  - Changed base image tag to 3.10-alpine
+
+### Changed
+
 ## [2.16.2] - 2021-10-07
 
 ### Changed
