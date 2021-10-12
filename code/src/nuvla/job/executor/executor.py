@@ -2,14 +2,13 @@
 
 import sys
 import logging
-import traceback
 
 from requests.adapters import HTTPAdapter
 
 from ..actions import get_action, ActionNotImplemented
 from ..base import Base
 from ..job import Job, JobUpdateError
-from ..util import override, retry_kazoo_queue_op
+from ..util import override, retry_kazoo_queue_op, status_message_from_exception
 
 CONNECTION_POOL_SIZE = 4
 
@@ -79,9 +78,7 @@ class Executor(Base):
             except JobUpdateError as e:
                 logging.error('{} update error: {}'.format(job.id, str(e)))
             except Exception as ex:
-                ex_type, ex_msg, ex_tb = sys.exc_info()
-                status_message = type(ex).__name__ + '-' + ''.join(traceback.format_exception(
-                    etype=ex_type, value=ex_msg, tb=ex_tb))
+                status_message = status_message_from_exception(ex)
                 if job.get('execution-mode', '').lower() == 'mixed':
                     status_message = 'Re-running job in pull mode after failed first attempt: ' \
                                      f'{status_message}'
@@ -91,7 +88,7 @@ class Executor(Base):
                     retry_kazoo_queue_op(job.queue, 'consume')
                 else:
                     job.update_job(state='FAILED', status_message=status_message, return_code=1)
-                logging.error('Failed to process {}, with error: {}'.format(job.id, status_message))
+                logging.error(f'Failed to process {job.id}, with error: {status_message}')
             else:
                 state = 'SUCCESS' if return_code == 0 else 'FAILED'
                 job.update_job(state=state, return_code=return_code)
@@ -100,7 +97,7 @@ class Executor(Base):
             if is_single_job_only:
                 break
 
-        logging.info('Executor {} properly stopped.'.format(self.name))
+        logging.info(f'Executor {self.name} properly stopped.')
         sys.exit(0)
 
     @override

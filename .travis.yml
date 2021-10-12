@@ -1,5 +1,5 @@
 language: java
-dist: xenial
+dist: focal
 before_install: ./.travis.before_install.sh
 deploy:
   provider: script
