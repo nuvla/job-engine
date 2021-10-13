@@ -4,6 +4,10 @@
 
 ### Changed
 
+## [2.16.3] - 2021-10-13
+
+### Changed
+
   - Fix Docker Compose timeout issue
   - Fix Python 3.10 incompatible call to traceback.format_exception() in executor.py
   - Changed base image tag to 3.10-alpine
@@ -42,7 +46,7 @@
 ### Changed
 
   - remove default local instantiation of Docker client for NuvlaBox connector
-  
+
 ## [2.15.1] - 2021-05-12
 
 ### Added
@@ -83,20 +87,20 @@
 ### Added
 
  - Action - Bulk update for deployment
- 
+
 ### Changed
 
  - Dependency - nuvla-api v3.0.3
- - Switch group to group/nuvla_admin when api key is used for job-engine 
+ - Switch group to group/nuvla_admin when api key is used for job-engine
  - docker-compose validation - support port env var substitution
 
 ## [2.13.0] - 2021-02-22
 
 ### Changed
- 
+
  - nuvlabox_update job: add support for job payload attribute
  - Fix: SSH key revoke action for the NuvlaBox fixed
- - nuvlabox_update job: fix escaping of complex environment strings 
+ - nuvlabox_update job: fix escaping of complex environment strings
 
 ## [2.12.1] - 2021-02-17
 
@@ -123,13 +127,13 @@
    within an infrastructure, with multi-arch support
  - When a job with execution-mode=mixed fails, it get back in the job queue in
    pull-mode
- - Create deployment_state jobs with execution-mode 
+ - Create deployment_state jobs with execution-mode
  - Add pause entrypoint
- 
+
 ### Changed
 
  - Credential check - support the UNKNOWN status for a credential check
- 
+
 ## [2.10.0] - 2020-12-10
 
 ### Added
@@ -240,7 +244,7 @@
 ### Changed
 
  - Dependency nuvla-api updated to v3.0.2
- - Added cross-platform compatibility for Docker image 
+ - Added cross-platform compatibility for Docker image
  - Fixed Docker Compose deployment bug - allow containers to
    have internal ports that are not published to the host
 
@@ -275,12 +279,12 @@
 ### Added
 
   - update_nuvlabox_releases - new action
-  - job_distributor_nuvlabox_releases - new distributor 
+  - job_distributor_nuvlabox_releases - new distributor
 
 ### Changed
 
   - Deployment start, update - support private registries
-  - Connectors - docker api, docker cli and kubernetes cli support 
+  - Connectors - docker api, docker cli and kubernetes cli support
     private registries
   - Found bug in `lstrip` method
   - make action `credential_check` also check for swarm mode and status
@@ -291,7 +295,7 @@
 ### Changed
 
   - Deployment log - docker log command deadlock fixed by command timeout
-  - Timeout run command to 120s by default and 5s to credential check 
+  - Timeout run command to 120s by default and 5s to credential check
   - Credential check - implement check credential action
 
 ## [2.3.11] - 2020-01-10
@@ -348,16 +352,16 @@
   - Deployment action - Log message change
   - Deployment state - Deployment state should not be set to state ERROR when this action fail
   - Logging - remove thread name from logging since it's no more multi-threaded
-  - Successfully executed actions are in failed state because do_work 
-    isn't returning result code. This was the case for jobs_cleanup, nuvlabox_decommission, 
+  - Successfully executed actions are in failed state because do_work
+    isn't returning result code. This was the case for jobs_cleanup, nuvlabox_decommission,
     infrastructure_*
   - Docker cli connector - when cacert is required connection fail fix
   - Fix calculation of replicas.running to properly take into account
     the running task state
   - Add deployment parameters to provide information about current
-    Docker task: current.desired.state, current.state, and current.error. 
+    Docker task: current.desired.state, current.state, and current.error.
   - Fix misspelled method name in NuvlaBox decommissioning job that
-    blocked deletion of NuvlaBox resources. 
+    blocked deletion of NuvlaBox resources.
 
 ## [2.3.4] - 2019-08-07
 
@@ -365,7 +369,7 @@
 
   - Properly stop fix for job executor and and job distributor
   - Nuvlabox decommission - Delete linked nuvlabox-peripheral
-  - Start deployment - When no volume options is set in deployment mounts, 
+  - Start deployment - When no volume options is set in deployment mounts,
     start deployment job is failing
 
 ## [2.3.3] - 2019-07-29
@@ -396,7 +400,7 @@
 
 ### Changed
 
-  - When an error occur during execution of a job, the final state is 
+  - When an error occur during execution of a job, the final state is
     set to 'FAILED'
 
 ## [2.2.0] - 2019-06-20
@@ -409,7 +413,7 @@
 
   - Deployment - credential-id renamed parent
   - Deployment parameter - field deployment/href renamed parent
-  - Executor is now mono-threaded. Use multiple executors to run 
+  - Executor is now mono-threaded. Use multiple executors to run
     multiple jobs in parallel.
 
 ## [2.1.0] - 2019-06-07
@@ -425,14 +429,14 @@
   - Reduce the sleep time to 30 seconds after an error when contacting
     the Nuvla server
   - Deployment stop - delete credential on stop
-  - Update start deployment options to support restart policy 
+  - Update start deployment options to support restart policy
     conditions, cpu, ram
   - Deployment code reorganization
   - Release script fix
-  - Move reusable parts in util directory for actions 
-  - Connector docker, stop container, if service not found should not 
-    return an error 
-  - Deployment enhance exception management and always leave deployment 
+  - Move reusable parts in util directory for actions
+  - Connector docker, stop container, if service not found should not
+    return an error
+  - Deployment enhance exception management and always leave deployment
     in a final state
   - Deployment start, stop, deployment resource changed
 
@@ -441,4 +445,3 @@
 ### Changed
 
   - first release of job container
-
