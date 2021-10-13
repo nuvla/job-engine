@@ -1,4 +1,4 @@
-#!/bin/bash -x
+#!/bin/bash -xe
 
 TAG_VERSION=NONE
 
@@ -43,16 +43,20 @@ create_tag() {
 
 # update pom.xml files for tag and next development version
 tag_release() {
-
   # make the release tag
-  (git add $(find . -name pom.xml) ; git commit -m "release ${TAG_VERSION}"; do_push; create_tag; do_push_tag)
+  git add $(find . -type f -and \( -name project.clj -or -name pom.xml \) | tr '\r\n' ' ')
+  git commit -m "release ${TAG_VERSION}"
+  do_push
+  create_tag
+  do_push_tag
 }
 
 # update pom.xml files for tag and next development version
 update_to_snapshot() {
-
   # update to next development version
-  (git add $(find . -name pom.xml) ; git commit -m "next development version"; do_push)
+  git add $(find . -type f -and \( -name project.clj -or -name pom.xml \) | tr '\r\n' ' ')
+  git commit -m "next development version"
+  do_push
 }
 
 do_tag() {
