@@ -2,7 +2,13 @@
 
 ## Unreleased
 
+### Added
+
+  - OpenStack driver for COE provisioning jobs
+
 ### Changed
+
+  - Refactor code for docker-machine creation
 
 ## [2.16.3] - 2021-10-13
 

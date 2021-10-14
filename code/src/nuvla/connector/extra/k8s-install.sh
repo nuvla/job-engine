@@ -27,14 +27,11 @@ sudo apt-get update
 sudo apt-get install dialog apt-utils -y -q
 
 sudo sudo apt-get install -y apt-transport-https
-curl https://packages.cloud.google.com/apt/doc/apt-key.gpg \
-    | sudo apt-key --keyring /usr/share/keyrings/cloud.google.gpg add -
-cat <<EOF | sudo tee /etc/apt/sources.list.d/kubernetes.list
-deb https://apt.kubernetes.io/ kubernetes-xenial main
-EOF
-sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys 6A030B21BA07F4FB
-sudo apt-get update
-sudo apt-get install -y kubelet=$K8S_VER kubeadm=$K8S_VER
+sudo curl https://packages.cloud.google.com/apt/doc/apt-key.gpg --output /etc/apt/trusted.gpg.d/k8s-apt-key.gpg
+sudo apt-add-repository "deb http://apt.kubernetes.io/ kubernetes-xenial main" -y
+sudo apt update
+sudo apt-get install -y kubelet=$K8S_VER kubeadm=$K8S_VER kubectl=$K8S_VER
+
 if [ "$ROLE" == "manager" ]; then
     sudo apt-get install -y --allow-downgrades kubectl=$K8S_VER
     if [ ! -z "${EXTRA_SANS}" ]; then

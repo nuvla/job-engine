@@ -29,7 +29,7 @@ class Machine:
             self._path = where
         return self._path
 
-    def _run(self, cmd, raise_error=True, env_extra: Optional[dict]=None):
+    def _run(self, cmd, raise_error=True, env_extra: Optional[dict]=None, blocking: bool=False, machine_name: str=None):
         """
         Run a docker-machine command, optionally raise error if error code != 0
 
@@ -46,30 +46,22 @@ class Machine:
         else:
             p = Popen(cmd, stdin=PIPE, stdout=PIPE, stderr=PIPE)
         stdout, stderr = p.communicate()
-        error_code = p.returncode
-        if raise_error and error_code:
-            raise RuntimeError("cmd returned error %s: %s" % (error_code, stderr.decode('utf-8').strip()))
-        return stdout.decode('utf-8'), stderr.decode('utf-8'), error_code
+        error_code = p.wait() if blocking else p.returncode
 
-    def _run_blocking(self, cmd, raise_error=True, env_extra: Optional[dict]=None):
-        """
-        Run a docker-machine command, optionally raise error if error code != 0
-        Args:
-            cmd (List[str]): a list of the docker-machine command with the arguments to run
-            raise_error (bool): raise an exception on non 0 return code
-        Returns:
-            tuple: stdout, stderr, error_code
-        """
-        cmd = [self.path] + cmd
-        if env_extra:
-            p = Popen(cmd, stdin=PIPE, stdout=PIPE, stderr=PIPE,
-                      env={**env_extra, **os.environ})
-        else:
-            p = Popen(cmd, stdin=PIPE, stdout=PIPE, stderr=PIPE)
-        stdout, stderr = p.communicate()
-        error_code = p.wait()
-        if raise_error and error_code:
-            raise RuntimeError("cmd returned error %s: %s" % (error_code, stderr.decode('utf-8').strip()))
+        if error_code:
+            if "There was an error validating certificates" in stderr.decode('utf-8').strip():
+                name = machine_name if machine_name else cmd[-1]
+                recovery_cmd = [self.path] + ["regenerate-certs", "-f", name]
+                if env_extra:
+                    rp = Popen(recovery_cmd, stdin=PIPE, stdout=PIPE, stderr=PIPE,
+                              env={**env_extra, **os.environ})
+                else:
+                    rp = Popen(recovery_cmd, stdin=PIPE, stdout=PIPE, stderr=PIPE)
+                stdout, stderr = rp.communicate()
+                error_code = rp.wait() if blocking else rp.returncode
+
+            if raise_error and error_code:
+                raise RuntimeError(f"cmd returned error {error_code}: {stderr.decode('utf-8').strip()}")
         return stdout.decode('utf-8'), stderr.decode('utf-8'), error_code
 
     def _match(self, cmd, regexp):
@@ -119,10 +111,8 @@ class Machine:
             xarg = []
         cmd = ['create', '--driver', driver] + xarg + [name]
 
-        if blocking:
-            stdout, stderr, errorcode = self._run_blocking(cmd, env_extra=env)
-        else:
-            stdout, stderr, errorcode = self._run(cmd, env_extra=env)
+        stdout, stderr, errorcode = self._run(cmd, env_extra=env, blocking=blocking, machine_name=name)
+
         return errorcode
 
     def config(self, machine="default"):
