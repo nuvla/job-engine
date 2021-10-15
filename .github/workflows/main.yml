@@ -35,6 +35,16 @@ jobs:
         run: |
           python3 -m pip install --upgrade pytest
 
+      - name: Install test requirements
+        run: |
+          python3 -m pip install --upgrade -r code/requirements.test.txt
+
+      - name: Make internal packages part of nuvla-api distribution
+        run: |
+          export SITE_PACKAGES=$(dirname $(python3 -c 'import os; print(os.__file__)'))/site-packages
+          ln -sf $(pwd)/code/src/nuvla/connector $SITE_PACKAGES/nuvla/
+          ln -sf $(pwd)/code/src/nuvla/job $SITE_PACKAGES/nuvla/
+
       - uses: s4u/maven-settings-action@v2.2.0
         with:
           githubServer: false
