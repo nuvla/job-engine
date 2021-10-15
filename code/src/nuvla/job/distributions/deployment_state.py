@@ -2,6 +2,9 @@
 
 import logging
 from abc import abstractmethod
+
+from nuvla.api.models import CimiResource
+
 from ..util import override
 from ..distribution import DistributionBase
 
@@ -16,8 +19,8 @@ class DeploymentStateJobsDistribution(DistributionBase):
         pass
 
     @abstractmethod
-    def get_deployments(self):
-        pass
+    def get_deployments(self) -> list[CimiResource]:
+        return []
 
     def job_exists(self, job):
         filters = "(state='QUEUED' or state='RUNNING')" \

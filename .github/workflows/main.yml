@@ -26,6 +26,25 @@ jobs:
         with:
           java-version: 1.8
 
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v2
+        with:
+          python-version: "3.10"
+
+      - name: Install pytest
+        run: |
+          python3 -m pip install --upgrade pytest
+
+      - name: Install test requirements
+        run: |
+          python3 -m pip install --upgrade -r code/requirements.test.txt
+
+      - name: Make internal packages part of nuvla-api distribution
+        run: |
+          export SITE_PACKAGES=$(dirname $(python3 -c 'import os; print(os.__file__)'))/site-packages
+          ln -sf $(pwd)/code/src/nuvla/connector $SITE_PACKAGES/nuvla/
+          ln -sf $(pwd)/code/src/nuvla/job $SITE_PACKAGES/nuvla/
+
       - uses: s4u/maven-settings-action@v2.2.0
         with:
           githubServer: false
@@ -52,6 +71,12 @@ jobs:
           SIXSQ_DOCKER_USERNAME: ${{ secrets.SIXSQ_DOCKER_USERNAME }}
           SIXSQ_DOCKER_PASSWORD: ${{ secrets.SIXSQ_DOCKER_PASSWORD }}
         run: mvn deploy
+
+      - name: Publish Unit Test Results
+        uses: EnricoMi/publish-unit-test-result-action@v1
+        if: always()
+        with:
+          files: code/test-report.xml
 
   job-notify:
     if: always()
