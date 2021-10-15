@@ -33,7 +33,7 @@ jobs:
 
       - name: Install pytest
         run: |
-          python -m pip3 install --upgrade pytest
+          python3 -m pip install --upgrade pytest
 
       - uses: s4u/maven-settings-action@v2.2.0
         with:
