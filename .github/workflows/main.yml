@@ -76,7 +76,7 @@ jobs:
         uses: EnricoMi/publish-unit-test-result-action@v1
         if: always()
         with:
-          files: test-report.xml
+          files: code/test-report.xml
 
   job-notify:
     if: always()
