@@ -13,37 +13,37 @@ class TestRegistry(unittest.TestCase):
 
         image = image_str_to_dict('registry.com/repo:1.2.3')
         assert image['registry'] == 'registry.com'
-        assert image['repository'] == 'repo'
+        assert image['image-name'] == 'repo'
         assert image['tag'] == '1.2.3'
 
         image = image_str_to_dict('registry.com/repo/name:1.2.3')
         assert image['registry'] == 'registry.com'
-        assert image['repository'] == 'repo/name'
+        assert image['repository'] == 'repo'
+        assert image['image-name'] == 'name'
         assert image['tag'] == '1.2.3'
 
         image = image_str_to_dict('registry.com/repo/name')
         assert image['registry'] == 'registry.com'
-        assert image['repository'] == 'repo/name'
+        assert image['repository'] == 'repo'
+        assert image['image-name'] == 'name'
         assert image['tag'] == 'latest'
 
         image = image_str_to_dict('repo')
-        assert image['registry'] == ''
-        assert image['repository'] == 'repo'
+        assert image['image-name'] == 'repo'
         assert image['tag'] == 'latest'
 
         image = image_str_to_dict('repo/name')
-        assert image['registry'] == ''
-        assert image['repository'] == 'repo/name'
+        assert image['repository'] == 'repo'
+        assert image['image-name'] == 'name'
         assert image['tag'] == 'latest'
 
         image = image_str_to_dict('repo:1.2.3')
-        assert image['registry'] == ''
-        assert image['repository'] == 'repo'
+        assert image['image-name'] == 'repo'
         assert image['tag'] == '1.2.3'
 
         image = image_str_to_dict('repo/name:1.2.3')
-        assert image['registry'] == ''
-        assert image['repository'] == 'repo/name'
+        assert image['repository'] == 'repo'
+        assert image['image-name'] == 'name'
         assert image['tag'] == '1.2.3'
 
     def test_image_dict_to_str(self):
