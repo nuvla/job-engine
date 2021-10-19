@@ -11,6 +11,7 @@ import warnings
 from datetime import datetime
 
 PY2 = sys.version_info[0] == 2
+PY3_10 = (3, 10)
 
 
 def random_wait(secs_min, secs_max):
@@ -64,4 +65,9 @@ def parse_cimi_date(date):
 
 
 def status_message_from_exception(ex: Exception):
-    return type(ex).__name__ + '-' + ''.join(traceback.format_exception(ex))
+    if PY3_10 >= (sys.version_info.major, sys.version_info.minor):
+        return type(ex).__name__ + '-' + ''.join(traceback.format_exception(ex))
+    else:
+        ex_type, ex_msg, ex_tb = sys.exc_info()
+        return type(ex).__name__ + '-' + ''.join(traceback.format_exception(
+            etype=ex_type, value=ex_msg, tb=ex_tb))
