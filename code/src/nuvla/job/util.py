@@ -65,7 +65,7 @@ def parse_cimi_date(date):
 
 
 def status_message_from_exception(ex: Exception):
-    if PY3_10 >= (sys.version_info.major, sys.version_info.minor):
+    if (sys.version_info.major, sys.version_info.minor) >= PY3_10:
         return type(ex).__name__ + '-' + ''.join(traceback.format_exception(ex))
     else:
         ex_type, ex_msg, ex_tb = sys.exc_info()
