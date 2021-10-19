@@ -9,6 +9,7 @@
 ### Changed
 
   - Refactor code for docker-machine creation
+  - Rolled back to using Python 3.8
 
 ## [2.16.3] - 2021-10-13
 
