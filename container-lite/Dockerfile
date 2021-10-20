@@ -1,4 +1,5 @@
 # NB! Do not change the version of Python and Alpine image until seccomp issue on all platforms is fixed.
+# See https://github.com/nuvla/job-engine/issues/218
 FROM python:3.8-alpine3.12
 
 ARG GIT_BRANCH
