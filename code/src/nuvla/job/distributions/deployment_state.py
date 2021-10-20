@@ -19,7 +19,7 @@ class DeploymentStateJobsDistribution(DistributionBase):
         pass
 
     @abstractmethod
-    def get_deployments(self) -> list[CimiResource]:
+    def get_deployments(self):
         return []
 
     def job_exists(self, job):
