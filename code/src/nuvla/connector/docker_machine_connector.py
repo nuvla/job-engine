@@ -156,6 +156,8 @@ class DockerMachineConnector(Connector):
                    }
     }
 
+    sequential_drivers = ['openstack']
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
@@ -474,28 +476,7 @@ class DockerMachineConnector(Connector):
             machine_names = inventory.workers
 
         if machine_names:
-            inputs = []
-            for machine_name in machine_names:
-                inputs.append((self.driver_name,
-                               machine_name,
-                               self.cmd_xargs,
-                               self.cmd_env))
-            pool_size = min(DEFAULT_POOL_SIZE, len(machine_names))
-            pool = multiprocessing.Pool(pool_size)
-            try:
-                err_codes = pool.starmap(self._start_machine, inputs)
-                pool.close()
-                pool.join()
-            except Exception as ex:
-                log.error(f'Failed to run start machines: {ex}')
-                pool.terminate()
-                # Collect machines that filed to start but still registered locally.
-                for machine_name in inventory.all():
-                    try:
-                        nodes.append(self._get_node(machine_name))
-                    except Exception:
-                        pass
-                raise ex
+            self._start_machines(inventory, machine_names, nodes)
 
         log.info('VMs started and Docker installed.')
 
@@ -503,6 +484,43 @@ class DockerMachineConnector(Connector):
         for machine_name in inventory.all():
             nodes.append(self._get_node(machine_name))
         log.info('Nodes collected.')
+
+    def _start_machines(self, inventory, machine_names, nodes):
+        inputs = []
+        for machine_name in machine_names:
+            inputs.append((self.driver_name,
+                           machine_name,
+                           self.cmd_xargs,
+                           self.cmd_env))
+        try:
+            if self.driver_name in self.sequential_drivers:
+                self._start_machines_sequential(inputs)
+            else:
+                self._start_machines_parallel(inputs, machine_names)
+        except Exception as ex:
+            log.error(f'Failed to run start machines: {ex}')
+            # Collect machines that filed to start but still registered locally.
+            for machine_name in inventory.all():
+                try:
+                    nodes.append(self._get_node(machine_name))
+                except Exception:
+                    pass
+            raise ex
+
+    def _start_machines_sequential(self, inputs):
+        for args in inputs:
+            self._start_machine(*args)
+
+    def _start_machines_parallel(self, inputs, machine_names):
+        pool_size = min(DEFAULT_POOL_SIZE, len(machine_names))
+        pool = multiprocessing.Pool(pool_size)
+        try:
+            err_codes = pool.starmap(self._start_machine, inputs)
+            pool.close()
+            pool.join()
+        except Exception as ex:
+            pool.terminate()
+            raise ex
 
     def _create_swarm(self, inventory: Inventory) -> dict:
         # Initialize Docker Swarm on manager.
