@@ -78,7 +78,7 @@ class Executor(Base):
             except JobUpdateError as e:
                 logging.error('{} update error: {}'.format(job.id, str(e)))
             except Exception as ex:
-                status_message = status_message_from_exception(ex)
+                status_message = status_message_from_exception()
                 if job.get('execution-mode', '').lower() == 'mixed':
                     status_message = 'Re-running job in pull mode after failed first attempt: ' \
                                      f'{status_message}'
