@@ -70,6 +70,7 @@ def status_message_from_exception():
     """
     ex_type, ex_msg, ex_tb = sys.exc_info()
     if (sys.version_info.major, sys.version_info.minor) >= PY3_10:
-        return ex_type.__name__ + '-' + ''.join(traceback.format_exception(None, ex_msg, ex_tb))
+        ex = traceback.format_exception(None, ex_msg, ex_tb)
     else:
-        return ex_type.__name__ + '-' + ''.join(traceback.format_exception(etype=ex_type, value=ex_msg, tb=ex_tb))
+        ex = traceback.format_exception(etype=ex_type, value=ex_msg, tb=ex_tb)
+    return ex_type.__name__ + '-' + ''.join(ex)
