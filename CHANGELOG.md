@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Changed
+
+## [2.17.0] - 2021-10-21
+
 ### Added
 
   - OpenStack driver for COE provisioning jobs

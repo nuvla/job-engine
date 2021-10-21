@@ -5,7 +5,7 @@
 
   <groupId>sixsq.nuvla.job-engine</groupId>
   <artifactId>job-engine</artifactId>
-  <version>2.16.4-SNAPSHOT</version>
+  <version>2.17.0-SNAPSHOT</version>
   <packaging>pom</packaging>
   <name>job-engine</name>
   <url>http://sixsq.com</url>
@@ -30,7 +30,7 @@
       <url>https://clojars.org/repo</url>
     </pluginRepository>
   </pluginRepositories>
-  
+
   <repositories>
 
     <repository>
@@ -74,9 +74,9 @@
   </distributionManagement>
 
   <build>
-    
+
     <extensions>
-      
+
       <!-- provide build time details for modules and plugins -->
       <extension>
         <groupId>co.leantechniques</groupId>
