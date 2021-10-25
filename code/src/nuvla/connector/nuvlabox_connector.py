@@ -480,8 +480,9 @@ class NuvlaBoxConnector(Connector):
 
         self.job.set_progress(95)
 
-        for cluster_id in delete_cluster_ids:
-            self.delete_cluster(cluster_id)
+        if delete_cluster_ids:
+            for cluster_id in delete_cluster_ids:
+                self.delete_cluster(cluster_id)
 
         return result, exit_code
 
