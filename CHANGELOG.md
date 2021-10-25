@@ -4,6 +4,8 @@
 
 ### Changed
 
+  - NuvlaBox connector: allow to set advertised address on Swarm cluster creation
+
 ## [2.17.0] - 2021-10-21
 
 ### Added

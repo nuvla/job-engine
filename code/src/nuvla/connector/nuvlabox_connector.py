@@ -461,6 +461,11 @@ class NuvlaBoxConnector(Connector):
         else:
             command.append(f'--{cluster_action}')
 
+        if cluster_action == 'force-new-cluster':
+            advertise_addr = cluster_params_from_payload.get('advertise-addr')
+            if advertise_addr:
+                command.append(f"--advertise-addr='{advertise_addr}'")
+
         # 3rd - run the Docker command
         image = self.pull_docker_image(self.installer_image_name, f'{self.installer_base_name}:master')
         logging.info(f'Running NuvlaBox clustering via container from {image}, with args {" ".join(command)}')
