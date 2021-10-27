@@ -201,6 +201,8 @@ class NuvlaBoxConnector(Connector):
             r = self.mgmt_api_request(action_endpoint, 'POST', pubkey, {"Content-Type": "text/plain"})
             self.job.set_progress(90)
         else:
+            if self.job.get('execution-mode', '').lower() in ['mixed', 'push']:
+                raise Exception(f'The management-api does not exist, so {action} must run asynchronously (pull mode)')
             # running in pull, thus the docker socket is being shared
             user_home = self.nuvlabox_status.get('host-user-home')
             if not user_home:
@@ -247,6 +249,8 @@ class NuvlaBoxConnector(Connector):
             r = self.mgmt_api_request(action_endpoint, 'POST', {}, None)
             self.job.set_progress(90)
         else:
+            if self.job.get('execution-mode', '').lower() in ['mixed', 'push']:
+                raise Exception('The management-api does not exist, so "reboot" must run asynchronously (pull mode)')
             # running in pull, thus the docker socket is being shared
             cmd = "sh -c 'sleep 10 && echo b > /sysrq'"
             docker.from_env().containers.run('alpine',
