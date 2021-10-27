@@ -5,6 +5,7 @@
 ### Changed
 
   - NuvlaBox connector: allow to set advertised address on Swarm cluster creation
+  - Raise OperationNotAllowed exception when NuvlaBox operation's execution-mode is not supported
 
 ## [2.17.0] - 2021-10-21
 
