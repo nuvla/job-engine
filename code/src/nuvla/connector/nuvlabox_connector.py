@@ -409,10 +409,10 @@ class NuvlaBoxConnector(Connector):
                 if len(nuvlaboxes) == 1 and self.nuvlabox_id in nuvlaboxes:
                     delete_clusters.append(cl.id)
 
-            if delete_clusters:
-                return delete_clusters
+            
+            return delete_clusters
 
-        return None
+        return []
 
     def delete_cluster(self, cluster_id: str):
         try:
@@ -470,6 +470,11 @@ class NuvlaBoxConnector(Connector):
             command += [f'--{cluster_action}={token}', f'--join-address={join_address}']
         else:
             command.append(f'--{cluster_action}')
+
+        if cluster_action == 'force-new-cluster':
+            advertise_addr = cluster_params_from_payload.get('advertise-addr')
+            if advertise_addr:
+                command.append(f"--advertise-addr={advertise_addr}")
 
         # 3rd - run the Docker command
         image = self.pull_docker_image(self.installer_image_name, f'{self.installer_base_name}:master')
