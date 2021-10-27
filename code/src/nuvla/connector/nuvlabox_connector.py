@@ -14,6 +14,10 @@ class ClusterOperationNotAllowed(Exception):
     pass
 
 
+class OperationNotAllowed(Exception):
+    pass
+
+
 class NuvlaBoxConnector(Connector):
     def __init__(self, **kwargs):
         super(NuvlaBoxConnector, self).__init__(**kwargs)
@@ -202,7 +206,8 @@ class NuvlaBoxConnector(Connector):
             self.job.set_progress(90)
         else:
             if self.job.get('execution-mode', '').lower() in ['mixed', 'push']:
-                raise Exception(f'The management-api does not exist, so {action} must run asynchronously (pull mode)')
+                err_msg = f'The management-api does not exist, so {action} must run asynchronously (pull mode)'
+                raise OperationNotAllowed(err_msg)
             # running in pull, thus the docker socket is being shared
             user_home = self.nuvlabox_status.get('host-user-home')
             if not user_home:
@@ -250,7 +255,8 @@ class NuvlaBoxConnector(Connector):
             self.job.set_progress(90)
         else:
             if self.job.get('execution-mode', '').lower() in ['mixed', 'push']:
-                raise Exception('The management-api does not exist, so "reboot" must run asynchronously (pull mode)')
+                err_msg = 'The management-api does not exist, so "reboot" must run asynchronously (pull mode)'
+                raise OperationNotAllowed(err_msg)
             # running in pull, thus the docker socket is being shared
             cmd = "sh -c 'sleep 10 && echo b > /sysrq'"
             docker.from_env().containers.run('alpine',
