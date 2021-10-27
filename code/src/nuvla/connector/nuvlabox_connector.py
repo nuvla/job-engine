@@ -399,10 +399,10 @@ class NuvlaBoxConnector(Connector):
                 if len(nuvlaboxes) == 1 and self.nuvlabox_id in nuvlaboxes:
                     delete_clusters.append(cl.id)
 
-            if delete_clusters:
-                return delete_clusters
+            
+            return delete_clusters
 
-        return None
+        return []
 
     def delete_cluster(self, cluster_id: str):
         try:
@@ -480,9 +480,8 @@ class NuvlaBoxConnector(Connector):
 
         self.job.set_progress(95)
 
-        if delete_cluster_ids:
-            for cluster_id in delete_cluster_ids:
-                self.delete_cluster(cluster_id)
+        for cluster_id in delete_cluster_ids:
+            self.delete_cluster(cluster_id)
 
         return result, exit_code
 
