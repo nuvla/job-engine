@@ -141,7 +141,7 @@ class DockerMachineConnector(Connector):
         "google": {'args': ['google-project',
                             'google-username',
                             'google-zone',
-                            'google-disk'
+                            'google-disk',
                             'google-machine-type',
                             'google-machine-image'],
                    'defaults': {'google-machine-image': 'ubuntu-os-cloud/global/images/ubuntu-1804-bionic-v20200610',
