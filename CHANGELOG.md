@@ -4,6 +4,10 @@
 
 ### Changed
 
+## [2.18.0] - 2021-10-28
+
+### Changed
+
   - Docker machine - Google xargs bugfix
   - NuvlaBox connector: allow to set advertised address on Swarm cluster creation
   - Raise OperationNotAllowed exception when NuvlaBox operation's execution-mode is not supported
