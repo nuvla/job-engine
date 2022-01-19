@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Added
+
+  - New action `fetch_nuvlabox_log` to fetch the logs from all componets of an existing NuvlaBox
+
 ### Changed
 
 ## [2.18.0] - 2021-10-28

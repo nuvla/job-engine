@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+import datetime
+import textwrap
 
 import requests
 import logging
@@ -625,3 +627,41 @@ class NuvlaBoxConnector(Connector):
 
     def list(self):
         pass
+
+    def get_nuvlabox_components(self):
+        filter_label = 'nuvlabox.component=True'
+        return self.infer_docker_client().containers.list(filters={'label': filter_label},
+                                                          all=True)
+
+    def log(self, nuvlabox_log):
+        try:
+            # remove milliseconds from server timestamp
+            last_timestamp = datetime.datetime.fromisoformat(nuvlabox_log.get('last-timestamp', '').split('.')[0])
+        except ValueError:
+            last_timestamp = None
+
+        try:
+            since = datetime.datetime.fromisoformat(nuvlabox_log.get('since', '').split('.')[0])
+        except ValueError:
+            since = None
+
+        tmp_since = last_timestamp or since
+
+        lines = nuvlabox_log.get('lines', 100)
+
+        nuvlabox_components = self.get_nuvlabox_components()
+        logs = []
+        for component in nuvlabox_components:
+            try:
+                component_logs = component.logs(timestamps=True,
+                                                tail=lines,
+                                                since=tmp_since if tmp_since else 1).decode().strip()
+            except docker.errors.InvalidArgument as e:
+                logging.error(f'Cannot fetch {component.name} log with the provided options: {str(e)}')
+                component_logs = ''
+
+            component_log_lines = textwrap.indent(component_logs, f'{component.name}  | ').splitlines()
+
+            logs += component_log_lines
+
+        return logs
