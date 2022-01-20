@@ -634,6 +634,7 @@ class NuvlaBoxConnector(Connector):
                                                           all=True)
 
     def log(self, nuvlabox_log):
+        self.setup_ssl_credentials()
         try:
             # remove milliseconds from server timestamp
             last_timestamp = datetime.datetime.fromisoformat(nuvlabox_log.get('last-timestamp', '').split('.')[0])
