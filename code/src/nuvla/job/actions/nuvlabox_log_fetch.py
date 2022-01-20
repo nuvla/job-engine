@@ -39,7 +39,7 @@ class NuvlaBoxLogFetchJob(object):
         self.api.edit(nuvlabox_log['id'], update_log)
 
     def fetch_nuvlabox_log(self):
-        nuvlabox_log_id = self.job['target-resource']['href']
+        nuvlabox_log_id = self.job['affected-resources'][0]['href']
 
         log.info('Job started for fetching NuvlaBox logs at {}.'.format(nuvlabox_log_id))
         nuvlabox_log = self.api.get(
