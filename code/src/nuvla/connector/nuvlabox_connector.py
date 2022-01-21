@@ -632,7 +632,7 @@ class NuvlaBoxConnector(Connector):
         filter_label = 'nuvlabox.component=True'
         return self.infer_docker_client().containers.list(filters={'label': filter_label},
                                                           all=True)
-
+    @should_connect
     def log(self, nuvlabox_log):
         self.setup_ssl_credentials()
         try:
