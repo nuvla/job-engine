@@ -17,19 +17,11 @@ class NuvlaBoxLogFetchJob(object):
         self.job = job
         self.api = job.api
 
-    @staticmethod
-    def extract_last_timestamp(result):
-        timestamp = result[-1].strip().split(' ')[0]
-        # timestamp limit precision to be compatible with server to pico
-        return timestamp[:23] + 'Z' if timestamp else None
-
     def fetch_log(self, nuvlabox_log):
         connector = NB.NuvlaBoxConnector(api=self.api, nuvlabox_id=nuvlabox_log['parent'], job=self.job)
 
         max_lines = 1000
-        result = connector.log(nuvlabox_log)[:max_lines]
-
-        new_last_timestamp = self.extract_last_timestamp(result)
+        result, new_last_timestamp = connector.log(nuvlabox_log)[:max_lines]
 
         update_log = {'log': result}
 

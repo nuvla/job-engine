@@ -626,14 +626,18 @@ class NuvlaBoxConnector(Connector):
             self.api.operation(self.nuvlabox_resource, "commission", data=payload)
 
     def list(self):
-        pass
-
-    def get_nuvlabox_components(self):
         filter_label = 'nuvlabox.component=True'
         return self.infer_docker_client().containers.list(filters={'label': filter_label},
                                                           all=True)
+
+    @staticmethod
+    def extract_last_timestamp(result):
+        timestamp = result[-1].strip().split(' ')[0]
+        # timestamp limit precision to be compatible with server to pico
+        return timestamp[:23] + 'Z' if timestamp else None
+
     @should_connect
-    def log(self, nuvlabox_log):
+    def log(self, nuvlabox_log) -> (list, str):
         self.setup_ssl_credentials()
         try:
             # remove milliseconds from server timestamp
@@ -650,8 +654,9 @@ class NuvlaBoxConnector(Connector):
 
         lines = nuvlabox_log.get('lines', 100)
 
-        nuvlabox_components = self.get_nuvlabox_components()
+        nuvlabox_components = self.list()
         logs = []
+        new_last_timestamp = ''
         for component in nuvlabox_components:
             try:
                 component_logs = component.logs(timestamps=True,
@@ -661,8 +666,12 @@ class NuvlaBoxConnector(Connector):
                 logging.error(f'Cannot fetch {component.name} log with the provided options: {str(e)}')
                 component_logs = ''
 
+            tmp_last_timestamp = self.extract_last_timestamp(component_logs.splitlines())
+            if tmp_last_timestamp > new_last_timestamp:
+                new_last_timestamp = tmp_last_timestamp
+
             component_log_lines = textwrap.indent(component_logs, f'{component.name}  | ').splitlines()
 
             logs += component_log_lines
 
-        return logs
+        return logs, new_last_timestamp
