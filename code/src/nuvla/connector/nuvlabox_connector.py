@@ -636,9 +636,9 @@ class NuvlaBoxConnector(Connector):
             timestamp = result[-1].strip().split(' ')[0]
         except IndexError:
             logging.error(f'Unable to extract time from {result}')
-            return None
+            return ''
         # timestamp limit precision to be compatible with server to pico
-        return timestamp[:23] + 'Z' if timestamp else None
+        return timestamp[:23] + 'Z' if timestamp else ''
 
     @should_connect
     def log(self, nuvlabox_log) -> (list, str):
