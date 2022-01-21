@@ -632,7 +632,11 @@ class NuvlaBoxConnector(Connector):
 
     @staticmethod
     def extract_last_timestamp(result):
-        timestamp = result[-1].strip().split(' ')[0]
+        try:
+            timestamp = result[-1].strip().split(' ')[0]
+        except IndexError:
+            logging.error(f'Unable to extract time from {result}')
+            return None
         # timestamp limit precision to be compatible with server to pico
         return timestamp[:23] + 'Z' if timestamp else None
 
