@@ -104,6 +104,10 @@ class NuvlaBoxDeleteJob(object):
         # If the nuvlabox-peripheral collection doesn't exist, then this acts as a no-op.
         self.delete_linked_resources('nuvlabox-peripheral', nuvlabox_id)
 
+    def delete_logs(self, nuvlabox_id):
+        # If the nuvlabox-log collection doesn't exist, then this acts as a no-op.
+        self.delete_linked_resources('nuvlabox-log', nuvlabox_id)
+
     def delete_status(self, nuvlabox_id):
         self.delete_linked_resources('nuvlabox-status', nuvlabox_id)
 
@@ -139,6 +143,10 @@ class NuvlaBoxDeleteJob(object):
             self.delete_peripherals(nuvlabox_id)
 
             self.job.set_progress(40)
+
+            self.delete_logs(nuvlabox_id)
+
+            self.job.set_progress(45)
 
             self.delete_api_key(nuvlabox_id)
 
