@@ -2,6 +2,7 @@
 
 import logging
 
+from datetime import datetime
 from ...connector import nuvlabox_connector as NB
 from ..actions import action
 
@@ -23,10 +24,10 @@ class NuvlaBoxLogFetchJob(object):
         max_lines = 1000
         result, new_last_timestamp = connector.log(nuvlabox_log)[:max_lines]
 
-        update_log = {'log': result}
-
-        if new_last_timestamp:
-            update_log['last-timestamp'] = new_last_timestamp
+        update_log = {
+            'log': result,
+            'last-timestamp': new_last_timestamp if new_last_timestamp else f'{datetime.utcnow().isoformat()[:23]}Z'
+        }
 
         self.api.edit(nuvlabox_log['id'], update_log)
 
