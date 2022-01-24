@@ -676,7 +676,7 @@ class NuvlaBoxConnector(Connector):
         lines = nuvlabox_log.get('lines', 100)
 
         logs = []
-        new_last_timestamp = ''
+        new_last_timestamp = f'{datetime.datetime.utcnow().isoformat()}Z'
         for component in nuvlabox_components:
             try:
                 component_logs = component.logs(timestamps=True,
