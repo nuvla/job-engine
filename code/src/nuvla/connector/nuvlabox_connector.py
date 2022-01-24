@@ -654,11 +654,12 @@ class NuvlaBoxConnector(Connector):
         except ValueError:
             since = None
 
+        nuvlabox_components = nuvlabox_log['components'] if nuvlabox_log['components'] else self.list()
+
         tmp_since = last_timestamp or since
 
         lines = nuvlabox_log.get('lines', 100)
 
-        nuvlabox_components = self.list()
         logs = []
         new_last_timestamp = ''
         for component in nuvlabox_components:
