@@ -662,7 +662,7 @@ class NuvlaBoxConnector(Connector):
             # remove milliseconds from server timestamp
             last_timestamp = datetime.datetime.fromisoformat(nuvlabox_log.get('last-timestamp', '').split('.')[0])
         except ValueError:
-            last_timestamp = None
+            last_timestamp = ''
 
         try:
             since = datetime.datetime.fromisoformat(nuvlabox_log.get('since', '').split('.')[0])
@@ -676,7 +676,7 @@ class NuvlaBoxConnector(Connector):
         lines = nuvlabox_log.get('lines', 100)
 
         logs = []
-        new_last_timestamp = f'{datetime.datetime.utcnow().isoformat()}Z'
+        new_last_timestamp = last_timestamp
         for component in nuvlabox_components:
             try:
                 component_logs = component.logs(timestamps=True,
