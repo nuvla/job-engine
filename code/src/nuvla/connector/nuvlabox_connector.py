@@ -626,8 +626,23 @@ class NuvlaBoxConnector(Connector):
             self.api.operation(self.nuvlabox_resource, "commission", data=payload)
 
     def list(self):
+        """
+        List all running NuvlaBox components
+
+        :return: list of objects
+        """
         filter_label = 'nuvlabox.component=True'
-        return self.infer_docker_client().containers.list(filters={'label': filter_label},
+        return self.infer_docker_client().containers.list(filters={'label': filter_label})
+
+    def get_all_nuvlabox_components(self, names: list) -> list:
+        """
+        List NuvlaBox components that match the names (pass [] for all names)
+
+        :param names: list of component names to filter for
+        :return: list of objects
+        """
+        filter_label = 'nuvlabox.component=True'
+        return self.infer_docker_client().containers.list(filters={'label': filter_label, 'name': names},
                                                           all=True)
 
     @staticmethod
@@ -654,7 +669,7 @@ class NuvlaBoxConnector(Connector):
         except ValueError:
             since = None
 
-        nuvlabox_components = nuvlabox_log['components'] if nuvlabox_log['components'] else self.list()
+        nuvlabox_components = self.get_all_nuvlabox_components(nuvlabox_log['components']) if nuvlabox_log['components'] else self.list()
 
         tmp_since = last_timestamp or since
 
