@@ -675,7 +675,7 @@ class NuvlaBoxConnector(Connector):
 
         lines = nuvlabox_log.get('lines', 100)
 
-        logs = []
+        logs = {}
         new_last_timestamp = ''
         for component in nuvlabox_components:
             try:
@@ -686,12 +686,11 @@ class NuvlaBoxConnector(Connector):
                 logging.error(f'Cannot fetch {component.name} log with the provided options: {str(e)}')
                 component_logs = ''
 
-            tmp_last_timestamp = self.extract_last_timestamp(component_logs.splitlines())
+            component_log_lines = component_logs.splitlines()
+            tmp_last_timestamp = self.extract_last_timestamp(component_log_lines)
             if tmp_last_timestamp > new_last_timestamp:
                 new_last_timestamp = tmp_last_timestamp
 
-            component_log_lines = textwrap.indent(component_logs, f'{component.name}  | ').splitlines()
-
-            logs += component_log_lines
+            logs[component.name] = component_log_lines
 
         return logs, new_last_timestamp
