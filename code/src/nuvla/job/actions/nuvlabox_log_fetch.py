@@ -28,7 +28,7 @@ class NuvlaBoxLogFetchJob(object):
             'log': result,
             'last-timestamp': new_last_timestamp if new_last_timestamp else f'{datetime.utcnow().isoformat()[:23]}Z'
         }
-        logging.info(update_log)
+
         self.api.edit(nuvlabox_log['id'], update_log)
 
     def fetch_nuvlabox_log(self):
