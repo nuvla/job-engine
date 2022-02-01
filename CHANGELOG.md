@@ -4,7 +4,7 @@
 
 ### Added
 
-  - New action `fetch_nuvlabox_log` to fetch the logs from all componets of an existing NuvlaBox
+  - New action `fetch_nuvlabox_log` to fetch the logs from all components of an existing NuvlaBox
 
 ### Changed
 
