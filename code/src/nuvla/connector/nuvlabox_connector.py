@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 import datetime
-import textwrap
 
 import requests
 import logging
