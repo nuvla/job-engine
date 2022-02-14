@@ -655,24 +655,24 @@ class NuvlaBoxConnector(Connector):
         return timestamp[:23] + 'Z' if timestamp else ''
 
     @should_connect
-    def log(self, nuvlabox_log) -> (list, str):
+    def log(self, resource_log) -> (list, str):
         self.setup_ssl_credentials()
         try:
             # remove milliseconds from server timestamp
-            last_timestamp = datetime.datetime.fromisoformat(nuvlabox_log.get('last-timestamp', '').split('.')[0])
+            last_timestamp = datetime.datetime.fromisoformat(resource_log.get('last-timestamp', '').split('.')[0])
         except ValueError:
             last_timestamp = None
 
         try:
-            since = datetime.datetime.fromisoformat(nuvlabox_log.get('since', '').split('.')[0])
+            since = datetime.datetime.fromisoformat(resource_log.get('since', '').split('.')[0])
         except ValueError:
             since = None
 
-        nuvlabox_components = self.get_all_nuvlabox_components(nuvlabox_log['components']) if nuvlabox_log['components'] else self.list()
+        nuvlabox_components = self.get_all_nuvlabox_components(resource_log['components']) if resource_log['components'] else self.list()
 
         tmp_since = last_timestamp or since
 
-        lines = nuvlabox_log.get('lines', 100)
+        lines = resource_log.get('lines', 100)
 
         logs = {}
         new_last_timestamp = ''
