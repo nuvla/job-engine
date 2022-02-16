@@ -49,9 +49,11 @@ class NuvlaBoxConnector(Connector):
     def connector_type(self):
         return 'nuvlabox'
 
-    def create_nuvlaboxes(self, number_of_nbs, vpn_server_id, basename="nuvlabox-conector-job", version=2, share_with=[]):
+    def create_nuvlaboxes(self, number_of_nbs, vpn_server_id,
+                          basename="nuvlabox-conector-job", version=2,
+                          share_with=[]):
         nuvlabox_ids = []
-        for count in range(1, number_of_nbs+1):
+        for count in range(1, number_of_nbs + 1):
             nuvlabox_body = {
                 'name': f'{basename}-{count}',
                 'description': f'Automatically created by {self.connector_type} connector in Nuvla',
@@ -66,22 +68,28 @@ class NuvlaBoxConnector(Connector):
                 # nb = self.api.get(nb_id).data
                 # new_view_data = nb['acl'].get('view-data', []) + share_with
 
-                self.api.edit(nb_id, {'acl': {'owners': ['group/scale-tests'], 'view-data': share_with}})
+                self.api.edit(nb_id, {'acl': {'owners': ['group/scale-tests'],
+                                              'view-data': share_with}})
             nuvlabox_ids.append(nb_id)
 
         return nuvlabox_ids
 
     def build_cmd_line(self, list_cmd):
-        return ['docker', '-H', self.docker_api_endpoint.replace('https://', '').replace('http://', ''),
-                '--tls', '--tlscert', self.cert_file.name, '--tlskey', self.key_file.name,
+        return ['docker', '-H',
+                self.docker_api_endpoint.replace('https://', '').replace(
+                    'http://', ''),
+                '--tls', '--tlscert', self.cert_file.name, '--tlskey',
+                self.key_file.name,
                 '--tlscacert', self.cert_file.name] + list_cmd
 
     def get_nuvlabox_status(self):
-        self.nuvlabox_status = self.api.get(self.nuvlabox.get("nuvlabox-status")).data
+        self.nuvlabox_status = self.api.get(
+            self.nuvlabox.get("nuvlabox-status")).data
 
     def get_credential(self):
         infra_service_groups = self.api.search('infrastructure-service-group',
-                                               filter='parent="{}"'.format(self.nuvlabox.get("id")),
+                                               filter='parent="{}"'.format(
+                                                   self.nuvlabox.get("id")),
                                                select='id').resources
 
         cred_subtype = "infrastructure-service-swarm"
@@ -108,13 +116,15 @@ class NuvlaBoxConnector(Connector):
         try:
             credential, is_endpoint = self.get_credential()
         except TypeError:
-            raise Exception('Error: could not find infrastructure service credential for this NuvlaBox')
+            raise Exception(
+                'Error: could not find infrastructure service credential for this NuvlaBox')
 
         try:
             secret = credential['cert'] + '\n' + credential['key']
         except KeyError:
             logging.error(
-                "Credential for {} is either missing or incomplete".format(self.nuvlabox.get("id")))
+                "Credential for {} is either missing or incomplete".format(
+                    self.nuvlabox.get("id")))
             raise
 
         self.ssl_file = create_tmp_file(secret)
@@ -122,12 +132,14 @@ class NuvlaBoxConnector(Connector):
         self.key_file = create_tmp_file(credential['key'])
         self.nuvlabox_api.cert = self.ssl_file.name
         self.docker_api_endpoint = is_endpoint
-        tls_config = docker.tls.TLSConfig(client_cert=(self.cert_file.name, self.key_file.name),
-                                          verify=False,
-                                          assert_hostname=False,
-                                          assert_fingerprint=False)
-        self.docker_client = docker.DockerClient(base_url=is_endpoint.replace('https://', '').replace('http://', ''),
-                                                 tls=tls_config)
+        tls_config = docker.tls.TLSConfig(
+            client_cert=(self.cert_file.name, self.key_file.name),
+            verify=False,
+            assert_hostname=False,
+            assert_fingerprint=False)
+        self.docker_client = docker.DockerClient(
+            base_url=is_endpoint.replace('https://', '').replace('http://', ''),
+            tls=tls_config)
 
         return True
 
@@ -157,7 +169,8 @@ class NuvlaBoxConnector(Connector):
         if self.job.get('execution-mode', '').lower() == 'pull':
             self.docker_client = docker.from_env()
         else:
-            self.nb_api_endpoint = self.nuvlabox_status.get("nuvlabox-api-endpoint")
+            self.nb_api_endpoint = self.nuvlabox_status.get(
+                "nuvlabox-api-endpoint")
             if not self.nb_api_endpoint:
                 msg = f'NuvlaBox {self.nuvlabox.get("id")} missing API endpoint in its status resource.'
                 logging.warning(msg)
@@ -177,10 +190,12 @@ class NuvlaBoxConnector(Connector):
         self.setup_ssl_credentials()
 
         if isinstance(data, str):
-            r = self.nuvlabox_api.request(method, endpoint, data=data, headers=headers,
+            r = self.nuvlabox_api.request(method, endpoint, data=data,
+                                          headers=headers,
                                           timeout=self.timeout)
         else:
-            r = self.nuvlabox_api.request(method, endpoint, json=data, headers=headers,
+            r = self.nuvlabox_api.request(method, endpoint, json=data,
+                                          headers=headers,
                                           timeout=self.timeout)
 
         r.raise_for_status()
@@ -203,7 +218,8 @@ class NuvlaBoxConnector(Connector):
         if self.nb_api_endpoint:
             action_endpoint = f'{self.nb_api_endpoint}/{action}'
 
-            r = self.mgmt_api_request(action_endpoint, 'POST', pubkey, {"Content-Type": "text/plain"})
+            r = self.mgmt_api_request(action_endpoint, 'POST', pubkey,
+                                      {"Content-Type": "text/plain"})
             self.job.set_progress(90)
         else:
             if self.job.get('execution-mode', '').lower() in ['mixed', 'push']:
@@ -212,11 +228,13 @@ class NuvlaBoxConnector(Connector):
             # running in pull, thus the docker socket is being shared
             user_home = self.nuvlabox_status.get('host-user-home')
             if not user_home:
-                raise Exception(f'Cannot manage SSH keys unless the parameter host-user-home is set')
+                raise Exception(
+                    f'Cannot manage SSH keys unless the parameter host-user-home is set')
 
             if action.startswith('revoke'):
                 cmd = "sh -c 'grep -v \"${SSH_PUB}\" %s > /tmp/temp && mv /tmp/temp %s && echo Success'" \
-                      % (f'/rootfs/{user_home}/.ssh/authorized_keys', f'/rootfs/{user_home}/.ssh/authorized_keys')
+                      % (f'/rootfs/{user_home}/.ssh/authorized_keys',
+                         f'/rootfs/{user_home}/.ssh/authorized_keys')
             else:
                 cmd = "sh -c 'echo -e \"${SSH_PUB}\" >> %s && echo Success'" \
                       % f'/rootfs/{user_home}/.ssh/authorized_keys'
@@ -287,12 +305,14 @@ class NuvlaBoxConnector(Connector):
         if self.nb_api_endpoint:
             self.job.set_progress(50)
         else:
-            msg = "NuvlaBox {} missing API endpoint in its status resource".format(self.nuvlabox.get("id"))
+            msg = "NuvlaBox {} missing API endpoint in its status resource".format(
+                self.nuvlabox.get("id"))
             logging.warning(msg)
             raise Exception(msg)
 
         action_endpoint = '{}/{}'.format(self.nb_api_endpoint,
-                                         kwargs.get('api_action_name', '')).rstrip('/')
+                                         kwargs.get('api_action_name',
+                                                    '')).rstrip('/')
 
         method = kwargs.get('method', 'GET').upper()
         payload = kwargs.get('payload', {})
@@ -323,10 +343,12 @@ class NuvlaBoxConnector(Connector):
         return image_name
 
     def infer_docker_client(self):
-        dc = docker.from_env() if self.job.get('execution-mode', '') == 'pull' else self.docker_client
+        dc = docker.from_env() if self.job.get('execution-mode',
+                                               '') == 'pull' else self.docker_client
         return dc
 
-    def run_container_from_installer(self, image, detach, container_name, volumes, command, container_env):
+    def run_container_from_installer(self, image, detach, container_name,
+                                     volumes, command, container_env):
         try:
             self.infer_docker_client().containers.run(image,
                                                       detach=detach,
@@ -339,13 +361,19 @@ class NuvlaBoxConnector(Connector):
         except docker.errors.APIError as e:
             if '409' in str(e) and container_name in str(e):
                 try:
-                    existing = self.infer_docker_client().containers.get(container_name)
+                    existing = self.infer_docker_client().containers.get(
+                        container_name)
                     if existing.status.lower() != 'running':
-                        logging.info(f'Deleting old {container_name} container because its status is {existing.status}')
+                        logging.info(
+                            f'Deleting old {container_name} container because its status is {existing.status}')
                         existing.remove(force=True)
-                        self.run_container_from_installer(image, detach, container_name, volumes, command, container_env)
+                        self.run_container_from_installer(image, detach,
+                                                          container_name,
+                                                          volumes, command,
+                                                          container_env)
                 except Exception as ee:
-                    raise Exception(f'Operation is already taking place and could not stop it: {str(e)} | {str(ee)}')
+                    raise Exception(
+                        f'Operation is already taking place and could not stop it: {str(e)} | {str(ee)}')
             else:
                 raise
 
@@ -355,19 +383,24 @@ class NuvlaBoxConnector(Connector):
         try:
             with timeout(timeout_after):
                 tries = 0
-                logging.info(f'Waiting {timeout_after} sec for NuvlaBox operation to finish...')
+                logging.info(
+                    f'Waiting {timeout_after} sec for NuvlaBox operation to finish...')
                 while True:
                     if tries > 3:
-                        raise Exception(f'Lost connection with the NuvlaBox Docker API at {self.docker_api_endpoint}')
+                        raise Exception(
+                            f'Lost connection with the NuvlaBox Docker API at {self.docker_api_endpoint}')
                     try:
-                        this_container = self.infer_docker_client().containers.get(container_name)
+                        this_container = self.infer_docker_client().containers.get(
+                            container_name)
                         if this_container.status == 'exited':
                             # trick to get rid of bash ASCII chars
                             try:
-                                result += re.sub(r'\[.*?;.*?m', '\n', this_container.logs().decode())
+                                result += re.sub(r'\[.*?;.*?m', '\n',
+                                                 this_container.logs().decode())
                             except:
                                 result += this_container.logs().decode()
-                            exit_code = this_container.wait().get('StatusCode', 0)
+                            exit_code = this_container.wait().get('StatusCode',
+                                                                  0)
                             break
                     except requests.exceptions.ConnectionError:
                         # the compute-api might be being recreated...keep trying
@@ -375,9 +408,11 @@ class NuvlaBoxConnector(Connector):
                         time.sleep(5)
                     time.sleep(1)
         except TimeoutError:
-            raise Exception(f'NuvlaBox operation timed out after {timeout_after} sec. Operation is incomplete!')
+            raise Exception(
+                f'NuvlaBox operation timed out after {timeout_after} sec. Operation is incomplete!')
         finally:
-            self.infer_docker_client().api.remove_container(container_name, force=True)
+            self.infer_docker_client().api.remove_container(container_name,
+                                                            force=True)
 
         return result, exit_code
 
@@ -401,7 +436,7 @@ class NuvlaBoxConnector(Connector):
         elif action.lower() in ['leave', 'force-new-cluster']:
             current_cluster_filter = f'nuvlabox-managers="{self.nuvlabox_id}" or nuvlabox-workers="{self.nuvlabox_id}"'
             current_clusters = self.api.search('nuvlabox-cluster',
-                                              filter=current_cluster_filter).resources
+                                               filter=current_cluster_filter).resources
 
             delete_clusters = []
             for cl in current_clusters:
@@ -410,7 +445,6 @@ class NuvlaBoxConnector(Connector):
                 if len(nuvlaboxes) == 1 and self.nuvlabox_id in nuvlaboxes:
                     delete_clusters.append(cl.id)
 
-            
             return delete_clusters
 
         return []
@@ -420,7 +454,8 @@ class NuvlaBoxConnector(Connector):
             self.api.delete(cluster_id)
         except:
             # we can ignore as it shall be cleanup up later on by the daily cleanup job
-            logging.exception(f'Cannot delete leftover NuvlaBox cluster {cluster_id}. Leaving it be')
+            logging.exception(
+                f'Cannot delete leftover NuvlaBox cluster {cluster_id}. Leaving it be')
             pass
 
     @should_connect
@@ -460,15 +495,19 @@ class NuvlaBoxConnector(Connector):
         # cluster-action
         cluster_action = cluster_params_from_payload.get('cluster-action')
         if not cluster_action:
-            raise Exception(f'Cluster operations need a cluster action: {cluster_params_from_payload}')
+            raise Exception(
+                f'Cluster operations need a cluster action: {cluster_params_from_payload}')
 
         if cluster_action.startswith('join-'):
             token = cluster_params_from_payload.get('token')
-            join_address = cluster_params_from_payload.get('nuvlabox-manager-status', {}).get('cluster-join-address')
+            join_address = cluster_params_from_payload.get(
+                'nuvlabox-manager-status', {}).get('cluster-join-address')
             if not token or not join_address:
-                raise Exception(f'Cluster join requires both a token and address: {cluster_params_from_payload}')
+                raise Exception(
+                    f'Cluster join requires both a token and address: {cluster_params_from_payload}')
 
-            command += [f'--{cluster_action}={token}', f'--join-address={join_address}']
+            command += [f'--{cluster_action}={token}',
+                        f'--join-address={join_address}']
         else:
             command.append(f'--{cluster_action}')
 
@@ -478,15 +517,19 @@ class NuvlaBoxConnector(Connector):
                 command.append(f"--advertise-addr={advertise_addr}")
 
         # 3rd - run the Docker command
-        image = self.pull_docker_image(self.installer_image_name, f'{self.installer_base_name}:master')
-        logging.info(f'Running NuvlaBox clustering via container from {image}, with args {" ".join(command)}')
+        image = self.pull_docker_image(self.installer_image_name,
+                                       f'{self.installer_base_name}:master')
+        logging.info(
+            f'Running NuvlaBox clustering via container from {image}, with args {" ".join(command)}')
 
-        self.run_container_from_installer(image, detach, container_name, volumes, command, [])
+        self.run_container_from_installer(image, detach, container_name,
+                                          volumes, command, [])
 
         # 4th - monitor the op, waiting for it to finish to capture the output
-        timeout_after = 600     # 10 minutes
+        timeout_after = 600  # 10 minutes
         result = f'[NuvlaBox cluster action {cluster_action}] '
-        wait_result, exit_code = self.wait_for_container_output(container_name, timeout_after)
+        wait_result, exit_code = self.wait_for_container_output(container_name,
+                                                                timeout_after)
         result += wait_result
 
         self.job.set_progress(95)
@@ -533,29 +576,38 @@ class NuvlaBoxConnector(Connector):
 
         install_params_from_payload = json.loads(self.job.get('payload', '{}'))
 
-        install_params_from_nb_status = self.nuvlabox_status.get('installation-parameters', {})
+        install_params_from_nb_status = self.nuvlabox_status.get(
+            'installation-parameters', {})
 
         if not install_params_from_nb_status:
-            mandatory_update_args = ['project-name', 'working-dir', 'config-files']
+            mandatory_update_args = ['project-name', 'working-dir',
+                                     'config-files']
             mandatory_update_args.sort()
             payload_keys = list(install_params_from_payload.keys())
             payload_keys.sort()
-            if mandatory_update_args != list(filter(lambda x: x in mandatory_update_args, payload_keys)):
+            if mandatory_update_args != list(
+                    filter(lambda x: x in mandatory_update_args, payload_keys)):
                 raise Exception(f'Installation parameters are required, '
                                 f'but are not present in NuvlaBox status {self.nuvlabox_status.get("id")}, '
                                 f'nor given via the operation payload attribute')
 
-        working_dir = install_params_from_payload.get("working-dir", install_params_from_nb_status["working-dir"])
+        working_dir = install_params_from_payload.get("working-dir",
+                                                      install_params_from_nb_status[
+                                                          "working-dir"])
         command.append(f'--working-dir={working_dir}')
         volumes[working_dir] = {
             'bind': '/rootfs-working-dir',
             'mode': 'ro'
         }
 
-        project_name = install_params_from_payload.get("project-name", install_params_from_nb_status["project-name"])
+        project_name = install_params_from_payload.get("project-name",
+                                                       install_params_from_nb_status[
+                                                           "project-name"])
         command.append(f'--project={project_name}')
 
-        config_files = install_params_from_payload.get("config-files", install_params_from_nb_status["config-files"])
+        config_files = install_params_from_payload.get("config-files",
+                                                       install_params_from_nb_status[
+                                                           "config-files"])
         compose_files = ','.join(config_files)
         command.append(f'--compose-files={compose_files}')
 
@@ -580,7 +632,8 @@ class NuvlaBoxConnector(Connector):
             updater_env = {}
 
         current_version = self.nuvlabox_status.get('nuvlabox-engine-version',
-                                                   install_params_from_payload.get('current-version'))
+                                                   install_params_from_payload.get(
+                                                       'current-version'))
 
         if current_version:
             command.append(f'--current-version={current_version}')
@@ -590,14 +643,18 @@ class NuvlaBoxConnector(Connector):
 
         # 3rd - run the Docker command
 
-        logging.info(f'Running NuvlaBox update container {self.installer_image_name}')
-        image = self.pull_docker_image(self.installer_image_name, f'{self.installer_base_name}:master')
-        self.run_container_from_installer(image, detach, container_name, volumes, command, updater_env)
+        logging.info(
+            f'Running NuvlaBox update container {self.installer_image_name}')
+        image = self.pull_docker_image(self.installer_image_name,
+                                       f'{self.installer_base_name}:master')
+        self.run_container_from_installer(image, detach, container_name,
+                                          volumes, command, updater_env)
 
         # 4th - monitor the update, waiting for it to finish to capture the output
-        timeout_after = 600     # 10 minutes
+        timeout_after = 600  # 10 minutes
         result = f'[NuvlaBox Engine update to {target_release}] '
-        wait_result, exit_code = self.wait_for_container_output(container_name, timeout_after)
+        wait_result, exit_code = self.wait_for_container_output(container_name,
+                                                                timeout_after)
         result += wait_result
 
         self.job.set_progress(95)
@@ -622,7 +679,8 @@ class NuvlaBoxConnector(Connector):
         """
 
         if payload:
-            self.api.operation(self.nuvlabox_resource, "commission", data=payload)
+            self.api.operation(self.nuvlabox_resource, "commission",
+                               data=payload)
 
     def list(self):
         """
@@ -631,7 +689,8 @@ class NuvlaBoxConnector(Connector):
         :return: list of objects
         """
         filter_label = 'nuvlabox.component=True'
-        return self.infer_docker_client().containers.list(filters={'label': filter_label})
+        return self.infer_docker_client().containers.list(
+            filters={'label': filter_label})
 
     def get_all_nuvlabox_components(self, names: list) -> list:
         """
@@ -641,8 +700,9 @@ class NuvlaBoxConnector(Connector):
         :return: list of objects
         """
         filter_label = 'nuvlabox.component=True'
-        return self.infer_docker_client().containers.list(filters={'label': filter_label, 'name': names},
-                                                          all=True)
+        return self.infer_docker_client().containers.list(
+            filters={'label': filter_label, 'name': names},
+            all=True)
 
     @staticmethod
     def extract_last_timestamp(result):
@@ -655,41 +715,17 @@ class NuvlaBoxConnector(Connector):
         return timestamp[:23] + 'Z' if timestamp else ''
 
     @should_connect
-    def log(self, resource_log) -> (list, str):
-        self.setup_ssl_credentials()
+    def log(self, component: str, since: datetime, lines: int) -> str:
         try:
-            # remove milliseconds from server timestamp
-            last_timestamp = datetime.datetime.fromisoformat(resource_log.get('last-timestamp', '').split('.')[0])
-        except ValueError:
-            last_timestamp = None
-
-        try:
-            since = datetime.datetime.fromisoformat(resource_log.get('since', '').split('.')[0])
-        except ValueError:
-            since = None
-
-        nuvlabox_components = self.get_all_nuvlabox_components(resource_log['components']) if resource_log['components'] else self.list()
-
-        tmp_since = last_timestamp or since
-
-        lines = resource_log.get('lines', 100)
-
-        logs = {}
-        new_last_timestamp = ''
-        for component in nuvlabox_components:
-            try:
-                component_logs = component.logs(timestamps=True,
-                                                tail=lines,
-                                                since=tmp_since if tmp_since else 1).decode().strip()
-            except docker.errors.InvalidArgument as e:
-                logging.error(f'Cannot fetch {component.name} log with the provided options: {str(e)}')
-                component_logs = ''
-
-            component_log_lines = component_logs.splitlines()
-            tmp_last_timestamp = self.extract_last_timestamp(component_log_lines)
-            if tmp_last_timestamp > new_last_timestamp:
-                new_last_timestamp = tmp_last_timestamp
-
-            logs[component.name] = component_log_lines
-
-        return logs, new_last_timestamp
+            self.setup_ssl_credentials()
+            container = self.infer_docker_client().containers.get(component)
+            return container.logs(timestamps=True,
+                                  tail=lines,
+                                  since=since)
+        except docker.errors.InvalidArgument as e:
+            logging.error(
+                f'Cannot fetch {component} log with the provided options:'
+                f' {str(e)}')
+        except Exception as e:
+            logging.error(f'Cannot fetch {component} log: {str(e)}')
+        return ''
