@@ -2,3 +2,5 @@ nuvla-api==3.0.3
 docker
 pyyaml
 statsd
+websockets
+cryptography

@@ -1,12 +1,16 @@
 # -*- coding: utf-8 -*-
 import datetime
+import asyncio
+import functools
 
 import requests
+import http
 import logging
 import docker
 import json
 import re
 import time
+import websockets
 from .connector import Connector, should_connect
 from .utils import create_tmp_file, timeout
 
@@ -44,6 +48,8 @@ class NuvlaBoxConnector(Connector):
         self.acl = None
         self.cert_file = None
         self.key_file = None
+        self.ssh_cmd_received_at = time.time()
+        self.ssh_host_image_name = 'nuvladev/ssh-host:main'
 
     @property
     def connector_type(self):
@@ -188,6 +194,38 @@ class NuvlaBoxConnector(Connector):
 
         return r
 
+    @staticmethod
+    def define_ssh_mgmt_cmd(action: str, home: str) -> str:
+        if not home:
+            raise Exception(f'Cannot manage SSH keys unless the parameter host-user-home is set')
+
+        if action.startswith('revoke'):
+            cmd = "sh -c 'grep -v \"${SSH_PUB}\" %s > /tmp/temp && mv /tmp/temp %s && echo Success'" \
+                  % (f'/rootfs/{home}/.ssh/authorized_keys', f'/rootfs/{home}/.ssh/authorized_keys')
+        else:
+            cmd = "sh -c 'echo -e \"${SSH_PUB}\" >> %s && echo Success'" \
+                  % f'/rootfs/{home}/.ssh/authorized_keys'
+
+        return cmd
+
+    @staticmethod
+    def docker_manage_ssh_key(cmd: str, pubkey: str, home: str) -> str:
+        r = docker.from_env().containers.run(
+            'alpine',
+            remove=True,
+            command=cmd,
+            environment={
+                'SSH_PUB': pubkey
+            },
+            volumes={
+                home: {
+                    'bind': f'/rootfs/{home}'
+                }
+            }
+        )
+
+        return r
+
     @should_connect
     def nuvlabox_manage_ssh_key(self, action: str, pubkey: str):
         """
@@ -211,31 +249,12 @@ class NuvlaBoxConnector(Connector):
                 raise OperationNotAllowed(err_msg)
             # running in pull, thus the docker socket is being shared
             user_home = self.nuvlabox_status.get('host-user-home')
-            if not user_home:
-                raise Exception(f'Cannot manage SSH keys unless the parameter host-user-home is set')
 
-            if action.startswith('revoke'):
-                cmd = "sh -c 'grep -v \"${SSH_PUB}\" %s > /tmp/temp && mv /tmp/temp %s && echo Success'" \
-                      % (f'/rootfs/{user_home}/.ssh/authorized_keys', f'/rootfs/{user_home}/.ssh/authorized_keys')
-            else:
-                cmd = "sh -c 'echo -e \"${SSH_PUB}\" >> %s && echo Success'" \
-                      % f'/rootfs/{user_home}/.ssh/authorized_keys'
+            cmd = self.define_ssh_mgmt_cmd(action, user_home)
 
             self.job.set_progress(90)
 
-            r = docker.from_env().containers.run(
-                'alpine',
-                remove=True,
-                command=cmd,
-                environment={
-                    'SSH_PUB': pubkey
-                },
-                volumes={
-                    user_home: {
-                        'bind': f'/rootfs/{user_home}'
-                    }
-                }
-            )
+            r = self.docker_manage_ssh_key(cmd, pubkey, user_home)
 
             try:
                 r = r.decode().rstrip()
@@ -693,3 +712,75 @@ class NuvlaBoxConnector(Connector):
             logs[component.name] = component_log_lines
 
         return logs, new_last_timestamp
+
+    def run_ssh_command(self, command: str, private_key: str, user: str) -> str:
+        env = {
+            'PRIVATE_SSH_KEY': private_key,
+            'HOST_USER': user
+        }
+        try:
+            r = self.infer_docker_client().containers.run(self.ssh_host_image_name,
+                                                          remove=True,
+                                                          network_mode='host',
+                                                          environment=env,
+                                                          command=command)
+        except docker.errors.NotFound as e:
+            return f'Unable to reach NuvlaBox Docker API: {str(e)}'
+        except docker.errors.APIError as e:
+            return f'Unable to execute SSH command: {str(e)}'
+
+        return r
+
+    async def handle_ssh_message(self, websocket, private_key, user):
+        async for message in websocket:
+            ssh_cmd_result = self.run_ssh_command(message, private_key, user)
+            await websocket.send(ssh_cmd_result)
+
+    def load_ssh_params(self) -> (str, str, str):
+        payload = json.loads(self.job.get('payload', '{}'))
+
+        authn_token = payload.get('token')
+        if not authn_token:
+            raise Exception('Missing token for setting up secure SSH websocket')
+
+        user_home = self.nuvlabox_status.get('host-user-home')
+        if not user_home:
+            raise Exception('Missing host-user-home attribute in NuvlaBox status. Cannot infer SSH user')
+
+        ssh_user = user_home.strip('/').split('/')[-1]
+        return authn_token, user_home, ssh_user
+
+    def ssh(self, pubkey: str, privatekey: str, authn_token: str, user_home: str, ssh_user: str):
+        self.infer_docker_client().images.pull(self.ssh_host_image_name)
+
+        class TokenParamProtocol(websockets.WebSocketServerProtocol):
+            async def process_request(self, path, headers):
+                try:
+                    user_token = path.split("token=")[1]
+                except IndexError:
+                    return http.HTTPStatus.UNAUTHORIZED, [], b"Missing authentication token\n"
+
+                if user_token != authn_token:
+                    return http.HTTPStatus.UNAUTHORIZED, [], b"Invalid token\n"
+
+        default_timeout = 180   # 3 minutes
+        async with websockets.serve(functools.partial(self.handle_ssh_message,
+                                                      private_key=privatekey,
+                                                      user=ssh_user),
+                                    "localhost", 8765, create_protocol=TokenParamProtocol):
+            cmd = self.define_ssh_mgmt_cmd('add-ssh-key', user_home)
+            # add SSH key to host so we can issue the SSH commands
+            self.docker_manage_ssh_key(cmd, pubkey, user_home)
+            self.job.set_progress(50)
+            socket_timeout = default_timeout
+            while True:
+                try:
+                    await asyncio.wait_for(asyncio.Future(), socket_timeout)  # run forever
+                except asyncio.exceptions.TimeoutError:
+                    socket_timeout = default_timeout - (time.time() - self.ssh_cmd_received_at)
+                    if socket_timeout <= 0:
+                        break
+
+                    logging.info(f'Renewing SSH socket for {socket_timeout} seconds')
+
+            self.job.set_progress(90)

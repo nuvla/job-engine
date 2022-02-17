@@ -8,3 +8,5 @@ docker
 pyyaml
 statsd
 stripe==2.54.0
+websockets
+cryptography
