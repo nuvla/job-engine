@@ -762,7 +762,7 @@ class NuvlaBoxConnector(Connector):
         ssh_user = user_home.strip('/').split('/')[-1]
         return authn_token, user_home, ssh_user
 
-    async def ssh(self, pubkey: str, privatekey: str, authn_token: str, user_home: str, ssh_user: str):
+    async def ssh(self, privatekey: str, pubkey: str, authn_token: str, user_home: str, ssh_user: str):
         self.infer_docker_client().images.pull(self.ssh_host_image_name)
 
         class TokenParamProtocol(websockets.WebSocketServerProtocol):
