@@ -100,4 +100,17 @@ class TestResourceLogFetchJob(unittest.TestCase):
     @patch.object(ImplementResourceLogFetchJob, 'fetch_resource_log')
     def test_do_work(self, mock_fetch_resource_log):
         self.obj.do_work()
-        self.assertTrue(mock_fetch_resource_log.called)
+        mock_fetch_resource_log.assert_called()
+
+    @patch('nuvla.job.actions.resource_log_fetch.build_update_resource_log')
+    @patch.object(ImplementResourceLogFetchJob, 'get_components_logs')
+    @patch.object(ImplementResourceLogFetchJob, 'update_resource_log')
+    def test_fetch_log(self,
+                       mock_update_resource_log,
+                       mock_get_components_logs,
+                       mock_build_update_resource_log):
+        mock_build_update_resource_log.return_value = {}
+        self.obj.target_id = '1'
+        self.obj.fetch_log()
+        mock_get_components_logs.assert_called()
+        mock_update_resource_log.assert_called_once_with('1', {})

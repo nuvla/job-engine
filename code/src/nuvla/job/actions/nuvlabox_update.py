@@ -3,7 +3,7 @@
 import logging
 
 from ..actions import action
-from ...connector import nuvlabox_connector as NB
+from ...connector import nuvlabox as NB
 
 
 @action('nuvlabox_update', True)
@@ -17,7 +17,7 @@ class NBUpdateJob(object):
         nuvlabox_id = self.job['target-resource']['href']
 
         logging.info('Updating NuvlaBox {}.'.format(nuvlabox_id))
-        connector = NB.NuvlaBoxConnector(api=self.api, nuvlabox_id=nuvlabox_id, job=self.job)
+        connector = NB.NuvlaBox(api=self.api, nuvlabox_id=nuvlabox_id, job=self.job)
 
         # IMPORTANT BIT THAT MUST CHANGE FOR EVERY NUVLABOX API ACTION
         # in this case, we need to fetch the target NB release

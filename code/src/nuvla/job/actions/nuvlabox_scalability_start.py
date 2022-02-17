@@ -4,7 +4,7 @@ import json
 import logging
 
 from ..actions import action
-from nuvla.connector import nuvlabox_connector as NB
+from nuvla.connector import nuvlabox as NB
 
 
 action_name = 'nuvlabox_scalability_start'
@@ -41,7 +41,7 @@ class NuvlaBoxScalabilityStartJob(object):
     def start_scalability_test(self):
         size, module_id, vpn_server_id, credential_id, name_identifier, release, share_with = self.check_job_attributes()
 
-        nb_connector = NB.NuvlaBoxConnector(api=self.api, job=self.job)
+        nb_connector = NB.NuvlaBox(api=self.api, job=self.job)
 
         nb_ids = nb_connector.create_nuvlaboxes(size, vpn_server_id, name_identifier, int(release.split('.')[0]), share_with)
 

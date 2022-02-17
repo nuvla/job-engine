@@ -1,26 +1,27 @@
 # -*- coding: utf-8 -*-
 import re
 import json
-import logging
 import yaml
+import logging
+from datetime import datetime
 from tempfile import TemporaryDirectory
 from .utils import execute_cmd, create_tmp_file, generate_registry_config, join_stderr_stdout
 from .connector import Connector, should_connect
 
-log = logging.getLogger('docker_compose_cli_connector')
+log = logging.getLogger('docker_compose')
 
 
 def instantiate_from_cimi(api_infrastructure_service, api_credential):
-    return DockerComposeCliConnector(
+    return DockerCompose(
         cert=api_credential.get('cert').replace("\\n", "\n"),
         key=api_credential.get('key').replace("\\n", "\n"),
         endpoint=api_infrastructure_service.get('endpoint'))
 
 
-class DockerComposeCliConnector(Connector):
+class DockerCompose(Connector):
 
     def __init__(self, **kwargs):
-        super(DockerComposeCliConnector, self).__init__(**kwargs)
+        super(DockerCompose, self).__init__(**kwargs)
 
         self.cert = self.kwargs.get('cert')
         self.key = self.kwargs.get('key')
@@ -127,9 +128,24 @@ class DockerComposeCliConnector(Connector):
         pass
 
     @should_connect
-    def log(self, list_opts):
-        cmd = self.build_cmd_line(['logs'] + list_opts, binary='docker')
-        return self._execute_clean_command(cmd, sterr_in_stdout=True).stdout
+    def _try_get_service_id(self, project_name, service):
+        cmd = self.build_cmd_line(['-p', project_name, 'ps', '-q', service])
+        try:
+            return self._execute_clean_command(cmd).stdout.strip()
+        except Exception:
+            return None
+
+    @should_connect
+    def log(self, component: str, since: datetime, lines: int,
+            deployment_uuid: str) -> str:
+        service_id = self._try_get_service_id(deployment_uuid, component)
+        if service_id:
+            since_opt = ['--since', since.isoformat()] if since else []
+            list_opts = ['-t', '--tail', str(lines)] + since_opt + [service_id]
+            cmd = self.build_cmd_line(['logs'] + list_opts, binary='docker')
+            return execute_cmd(cmd).stdout
+        else:
+            return ''
 
     @staticmethod
     def _get_image(container_info):

@@ -2,12 +2,10 @@
 
 import logging
 
-from ...connector import docker_connector, docker_cli_connector, \
-    docker_compose_cli_connector, kubernetes_cli_connector
 from nuvla.api.resources import Deployment
 from ..actions import action
-from .deployment_start import DeploymentBase, \
-    application_params_update, get_env, initialize_connector
+from .utils.deployment_utils import get_connector_name, get_connector_class, \
+    initialize_connector, DeploymentBase, get_env, application_params_update
 
 action_name = 'update_deployment'
 
@@ -50,32 +48,13 @@ class DeploymentUpdateJob(DeploymentBase):
     def get_update_params_kubernetes(self, deployment, registries_auth):
         return self.get_update_params_docker_stack(deployment, registries_auth)
 
-    @staticmethod
-    def get_connector_name(deployment):
-        if Deployment.is_component(deployment):
-            return 'docker_service'
-        elif Deployment.is_application(deployment):
-            is_compose = Deployment.is_compatibility_docker_compose(deployment)
-            return 'docker_compose' if is_compose else 'docker_stack'
-        elif Deployment.is_application_kubernetes(deployment):
-            return 'kubernetes'
-
-    @staticmethod
-    def get_connector_class(connector_name):
-        return {
-            'docker_service': docker_connector,
-            'docker_stack'  : docker_cli_connector,
-            'docker_compose': docker_compose_cli_connector,
-            'kubernetes'    : kubernetes_cli_connector
-        }[connector_name]
-
     def handle_deployment(self):
         log.info('Job update_deployment started for {}.'.format(self.deployment_id))
         self.job.set_progress(10)
 
         deployment      = self.deployment.data
-        connector_name  = self.get_connector_name(deployment)
-        connector_class = self.get_connector_class(connector_name)
+        connector_name  = get_connector_name(deployment)
+        connector_class = get_connector_class(connector_name)
         registries_auth = self.private_registries_auth(deployment)
         connector       = initialize_connector(connector_class, self.job, self.deployment)
 
@@ -104,4 +83,4 @@ class DeploymentUpdateJob(DeploymentBase):
         return 0
 
     def do_work(self):
-        return self.try_handle_raise_exception()
+        return self.try_handle_raise_exception(log)

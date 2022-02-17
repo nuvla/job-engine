@@ -2,7 +2,7 @@
 
 import logging
 
-from ...connector.docker_compose_cli_connector import DockerComposeCliConnector
+from ...connector.docker_compose import DockerCompose
 from ..actions import action
 
 action_name = 'validate-docker-compose'
@@ -41,8 +41,8 @@ class ApplicationDockerComposeValidate(object):
         self.job.set_progress(10)
 
         try:
-            DockerComposeCliConnector.config(docker_compose=module['content']['docker-compose'],
-                                             env=self.get_env_to_mute_undefined(module['content']))
+            DockerCompose.config(docker_compose=module['content']['docker-compose'],
+                                 env=self.get_env_to_mute_undefined(module['content']))
             self.api.edit(module_id, {'valid': True,
                                       'validation-message': 'Docker-compose valid.'})
         except Exception as ex:

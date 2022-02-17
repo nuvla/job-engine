@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 from ..actions import action
-from ...connector import nuvlabox_connector as NB
+from ...connector import nuvlabox as NB
 
 
 @action('nuvlabox_cluster', True)
@@ -18,7 +18,7 @@ class NBClusterJob(object):
     def nuvlabox_cluster(self):
         nuvlabox_id = self.job['target-resource']['href']
 
-        connector = NB.NuvlaBoxConnector(api=self.api, nuvlabox_id=nuvlabox_id, job=self.job)
+        connector = NB.NuvlaBox(api=self.api, nuvlabox_id=nuvlabox_id, job=self.job)
 
         # IMPORTANT BIT THAT MUST CHANGE FOR EVERY NUVLABOX API ACTION
 

@@ -3,7 +3,7 @@
 from abc import ABC, abstractmethod
 from typing import Optional, List
 from datetime import datetime
-from ..util import parse_cimi_date
+from ...util import parse_cimi_date
 
 
 def get_last_line_timestamp(lines: Optional[List[str]]) -> Optional[str]:
@@ -34,24 +34,28 @@ class ResourceLogFetchJob(ABC):
 
     def __init__(self, _, job):
         self._log = None
+        self._connector = None
         self.job = job
         self.api = job.api
-        self.id = self.job['target-resource']['href']
-        self.resource_log = self.get_resource_log(self.id)
+        self.target_id = self.job['target-resource']['href']
+        self.resource_log = self.get_resource_log(self.target_id)
 
     @property
     @abstractmethod
     def log(self):
         pass
 
+    @property
     @abstractmethod
-    def all_components(self):
+    def connector(self):
         pass
 
-    @abstractmethod
+    def all_components(self):
+        return []
+
     def get_component_logs(self, component: str, since: datetime,
                            lines: int) -> str:
-        pass
+        return self.connector.log(component, since, lines)
 
     def get_resource_log(self, log_id: str) -> dict:
         return self.api.get(log_id, select='id, parent, components, since, line'
@@ -60,16 +64,19 @@ class ResourceLogFetchJob(ABC):
     def update_resource_log(self, log_id: str, resource_log: dict) -> None:
         self.api.edit(log_id, resource_log)
 
-    def get_list_components(self, components: List[str]) -> List[str]:
-        return components if components else self.all_components()
+    def get_list_components(self) -> List[str]:
+        cs = self.resource_log['components']
+        return cs if cs else self.all_components()
 
-    def get_components_logs(self, components: List[str], since: datetime,
-                            lines: int) -> dict:
+    def get_components_logs(self) -> dict:
+        since = self.get_since()
+        components = self.get_list_components()
+        lines = self.resource_log.get('lines', 200)
         log = {}
         for component in components:
             try:
                 component_logs = self.get_component_logs(
-                    component, since, lines).splitlines()
+                    component, since, lines).strip().splitlines()
             except Exception as e:
                 self.log.error(
                     f'Cannot fetch {component} log with the provided '
@@ -84,24 +91,23 @@ class ResourceLogFetchJob(ABC):
         return parse_cimi_date(t) if t else datetime.utcfromtimestamp(0)
 
     def fetch_log(self):
-        lines = self.resource_log.get('lines', 200)
-        components = self.resource_log['components']
-        log = self.get_components_logs(
-            self.get_list_components(components),
-            self.get_since(), lines)
-        self.update_resource_log(self.id, build_update_resource_log(log))
+        self.update_resource_log(
+            self.target_id, build_update_resource_log(
+                self.get_components_logs()))
 
     def fetch_resource_log(self):
-        self.log.info(f'Job started for {self.id}.')
+        self.log.info(f'Job started for {self.target_id}.')
         self.job.set_progress(10)
         try:
             self.fetch_log()
         except Exception as e1:
-            self.log.error(f'Failed to {self.job["action"]} {self.id}: {e1}')
+            self.log.error(
+                f'Failed to {self.job["action"]} {self.target_id}: {e1}')
             try:
                 self.job.set_status_message(repr(e1))
             except Exception as e2:
-                self.log.error(f'Failed to set error state for {self.id}: {e2}')
+                self.log.error(
+                    f'Failed to set error state for {self.target_id}: {e2}')
             raise e1
         return 0
 

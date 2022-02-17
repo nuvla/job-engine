@@ -26,7 +26,7 @@ Single replica task spawns a new container.
 
 """
 
-log = logging.getLogger('docker_connector')
+log = logging.getLogger('docker_service')
 
 bytes_per_mib = 1048576
 
@@ -40,9 +40,9 @@ def tree():
 
 
 def instantiate_from_cimi(api_infrastructure_service, api_credential):
-    return DockerConnector(cert=api_credential.get('cert').replace("\\n", "\n"),
-                           key=api_credential.get('key').replace("\\n", "\n"),
-                           endpoint=api_infrastructure_service.get('endpoint'))
+    return DockerService(cert=api_credential.get('cert').replace("\\n", "\n"),
+                         key=api_credential.get('key').replace("\\n", "\n"),
+                         endpoint=api_infrastructure_service.get('endpoint'))
 
 
 def convert_filters(filters):
@@ -59,7 +59,7 @@ def convert_filters(filters):
     return json.dumps(result)
 
 
-class DockerConnector(Connector):
+class DockerService(Connector):
 
     @staticmethod
     def service_image_digest(service):
@@ -85,7 +85,7 @@ class DockerConnector(Connector):
         return s_created_at > s_updated_at and s_created_at or s_updated_at
 
     def __init__(self, **kwargs):
-        super(DockerConnector, self).__init__(**kwargs)
+        super(DockerService, self).__init__(**kwargs)
 
         # Mandatory kwargs
         self.cert = self.kwargs['cert']
@@ -156,7 +156,7 @@ class DockerConnector(Connector):
             service['TaskTemplate']['ContainerSpec']['Dir'] = working_dir
 
         if env:
-            service['TaskTemplate']['ContainerSpec']['Env'] = DockerConnector.format_env(env)
+            service['TaskTemplate']['ContainerSpec']['Env'] = DockerService.format_env(env)
 
         if cpus:
             nano_cpus_soft = int(float(cpus) * as_nanos)
@@ -188,10 +188,10 @@ class DockerConnector(Connector):
         if args:
             service['TaskTemplate']['ContainerSpec']['args'] = args
 
-        service['EndpointSpec']['Ports'] = DockerConnector.construct_ports_mapping(ports_opt)
+        service['EndpointSpec']['Ports'] = DockerService.construct_ports_mapping(ports_opt)
 
         service['TaskTemplate']['ContainerSpec']['Mounts'] = \
-            DockerConnector.construct_mounts(mounts_opt)
+            DockerService.construct_mounts(mounts_opt)
 
         return service
 

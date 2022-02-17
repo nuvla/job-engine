@@ -2,24 +2,26 @@
 import re
 import json
 import logging
+from datetime import datetime
 from tempfile import TemporaryDirectory
-from .utils import execute_cmd, join_stderr_stdout, create_tmp_file, generate_registry_config
+from .utils import execute_cmd, join_stderr_stdout, create_tmp_file, \
+    generate_registry_config
 from .connector import Connector, should_connect
 
-log = logging.getLogger('docker_cli_connector')
+log = logging.getLogger('docker_stack')
 
 
 def instantiate_from_cimi(api_infrastructure_service, api_credential):
-    return DockerCliConnector(
+    return DockerStack(
         cert=api_credential.get('cert').replace("\\n", "\n"),
         key=api_credential.get('key').replace("\\n", "\n"),
         endpoint=api_infrastructure_service.get('endpoint'))
 
 
-class DockerCliConnector(Connector):
+class DockerStack(Connector):
 
     def __init__(self, **kwargs):
-        super(DockerCliConnector, self).__init__(**kwargs)
+        super(DockerStack, self).__init__(**kwargs)
 
         # Mandatory kwargs
         self.cert = self.kwargs['cert']
@@ -46,8 +48,10 @@ class DockerCliConnector(Connector):
             self.key_file = None
 
     def build_cmd_line(self, list_cmd):
-        return ['docker', '-H', self.endpoint, '--tls', '--tlscert', self.cert_file.name,
-                '--tlskey', self.key_file.name, '--tlscacert', self.cert_file.name] \
+        return ['docker', '-H', self.endpoint, '--tls', '--tlscert',
+                self.cert_file.name,
+                '--tlskey', self.key_file.name, '--tlscacert',
+                self.cert_file.name] \
                + list_cmd
 
     @should_connect
@@ -80,7 +84,8 @@ class DockerCliConnector(Connector):
 
             cmd_deploy = self.build_cmd_line(
                 ['--config', tmp_dir_name, 'stack', 'deploy',
-                 '--with-registry-auth', '--prune', '-c', compose_file_path, stack_name])
+                 '--with-registry-auth', '--prune', '-c', compose_file_path,
+                 stack_name])
 
             result = join_stderr_stdout(execute_cmd(cmd_deploy, env=env))
 
@@ -104,9 +109,13 @@ class DockerCliConnector(Connector):
         return execute_cmd(cmd).stdout
 
     @should_connect
-    def log(self, list_opts):
+    def log(self, component: str, since: datetime, lines: int,
+            deployment_uuid: str) -> str:
+        since_opt = ['--since', since.isoformat()] if since else []
+        list_opts = ['-t', '--no-trunc', '--tail', str(lines)] + since_opt + [
+            f'{deployment_uuid}_{component}']
         cmd = self.build_cmd_line(['service', 'logs'] + list_opts)
-        return execute_cmd(cmd, sterr_in_stdout=True).stdout
+        return execute_cmd(cmd).stdout
 
     @staticmethod
     def ports_info(port):
@@ -116,11 +125,14 @@ class DockerCliConnector(Connector):
         return protocol, internal_port, external_port
 
     def resolve_task_host_ip(self, task_id):
-        json_task = json.loads(execute_cmd(self.build_cmd_line(['inspect', task_id])).stdout)
+        json_task = json.loads(
+            execute_cmd(self.build_cmd_line(['inspect', task_id])).stdout)
         node_id = json_task[0]['NodeID'] if len(json_task) > 0 else None
         if node_id:
-            json_node = json.loads(execute_cmd(self.build_cmd_line(['node', 'inspect', node_id])).stdout)
-            return json_node[0].get('Status', {}).get('Addr') if len(json_node) > 0 else ''
+            json_node = json.loads(execute_cmd(
+                self.build_cmd_line(['node', 'inspect', node_id])).stdout)
+            return json_node[0].get('Status', {}).get('Addr') if len(
+                json_node) > 0 else ''
         return ''
 
     def _extract_service_info(self, stack_name, service):
@@ -139,20 +151,24 @@ class DockerCliConnector(Connector):
         service_info['replicas.running'] = replicas_running
         ports = filter(None, service_json['Ports'].split(','))
         for port in ports:
-            protocol, internal_port, external_port = DockerCliConnector.ports_info(port)
-            service_info['{}.{}'.format(protocol, internal_port)] = external_port
+            protocol, internal_port, external_port = DockerStack.ports_info(
+                port)
+            service_info[
+                '{}.{}'.format(protocol, internal_port)] = external_port
 
         # Check if service has host ports published
-        cmd = self.build_cmd_line(['service', 'ps', '--filter', 'desired-state=running',
-                                   '--format', '{{ json . }}', service_id])
-        tasks = [json.loads(task_line) for task_line in execute_cmd(cmd).stdout.splitlines()]
+        cmd = self.build_cmd_line(
+            ['service', 'ps', '--filter', 'desired-state=running',
+             '--format', '{{ json . }}', service_id])
+        tasks = [json.loads(task_line) for task_line in
+                 execute_cmd(cmd).stdout.splitlines()]
         for task_json in tasks:
             task_ports = filter(None, task_json['Ports'].split(','))
             task_id = task_json['ID']
             task_replica_number = task_json['Name'].split('.')[-1]
             for task_port in task_ports:
                 task_protocol, task_internal_port, task_external_port = \
-                    DockerCliConnector.ports_info(task_port)
+                    DockerStack.ports_info(task_port)
                 host_ip = self.resolve_task_host_ip(task_id)
                 service_info['{}.{}.{}'.format(
                     task_replica_number, task_protocol, task_internal_port)] = \
@@ -183,7 +199,8 @@ class DockerCliConnector(Connector):
         pass
 
     def extract_vm_ip(self, services):
-        return re.search('(?:http.*://)?(?P<host>[^:/ ]+)', self.endpoint).group('host')
+        return re.search('(?:http.*://)?(?P<host>[^:/ ]+)',
+                         self.endpoint).group('host')
 
     def extract_vm_ports_mapping(self, vm):
         pass

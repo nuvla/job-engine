@@ -3,7 +3,7 @@
 import logging,os
 
 from ..actions import action
-from ...connector import nuvlabox_connector as NB
+from ...connector import nuvlabox as NB
 
 
 @action('check_nuvlabox_api', True)
@@ -17,7 +17,7 @@ class NBCheckJob(object):
         nuvlabox_id = self.job['target-resource']['href']
 
         logging.info('Checking API for NuvlaBox {}.'.format(nuvlabox_id))
-        connector = NB.NuvlaBoxConnector(api=self.api, nuvlabox_id=nuvlabox_id, job=self.job)
+        connector = NB.NuvlaBox(api=self.api, nuvlabox_id=nuvlabox_id, job=self.job)
 
         # IMPORTANT BIT THAT MUST CHANGE FOR EVERY NUVLABOX API ACTION
         r = connector.start(method='get')

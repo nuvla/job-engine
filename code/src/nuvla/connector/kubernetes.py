@@ -5,25 +5,27 @@ import json
 import yaml
 import base64
 import logging
+import datetime
 from tempfile import TemporaryDirectory
-from .utils import execute_cmd, join_stderr_stdout, create_tmp_file, generate_registry_config
+from .utils import execute_cmd, join_stderr_stdout, create_tmp_file, \
+    generate_registry_config
 from .connector import Connector, should_connect
 
-log = logging.getLogger('kubernetes_cli_connector')
+log = logging.getLogger('kubernetes')
 
 
 def instantiate_from_cimi(api_infrastructure_service, api_credential):
-    return KubernetesCliConnector(
+    return Kubernetes(
         ca=api_credential.get('ca', '').replace("\\n", "\n"),
         cert=api_credential.get('cert', '').replace("\\n", "\n"),
         key=api_credential.get('key', '').replace("\\n", "\n"),
         endpoint=api_infrastructure_service.get('endpoint'))
 
 
-class KubernetesCliConnector(Connector):
+class Kubernetes(Connector):
 
     def __init__(self, **kwargs):
-        super(KubernetesCliConnector, self).__init__(**kwargs)
+        super(Kubernetes, self).__init__(**kwargs)
 
         # Mandatory kwargs
         self.ca = self.kwargs['ca']
@@ -64,7 +66,8 @@ class KubernetesCliConnector(Connector):
                + list_cmd
 
     @staticmethod
-    def _create_deployment_context(directory_path, stack_name, docker_compose, files,
+    def _create_deployment_context(directory_path, stack_name, docker_compose,
+                                   files,
                                    registries_auth):
         manifest_file_path = directory_path + '/manifest.yml'
         with open(manifest_file_path, 'w') as manifest_file:
@@ -89,22 +92,28 @@ class KubernetesCliConnector(Connector):
 
         if registries_auth:
             config = generate_registry_config(registries_auth)
-            config_b64 = base64.b64encode(config.encode('ascii')).decode('utf-8')
+            config_b64 = base64.b64encode(config.encode('ascii')).decode(
+                'utf-8')
             secret_registries_fn = 'secret-registries-credentials.yml'
-            secret_registries_path = os.path.join(directory_path, secret_registries_fn)
+            secret_registries_path = os.path.join(directory_path,
+                                                  secret_registries_fn)
             with open(secret_registries_path, 'w') as secret_registries_file:
                 secret_registries_data = {'apiVersion': 'v1',
                                           'kind': 'Secret',
-                                          'metadata': {'name': 'registries-credentials'},
-                                          'data': {'.dockerconfigjson': config_b64},
+                                          'metadata': {
+                                              'name': 'registries-credentials'},
+                                          'data': {
+                                              '.dockerconfigjson': config_b64},
                                           'type': 'kubernetes.io/dockerconfigjson'}
-                yaml.safe_dump(secret_registries_data, secret_registries_file, allow_unicode=True)
+                yaml.safe_dump(secret_registries_data, secret_registries_file,
+                               allow_unicode=True)
             kustomization_data.setdefault('resources', []) \
                 .append(secret_registries_fn)
 
         kustomization_file_path = directory_path + '/kustomization.yml'
         with open(kustomization_file_path, 'w') as kustomization_file:
-            yaml.safe_dump(kustomization_data, kustomization_file, allow_unicode=True)
+            yaml.safe_dump(kustomization_data, kustomization_file,
+                           allow_unicode=True)
 
     @should_connect
     def start(self, **kwargs):
@@ -112,16 +121,19 @@ class KubernetesCliConnector(Connector):
         env = kwargs['env']
         docker_compose = kwargs['docker_compose']
         envsubst_shell_format = ' '.join(['${}'.format(k) for k in env.keys()])
-        docker_compose_env_subs = execute_cmd(['envsubst', envsubst_shell_format],
-                                              env=env, input=docker_compose).stdout
+        docker_compose_env_subs = execute_cmd(
+            ['envsubst', envsubst_shell_format],
+            env=env, input=docker_compose).stdout
         registries_auth = kwargs['registries_auth']
         stack_name = kwargs['stack_name']
         files = kwargs['files']
 
         with TemporaryDirectory() as tmp_dir_name:
-            KubernetesCliConnector._create_deployment_context(tmp_dir_name, stack_name,
-                                                              docker_compose_env_subs, files,
-                                                              registries_auth)
+            Kubernetes._create_deployment_context(tmp_dir_name,
+                                                  stack_name,
+                                                  docker_compose_env_subs,
+                                                  files,
+                                                  registries_auth)
 
             cmd_deploy = self.build_cmd_line(['apply', '-k', tmp_dir_name])
 
@@ -150,7 +162,8 @@ class KubernetesCliConnector(Connector):
             return join_stderr_stdout(execute_cmd(cmd_stop))
         except Exception as ex:
             if 'NotFound' in ex.args[0] if len(ex.args) > 0 else '':
-                return 'namespace "{}" already stopped (not found)'.format(stack_name)
+                return 'namespace "{}" already stopped (not found)'.format(
+                    stack_name)
             else:
                 raise ex
 
@@ -161,9 +174,13 @@ class KubernetesCliConnector(Connector):
         pass
 
     @should_connect
-    def log(self, list_opts):
+    def log(self, component: str, since: datetime, lines: int,
+            deployment_uuid: str) -> str:
+        since_opt = ['--since-time', since.isoformat()] if since else []
+        list_opts = [component, '--timestamps=true', '--tail', str(lines),
+                     '--namespace', deployment_uuid] + since_opt
         cmd = self.build_cmd_line(['logs'] + list_opts)
-        return execute_cmd(cmd, sterr_in_stdout=True).stdout
+        return execute_cmd(cmd).stdout
 
     @staticmethod
     def _extract_service_info(kube_resource):
@@ -183,19 +200,23 @@ class KubernetesCliConnector(Connector):
                 if external_port:
                     internal_port = port['port']
                     protocol = port['protocol'].lower()
-                    service_info['{}.{}'.format(protocol, internal_port)] = str(external_port)
+                    service_info['{}.{}'.format(protocol, internal_port)] = str(
+                        external_port)
         return service_info
 
     def _stack_services(self, stack_name):
         cmd_services = self.build_cmd_line(['get', 'services', '--namespace',
                                             stack_name, '-o', 'json'])
-        kube_services = json.loads(execute_cmd(cmd_services).stdout).get('items', [])
+        kube_services = json.loads(execute_cmd(cmd_services).stdout).get(
+            'items', [])
 
-        cmd_deployments = self.build_cmd_line(['get', 'deployments', '--namespace',
-                                               stack_name, '-o', 'json'])
-        kube_deployments = json.loads(execute_cmd(cmd_deployments).stdout).get('items', [])
+        cmd_deployments = self.build_cmd_line(
+            ['get', 'deployments', '--namespace',
+             stack_name, '-o', 'json'])
+        kube_deployments = json.loads(execute_cmd(cmd_deployments).stdout).get(
+            'items', [])
 
-        services = [KubernetesCliConnector._extract_service_info(kube_resource)
+        services = [Kubernetes._extract_service_info(kube_resource)
                     for kube_resource in kube_services + kube_deployments]
 
         return services
@@ -214,7 +235,8 @@ class KubernetesCliConnector(Connector):
         pass
 
     def extract_vm_ip(self, services):
-        return re.search('(?:http.*://)?(?P<host>[^:/ ]+)', self.endpoint).group('host')
+        return re.search('(?:http.*://)?(?P<host>[^:/ ]+)',
+                         self.endpoint).group('host')
 
     def extract_vm_ports_mapping(self, vm):
         pass

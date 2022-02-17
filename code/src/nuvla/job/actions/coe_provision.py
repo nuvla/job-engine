@@ -3,12 +3,12 @@
 import copy
 import logging
 
-from ...connector import docker_machine_connector
+from ...connector import docker_machine
 from nuvla.api.resources.credential import CredentialDockerSwarm, CredentialK8s
 from ..actions import action
 
-COE_TYPE_SWARM = docker_machine_connector.COE_TYPE_SWARM
-COE_TYPE_K8S = docker_machine_connector.COE_TYPE_K8S
+COE_TYPE_SWARM = docker_machine.COE_TYPE_SWARM
+COE_TYPE_K8S = docker_machine.COE_TYPE_K8S
 
 
 @action('provision_infrastructure_service_coe')
@@ -37,7 +37,7 @@ class COEProvisionJob(object):
         cloud_creds_id = infra_service_coe.get('management-credential')
         credential_coe = self.api.get(cloud_creds_id).data
 
-        coe = docker_machine_connector.instantiate_from_cimi(infra_service_coe, credential_coe)
+        coe = docker_machine.instantiate_from_cimi(infra_service_coe, credential_coe)
 
         infra_service_id = infra_service_coe['id']
         self.api.edit(infra_service_id, {"state": "STARTING"})

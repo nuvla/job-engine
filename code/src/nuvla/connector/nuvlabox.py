@@ -19,9 +19,9 @@ class OperationNotAllowed(Exception):
     pass
 
 
-class NuvlaBoxConnector(Connector):
+class NuvlaBox(Connector):
     def __init__(self, **kwargs):
-        super(NuvlaBoxConnector, self).__init__(**kwargs)
+        super(NuvlaBox, self).__init__(**kwargs)
 
         self.api = kwargs.get("api")
         self.job = kwargs.get("job")
@@ -716,16 +716,8 @@ class NuvlaBoxConnector(Connector):
 
     @should_connect
     def log(self, component: str, since: datetime, lines: int) -> str:
-        try:
-            self.setup_ssl_credentials()
-            container = self.infer_docker_client().containers.get(component)
-            return container.logs(timestamps=True,
-                                  tail=lines,
-                                  since=since)
-        except docker.errors.InvalidArgument as e:
-            logging.error(
-                f'Cannot fetch {component} log with the provided options:'
-                f' {str(e)}')
-        except Exception as e:
-            logging.error(f'Cannot fetch {component} log: {str(e)}')
-        return ''
+        self.setup_ssl_credentials()
+        container = self.infer_docker_client().containers.get(component)
+        return container.logs(timestamps=True,
+                              tail=lines,
+                              since=since)
