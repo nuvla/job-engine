@@ -36,7 +36,7 @@ class NBSSH(object):
 
         # IMPORTANT BIT THAT MUST CHANGE FOR EVERY NUVLABOX API ACTION
         connector.connect()
-        authn_token, user_home, ssh_user = self.load_ssh_params()
+        authn_token, user_home, ssh_user = connector.load_ssh_params()
 
         ssh_private, ssh_public = self.generate_ssh_key()
 
