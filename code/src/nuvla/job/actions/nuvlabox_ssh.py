@@ -50,7 +50,7 @@ class NBSSH(object):
         finally:
             # need to cleanup SSH key before exiting
             remove_cmd = connector.define_ssh_mgmt_cmd('revoke-ssh-key', user_home)
-            self.docker_manage_ssh_key(remove_cmd, ssh_public, user_home)
+            connector.docker_manage_ssh_key(remove_cmd, ssh_public, user_home)
 
         self.job.set_progress(100)
         return exit_code
