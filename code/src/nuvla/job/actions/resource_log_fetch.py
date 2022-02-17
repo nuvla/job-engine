@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
 
 from abc import ABC, abstractmethod
-from typing import Optional
+from typing import Optional, List
 from datetime import datetime
 from ..util import parse_cimi_date
 
 
-def get_last_line_timestamp(lines: Optional[list[str]]) -> Optional[str]:
+def get_last_line_timestamp(lines: Optional[List[str]]) -> Optional[str]:
     return lines[-1].strip().split(' ')[0] if lines else None
 
 
@@ -60,10 +60,10 @@ class ResourceLogFetchJob(ABC):
     def update_resource_log(self, log_id: str, resource_log: dict) -> None:
         self.api.edit(log_id, resource_log)
 
-    def get_list_components(self, components: list[str]) -> list[str]:
+    def get_list_components(self, components: List[str]) -> List[str]:
         return components if components else self.all_components()
 
-    def get_components_logs(self, components: list[str], since: datetime,
+    def get_components_logs(self, components: List[str], since: datetime,
                             lines: int) -> dict:
         log = {}
         for component in components:
