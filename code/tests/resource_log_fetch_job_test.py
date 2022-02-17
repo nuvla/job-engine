@@ -37,6 +37,8 @@ class TestResourceLogFetchJob(unittest.TestCase):
         self.date2 = '2022-02-15T15:56:58.194398730Z'
         self.date1_reduced = '2022-02-15T15:56:58.194Z'
         self.date2_reduced = '2022-02-15T15:56:58.194Z'
+
+    def setUp(self) -> None:
         self.obj = ImplementResourceLogFetchJob('', MagicMock())
 
     def test_get_last_line_timestamp(self):
@@ -97,4 +99,5 @@ class TestResourceLogFetchJob(unittest.TestCase):
 
     @patch.object(ImplementResourceLogFetchJob, 'fetch_resource_log')
     def test_do_work(self, mock_fetch_resource_log):
+        self.obj.do_work()
         self.assertTrue(mock_fetch_resource_log.called)
