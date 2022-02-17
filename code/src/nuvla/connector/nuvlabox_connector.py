@@ -718,16 +718,28 @@ class NuvlaBoxConnector(Connector):
             'PRIVATE_SSH_KEY': private_key,
             'HOST_USER': user
         }
+        container = None
         try:
-            r = self.infer_docker_client().containers.run(self.ssh_host_image_name,
-                                                          remove=True,
-                                                          network_mode='host',
-                                                          environment=env,
-                                                          command=command)
+            container = self.infer_docker_client().containers.run(self.ssh_host_image_name,
+                                                                  network_mode='host',
+                                                                  environment=env,
+                                                                  command=command,
+                                                                  stderr=True,
+                                                                  stdout=True,
+                                                                  detach=True)
+            container.wait()
+            r = container.logs().decode()
+            container.remove()
         except docker.errors.NotFound as e:
-            return f'Unable to reach NuvlaBox Docker API: {str(e)}'
+            r = f'Unable to reach NuvlaBox Docker API: {str(e)}'
         except docker.errors.APIError as e:
-            return f'Unable to execute SSH command: {str(e)}'
+            r = f'Unable to execute SSH command: {str(e)}'
+        finally:
+            if container:
+                try:
+                    container.remove()
+                except:
+                    pass
 
         return r
 
@@ -767,7 +779,7 @@ class NuvlaBoxConnector(Connector):
         async with websockets.serve(functools.partial(self.handle_ssh_message,
                                                       private_key=privatekey,
                                                       user=ssh_user),
-                                    "localhost", 8765, create_protocol=TokenParamProtocol):
+                                    "0.0.0.0", 8765, create_protocol=TokenParamProtocol):
             cmd = self.define_ssh_mgmt_cmd('add-ssh-key', user_home)
             # add SSH key to host so we can issue the SSH commands
             self.docker_manage_ssh_key(cmd, pubkey, user_home)
