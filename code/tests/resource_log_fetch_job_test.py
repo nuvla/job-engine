@@ -5,7 +5,7 @@ from unittest.mock import MagicMock, patch
 import logging
 from datetime import datetime, timezone
 
-from nuvla.job.actions.resource_log_fetch import \
+from nuvla.job.actions.utils.resource_log_fetch import \
     ResourceLogFetchJob, \
     get_last_line_timestamp, \
     reduce_timestamp_precision, \
@@ -14,6 +14,10 @@ from nuvla.job.actions.resource_log_fetch import \
 
 
 class ImplementResourceLogFetchJob(ResourceLogFetchJob):
+
+    @property
+    def connector(self):
+        return None
 
     @property
     def log(self):
@@ -102,7 +106,8 @@ class TestResourceLogFetchJob(unittest.TestCase):
         self.obj.do_work()
         mock_fetch_resource_log.assert_called()
 
-    @patch('nuvla.job.actions.resource_log_fetch.build_update_resource_log')
+    @patch(
+        'nuvla.job.actions.utils.resource_log_fetch.build_update_resource_log')
     @patch.object(ImplementResourceLogFetchJob, 'get_components_logs')
     @patch.object(ImplementResourceLogFetchJob, 'update_resource_log')
     def test_fetch_log(self,
