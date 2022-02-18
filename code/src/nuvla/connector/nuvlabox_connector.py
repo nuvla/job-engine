@@ -49,7 +49,7 @@ class NuvlaBoxConnector(Connector):
         self.cert_file = None
         self.key_file = None
         self.ssh_cmd_received_at = time.time()
-        self.ssh_host_image_name = 'nuvladev/ssh-host:ssh-faster'
+        self.ssh_host_image_name = 'nuvladev/ssh-host:main'
 
     @property
     def connector_type(self):
