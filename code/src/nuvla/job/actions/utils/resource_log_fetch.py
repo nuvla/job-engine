@@ -78,9 +78,7 @@ class ResourceLogFetchJob(ABC):
                 component_logs = self.get_component_logs(
                     component, since, lines).strip().splitlines()
             except Exception as e:
-                self.log.error(
-                    f'Cannot fetch {component} log with the provided '
-                    f'options: {str(e)}')
+                self.log.error(f'Cannot fetch {component} log: {str(e)}')
                 component_logs = []
             log[component] = component_logs
         return log
