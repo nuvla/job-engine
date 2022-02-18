@@ -798,7 +798,6 @@ class NuvlaBoxConnector(Connector):
                                                                   network_mode='host',
                                                                   environment=env,
                                                                   stderr=True,
-                                                                  ports={'8765/tcp': 8765},
                                                                   stdout=True,
                                                                   detach=True)
 
