@@ -768,21 +768,6 @@ class NuvlaBoxConnector(Connector):
     def ssh(self, privatekey: str, pubkey: str, authn_token: str, user_home: str, ssh_user: str):
         self.infer_docker_client().images.pull(self.ssh_host_image_name)
 
-        # class TokenParamProtocol(websockets.WebSocketServerProtocol):
-        #     async def process_request(self, path, headers):
-        #         try:
-        #             user_token = path.split("token=")[1]
-        #         except IndexError:
-        #             return http.HTTPStatus.UNAUTHORIZED, [], b"Missing authentication token\n"
-        #
-        #         if user_token != authn_token:
-        #             return http.HTTPStatus.UNAUTHORIZED, [], b"Invalid token\n"
-
-        # default_timeout = 180   # 3 minutes
-        # async with websockets.serve(functools.partial(self.handle_ssh_message,
-        #                                               private_key=privatekey,
-        #                                               user=ssh_user),
-        #                             "0.0.0.0", 8765, create_protocol=TokenParamProtocol):
         cmd = self.define_ssh_mgmt_cmd('add-ssh-key', user_home)
         # add SSH key to host so we can issue the SSH commands
         self.docker_manage_ssh_key(cmd, pubkey, user_home)
@@ -801,10 +786,16 @@ class NuvlaBoxConnector(Connector):
                                                                   stdout=True,
                                                                   detach=True)
 
+            with timeout(60):
+                while container.status != 'running':
+                    container.reload()
+
             self.job.set_progress(50)
             container.wait()
             r = container.logs().decode()
             container.remove()
+        except TimeoutError:
+            r = 'Unable to start SSH websocket session'
         except docker.errors.NotFound as e:
             r = f'Unable to reach NuvlaBox Docker API: {str(e)}'
         except docker.errors.APIError as e:
@@ -819,14 +810,4 @@ class NuvlaBoxConnector(Connector):
         self.job.set_progress(90)
 
         return r
-            # socket_timeout = default_timeout
-            # while True:
-            #     try:
-            #         await asyncio.wait_for(asyncio.Future(), socket_timeout)  # run forever
-            #     except asyncio.exceptions.TimeoutError:
-            #         socket_timeout = default_timeout - (time.time() - self.ssh_cmd_received_at)
-            #         if socket_timeout <= 0:
-            #             break
-
-                    # logging.info(f'Renewing SSH socket for {socket_timeout} seconds')
 
