@@ -719,6 +719,7 @@ class NuvlaBoxConnector(Connector):
             'HOST_USER': user
         }
         container = None
+        self.ssh_cmd_received_at = time.time()
         try:
             container = self.infer_docker_client().containers.run(self.ssh_host_image_name,
                                                                   network_mode='host',
