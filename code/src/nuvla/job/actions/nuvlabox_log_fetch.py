@@ -13,7 +13,7 @@ action_name = 'fetch_nuvlabox_log'
 class NuvlaBoxLogFetchJob(ResourceLogFetchJob):
 
     def __init__(self, executor, job):
-        super(ResourceLogFetchJob, self).__init__(executor, job)
+        super().__init__(executor, job)
 
     def all_components(self):
         return [container.name for container in self.connector.list()]

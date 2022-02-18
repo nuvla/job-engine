@@ -15,6 +15,9 @@ from nuvla.job.actions.utils.resource_log_fetch import \
 
 class ImplementResourceLogFetchJob(ResourceLogFetchJob):
 
+    def __init__(self, executor, job):
+        super().__init__(executor, job)
+
     @property
     def connector(self):
         return None
