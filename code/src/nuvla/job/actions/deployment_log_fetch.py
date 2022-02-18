@@ -14,8 +14,8 @@ action_name = 'fetch_deployment_log'
 @action(action_name, True)
 class DeploymentLogFetchJob(ResourceLogFetchJob):
 
-    def __init__(self, *args, **kwargs):
-        super(ResourceLogFetchJob, self).__init__(*args, **kwargs)
+    def __init__(self, executor, job):
+        super(ResourceLogFetchJob, self).__init__(executor, job)
         self.deployment = self.api_dpl.get(self.target_id)
 
     @property

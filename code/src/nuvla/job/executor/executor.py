@@ -72,12 +72,12 @@ class Executor(Base):
                 logging.error('Action "{}" not implemented'.format(str(e)))
                 # Consume not implemented action to avoid queue
                 # to be filled with not implemented actions
-                msg = 'Not implemented action'.format(job.id)
+                msg = f'Not implemented action {job.id}'
                 status_message = '{}: {}'.format(msg, str(e))
                 job.update_job(state='FAILED', status_message=status_message)
             except JobUpdateError as e:
                 logging.error('{} update error: {}'.format(job.id, str(e)))
-            except Exception as ex:
+            except Exception:
                 status_message = status_message_from_exception()
                 if job.get('execution-mode', '').lower() == 'mixed':
                     status_message = 'Re-running job in pull mode after failed first attempt: ' \
