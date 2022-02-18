@@ -42,7 +42,8 @@ class NBSSH(object):
 
 
         try:
-            asyncio.run(connector.ssh(ssh_private, ssh_public, authn_token, user_home, ssh_user))
+            # asyncio.run(connector.ssh(ssh_private, ssh_public, authn_token, user_home, ssh_user))
+            r = connector.ssh(ssh_private, ssh_public, authn_token, user_home, ssh_user)
             exit_code = 0
         except Exception as e:
             self.job.set_status_message(str(e))

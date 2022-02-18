@@ -49,7 +49,7 @@ class NuvlaBoxConnector(Connector):
         self.cert_file = None
         self.key_file = None
         self.ssh_cmd_received_at = time.time()
-        self.ssh_host_image_name = 'nuvladev/ssh-host:main'
+        self.ssh_host_image_name = 'nuvladev/ssh-host:ssh-faster'
 
     @property
     def connector_type(self):
@@ -713,43 +713,43 @@ class NuvlaBoxConnector(Connector):
 
         return logs, new_last_timestamp
 
-    def run_ssh_command(self, command: str, private_key: str, user: str) -> str:
-        env = {
-            'PRIVATE_SSH_KEY': private_key.encode("unicode_escape").decode(),
-            'HOST_USER': user
-        }
-        container = None
-        try:
-            container = self.infer_docker_client().containers.run(self.ssh_host_image_name,
-                                                                  network_mode='host',
-                                                                  environment=env,
-                                                                  command=command,
-                                                                  stderr=True,
-                                                                  stdout=True,
-                                                                  detach=True)
-            with timeout(60):
-                container.wait()
-            r = container.logs().decode()
-            container.remove()
-        except TimeoutError:
-            r = f'Timed out while executing command: {command}'
-        except docker.errors.NotFound as e:
-            r = f'Unable to reach NuvlaBox Docker API: {str(e)}'
-        except docker.errors.APIError as e:
-            r = f'Unable to execute SSH command: {str(e)}'
-        finally:
-            if container:
-                try:
-                    container.remove(force=True)
-                except:
-                    pass
+    # def run_ssh_command(self, command: str, private_key: str, user: str) -> str:
+    #     env = {
+    #         'PRIVATE_SSH_KEY': private_key.encode("unicode_escape").decode(),
+    #         'HOST_USER': user
+    #     }
+    #     container = None
+    #     try:
+    #         container = self.infer_docker_client().containers.run(self.ssh_host_image_name,
+    #                                                               network_mode='host',
+    #                                                               environment=env,
+    #                                                               command=command,
+    #                                                               stderr=True,
+    #                                                               stdout=True,
+    #                                                               detach=True)
+    #         with timeout(60):
+    #             container.wait()
+    #         r = container.logs().decode()
+    #         container.remove()
+    #     except TimeoutError:
+    #         r = f'Timed out while executing command: {command}'
+    #     except docker.errors.NotFound as e:
+    #         r = f'Unable to reach NuvlaBox Docker API: {str(e)}'
+    #     except docker.errors.APIError as e:
+    #         r = f'Unable to execute SSH command: {str(e)}'
+    #     finally:
+    #         if container:
+    #             try:
+    #                 container.remove(force=True)
+    #             except:
+    #                 pass
+    #
+    #     return r
 
-        return r
-
-    async def handle_ssh_message(self, websocket, private_key, user):
-        async for message in websocket:
-            ssh_cmd_result = self.run_ssh_command(message, private_key, user)
-            await websocket.send(ssh_cmd_result)
+    # async def handle_ssh_message(self, websocket, private_key, user):
+    #     async for message in websocket:
+    #         ssh_cmd_result = self.run_ssh_command(message, private_key, user)
+    #         await websocket.send(ssh_cmd_result)
 
     def load_ssh_params(self) -> (str, str, str):
         payload = json.loads(self.job.get('payload', '{}'))
@@ -765,37 +765,68 @@ class NuvlaBoxConnector(Connector):
         ssh_user = user_home.strip('/').split('/')[-1]
         return authn_token, user_home, ssh_user
 
-    async def ssh(self, privatekey: str, pubkey: str, authn_token: str, user_home: str, ssh_user: str):
+    def ssh(self, privatekey: str, pubkey: str, authn_token: str, user_home: str, ssh_user: str):
         self.infer_docker_client().images.pull(self.ssh_host_image_name)
 
-        class TokenParamProtocol(websockets.WebSocketServerProtocol):
-            async def process_request(self, path, headers):
-                try:
-                    user_token = path.split("token=")[1]
-                except IndexError:
-                    return http.HTTPStatus.UNAUTHORIZED, [], b"Missing authentication token\n"
+        # class TokenParamProtocol(websockets.WebSocketServerProtocol):
+        #     async def process_request(self, path, headers):
+        #         try:
+        #             user_token = path.split("token=")[1]
+        #         except IndexError:
+        #             return http.HTTPStatus.UNAUTHORIZED, [], b"Missing authentication token\n"
+        #
+        #         if user_token != authn_token:
+        #             return http.HTTPStatus.UNAUTHORIZED, [], b"Invalid token\n"
 
-                if user_token != authn_token:
-                    return http.HTTPStatus.UNAUTHORIZED, [], b"Invalid token\n"
+        # default_timeout = 180   # 3 minutes
+        # async with websockets.serve(functools.partial(self.handle_ssh_message,
+        #                                               private_key=privatekey,
+        #                                               user=ssh_user),
+        #                             "0.0.0.0", 8765, create_protocol=TokenParamProtocol):
+        cmd = self.define_ssh_mgmt_cmd('add-ssh-key', user_home)
+        # add SSH key to host so we can issue the SSH commands
+        self.docker_manage_ssh_key(cmd, pubkey, user_home)
 
-        default_timeout = 180   # 3 minutes
-        async with websockets.serve(functools.partial(self.handle_ssh_message,
-                                                      private_key=privatekey,
-                                                      user=ssh_user),
-                                    "0.0.0.0", 8765, create_protocol=TokenParamProtocol):
-            cmd = self.define_ssh_mgmt_cmd('add-ssh-key', user_home)
-            # add SSH key to host so we can issue the SSH commands
-            self.docker_manage_ssh_key(cmd, pubkey, user_home)
+        env = {
+            'PRIVATE_SSH_KEY': privatekey.encode("unicode_escape").decode(),
+            'HOST_USER': ssh_user,
+            'WEBSOCKET_TOKEN': authn_token
+        }
+        container = None
+        try:
+            container = self.infer_docker_client().containers.run(self.ssh_host_image_name,
+                                                                  network_mode='host',
+                                                                  environment=env,
+                                                                  stderr=True,
+                                                                  stdout=True,
+                                                                  detach=True)
+
             self.job.set_progress(50)
-            socket_timeout = default_timeout
-            while True:
+            container.wait()
+            r = container.logs().decode()
+            container.remove()
+        except docker.errors.NotFound as e:
+            r = f'Unable to reach NuvlaBox Docker API: {str(e)}'
+        except docker.errors.APIError as e:
+            r = f'Unable to start SSH websocket session: {str(e)}'
+        finally:
+            if container:
                 try:
-                    await asyncio.wait_for(asyncio.Future(), socket_timeout)  # run forever
-                except asyncio.exceptions.TimeoutError:
-                    socket_timeout = default_timeout - (time.time() - self.ssh_cmd_received_at)
-                    if socket_timeout <= 0:
-                        break
+                    container.remove(force=True)
+                except:
+                    pass
 
-                    logging.info(f'Renewing SSH socket for {socket_timeout} seconds')
+        self.job.set_progress(90)
 
-            self.job.set_progress(90)
+        return r
+            # socket_timeout = default_timeout
+            # while True:
+            #     try:
+            #         await asyncio.wait_for(asyncio.Future(), socket_timeout)  # run forever
+            #     except asyncio.exceptions.TimeoutError:
+            #         socket_timeout = default_timeout - (time.time() - self.ssh_cmd_received_at)
+            #         if socket_timeout <= 0:
+            #             break
+
+                    # logging.info(f'Renewing SSH socket for {socket_timeout} seconds')
+
