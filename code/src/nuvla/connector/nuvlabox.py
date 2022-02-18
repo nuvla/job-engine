@@ -704,20 +704,10 @@ class NuvlaBox(Connector):
             filters={'label': filter_label, 'name': names},
             all=True)
 
-    @staticmethod
-    def extract_last_timestamp(result):
-        try:
-            timestamp = result[-1].strip().split(' ')[0]
-        except IndexError:
-            logging.error(f'Unable to extract time from {result}')
-            return ''
-        # timestamp limit precision to be compatible with server to pico
-        return timestamp[:23] + 'Z' if timestamp else ''
-
     @should_connect
     def log(self, component: str, since: datetime, lines: int) -> str:
         self.setup_ssl_credentials()
         container = self.infer_docker_client().containers.get(component)
         return container.logs(timestamps=True,
                               tail=lines,
-                              since=since)
+                              since=since.replace(tzinfo=None)).decode()
