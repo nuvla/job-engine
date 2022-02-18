@@ -727,9 +727,12 @@ class NuvlaBoxConnector(Connector):
                                                                   stderr=True,
                                                                   stdout=True,
                                                                   detach=True)
-            container.wait()
+            with timeout(60):
+                container.wait()
             r = container.logs().decode()
             container.remove()
+        except TimeoutError:
+            r = f'Timed out while executing command: {command}'
         except docker.errors.NotFound as e:
             r = f'Unable to reach NuvlaBox Docker API: {str(e)}'
         except docker.errors.APIError as e:
@@ -737,7 +740,7 @@ class NuvlaBoxConnector(Connector):
         finally:
             if container:
                 try:
-                    container.remove()
+                    container.remove(force=True)
                 except:
                     pass
 
