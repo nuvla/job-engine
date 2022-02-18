@@ -110,10 +110,10 @@ class DockerStack(Connector):
 
     @should_connect
     def log(self, component: str, since: datetime, lines: int,
-            deployment_uuid: str) -> str:
+            _deployment_uuid: str) -> str:
         since_opt = ['--since', since.isoformat()] if since else []
         list_opts = ['-t', '--no-trunc', '--tail', str(lines)] + since_opt + [
-            f'{deployment_uuid}_{component}']
+            component]
         cmd = self.build_cmd_line(['service', 'logs'] + list_opts)
         return execute_cmd(cmd).stdout
 

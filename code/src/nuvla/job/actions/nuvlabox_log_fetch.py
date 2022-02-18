@@ -24,7 +24,7 @@ class NuvlaBoxLogFetchJob(ResourceLogFetchJob):
             self._connector = \
                 nb.NuvlaBox(
                     api=self.api,
-                    nuvlabox_id=self.target_id,
+                    nuvlabox_id=self.resource_log_parent,
                     job=self.job)
         return self._connector
 

@@ -118,7 +118,7 @@ class TestResourceLogFetchJob(unittest.TestCase):
                        mock_get_components_logs,
                        mock_build_update_resource_log):
         mock_build_update_resource_log.return_value = {}
-        self.obj.target_id = '1'
+        self.obj.resource_log_id = '1'
         self.obj.fetch_log()
         mock_get_components_logs.assert_called()
         mock_update_resource_log.assert_called_once_with('1', {})

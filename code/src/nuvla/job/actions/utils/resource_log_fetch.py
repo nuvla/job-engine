@@ -37,8 +37,9 @@ class ResourceLogFetchJob(ABC):
         self._connector = None
         self.job = job
         self.api = job.api
-        self.target_id = self.job['target-resource']['href']
-        self.resource_log = self.get_resource_log(self.target_id)
+        self.resource_log_id = self.job['target-resource']['href']
+        self.resource_log = self.get_resource_log(self.resource_log_id)
+        self.resource_log_parent = self.resource_log['parent']
 
     @property
     @abstractmethod
@@ -90,22 +91,22 @@ class ResourceLogFetchJob(ABC):
 
     def fetch_log(self):
         self.update_resource_log(
-            self.target_id, build_update_resource_log(
+            self.resource_log_id, build_update_resource_log(
                 self.get_components_logs()))
 
     def fetch_resource_log(self):
-        self.log.info(f'Job started for {self.target_id}.')
+        self.log.info(f'Job started for {self.resource_log_id}.')
         self.job.set_progress(10)
         try:
             self.fetch_log()
         except Exception as e1:
             self.log.error(
-                f'Failed to {self.job["action"]} {self.target_id}: {e1}')
+                f'Failed to {self.job["action"]} {self.resource_log_id}: {e1}')
             try:
                 self.job.set_status_message(repr(e1))
             except Exception as e2:
                 self.log.error(
-                    f'Failed to set error state for {self.target_id}: {e2}')
+                    f'Failed to set error state for {self.resource_log_id}: {e2}')
             raise e1
         return 0
 
