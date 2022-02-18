@@ -715,7 +715,7 @@ class NuvlaBoxConnector(Connector):
 
     def run_ssh_command(self, command: str, private_key: str, user: str) -> str:
         env = {
-            'PRIVATE_SSH_KEY': f'"{private_key}"',
+            'PRIVATE_SSH_KEY': private_key.encode("unicode_escape").decode(),
             'HOST_USER': user
         }
         container = None
