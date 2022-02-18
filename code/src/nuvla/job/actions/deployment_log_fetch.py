@@ -31,16 +31,32 @@ class DeploymentLogFetchJob(ResourceLogFetchJob):
                 connector_class, self.job, self.deployment)
         return self._connector
 
-    def get_component_logs(self, component: str, since: datetime,
-                           lines: int) -> str:
-        if self.connector_name == 'docker_stack':
-            name = f'{Deployment.uuid(self.deployment)}_{component}'
-        elif self.connector_name == 'docker_service':
+    def get_kubernetes_log(self, component, since, lines):
+        return self.connector.log(component, since, lines,
+                                  namespace=Deployment.uuid(self.deployment))
+
+    def get_docker_compose_log(self, component, since, lines):
+        module_content = Deployment.module_content(self.deployment)
+        return self.connector.log(
+            component, since, lines,
+            deployment_uuid=Deployment.uuid(self.deployment),
+            docker_compose=module_content['docker-compose'])
+
+    def get_docker_stack_log(self, component, since, lines):
+        if self.connector_name == 'docker_service':
             name = Deployment.uuid(self.deployment)
         else:
-            name = component
-        return self.connector.log(name, since, lines,
-                                  Deployment.uuid(self.deployment))
+            name = f'{Deployment.uuid(self.deployment)}_{component}'
+        return self.connector.log(name, since, lines)
+
+    def get_component_logs(self, component: str, since: datetime,
+                           lines: int) -> str:
+        return {
+            'docker_service': self.get_docker_stack_log,
+            'docker_stack': self.get_docker_stack_log,
+            'docker_compose': self.get_docker_compose_log,
+            'kubernetes': self.get_kubernetes_log
+        }[self.connector_name](component, since, lines)
 
     @property
     def log(self):

@@ -175,10 +175,11 @@ class Kubernetes(Connector):
 
     @should_connect
     def log(self, component: str, since: datetime, lines: int,
-            deployment_uuid: str) -> str:
+            **kwargs) -> str:
+        namespace = kwargs['namespace']
         since_opt = ['--since-time', since.isoformat()] if since else []
         list_opts = [component, '--timestamps=true', '--tail', str(lines),
-                     '--namespace', deployment_uuid] + since_opt
+                     '--namespace', namespace] + since_opt
         cmd = self.build_cmd_line(['logs'] + list_opts)
         return execute_cmd(cmd).stdout
 

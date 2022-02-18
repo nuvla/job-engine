@@ -110,7 +110,7 @@ class DockerStack(Connector):
 
     @should_connect
     def log(self, component: str, since: datetime, lines: int,
-            _deployment_uuid: str) -> str:
+            **_kwargs) -> str:
         since_opt = ['--since', since.isoformat()] if since else []
         list_opts = ['-t', '--no-trunc', '--tail', str(lines)] + since_opt + [
             component]
