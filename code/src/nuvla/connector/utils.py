@@ -107,5 +107,9 @@ def timeout(deadline):
         signal.signal(signal.SIGALRM, signal.SIG_IGN)
 
 
+def remove_endpoint_protocol(endpoint: str):
+    return endpoint.split('://')[1] if '://' in endpoint else endpoint
+
+
 def raise_timeout(signum, frame):
     raise TimeoutError
