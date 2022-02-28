@@ -1,12 +1,11 @@
 # -*- coding: utf-8 -*-
-import re
 import json
 import yaml
 import logging
 from datetime import datetime
 from tempfile import TemporaryDirectory
 from .utils import execute_cmd, create_tmp_file, generate_registry_config, \
-    join_stderr_stdout
+    join_stderr_stdout, remove_protocol_from_url, extract_host_from_url
 from .connector import Connector, should_connect
 
 log = logging.getLogger('docker_compose')
@@ -49,8 +48,8 @@ class DockerCompose(Connector):
             self.key_file = None
 
     def build_cmd_line(self, list_cmd, local=False, binary='docker-compose'):
-        endpoint = self.endpoint.replace('https://',
-                                         '') if binary == 'docker' else self.endpoint
+        endpoint = remove_protocol_from_url(
+            self.endpoint) if binary == 'docker' else self.endpoint
         if local:
             remote_tls = []
         else:
@@ -99,16 +98,14 @@ class DockerCompose(Connector):
                 ['-p', project_name, '-f', compose_file_path, 'up', '-d',
                  '--remove-orphans'])
 
-            result = join_stderr_stdout(self._execute_clean_command(cmd_pull,
-                                                                    env=env,
-                                                                    timeout=int(
-                                                                        env[
-                                                                            'DOCKER_CLIENT_TIMEOUT'])))
-            result += join_stderr_stdout(self._execute_clean_command(cmd_deploy,
-                                                                     env=env,
-                                                                     timeout=int(
-                                                                         env[
-                                                                             'DOCKER_CLIENT_TIMEOUT'])))
+            result = join_stderr_stdout(self._execute_clean_command(
+                cmd_pull,
+                env=env,
+                timeout=int(env['DOCKER_CLIENT_TIMEOUT'])))
+            result += join_stderr_stdout(self._execute_clean_command(
+                cmd_deploy,
+                env=env,
+                timeout=int(env['DOCKER_CLIENT_TIMEOUT'])))
 
             services = self._stack_services(project_name, compose_file_path)
 
@@ -253,8 +250,7 @@ class DockerCompose(Connector):
         pass
 
     def extract_vm_ip(self, services):
-        return re.search('(?:http.*://)?(?P<host>[^:/ ]+)',
-                         self.endpoint).group('host')
+        return extract_host_from_url(self.endpoint)
 
     def extract_vm_ports_mapping(self, vm):
         pass
@@ -267,7 +263,7 @@ class DockerCompose(Connector):
         # Mandatory kwargs
         username = kwargs['username']
         password = kwargs['password']
-        serveraddress = kwargs['serveraddress']
+        serveraddress = remove_protocol_from_url(kwargs['serveraddress'])
 
         with TemporaryDirectory() as tmp_dir_name:
             config_path = tmp_dir_name + "/config.json"
@@ -276,7 +272,7 @@ class DockerCompose(Connector):
             config.close()
             cmd_login = ['docker', '--config', tmp_dir_name, 'login',
                          '--username', username, '--password-stdin',
-                         'https://' + serveraddress.replace('https://', '')]
+                         'https://' + serveraddress]
             return execute_cmd(cmd_login, input=password).stdout
 
     @staticmethod

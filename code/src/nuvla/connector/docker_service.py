@@ -2,7 +2,6 @@
 
 import json
 import logging
-import re
 import base64
 from collections import defaultdict
 from tempfile import NamedTemporaryFile
@@ -11,7 +10,7 @@ import requests
 
 from .connector import Connector, ConnectorError, should_connect
 from .registry import image_dict_to_str
-from .utils import timestr2dtime
+from .utils import timestr2dtime, extract_host_from_url
 
 """
 Service is a set of tasks. Service doesn't have a state, but tasks do.
@@ -380,7 +379,7 @@ class DockerService(Connector):
         return vm['ID']
 
     def extract_vm_ip(self, vm):
-        return re.search('(?:http.*://)?(?P<host>[^:/ ]+)', self.endpoint).group('host')
+        return extract_host_from_url(self.endpoint)
 
     def extract_vm_state(self, vm):
         return 'running'

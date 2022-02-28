@@ -1,11 +1,10 @@
 # -*- coding: utf-8 -*-
-import re
 import json
 import logging
 from datetime import datetime
 from tempfile import TemporaryDirectory
 from .utils import execute_cmd, join_stderr_stdout, create_tmp_file, \
-    generate_registry_config
+    generate_registry_config, extract_host_from_url
 from .connector import Connector, should_connect
 
 log = logging.getLogger('docker_stack')
@@ -199,8 +198,7 @@ class DockerStack(Connector):
         pass
 
     def extract_vm_ip(self, services):
-        return re.search('(?:http.*://)?(?P<host>[^:/ ]+)',
-                         self.endpoint).group('host')
+        return extract_host_from_url(self.endpoint)
 
     def extract_vm_ports_mapping(self, vm):
         pass

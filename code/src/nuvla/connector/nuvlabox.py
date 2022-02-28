@@ -8,7 +8,7 @@ import json
 import re
 import time
 from .connector import Connector, should_connect
-from .utils import create_tmp_file, timeout, remove_endpoint_protocol
+from .utils import create_tmp_file, timeout, remove_protocol_from_url
 
 
 class ClusterOperationNotAllowed(Exception):
@@ -76,7 +76,7 @@ class NuvlaBox(Connector):
 
     def build_cmd_line(self, list_cmd):
         return ['docker', '-H',
-                remove_endpoint_protocol(self.docker_api_endpoint),
+                remove_protocol_from_url(self.docker_api_endpoint),
                 '--tls', '--tlscert', self.cert_file.name, '--tlskey',
                 self.key_file.name,
                 '--tlscacert', self.cert_file.name] + list_cmd
@@ -137,7 +137,7 @@ class NuvlaBox(Connector):
             assert_hostname=False,
             assert_fingerprint=False)
         self.docker_client = docker.DockerClient(
-            base_url=remove_endpoint_protocol(is_endpoint),
+            base_url=remove_protocol_from_url(is_endpoint),
             tls=tls_config)
 
         return True

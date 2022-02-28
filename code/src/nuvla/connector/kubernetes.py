@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 import os
-import re
 import json
 import yaml
 import base64
@@ -8,7 +7,7 @@ import logging
 import datetime
 from tempfile import TemporaryDirectory
 from .utils import execute_cmd, join_stderr_stdout, create_tmp_file, \
-    generate_registry_config
+    generate_registry_config, extract_host_from_url
 from .connector import Connector, should_connect
 
 log = logging.getLogger('kubernetes')
@@ -67,8 +66,7 @@ class Kubernetes(Connector):
 
     @staticmethod
     def _create_deployment_context(directory_path, stack_name, docker_compose,
-                                   files,
-                                   registries_auth):
+                                   files, registries_auth):
         manifest_file_path = directory_path + '/manifest.yml'
         with open(manifest_file_path, 'w') as manifest_file:
             manifest_file.write(docker_compose)
@@ -129,11 +127,9 @@ class Kubernetes(Connector):
         files = kwargs['files']
 
         with TemporaryDirectory() as tmp_dir_name:
-            Kubernetes._create_deployment_context(tmp_dir_name,
-                                                  stack_name,
-                                                  docker_compose_env_subs,
-                                                  files,
-                                                  registries_auth)
+            Kubernetes._create_deployment_context(
+                tmp_dir_name, stack_name, docker_compose_env_subs, files,
+                registries_auth)
 
             cmd_deploy = self.build_cmd_line(['apply', '-k', tmp_dir_name])
 
@@ -201,7 +197,7 @@ class Kubernetes(Connector):
                 if external_port:
                     internal_port = port['port']
                     protocol = port['protocol'].lower()
-                    service_info['{}.{}'.format(protocol, internal_port)] = str(
+                    service_info[f'{protocol}.{internal_port}'] = str(
                         external_port)
         return service_info
 
@@ -236,8 +232,7 @@ class Kubernetes(Connector):
         pass
 
     def extract_vm_ip(self, services):
-        return re.search('(?:http.*://)?(?P<host>[^:/ ]+)',
-                         self.endpoint).group('host')
+        return extract_host_from_url(self.endpoint)
 
     def extract_vm_ports_mapping(self, vm):
         pass
