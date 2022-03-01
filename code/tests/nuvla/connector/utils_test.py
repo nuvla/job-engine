@@ -15,7 +15,7 @@ class TestConnectorUtils(unittest.TestCase):
                          remove_protocol_from_url('http://localhost'))
         self.assertEqual('127.0.0.1',
                          remove_protocol_from_url('http://127.0.0.1'))
-        self.assertEqual('localhost:786/a?pzaram=a',
+        self.assertEqual('localhost:786/a?param=a',
                          remove_protocol_from_url(
                              'https://localhost:786/a?param=a'))
         self.assertEqual('localhost',
