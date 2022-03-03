@@ -3,7 +3,7 @@
 import logging
 
 from ..actions import action
-from ...connector.nuvlabox_connector import NuvlaBoxConnector
+from ...connector.nuvlabox import NuvlaBox
 
 
 @action('enable-stream', True)
@@ -24,7 +24,7 @@ class NBEnableStreamJob(object):
 
         logging.info('Enabling data stream for {} in NuvlaBox {}'.format(nuvlabox_peripheral_id,
                                                                          nuvlabox_id))
-        connector = NuvlaBoxConnector(api=self.api, nuvlabox_id=nuvlabox_id, job=self.job)
+        connector = NuvlaBox(api=self.api, nuvlabox_id=nuvlabox_id, job=self.job)
 
         # IMPORTANT BIT THAT MUST CHANGE FOR EVERY NUVLABOX API ACTION
         api_action_name = 'data-source-mjpg/enable'

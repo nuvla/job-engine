@@ -2,11 +2,11 @@
 
 import logging
 
-from ...connector import docker_connector, docker_cli_connector, \
-    docker_compose_cli_connector, kubernetes_cli_connector
+from ...connector import docker_service, docker_stack, \
+    docker_compose, kubernetes
 from nuvla.api import NuvlaError, ConnectionError
 from nuvla.api.resources import Deployment, Credential
-from .deployment_start import DeploymentBase, initialize_connector
+from .utils.deployment_utils import initialize_connector, DeploymentBase
 from ..util import override
 from ..actions import action
 
@@ -30,7 +30,7 @@ class DeploymentStopJob(DeploymentBase):
     def stop_component(self):
         deployment_id = Deployment.id(self.deployment)
 
-        connector = initialize_connector(docker_connector, self.job, self.deployment)
+        connector = initialize_connector(docker_service, self.job, self.deployment)
         filter_params = 'parent="{}" and name="service-id"'.format(deployment_id)
 
         deployment_params = self.api.search('deployment-parameter', filter=filter_params,
@@ -48,9 +48,9 @@ class DeploymentStopJob(DeploymentBase):
 
     def stop_application(self):
         if Deployment.is_compatibility_docker_compose(self.deployment):
-            connector = initialize_connector(docker_compose_cli_connector, self.job, self.deployment)
+            connector = initialize_connector(docker_compose, self.job, self.deployment)
         else:
-            connector = initialize_connector(docker_cli_connector, self.job, self.deployment)
+            connector = initialize_connector(docker_stack, self.job, self.deployment)
 
         result = connector.stop(stack_name=Deployment.uuid(self.deployment),
                                 docker_compose=Deployment.module_content(self.deployment)[
@@ -59,7 +59,7 @@ class DeploymentStopJob(DeploymentBase):
         self.job.set_status_message(result)
 
     def stop_application_kubernetes(self):
-        connector = initialize_connector(kubernetes_cli_connector, self.job, self.deployment)
+        connector = initialize_connector(kubernetes, self.job, self.deployment)
 
         result = connector.stop(stack_name=Deployment.uuid(self.deployment))
 
@@ -79,7 +79,7 @@ class DeploymentStopJob(DeploymentBase):
 
         self.job.set_progress(10)
 
-        self.try_handle_raise_exception()
+        self.try_handle_raise_exception(log)
 
         self.try_delete_deployment_credentials(self.deployment_id)
 

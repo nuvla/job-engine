@@ -3,7 +3,7 @@
 import logging
 
 from ..actions import action
-from ...connector.nuvlabox_connector import NuvlaBoxConnector
+from ...connector.nuvlabox import NuvlaBox
 from nuvla.api import NuvlaError
 
 
@@ -45,7 +45,7 @@ class NBDisableStreamJob(object):
 
         logging.info('Disabling data stream for {} in NuvlaBox {}'.format(nuvlabox_peripheral_id,
                                                                           nuvlabox_id))
-        connector = NuvlaBoxConnector(api=self.api, nuvlabox_id=nuvlabox_id, job=self.job)
+        connector = NuvlaBox(api=self.api, nuvlabox_id=nuvlabox_id, job=self.job)
 
         # IMPORTANT BIT THAT MUST CHANGE FOR EVERY NUVLABOX API ACTION
         connector.start(api_action_name="data-source-mjpg/disable", method='post', payload=data)

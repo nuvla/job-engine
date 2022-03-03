@@ -2,7 +2,7 @@
 
 import logging
 
-from ...connector import docker_cli_connector, kubernetes_cli_connector
+from ...connector import docker_stack, kubernetes
 from ..actions import action
 
 action_name = 'credential_check'
@@ -102,7 +102,7 @@ class CredentialCheck(object):
 
     def check_coe_swarm(self, credential, infra_service):
 
-        connector = docker_cli_connector.instantiate_from_cimi(infra_service, credential)
+        connector = docker_stack.instantiate_from_cimi(infra_service, credential)
         info = connector.info()
         self.job.set_status_message(info)
         return info
@@ -147,14 +147,14 @@ class CredentialCheck(object):
                 self.api.edit(infra_service.get("id"), infra_service_update_body)
 
     def check_coe_kubernetes(self, credential, infra_service):
-        connector = kubernetes_cli_connector.instantiate_from_cimi(infra_service, credential)
+        connector = kubernetes.instantiate_from_cimi(infra_service, credential)
         version = connector.version()
         self.job.set_status_message(version)
         return version
 
     def check_registry_login(self, credential, infra_service):
         try:
-            docker_cli_connector.DockerCliConnector.registry_login(
+            docker_stack.DockerStack.registry_login(
                 username=credential['username'],
                 password=credential['password'],
                 serveraddress=infra_service['endpoint'])

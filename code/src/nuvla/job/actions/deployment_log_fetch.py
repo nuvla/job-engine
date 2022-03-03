@@ -1,116 +1,65 @@
 # -*- coding: utf-8 -*-
 
 import logging
-
-from ...connector import docker_cli_connector, \
-    docker_compose_cli_connector, kubernetes_cli_connector
+from datetime import datetime
 from nuvla.api.resources import Deployment
-from .deployment_start import initialize_connector
 from ..actions import action
+from .utils.deployment_utils import get_connector_class, get_connector_name, \
+    initialize_connector, docker_stack
+from .utils.resource_log_fetch import ResourceLogFetchJob
 
 action_name = 'fetch_deployment_log'
 
-log = logging.getLogger(action_name)
 
+@action(action_name, True)
+class DeploymentLogFetchJob(ResourceLogFetchJob):
 
-@action(action_name)
-class DeploymentLogFetchJob(object):
-
-    def __init__(self, _, job):
-        self.job = job
-        self.api = job.api
+    def __init__(self, executor, job):
+        super().__init__(executor, job)
         self.api_dpl = Deployment(self.api)
+        self.deployment = self.api_dpl.get(self.resource_log_parent)
+        self.connector_name = get_connector_name(self.deployment)
 
-    @staticmethod
-    def extract_last_timestamp(result):
-        timestamp = result[-1].strip().split(' ')[0]
-        # timestamp limit precision to be compatible with server to pico
-        return timestamp[:23] + 'Z' if timestamp else None
+    @property
+    def connector(self):
+        if not self._connector:
+            if self.connector_name == 'docker_service':
+                connector_class = docker_stack
+            else:
+                connector_class = get_connector_class(self.connector_name)
+            self._connector = initialize_connector(
+                connector_class, self.job, self.deployment)
+        return self._connector
 
-    def fetch_log(self, deployment_log):
+    def get_kubernetes_log(self, component, since, lines):
+        return self.connector.log(component, since, lines,
+                                  namespace=Deployment.uuid(self.deployment))
 
-        service_name = deployment_log['service']
+    def get_docker_compose_log(self, component, since, lines):
+        module_content = Deployment.module_content(self.deployment)
+        return self.connector.log(
+            component, since, lines,
+            deployment_uuid=Deployment.uuid(self.deployment),
+            docker_compose=module_content['docker-compose'])
 
-        last_timestamp = deployment_log.get('last-timestamp')
-
-        since = deployment_log.get('since')
-
-        lines = deployment_log.get('lines', 200)
-
-        deployment_id = deployment_log['parent']
-
-        deployment = self.api_dpl.get(deployment_id)
-
-        deployment_uuid = Deployment.uuid(deployment)
-
-        tmp_since = last_timestamp or since
-
-        if Deployment.is_application_kubernetes(deployment):
-            connector = initialize_connector(kubernetes_cli_connector, self.job, deployment)
-            since_opt = ['--since-time', tmp_since] if tmp_since else []
-            list_opts = [service_name, '--timestamps=true', '--tail', str(lines),
-                         '--namespace', deployment_uuid] + since_opt
+    def get_docker_stack_log(self, component, since, lines):
+        if self.connector_name == 'docker_service':
+            name = Deployment.uuid(self.deployment)
         else:
-            is_docker_compose = Deployment.is_compatibility_docker_compose(deployment)
+            name = f'{Deployment.uuid(self.deployment)}_{component}'
+        return self.connector.log(name, since, lines)
 
-            if is_docker_compose:
-                connector = initialize_connector(docker_compose_cli_connector, self.job, deployment)
-                no_trunc = []
-            else:
-                connector = initialize_connector(docker_cli_connector, self.job, deployment)
-                no_trunc = ['--no-trunc']
+    def get_component_logs(self, component: str, since: datetime,
+                           lines: int) -> str:
+        return {
+            'docker_service': self.get_docker_stack_log,
+            'docker_stack': self.get_docker_stack_log,
+            'docker_compose': self.get_docker_compose_log,
+            'kubernetes': self.get_kubernetes_log
+        }[self.connector_name](component, since, lines)
 
-            if Deployment.is_application(deployment):
-                if is_docker_compose:
-                    log.info(deployment_id)
-                    log.info(service_name)
-
-                    docker_service_name = self.api_dpl.get_parameter(deployment_id,
-                                                                     service_name,
-                                                                     service_name + '.service-id')
-                else:
-                    docker_service_name = deployment_uuid + '_' + service_name
-            else:
-                docker_service_name = deployment_uuid
-
-            since_opt = ['--since', tmp_since] if tmp_since else []
-
-            list_opts = ['-t'] + no_trunc + since_opt + [docker_service_name]
-
-        result = connector.log(list_opts).strip().split('\n')[:lines]
-
-        new_last_timestamp = DeploymentLogFetchJob.extract_last_timestamp(result)
-
-        update_deployment_log = {'log': result}
-
-        if new_last_timestamp:
-            update_deployment_log['last-timestamp'] = new_last_timestamp
-
-        self.api.edit(deployment_log['id'], update_deployment_log)
-
-    def fetch_deployment_log(self):
-        deployment_log_id = self.job['target-resource']['href']
-
-        log.info('Job started for {}.'.format(deployment_log_id))
-
-        deployment_log = self.api.get(
-            deployment_log_id, select='id, parent, service, since, lines, last-timestamp').data
-
-        self.job.set_progress(10)
-
-        try:
-            self.fetch_log(deployment_log)
-        except Exception as ex:
-            log.error('Failed to {0} {1}: {2}'.format(self.job['action'], deployment_log_id, ex))
-            try:
-                self.job.set_status_message(repr(ex))
-            except Exception as ex_state:
-                log.error('Failed to set error state for {0}: {1}'
-                          .format(deployment_log_id, ex_state))
-
-            raise ex
-
-        return 0
-
-    def do_work(self):
-        return self.fetch_deployment_log()
+    @property
+    def log(self):
+        if not self._log:
+            self._log = logging.getLogger(action_name)
+        return self._log

@@ -4,7 +4,7 @@ import logging
 import json
 
 from ..actions import action
-from ...connector import nuvlabox_connector as NB
+from ...connector import nuvlabox as NB
 
 
 @action('nuvlabox_add_ssh_key', True)
@@ -18,7 +18,7 @@ class NBAddSSHKey(object):
         nuvlabox_id = self.job['target-resource']['href']
 
         logging.info('Adding SSH key to NuvlaBox {}.'.format(nuvlabox_id))
-        connector = NB.NuvlaBoxConnector(api=self.api, nuvlabox_id=nuvlabox_id, job=self.job)
+        connector = NB.NuvlaBox(api=self.api, nuvlabox_id=nuvlabox_id, job=self.job)
 
         # IMPORTANT BIT THAT MUST CHANGE FOR EVERY NUVLABOX API ACTION
         # for this, we need to get the respective SSH public key

@@ -1,26 +1,27 @@
 # -*- coding: utf-8 -*-
-import re
 import json
-import logging
 import yaml
+import logging
+from datetime import datetime
 from tempfile import TemporaryDirectory
-from .utils import execute_cmd, create_tmp_file, generate_registry_config, join_stderr_stdout
+from .utils import execute_cmd, create_tmp_file, generate_registry_config, \
+    join_stderr_stdout, remove_protocol_from_url, extract_host_from_url
 from .connector import Connector, should_connect
 
-log = logging.getLogger('docker_compose_cli_connector')
+log = logging.getLogger('docker_compose')
 
 
 def instantiate_from_cimi(api_infrastructure_service, api_credential):
-    return DockerComposeCliConnector(
+    return DockerCompose(
         cert=api_credential.get('cert').replace("\\n", "\n"),
         key=api_credential.get('key').replace("\\n", "\n"),
         endpoint=api_infrastructure_service.get('endpoint'))
 
 
-class DockerComposeCliConnector(Connector):
+class DockerCompose(Connector):
 
     def __init__(self, **kwargs):
-        super(DockerComposeCliConnector, self).__init__(**kwargs)
+        super(DockerCompose, self).__init__(**kwargs)
 
         self.cert = self.kwargs.get('cert')
         self.key = self.kwargs.get('key')
@@ -47,12 +48,15 @@ class DockerComposeCliConnector(Connector):
             self.key_file = None
 
     def build_cmd_line(self, list_cmd, local=False, binary='docker-compose'):
-        endpoint = self.endpoint.replace('https://', '') if binary == 'docker' else self.endpoint
+        endpoint = remove_protocol_from_url(
+            self.endpoint) if binary == 'docker' else self.endpoint
         if local:
             remote_tls = []
         else:
-            remote_tls = ['-H', endpoint, '--tls', '--tlscert', self.cert_file.name,
-                          '--tlskey', self.key_file.name, '--tlscacert', self.cert_file.name]
+            remote_tls = ['-H', endpoint, '--tls', '--tlscert',
+                          self.cert_file.name,
+                          '--tlskey', self.key_file.name, '--tlscacert',
+                          self.cert_file.name]
 
         return [binary] + remote_tls + list_cmd
 
@@ -93,18 +97,21 @@ class DockerComposeCliConnector(Connector):
             cmd_deploy = self.build_cmd_line(
                 ['-p', project_name, '-f', compose_file_path, 'up', '-d',
                  '--remove-orphans'])
-
             result = ''
             try:
-                result += join_stderr_stdout(self._execute_clean_command(cmd_pull,
-                                                                         env=env,
-                                                                         timeout=int(env['DOCKER_CLIENT_TIMEOUT'])))
+                result += join_stderr_stdout(
+                    self._execute_clean_command(
+                        cmd_pull,
+                        env=env,
+                        timeout=int(env['DOCKER_CLIENT_TIMEOUT'])))
             except Exception as e:
                 result += str(e)
-            
-            result += join_stderr_stdout(self._execute_clean_command(cmd_deploy,
-                                                                     env=env,
-                                                                     timeout=int(env['DOCKER_CLIENT_TIMEOUT'])))
+
+            result += join_stderr_stdout(
+                self._execute_clean_command(
+                    cmd_deploy,
+                    env=env,
+                    timeout=int(env['DOCKER_CLIENT_TIMEOUT'])))
 
             services = self._stack_services(project_name, compose_file_path)
 
@@ -122,7 +129,8 @@ class DockerComposeCliConnector(Connector):
             compose_file.write(docker_compose)
             compose_file.close()
 
-            cmd = self.build_cmd_line(['-p', project_name, '-f', compose_file_path, 'down', '-v'])
+            cmd = self.build_cmd_line(
+                ['-p', project_name, '-f', compose_file_path, 'down', '-v'])
             return join_stderr_stdout(self._execute_clean_command(cmd))
 
     update = start
@@ -132,9 +140,24 @@ class DockerComposeCliConnector(Connector):
         pass
 
     @should_connect
-    def log(self, list_opts):
-        cmd = self.build_cmd_line(['logs'] + list_opts, binary='docker')
-        return self._execute_clean_command(cmd, sterr_in_stdout=True).stdout
+    def log(self, component: str, since: datetime, lines: int,
+            **kwargs) -> str:
+        deployment_uuid = kwargs['deployment_uuid']
+        docker_compose = kwargs['docker_compose']
+        with TemporaryDirectory() as tmp_dir_name:
+            compose_file_path = tmp_dir_name + "/docker-compose.yaml"
+            compose_file = open(compose_file_path, 'w')
+            compose_file.write(docker_compose)
+            compose_file.close()
+            service_id = self._get_service_id(deployment_uuid, component,
+                                              compose_file_path)
+        if service_id:
+            since_opt = ['--since', since.isoformat()] if since else []
+            list_opts = ['-t', '--tail', str(lines)] + since_opt + [service_id]
+            cmd = self.build_cmd_line(['logs'] + list_opts, binary='docker')
+            return execute_cmd(cmd).stdout
+        else:
+            return ''
 
     @staticmethod
     def _get_image(container_info):
@@ -144,8 +167,9 @@ class DockerComposeCliConnector(Connector):
             return ''
 
     def _get_service_id(self, project_name, service, docker_compose_path):
-        cmd = self.build_cmd_line(['-p', project_name, '-f', docker_compose_path,
-                                   'ps', '-q', service])
+        cmd = self.build_cmd_line(
+            ['-p', project_name, '-f', docker_compose_path,
+             'ps', '-q', service])
         stdout = self._execute_clean_command(cmd).stdout
 
         return yaml.load(stdout, Loader=yaml.FullLoader)
@@ -163,7 +187,8 @@ class DockerComposeCliConnector(Connector):
         return json.loads(self._execute_clean_command(cmd).stdout)
 
     def _extract_service_info(self, project_name, service, docker_compose_path):
-        service_id = self._get_service_id(project_name, service, docker_compose_path)
+        service_id = self._get_service_id(project_name, service,
+                                          docker_compose_path)
         inspection = self._get_container_inspect(service_id)
         service_info = {
             'image': self._get_image(inspection),
@@ -176,27 +201,33 @@ class DockerComposeCliConnector(Connector):
             try:
                 external_port = mapping[0].get('HostPort')
             except (KeyError, IndexError):
-                log.warning("Cannot get mapping for container port %s" % internal_port)
+                log.warning(
+                    "Cannot get mapping for container port %s" % internal_port)
                 continue
             except TypeError:
-                log.warning("The exposed container port %s is not published to the host" % internal_port)
+                log.warning(
+                    "The exposed container port %s is not published to the host" % internal_port)
                 continue
 
             if external_port:
-                service_info['{}.{}'.format(protocol, internal_port)] = external_port
+                service_info[
+                    '{}.{}'.format(protocol, internal_port)] = external_port
         return service_info
 
     @staticmethod
     def sanitize_command_output(output):
-        new_output = [ line for line in str(output).splitlines() if "InsecureRequestWarning" not in line ]
+        new_output = [line for line in str(output).splitlines() if
+                      "InsecureRequestWarning" not in line]
         return '\n'.join(new_output)
 
     def _stack_services(self, project_name, docker_compose_path):
-        cmd = self.build_cmd_line(['-f', docker_compose_path, 'config', '--services'], local=True)
+        cmd = self.build_cmd_line(
+            ['-f', docker_compose_path, 'config', '--services'], local=True)
 
         stdout = self._execute_clean_command(cmd).stdout
 
-        services = [self._extract_service_info(project_name, service, docker_compose_path)
+        services = [self._extract_service_info(project_name, service,
+                                               docker_compose_path)
                     for service in stdout.splitlines()]
         return services
 
@@ -212,7 +243,8 @@ class DockerComposeCliConnector(Connector):
 
     @should_connect
     def info(self):
-        cmd = self.build_cmd_line(['info', '--format', '{{ json . }}'], binary='docker')
+        cmd = self.build_cmd_line(['info', '--format', '{{ json . }}'],
+                                  binary='docker')
 
         info = json.loads(execute_cmd(cmd, timeout=5).stdout)
         server_errors = info.get('ServerErrors', [])
@@ -224,7 +256,7 @@ class DockerComposeCliConnector(Connector):
         pass
 
     def extract_vm_ip(self, services):
-        return re.search('(?:http.*://)?(?P<host>[^:/ ]+)', self.endpoint).group('host')
+        return extract_host_from_url(self.endpoint)
 
     def extract_vm_ports_mapping(self, vm):
         pass
@@ -237,7 +269,7 @@ class DockerComposeCliConnector(Connector):
         # Mandatory kwargs
         username = kwargs['username']
         password = kwargs['password']
-        serveraddress = kwargs['serveraddress']
+        serveraddress = remove_protocol_from_url(kwargs['serveraddress'])
 
         with TemporaryDirectory() as tmp_dir_name:
             config_path = tmp_dir_name + "/config.json"
@@ -246,7 +278,7 @@ class DockerComposeCliConnector(Connector):
             config.close()
             cmd_login = ['docker', '--config', tmp_dir_name, 'login',
                          '--username', username, '--password-stdin',
-                         'https://' + serveraddress.replace('https://', '')]
+                         'https://' + serveraddress]
             return execute_cmd(cmd_login, input=password).stdout
 
     @staticmethod

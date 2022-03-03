@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import os
+import re
 import json
 import base64
 import hashlib
@@ -105,6 +106,14 @@ def timeout(deadline):
         # Unregister the signal so it won't be triggered
         # if the timeout is not reached.
         signal.signal(signal.SIGALRM, signal.SIG_IGN)
+
+
+def remove_protocol_from_url(endpoint: str):
+    return endpoint.split('://')[1] if '://' in endpoint else endpoint
+
+
+def extract_host_from_url(url: str):
+    return re.search('(?:http.*://)?(?P<host>[^:/ ]+)', url).group('host')
 
 
 def raise_timeout(signum, frame):
