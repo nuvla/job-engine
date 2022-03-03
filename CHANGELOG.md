@@ -12,6 +12,8 @@
 
 - Rename all connectors to enhance code clarity
 - Deployment utils - Move functions from deployment actions to utils module
+- Docker compose - Do not fail if "docker-compose pull" fails during
+  start/update of an app
 
 ## [2.18.0] - 2021-10-28
 

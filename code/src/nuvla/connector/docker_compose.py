@@ -97,15 +97,21 @@ class DockerCompose(Connector):
             cmd_deploy = self.build_cmd_line(
                 ['-p', project_name, '-f', compose_file_path, 'up', '-d',
                  '--remove-orphans'])
+            result = ''
+            try:
+                result += join_stderr_stdout(
+                    self._execute_clean_command(
+                        cmd_pull,
+                        env=env,
+                        timeout=int(env['DOCKER_CLIENT_TIMEOUT'])))
+            except Exception as e:
+                result += str(e)
 
-            result = join_stderr_stdout(self._execute_clean_command(
-                cmd_pull,
-                env=env,
-                timeout=int(env['DOCKER_CLIENT_TIMEOUT'])))
-            result += join_stderr_stdout(self._execute_clean_command(
-                cmd_deploy,
-                env=env,
-                timeout=int(env['DOCKER_CLIENT_TIMEOUT'])))
+            result += join_stderr_stdout(
+                self._execute_clean_command(
+                    cmd_deploy,
+                    env=env,
+                    timeout=int(env['DOCKER_CLIENT_TIMEOUT'])))
 
             services = self._stack_services(project_name, compose_file_path)
 
