@@ -94,9 +94,14 @@ class DockerComposeCliConnector(Connector):
                 ['-p', project_name, '-f', compose_file_path, 'up', '-d',
                  '--remove-orphans'])
 
-            result = join_stderr_stdout(self._execute_clean_command(cmd_pull,
-                                                                    env=env,
-                                                                    timeout=int(env['DOCKER_CLIENT_TIMEOUT'])))
+            result = ''
+            try:
+                result += join_stderr_stdout(self._execute_clean_command(cmd_pull,
+                                                                         env=env,
+                                                                         timeout=int(env['DOCKER_CLIENT_TIMEOUT'])))
+            except Exception as e:
+                result += str(e)
+            
             result += join_stderr_stdout(self._execute_clean_command(cmd_deploy,
                                                                      env=env,
                                                                      timeout=int(env['DOCKER_CLIENT_TIMEOUT'])))
