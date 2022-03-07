@@ -1,9 +1,7 @@
 #!/usr/bin/env python
 
 import unittest
-from unittest.mock import MagicMock, patch
-
-from src.nuvla.job.actions.application_docker_compose_validate import ApplicationDockerComposeValidate
+from nuvla.job.actions.application_docker_compose_validate import ApplicationDockerComposeValidate
 
 
 class TestApplicationDockerComposeValidate(unittest.TestCase):
