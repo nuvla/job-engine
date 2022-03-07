@@ -20,7 +20,7 @@ class ApplicationDockerComposeValidate(object):
     @staticmethod
     def get_env_to_mute_undefined(module_content):
         aux_port_value = 1  # Some value that make docker-compose config happy, even for port number field
-        aux_volume_value = '/tmp/{}/'
+        aux_volume_value = '/path/{}/'
 
         env_variables = {'NUVLA_DEPLOYMENT_ID': str(aux_port_value),
                          'NUVLA_DEPLOYMENT_UUID': str(aux_port_value),
