@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## [2.19.0] - 2022-03-08
+
 ### Added
 
 - New reusable class for resource log fetch actions
@@ -14,8 +16,8 @@
 - Deployment utils - Move functions from deployment actions to utils module
 - Docker compose - Do not fail if "docker-compose pull" fails during
   start/update of an app
-- Docker compose validate action. BugFix on replacing the empty env variables so the 
-  check runs successfully when the compose file is correct.
+- Docker compose validate action. BugFix on replacing the empty env variables so
+  the check runs successfully when the compose file is correct.
 
 ## [2.18.0] - 2021-10-28
 
