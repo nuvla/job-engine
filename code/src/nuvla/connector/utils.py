@@ -48,6 +48,14 @@ def append_os_env(env):
     return final_env
 
 
+class CMDExecutionException(Exception):
+    ...
+
+
+class CMDTimeOutException(Exception):
+    ...
+
+
 def execute_cmd(cmd, **kwargs) -> CompletedProcess:
     if kwargs.get('env'):
         opt_env = append_os_env(kwargs.get('env'))
@@ -69,7 +77,7 @@ def execute_cmd(cmd, **kwargs) -> CompletedProcess:
         return result
     else:
         log.exception(result)
-        raise Exception(result.stderr)
+        raise CMDExecutionException(result.stderr)
 
 
 def join_stderr_stdout(process_result: CompletedProcess):

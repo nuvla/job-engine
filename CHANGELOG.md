@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+### Added
+  - Exceptions handling for shell command executors and docker-compose config 
+    function
+  - 
+### Changed
+  - Simplified docker compose validation. Now it only parses the environmental
+    variables to adapt them to the docker-compose tool. It also has a better
+    exception handling.
+
 ## [2.19.0] - 2022-03-08
 
 ### Added

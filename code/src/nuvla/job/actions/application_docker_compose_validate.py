@@ -1,9 +1,12 @@
 # -*- coding: utf-8 -*-
 
 import logging
+from typing import List, Dict, Any, Union
+
 import yaml
-from ...connector.docker_compose import DockerCompose
+
 from ..actions import action
+from ...connector.docker_compose import DockerCompose, ComposeValidatorException
 
 action_name = 'validate-docker-compose'
 
@@ -18,31 +21,25 @@ class ApplicationDockerComposeValidate(object):
         self.api = job.api
 
     @staticmethod
-    def get_env_to_mute_undefined(module_content):
-        aux_port_value = 1  # Some value that make docker-compose config happy, even for port number field
-        aux_volume_value = '/path/{}/'
+    def get_env_to_mute_undefined(module_content: Dict[str, Any]) -> Dict[str, str]:
+        """
+        Initializes a dictionary with an entry for every environmental variable parsed. In sort, this is a variable
+        parser
 
-        env_variables = {'NUVLA_DEPLOYMENT_ID': str(aux_port_value),
-                         'NUVLA_DEPLOYMENT_UUID': str(aux_port_value),
-                         'NUVLA_API_KEY': str(aux_port_value),
-                         'NUVLA_API_SECRET': str(aux_port_value),
-                         'NUVLA_ENDPOINT': str(aux_port_value)}
+        Args:
+            module_content: Dictionary where the env variables are parsed
 
-        compose_dict = yaml.safe_load(module_content['docker-compose'])
-
-        for env_var in module_content.get('environmental-variables', []):
-            for _, service in compose_dict['services'].items():
-                try:
-                    if 'ports' in service.keys() and any(env_var['name'] in s_port for s_port in service['ports']):
-                        env_variables[env_var['name']] = str(aux_port_value)
-                    else:
-                        env_variables[env_var['name']] = aux_volume_value.format(aux_port_value)
-
-                    aux_port_value += 1
-
-                except KeyError as err:
-                    log.warning("Key {} not present in compose file {}".format('ports', err))
-                    continue
+        Returns:
+            a dictionary with an entry for every environmental variable parsed.
+        """
+        env_variables: Dict[str, str] = {}
+        it_env: Dict[str, Any]
+        for it_env in module_content.get('environmental-variables', []):
+            try:
+                if it_env['name'] and not it_env['name'].isspace():
+                    env_variables[it_env['name']] = it_env.get('value', '')
+            except KeyError as keyErr:
+                log.error("Environmental variable name not found {}".format(keyErr))
 
         return env_variables
 
@@ -57,18 +54,12 @@ class ApplicationDockerComposeValidate(object):
 
         try:
             DockerCompose.config(docker_compose=module['content']['docker-compose'],
-                                 env=self.get_env_to_mute_undefined(module['content']))
+                                 env=self.get_env_to_mute_undefined(module['content']),
+                                 )
             self.api.edit(module_id, {'valid': True,
                                       'validation-message': 'Docker-compose valid.'})
 
-        except yaml.YAMLError as ymlExc:
-            log.warning("Error reading .yml file. This should have already been handled by UI")
-            log.exception(ymlExc)
-            self.job.set_status_message(str(ymlExc))
-            self.api.edit(module_id, {'valid': False,
-                                      'validation-message': str(ymlExc)})
-
-        except Exception as ex:
+        except ComposeValidatorException as ex:
             self.job.set_status_message(str(ex))
             self.api.edit(module_id, {'valid': False,
                                       'validation-message': str(ex)})

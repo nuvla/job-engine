@@ -5,7 +5,7 @@ import logging
 from datetime import datetime
 from tempfile import TemporaryDirectory
 from .utils import execute_cmd, create_tmp_file, generate_registry_config, \
-    join_stderr_stdout, remove_protocol_from_url, extract_host_from_url
+    join_stderr_stdout, remove_protocol_from_url, extract_host_from_url, CMDExecutionException, CMDTimeOutException
 from .connector import Connector, should_connect
 
 log = logging.getLogger('docker_compose')
@@ -17,6 +17,9 @@ def instantiate_from_cimi(api_infrastructure_service, api_credential):
         key=api_credential.get('key').replace("\\n", "\n"),
         endpoint=api_infrastructure_service.get('endpoint'))
 
+
+class ComposeValidatorException(Exception):
+    ...
 
 class DockerCompose(Connector):
 
@@ -294,6 +297,13 @@ class DockerCompose(Connector):
             compose_file.close()
 
             cmd = ["docker-compose", "-f", compose_file_path, "config", "-q"]
-            result = execute_cmd(cmd, env=env).stdout
+            try:
+                result = execute_cmd(cmd, env=env).stdout
+
+            except CMDExecutionException as exErr:
+                raise ComposeValidatorException(exErr)
+
+            except CMDTimeOutException as timedErr:
+                log.error("Command {} timed out with error: {}".format(cmd, timedErr))
 
         return result
