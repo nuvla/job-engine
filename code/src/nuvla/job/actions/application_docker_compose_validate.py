@@ -36,8 +36,7 @@ class ApplicationDockerComposeValidate(object):
         it_env: Dict[str, Any]
         for it_env in module_content.get('environmental-variables', []):
             try:
-                if it_env['name'] and not it_env['name'].isspace():
-                    env_variables[it_env['name']] = it_env.get('value', '')
+                env_variables[it_env['name']] = it_env.get('value', '')
             except KeyError as keyErr:
                 log.error("Environmental variable name not found {}".format(keyErr))
 

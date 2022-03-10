@@ -41,20 +41,6 @@ class TestApplicationDockerComposeValidate(unittest.TestCase):
         expected: Dict[str, str] = {"ENV_2": "30"}
         self.assertDictEqual(expected, ApplicationDockerComposeValidate.get_env_to_mute_undefined(test_input))
 
-        test_input: Dict[str, Any] = {'environmental-variables': [
-            {'name': " "},
-            {'name': "ENV_2", "value": "30"}
-        ]}
-        expected: Dict[str, str] = {"ENV_2": "30"}
-        self.assertDictEqual(expected, ApplicationDockerComposeValidate.get_env_to_mute_undefined(test_input))
-
-        test_input: Dict[str, Any] = {'environmental-variables': [
-            {'name': ""},
-            {'name': "ENV_2", "value": "30"}
-        ]}
-        expected: Dict[str, str] = {"ENV_2": "30"}
-        self.assertDictEqual(expected, ApplicationDockerComposeValidate.get_env_to_mute_undefined(test_input))
-
         test_input: Dict[str, Any] = {'environmental-variables': []}
         expected: Dict[str, str] = {}
         self.assertDictEqual(expected, ApplicationDockerComposeValidate.get_env_to_mute_undefined(test_input))
