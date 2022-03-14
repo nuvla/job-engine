@@ -42,25 +42,23 @@ class TestTrialEndJobsDistribution(unittest.TestCase):
 
     @patch.object(TrialEndJobsDistribution, 'search_customers')
     @patch('nuvla.job.distributions.trial_end.build_filter_customers')
-    def test_trialing_customers(self,
-                                mock_build_filter_customers,
-                                mock_search_customers):
+    def test_get_customers(self,
+                           mock_build_filter_customers,
+                           mock_search_customers):
         self.obj = TrialEndJobsDistribution(MagicMock())
         trial_1 = {'id': '1'}
         trial_2 = {'id': '2'}
-        customer_1_id = 'customer/1'
-        customer_2_id = 'customer/2'
-        customer_1 = {'id': customer_1_id}
-        customer_2 = {'id': customer_2_id}
+        customer_1 = {'id': 'customer/1'}
+        customer_2 = {'id': 'customer/2'}
 
         mock_build_filter_customers.return_value = ''
         trials = [trial_2]
-        self.assertListEqual([], self.obj.get_customers_ids(trials), 'search customers without filter is not executed')
+        self.assertListEqual([], self.obj.get_customers(trials), 'search customers without filter is not executed')
 
         mock_build_filter_customers.return_value = 'subscription-id="2"'
         mock_search_customers.return_value = [customer_2]
-        self.assertListEqual([customer_2_id], self.obj.get_customers_ids(trials))
+        self.assertListEqual([customer_2], self.obj.get_customers(trials))
 
         trials = [trial_1, trial_2]
         mock_search_customers.return_value = [customer_1, customer_2]
-        self.assertListEqual([customer_1_id, customer_2_id], self.obj.get_customers_ids(trials))
+        self.assertListEqual([customer_1, customer_2], self.obj.get_customers(trials))

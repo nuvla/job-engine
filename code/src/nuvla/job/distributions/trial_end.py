@@ -28,12 +28,15 @@ class TrialEndJobsDistribution(DistributionBase):
         return self.distributor.api.search(
             'customer',
             last=10000,
+            select=['id'],
             filter=filter_customers).resources
 
-    def get_customers_ids(self, trials):
+    def get_customers(self, trials):
         customer_filter = build_filter_customers(list_subscription_ids(trials))
-        customers = self.search_customers(customer_filter) if customer_filter else []
-        return [customer['id'] for customer in customers]
+        if customer_filter:
+            return self.search_customers(customer_filter)
+        else:
+            return []
 
     def get_trials(self):
         expiration = self.distributor.api.get('trial/expiration')
@@ -41,7 +44,7 @@ class TrialEndJobsDistribution(DistributionBase):
 
     def trialing_customers(self):
         try:
-            return self.get_customers_ids(self.get_trials())
+            return self.get_customers(self.get_trials())
         except Exception as ex:
             logging.error(f'Failed to search for customers: {ex}')
             return []
