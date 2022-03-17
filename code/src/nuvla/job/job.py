@@ -14,6 +14,15 @@ log = logging.getLogger('job')
 
 VER_TRIM_RE = re.compile('-.*$')
 
+JOB_SUCCESS = 'SUCCESS'
+JOB_QUEUED = 'QUEUED'
+JOB_RUNNING = 'RUNNING'
+JOB_FAILED = 'FAILED'
+JOB_STOPPING = 'STOPPING'
+JOB_STOPPED = 'STOPPED'
+
+STATES = (JOB_QUEUED, JOB_RUNNING, JOB_FAILED, JOB_SUCCESS, 'STOPPING', 'STOPPED')
+
 
 def version_to_tuple(ver: str) -> tuple:
     ver_ = list(map(int, VER_TRIM_RE.sub('', ver).split('.')))
@@ -68,7 +77,7 @@ class Job(dict):
                     log.warning('Newly retrieved {} already in final state! Removed from queue.'
                                 .format(self.id))
                     self.nothing_to_do = True
-                elif self.get('state') == 'RUNNING':
+                elif self.get('state') == JOB_RUNNING:
                     # could happen when updating job and cimi server is down!
                     # let job actions decide what to do with it.
                     log.warning('Newly retrieved {} in running state!'.format(self.id))
@@ -104,7 +113,7 @@ class Job(dict):
             msg = f"Job version {job_version_str} is smaller than min supported {evm_str}"
             log.warning(msg)
             retry_kazoo_queue_op(self.queue, 'consume')
-            self.update_job(state='FAILED', status_message=msg)
+            self.update_job(state=JOB_FAILED, status_message=msg)
             self.nothing_to_do = True
         elif job_version > self._engine_version:
             log.debug(f"Job version {job_version_str} is higher than engine's {engine_version}. "
@@ -130,7 +139,7 @@ class Job(dict):
         raise NonexistentJobError(reason)
 
     def is_in_final_state(self):
-        return self.get('state') in ('SUCCESS', 'FAILED')
+        return self.get('state') in (JOB_SUCCESS, JOB_FAILED)
 
     def set_progress(self, progress):
         if not isinstance(progress, int):
@@ -153,9 +162,8 @@ class Job(dict):
         self._edit_job('return-code', return_code)
 
     def set_state(self, state):
-        states = ('QUEUED', 'RUNNING', 'FAILED', 'SUCCESS', 'STOPPING', 'STOPPED')
-        if state not in states:
-            raise ValueError('state should be one of {}'.format(states))
+        if state not in STATES:
+            raise ValueError(f'state should be one of {STATES}')
 
         self._edit_job('state', state)
 

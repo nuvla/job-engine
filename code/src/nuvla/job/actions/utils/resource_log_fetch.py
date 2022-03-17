@@ -3,7 +3,7 @@
 from abc import ABC, abstractmethod
 from typing import Optional, List
 from datetime import datetime
-from ...util import parse_cimi_date
+from nuvla.api.util.date import parse_cimi_date
 
 
 def get_last_line_timestamp(lines: Optional[List[str]]) -> Optional[str]:

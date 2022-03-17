@@ -2,7 +2,6 @@
 
 import logging
 from ..actions import action
-from ..util import parse_cimi_date
 import stripe
 
 action_name = 'trial_end'
