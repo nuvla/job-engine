@@ -51,10 +51,20 @@ class TrialEndJobsDistribution(DistributionBase):
     def is_ignored_customer(self, customer_id: str):
         return customer_id in self.ignored_customers_ids
 
+    def trial_doc(self):
+        result = self.distributor.api.search('trial').resources
+        return result[0] if result else None
+
+    def get_expiration_resource(self):
+        expiration = self.trial_doc()
+        if expiration is None:
+            self.distributor.api.add('trial', {})
+            expiration = self.trial_doc()
+        return expiration
+
     def get_trials(self):
-        # TODO create trial document if not existing
-        expiration = self.distributor.api.get('trial/expiration')
-        return self.distributor.api.operation(expiration, 'regenerate') \
+        return self.distributor.api.operation(
+            self.get_expiration_resource(), 'regenerate') \
             .data.get('expirations', [])
 
     @property
