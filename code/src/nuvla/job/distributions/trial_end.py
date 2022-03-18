@@ -2,7 +2,7 @@
 
 import logging
 
-from nuvla.api.util.date import cimi_date, today_start_time, today_end_time
+from nuvla.job.date import nuvla_date, today_start_time, today_end_time
 from ..job import JOB_QUEUED, JOB_RUNNING, JOB_SUCCESS
 from ..util import override
 from ..distributions import distribution
@@ -32,8 +32,8 @@ class TrialEndJobsDistribution(DistributionBase):
                                     [JOB_QUEUED, JOB_SUCCESS, JOB_RUNNING]]) \
                        + ')'
         action_filter = 'action="trial-end"'
-        created_filter = f'created>="{cimi_date(today_start_time())}"' \
-                         f' and created<={cimi_date(today_end_time())}'
+        created_filter = f'created>="{nuvla_date(today_start_time())}"' \
+                         f' and created<={nuvla_date(today_end_time())}'
         filter_str = ' and '.join([created_filter, action_filter, state_filter])
         jobs = self.distributor.api.search(
             'job',

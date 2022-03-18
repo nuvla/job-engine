@@ -5,7 +5,7 @@ import logging
 from ...connector import docker_service, docker_stack, \
     docker_compose, kubernetes
 from nuvla.api.resources import Deployment, DeploymentParameter
-from nuvla.api.util.date import utcnow, cimi_date
+from nuvla.job.date import utcnow, nuvla_date
 from .utils.deployment_utils import initialize_connector, DeploymentBase, \
     application_params_update
 from ..actions import action
@@ -67,7 +67,7 @@ class DeploymentStateJob(DeploymentBase):
 
         self.api_dpl.set_parameter(did, sname,
                                    DeploymentParameter.CHECK_TIMESTAMP['name'],
-                                   cimi_date(utcnow()))
+                                   nuvla_date(utcnow()))
 
         self.api_dpl.set_parameter(did, sname,
                                    DeploymentParameter.REPLICAS_DESIRED['name'],

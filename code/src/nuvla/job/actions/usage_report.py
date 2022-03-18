@@ -3,7 +3,7 @@
 import logging
 from ..actions import action
 import stripe
-from nuvla.api.util.date import parse_cimi_date
+from nuvla.job.date import parse_nuvla_date
 
 action_name = 'usage_report'
 
@@ -50,7 +50,7 @@ class UsageReport(object):
                 'value')
 
         if quantity is not None:
-            job_updated_date = parse_cimi_date(self.job.updated)
+            job_updated_date = parse_nuvla_date(self.job.updated)
             stripe.SubscriptionItem.create_usage_record(
                 subscription_item_id,
                 quantity=quantity,
@@ -83,7 +83,7 @@ class UsageReport(object):
             subscription_id = deployment.data['subscription-id']
             try:
                 subscription_items = stripe.SubscriptionItem.list(subscription=subscription_id)
-                job_updated_date = parse_cimi_date(self.job.updated)\
+                job_updated_date = parse_nuvla_date(self.job.updated)\
                     .replace(hour=0, minute=0, second=0, microsecond=0)
                 for item in subscription_items.data:
                     stripe.SubscriptionItem.create_usage_record(
