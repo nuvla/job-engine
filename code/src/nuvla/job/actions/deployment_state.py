@@ -5,7 +5,7 @@ import logging
 from ...connector import docker_service, docker_stack, \
     docker_compose, kubernetes
 from nuvla.api.resources import Deployment, DeploymentParameter
-from nuvla.job.date import utcnow, nuvla_date
+from nuvla.api.util.date import utcnow, nuvla_date
 from .utils.deployment_utils import initialize_connector, DeploymentBase, \
     application_params_update
 from ..actions import action

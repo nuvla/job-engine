@@ -36,19 +36,19 @@ class TestTrialEndJobsDistribution(unittest.TestCase):
         trial_2 = {'id': 'sub_2',
                    'customer': 'cus_2'}
         self.assertListEqual(
-            [], obj.list_subscription_ids())
+            [], obj.list_customer_ids())
         obj._trials = [trial_1]
         self.assertListEqual(
-            ['sub_1'], obj.list_subscription_ids())
+            ['sub_1'], obj.list_customer_ids())
         obj._trials = [trial_1, trial_2]
         self.assertListEqual(
-            ['sub_1', 'sub_2'], obj.list_subscription_ids())
+            ['sub_1', 'sub_2'], obj.list_customer_ids())
         obj._trials = [trial_1, trial_2, {}]
         self.assertListEqual(
-            ['sub_1', 'sub_2'], obj.list_subscription_ids(),
+            ['sub_1', 'sub_2'], obj.list_customer_ids(),
             'should not fail even if trials is missing ids')
         obj._ignored_customers_ids = ['cus_1']
-        self.assertListEqual(['sub_2'], obj.list_subscription_ids())
+        self.assertListEqual(['sub_2'], obj.list_customer_ids())
 
     def test_build_filter_customers(self):
         subscription_ids = []

@@ -3,7 +3,7 @@
 import logging
 from ..actions import action
 import stripe
-from nuvla.job.date import parse_nuvla_date
+from nuvla.api.util.date import parse_nuvla_date
 
 action_name = 'usage_report'
 
