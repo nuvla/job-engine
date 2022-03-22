@@ -33,9 +33,9 @@ def build_filter_customers(stripe_customer_ids_trialing: List[str],
                            customer_ids_ignored: List[str]) -> str:
     filter_trialing_customer = filter_or(
         [f'customer-id="{cid}"' for cid in stripe_customer_ids_trialing])
-    filter_customer_ids_ignored = filter_or(
-        [f'id!="{customer_id}"' for customer_id in customer_ids_ignored])
-    return filter_and([filter_trialing_customer, filter_customer_ids_ignored])
+    l = [f'id!="{customer_id}"' for customer_id in customer_ids_ignored]
+    l.append(filter_trialing_customer)
+    return filter_and(l)
 
 
 @distribution('trial_end')
@@ -45,7 +45,7 @@ class TrialEndJobsDistribution(DistributionBase):
     def __init__(self, distributor):
         super(TrialEndJobsDistribution, self).__init__(self.DISTRIBUTION_NAME,
                                                        distributor)
-        self.collect_interval = 21600  # 6h
+        self.collect_interval = 1800  # 30min
         self._jobs_success_pending = None
         self._ignored_customers_ids = None
         self._trials = None

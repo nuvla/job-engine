@@ -44,14 +44,14 @@ class TestTrialEndJobsDistribution(unittest.TestCase):
         self.assertEqual('customer-id="1"',
                          build_filter_customers(stripe_customer_ids, []))
         stripe_customer_ids = ['1', '2']
-        self.assertEqual('((customer-id="1" or customer-id="2")'
-                         ' and id!="customer/1")',
-                         build_filter_customers(stripe_customer_ids,
-                                                [customer_1_id]))
+        self.assertEqual(
+            '(id!="customer/1" and (customer-id="1" or customer-id="2"))',
+            build_filter_customers(stripe_customer_ids,
+                                   [customer_1_id]))
         stripe_customer_ids = ['1', '2', '3']
         self.assertEqual(
-            '((customer-id="1" or customer-id="2" or customer-id="3")'
-            ' and (id!="customer/1" or id!="customer/2"))',
+            '(id!="customer/1" and id!="customer/2" and '
+            '(customer-id="1" or customer-id="2" or customer-id="3"))',
             build_filter_customers(stripe_customer_ids, [customer_1_id,
                                                          'customer/2']))
 
