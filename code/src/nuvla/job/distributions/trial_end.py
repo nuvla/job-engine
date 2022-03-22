@@ -77,6 +77,17 @@ class TrialEndJobsDistribution(DistributionBase):
             expiration = self.trial_doc()
         return expiration
 
+    def trial_doc(self):
+        result = self.distributor.api.search('trial').resources
+        return result[0] if result else None
+
+    def get_expiration_resource(self):
+        expiration = self.trial_doc()
+        if expiration is None:
+            self.distributor.api.add('trial', {})
+            expiration = self.trial_doc()
+        return expiration
+
     def get_trials(self):
         return self.distributor.api.operation(
             self.get_expiration_resource(), 'regenerate') \
