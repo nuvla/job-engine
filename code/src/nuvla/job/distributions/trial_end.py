@@ -12,11 +12,13 @@ from ..distribution import DistributionBase
 
 def filter_join(list_comparison: List[str], join_logic: str = 'or') \
         -> Optional[str]:
-    list_comparison_filtered = [x for x in list_comparison if x is not None]
+    list_comparison_filtered = [x for x in list_comparison if x]
     if list_comparison_filtered:
         separator = f' {join_logic} '
         result = separator.join(list_comparison_filtered)
         return f'({result})' if len(list_comparison_filtered) > 1 else result
+    else:
+        return ''
 
 
 def filter_or(list_comparison: List[str]) -> str:
@@ -65,17 +67,6 @@ class TrialEndJobsDistribution(DistributionBase):
             select=['id', 'target-resource'],
             filter=filter_job_str).resources
         return [job.data['target-resource']['href'] for job in jobs]
-
-    def trial_doc(self):
-        result = self.distributor.api.search('trial').resources
-        return result[0] if result else None
-
-    def get_expiration_resource(self):
-        expiration = self.trial_doc()
-        if expiration is None:
-            self.distributor.api.add('trial', {})
-            expiration = self.trial_doc()
-        return expiration
 
     def trial_doc(self):
         result = self.distributor.api.search('trial').resources

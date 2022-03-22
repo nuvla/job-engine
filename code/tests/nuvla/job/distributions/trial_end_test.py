@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 import unittest
 from unittest.mock import MagicMock, patch
 
@@ -18,17 +16,7 @@ class TestTrialEndJobsDistribution(unittest.TestCase):
     def tearDown(self):
         self.patcher.stop()
 
-    def test_is_ignored_customer(self):
-        obj = TrialEndJobsDistribution(MagicMock())
-        obj._ignored_customers_ids = ['cus_1']
-        self.assertTrue(obj.is_ignored_customer('cus_1'))
-        obj._ignored_customers_ids = []
-        self.assertFalse(obj.is_ignored_customer('cus_1'))
-        obj._ignored_customers_ids = ['cus_1', 'cus_2', 'cus_3']
-        self.assertTrue(obj.is_ignored_customer('cus_2'))
-        self.assertTrue(obj.is_ignored_customer('cus_3'))
-
-    def test_list_subscription_ids(self):
+    def test_list_customer_ids(self):
         obj = TrialEndJobsDistribution(MagicMock())
         obj._trials = []
         trial_1 = {'id': 'sub_1',
@@ -39,30 +27,33 @@ class TestTrialEndJobsDistribution(unittest.TestCase):
             [], obj.list_customer_ids())
         obj._trials = [trial_1]
         self.assertListEqual(
-            ['sub_1'], obj.list_customer_ids())
+            ['cus_1'], obj.list_customer_ids())
         obj._trials = [trial_1, trial_2]
         self.assertListEqual(
-            ['sub_1', 'sub_2'], obj.list_customer_ids())
+            ['cus_1', 'cus_2'], obj.list_customer_ids())
         obj._trials = [trial_1, trial_2, {}]
         self.assertListEqual(
-            ['sub_1', 'sub_2'], obj.list_customer_ids(),
+            ['cus_1', 'cus_2'], obj.list_customer_ids(),
             'should not fail even if trials is missing ids')
-        obj._ignored_customers_ids = ['cus_1']
-        self.assertListEqual(['sub_2'], obj.list_customer_ids())
 
     def test_build_filter_customers(self):
-        subscription_ids = []
-        self.assertEqual('', build_filter_customers(subscription_ids))
-        subscription_ids = ['1']
-        self.assertEqual('subscription-id="1"',
-                         build_filter_customers(subscription_ids))
-        subscription_ids = ['1', '2']
-        self.assertEqual('subscription-id="1" or subscription-id="2"',
-                         build_filter_customers(subscription_ids))
-        subscription_ids = ['1', '2', '3']
+        stripe_customer_ids = []
+        customer_1_id = 'customer/1'
+        self.assertEqual('', build_filter_customers(stripe_customer_ids, []))
+        stripe_customer_ids = ['1']
+        self.assertEqual('customer-id="1"',
+                         build_filter_customers(stripe_customer_ids, []))
+        stripe_customer_ids = ['1', '2']
+        self.assertEqual('((customer-id="1" or customer-id="2")'
+                         ' and id!="customer/1")',
+                         build_filter_customers(stripe_customer_ids,
+                                                [customer_1_id]))
+        stripe_customer_ids = ['1', '2', '3']
         self.assertEqual(
-            'subscription-id="1" or subscription-id="2" or subscription-id="3"',
-            build_filter_customers(subscription_ids))
+            '((customer-id="1" or customer-id="2" or customer-id="3")'
+            ' and (id!="customer/1" or id!="customer/2"))',
+            build_filter_customers(stripe_customer_ids, [customer_1_id,
+                                                         'customer/2']))
 
     @patch.object(TrialEndJobsDistribution, 'search_customers')
     @patch('nuvla.job.distributions.trial_end.build_filter_customers')
