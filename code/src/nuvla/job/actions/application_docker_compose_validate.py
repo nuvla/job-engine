@@ -1,19 +1,21 @@
 # -*- coding: utf-8 -*-
-
+""" Nuvla Docker-compose validator module """
 import logging
 from typing import Dict, Any
 
 from ..actions import action
 from ...connector.docker_compose import DockerCompose, ComposeValidatorException
 
-action_name = 'validate-docker-compose'
+ACTION_NAME = 'validate-docker-compose'
 
-log = logging.getLogger(action_name)
+log = logging.getLogger(ACTION_NAME)
 
 
-@action(action_name)
-class ApplicationDockerComposeValidate(object):
-
+@action(ACTION_NAME)
+class ApplicationDockerComposeValidate:
+    """
+    Executes the validation of the docker-compose file for application deployment
+    """
     def __init__(self, _, job):
         self.job = job
         self.api = job.api
@@ -35,15 +37,22 @@ class ApplicationDockerComposeValidate(object):
         for it_env in module_content.get('environmental-variables', []):
             try:
                 env_variables[it_env['name']] = it_env.get('value', '')
-            except KeyError as keyErr:
-                log.error("Environmental variable name not found {}".format(keyErr))
+            except KeyError as ex:
+                log.error(f"Environmental variable name not found {ex}")
 
         return env_variables
 
     def do_work(self):
+        """
+        Main method for validator class.
+
+        Returns:
+            0 on success, 1 otherwise
+
+        """
         module_id = self.job['target-resource']['href']
 
-        log.info('Job started for {}.'.format(module_id))
+        log.info(f'Job started for {module_id}.')
 
         module = self.api.get(module_id).data
 
