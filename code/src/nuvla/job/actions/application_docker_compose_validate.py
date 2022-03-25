@@ -1,9 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import logging
-from typing import List, Dict, Any, Union
-
-import yaml
+from typing import Dict, Any
 
 from ..actions import action
 from ...connector.docker_compose import DockerCompose, ComposeValidatorException
@@ -23,8 +21,8 @@ class ApplicationDockerComposeValidate(object):
     @staticmethod
     def get_env_to_mute_undefined(module_content: Dict[str, Any]) -> Dict[str, str]:
         """
-        Initializes a dictionary with an entry for every environmental variable parsed. In sort, this is a variable
-        parser
+        Initializes a dictionary with an entry for every environmental variable parsed.
+        In sort, this is a variable parser.
 
         Args:
             module_content: Dictionary where the env variables are parsed
