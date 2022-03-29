@@ -72,7 +72,7 @@ def execute_cmd(cmd, **kwargs) -> CompletedProcess:
     except TimeoutExpired:
         message = 'Command execution timed out after {} seconds'.format(timeout)
         log.exception(message)
-        raise Exception(message)
+        raise CMDTimeOutException(message)
     if result.returncode == 0:
         return result
     else:

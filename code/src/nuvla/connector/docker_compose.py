@@ -21,6 +21,7 @@ def instantiate_from_cimi(api_infrastructure_service, api_credential):
 class ComposeValidatorException(Exception):
     ...
 
+
 class DockerCompose(Connector):
 
     def __init__(self, **kwargs):
@@ -300,10 +301,10 @@ class DockerCompose(Connector):
             try:
                 result = execute_cmd(cmd, env=env).stdout
 
-            except CMDExecutionException as exErr:
-                raise ComposeValidatorException(exErr)
+            except CMDExecutionException as ex:
+                raise ComposeValidatorException(ex)
 
-            except CMDTimeOutException as timedErr:
-                log.error("Command {} timed out with error: {}".format(cmd, timedErr))
+            except CMDTimeOutException as ex:
+                log.error("Command {} timed out with error: {}".format(cmd, ex))
 
         return result
