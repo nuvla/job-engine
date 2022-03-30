@@ -2,7 +2,6 @@
 
 import logging
 from ..actions import action
-import stripe
 
 action_name = 'trial_end'
 
@@ -15,8 +14,6 @@ class TrialEnd(object):
     def __init__(self, _, job):
         self.job = job
         self.api = job.api
-        config = self.api.get('configuration/nuvla')
-        stripe.api_key = config.data.get('stripe-api-key')
 
     def do_work(self):
         resource_target = self.job['target-resource']['href']

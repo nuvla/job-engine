@@ -37,23 +37,9 @@ class TestTrialEndJobsDistribution(unittest.TestCase):
             'should not fail even if trials is missing ids')
 
     def test_build_filter_customers(self):
-        stripe_customer_ids = []
-        customer_1_id = 'customer/1'
-        self.assertEqual('', build_filter_customers(stripe_customer_ids, []))
-        stripe_customer_ids = ['1']
-        self.assertEqual('customer-id="1"',
-                         build_filter_customers(stripe_customer_ids, []))
-        stripe_customer_ids = ['1', '2']
         self.assertEqual(
-            '(id!="customer/1" and (customer-id="1" or customer-id="2"))',
-            build_filter_customers(stripe_customer_ids,
-                                   [customer_1_id]))
-        stripe_customer_ids = ['1', '2', '3']
-        self.assertEqual(
-            '(id!="customer/1" and id!="customer/2" and '
-            '(customer-id="1" or customer-id="2" or customer-id="3"))',
-            build_filter_customers(stripe_customer_ids, [customer_1_id,
-                                                         'customer/2']))
+            '(customer-id="1" or customer-id="2" or customer-id="3")',
+            build_filter_customers(['1', '2', '3']))
 
     @patch.object(TrialEndJobsDistribution, 'search_customers')
     @patch('nuvla.job.distributions.trial_end.build_filter_customers')

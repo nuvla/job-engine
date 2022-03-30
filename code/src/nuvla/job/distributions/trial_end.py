@@ -2,40 +2,17 @@
 
 import logging
 
-from typing import List, Optional
+from typing import List
 from nuvla.api.util.date import nuvla_date, today_start_time, today_end_time
+from nuvla.api.util.filter import filter_or, filter_and
 from ..job import JOB_QUEUED, JOB_RUNNING, JOB_SUCCESS
 from ..util import override
 from ..distributions import distribution
 from ..distribution import DistributionBase
 
 
-def filter_join(list_comparison: List[str], join_logic: str = 'or') \
-        -> Optional[str]:
-    list_comparison_filtered = [x for x in list_comparison if x]
-    if list_comparison_filtered:
-        separator = f' {join_logic} '
-        result = separator.join(list_comparison_filtered)
-        return f'({result})' if len(list_comparison_filtered) > 1 else result
-    else:
-        return ''
-
-
-def filter_or(list_comparison: List[str]) -> str:
-    return filter_join(list_comparison, 'or')
-
-
-def filter_and(list_comparison: List[str]) -> str:
-    return filter_join(list_comparison, 'and')
-
-
-def build_filter_customers(stripe_customer_ids_trialing: List[str],
-                           customer_ids_ignored: List[str]) -> str:
-    filter_trialing_customer = filter_or(
-        [f'customer-id="{cid}"' for cid in stripe_customer_ids_trialing])
-    l = [f'id!="{customer_id}"' for customer_id in customer_ids_ignored]
-    l.append(filter_trialing_customer)
-    return filter_and(l)
+def build_filter_customers(customer_ids: List[str]) -> str:
+    return filter_or([f'customer-id="{cid}"' for cid in customer_ids])
 
 
 @distribution('trial_end')
@@ -102,11 +79,7 @@ class TrialEndJobsDistribution(DistributionBase):
             filter=filter_customers).resources
 
     def get_customers(self):
-        stripe_customer_ids_trialing = self.list_customer_ids()
-        customer_ids_ignored = self.list_ignored_customer_ids()
-        customer_filter = build_filter_customers(
-            stripe_customer_ids_trialing,
-            customer_ids_ignored)
+        customer_filter = build_filter_customers(self.list_customer_ids())
         if customer_filter:
             return self.search_customers(customer_filter)
         else:
