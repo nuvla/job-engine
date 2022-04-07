@@ -26,8 +26,6 @@ class TrialEndJobsDistribution(DistributionBase):
         self._jobs_success_pending = None
         self._ignored_customers_ids = None
         self._trials = None
-        # TODO error prone, should be called explicitly
-        # from distributor base class
         self._start_distribution()
 
     def list_ignored_customer_ids(self):
