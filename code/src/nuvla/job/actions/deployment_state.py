@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
 
 import logging
-from datetime import datetime
 
 from ...connector import docker_service, docker_stack, \
     docker_compose, kubernetes
 from nuvla.api.resources import Deployment, DeploymentParameter
+from nuvla.api.util.date import utcnow, nuvla_date
 from .utils.deployment_utils import initialize_connector, DeploymentBase, \
     application_params_update
 from ..actions import action
@@ -13,11 +13,6 @@ from ..actions import action
 action_name = 'deployment_state'
 
 log = logging.getLogger(action_name)
-
-
-def utcnow():
-    return datetime.utcnow().isoformat('T', timespec='milliseconds') + 'Z'
-
 
 @action(action_name, True)
 class DeploymentStateJob(DeploymentBase):
@@ -72,7 +67,7 @@ class DeploymentStateJob(DeploymentBase):
 
         self.api_dpl.set_parameter(did, sname,
                                    DeploymentParameter.CHECK_TIMESTAMP['name'],
-                                   utcnow())
+                                   nuvla_date(utcnow()))
 
         self.api_dpl.set_parameter(did, sname,
                                    DeploymentParameter.REPLICAS_DESIRED['name'],

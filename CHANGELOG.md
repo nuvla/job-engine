@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+### Added
+
+- Trial-end - distribution
+- Trial-end - action
+
+### Changed
+
+- update nuvla-api dependency to v3.0.7
+
 ## [2.19.0] - 2022-03-08
 
 ### Added

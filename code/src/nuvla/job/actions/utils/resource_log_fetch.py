@@ -3,7 +3,7 @@
 from abc import ABC, abstractmethod
 from typing import Optional, List
 from datetime import datetime
-from ...util import parse_cimi_date
+from nuvla.api.util.date import parse_nuvla_date
 
 
 def get_last_line_timestamp(lines: Optional[List[str]]) -> Optional[str]:
@@ -87,7 +87,7 @@ class ResourceLogFetchJob(ABC):
     def get_since(self) -> datetime:
         last_timestamp = self.resource_log.get('last-timestamp')
         t = last_timestamp or self.resource_log.get('since')
-        return parse_cimi_date(t) if t else datetime.utcfromtimestamp(0)
+        return parse_nuvla_date(t) if t else datetime.utcfromtimestamp(0)
 
     def fetch_log(self):
         self.update_resource_log(
