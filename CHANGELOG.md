@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## [2.20.1] - 2022-05-04
+
+### Changed
+
+- Trial-end - distribution bugfix
+
 ## [2.20.0] - 2022-04-29
 
 ### Added

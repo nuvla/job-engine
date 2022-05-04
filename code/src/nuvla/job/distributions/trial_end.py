@@ -25,7 +25,6 @@ class TrialEndJobsDistribution(DistributionBase):
         self.collect_interval = 1800  # 30min
         self._jobs_success_pending = None
         self._ignored_customers_ids = None
-        self._trials = None
         self._start_distribution()
 
     def list_ignored_customer_ids(self):
@@ -59,14 +58,8 @@ class TrialEndJobsDistribution(DistributionBase):
             self.get_expiration_resource(), 'regenerate') \
             .data.get('expirations', [])
 
-    @property
-    def trials(self):
-        if self._trials is None:
-            self._trials = self.get_trials()
-        return self._trials
-
     def list_customer_ids(self):
-        return [trial.get('customer') for trial in self.trials
+        return [trial.get('customer') for trial in self.get_trials()
                 if trial.get('customer')]
 
     def search_customers(self, filter_customers):
