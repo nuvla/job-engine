@@ -19,7 +19,7 @@ class NotifyCouponEnd(object):
     def do_work(self):
         payload = json.loads(self.job.get('payload', '{}'))
         coupon_id = payload['coupon']
-        log.info(f'Job started for {action_name} for coupon id {coupon_id}.')
+        log.info(f'Job started for {action_name} for id {coupon_id}.')
         self.job.set_progress(10)
         response = self.api.hook('notify-coupon-end',
                                  {'coupon': coupon_id})

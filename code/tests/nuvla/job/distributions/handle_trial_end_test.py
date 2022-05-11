@@ -16,23 +16,23 @@ class TestHandleTrialEndJobsDistribution(unittest.TestCase):
     def tearDown(self):
         self.patcher.stop()
 
-    @patch.object(HandleTrialEndJobsDistribution, 'get_trials')
-    def test_list_customer_ids(self, mock_get_trials):
+    @patch.object(HandleTrialEndJobsDistribution, 'list_trials')
+    def test_list_customer_ids(self, mock_list_trials):
         obj = HandleTrialEndJobsDistribution(MagicMock())
-        mock_get_trials.return_value = []
+        mock_list_trials.return_value = []
         trial_1 = {'id': 'sub_1',
                    'customer': 'cus_1'}
         trial_2 = {'id': 'sub_2',
                    'customer': 'cus_2'}
         self.assertListEqual(
             [], obj.list_customer_ids())
-        mock_get_trials.return_value = [trial_1]
+        mock_list_trials.return_value = [trial_1]
         self.assertListEqual(
             ['cus_1'], obj.list_customer_ids())
-        mock_get_trials.return_value = [trial_1, trial_2]
+        mock_list_trials.return_value = [trial_1, trial_2]
         self.assertListEqual(
             ['cus_1', 'cus_2'], obj.list_customer_ids())
-        mock_get_trials.return_value = [trial_1, trial_2, {}]
+        mock_list_trials.return_value = [trial_1, trial_2, {}]
         self.assertListEqual(
             ['cus_1', 'cus_2'], obj.list_customer_ids(),
             'should not fail even if trials is missing ids')
