@@ -2,12 +2,12 @@ import unittest
 from unittest.mock import MagicMock, patch
 
 from nuvla.job.distribution import DistributionBase
-from nuvla.job.distributions.trial_end import \
-    TrialEndJobsDistribution, \
+from nuvla.job.distributions.handle_trial_end import \
+    HandleTrialEndJobsDistribution, \
     build_filter_customers
 
 
-class TestTrialEndJobsDistribution(unittest.TestCase):
+class TestHandleTrialEndJobsDistribution(unittest.TestCase):
 
     def setUp(self):
         self.patcher = patch.object(DistributionBase, '_start_distribution')
@@ -16,9 +16,9 @@ class TestTrialEndJobsDistribution(unittest.TestCase):
     def tearDown(self):
         self.patcher.stop()
 
-    @patch.object(TrialEndJobsDistribution, 'get_trials')
+    @patch.object(HandleTrialEndJobsDistribution, 'get_trials')
     def test_list_customer_ids(self, mock_get_trials):
-        obj = TrialEndJobsDistribution(MagicMock())
+        obj = HandleTrialEndJobsDistribution(MagicMock())
         mock_get_trials.return_value = []
         trial_1 = {'id': 'sub_1',
                    'customer': 'cus_1'}
@@ -42,12 +42,12 @@ class TestTrialEndJobsDistribution(unittest.TestCase):
             '(customer-id="1" or customer-id="2" or customer-id="3")',
             build_filter_customers(['1', '2', '3']))
 
-    @patch.object(TrialEndJobsDistribution, 'search_customers')
-    @patch('nuvla.job.distributions.trial_end.build_filter_customers')
+    @patch.object(HandleTrialEndJobsDistribution, 'search_customers')
+    @patch('nuvla.job.distributions.handle_trial_end.build_filter_customers')
     def test_get_customers(self,
                            mock_build_filter_customers,
                            mock_search_customers):
-        obj = TrialEndJobsDistribution(MagicMock())
+        obj = HandleTrialEndJobsDistribution(MagicMock())
         trial_1 = {'id': '1'}
         trial_2 = {'id': '2'}
         customer_1 = {'id': 'customer/1'}

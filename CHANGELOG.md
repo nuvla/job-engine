@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+### Added
+
+- Notify-coupon-end - distribution
+- Notify-coupon-end - action
+
+### Changed
+
+- Trial-end - action use of handle-trial-end hook
+- Trial-end - distribution use of list-trialing-subscription hook
+- Dependency - nuvla-api 3.0.8
+
 ## [2.20.1] - 2022-05-04
 
 ### Changed

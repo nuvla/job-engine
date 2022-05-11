@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
+import json
 import logging
-
 from typing import List
 from nuvla.api.util.date import nuvla_date, today_start_time, today_end_time
 from nuvla.api.util.filter import filter_or, filter_and
@@ -15,13 +15,14 @@ def build_filter_customers(customer_ids: List[str]) -> str:
     return filter_or([f'customer-id="{cid}"' for cid in customer_ids])
 
 
-@distribution('trial_end')
-class TrialEndJobsDistribution(DistributionBase):
-    DISTRIBUTION_NAME = 'trial_end'
+@distribution('handle_trial_end')
+class HandleTrialEndJobsDistribution(DistributionBase):
+    DISTRIBUTION_NAME = 'handle_trial_end'
 
     def __init__(self, distributor):
-        super(TrialEndJobsDistribution, self).__init__(self.DISTRIBUTION_NAME,
-                                                       distributor)
+        super(HandleTrialEndJobsDistribution, self).__init__(
+            self.DISTRIBUTION_NAME,
+            distributor)
         self.collect_interval = 1800  # 30min
         self._jobs_success_pending = None
         self._ignored_customers_ids = None
@@ -30,7 +31,7 @@ class TrialEndJobsDistribution(DistributionBase):
     def list_ignored_customer_ids(self):
         state_filter = filter_or([f'state="{state}"' for state in
                                   [JOB_QUEUED, JOB_SUCCESS, JOB_RUNNING]])
-        action_filter = 'action="trial_end"'
+        action_filter = 'action="handle_trial_end"'
         created_filter = f'created>="{nuvla_date(today_start_time())}"' \
                          f' and created<="{nuvla_date(today_end_time())}"'
         filter_job_str = filter_and(
@@ -42,20 +43,8 @@ class TrialEndJobsDistribution(DistributionBase):
             filter=filter_job_str).resources
         return [job.data['target-resource']['href'] for job in jobs]
 
-    def trial_doc(self):
-        result = self.distributor.api.search('trial').resources
-        return result[0] if result else None
-
-    def get_expiration_resource(self):
-        expiration = self.trial_doc()
-        if expiration is None:
-            self.distributor.api.add('trial', {})
-            expiration = self.trial_doc()
-        return expiration
-
     def get_trials(self):
-        return self.distributor.api.operation(
-            self.get_expiration_resource(), 'regenerate') \
+        return self.distributor.api.hook('list-trialing-subscription') \
             .data.get('expirations', [])
 
     def list_customer_ids(self):
@@ -87,4 +76,5 @@ class TrialEndJobsDistribution(DistributionBase):
     def job_generator(self):
         for customer_id in self.trialing_customers_ids():
             yield {'action': self.DISTRIBUTION_NAME,
-                   'target-resource': {'href': customer_id}}
+                   'target-resource': {'href': 'hook/handle-trial-end'},
+                   'payload': json.dumps({'customer': customer_id})}
