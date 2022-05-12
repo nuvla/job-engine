@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## [2.20.1] - 2022-05-12
+
 ### Added
 
 - Notify-coupon-end - distribution
