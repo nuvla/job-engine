@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Changed
+
+- Trial-end - distributor adapt to api call change
+
 ## [2.20.2] - 2022-05-12
 
 ### Added

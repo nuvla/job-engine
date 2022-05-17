@@ -44,8 +44,9 @@ class HandleTrialEndJobsDistribution(DistributionBase):
         return [job.data['target-resource']['href'] for job in jobs]
 
     def list_trials(self):
-        return self.distributor.api.hook('list-trials') \
-            .data.get('expirations', [])
+        return self.distributor.api.hook(
+            'list-subscriptions', {'status': 'trialing',
+                                   'end-lte-days': 5}).data
 
     def list_customer_ids(self):
         return [trial.get('customer') for trial in self.list_trials()
