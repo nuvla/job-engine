@@ -2,8 +2,15 @@
 
 ## Unreleased
 
+### Added
+
+- Register-usage-record - distribution
+- Register-usage-record - action
+
 ### Changed
 
+- Dependency - Remove Stripe api dependency
+- Usage-report - distribution and execution deleted
 - Trial-end - distributor adapt to api call change
 
 ## [2.20.2] - 2022-05-12
