@@ -36,11 +36,11 @@ class RegisterUsageRecordJobsDistribution(DistributionBase):
 
     def subgroups(self, customers):
         try:
-            ids = [f"id='{c.data['parent']}'" for c in customers
+            ids = [f"parents='{c.data['parent']}'" for c in customers
                    if c.data['parent'].startswith('group/')]
             return self.distributor.api.search(
                 'group',
-                filter=filter_and(['parents!=null', filter_or(ids)]),
+                filter=filter_or(ids),
                 select='id',
                 last=10000
             ).resources
