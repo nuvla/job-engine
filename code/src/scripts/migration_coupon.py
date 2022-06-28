@@ -38,7 +38,7 @@ def migrate_coupon(customer):
         print_section(f"Customer {customer_id}")
         subscription_id = customer.data['subscription-id']
         s_customer = stripe.Customer.retrieve(customer_id)
-        if s_customer.discount and s_customer.discount.coupon.valid:
+        if s_customer.discount:
             coupon_id = s_customer.discount.coupon.id
             coupon_name = s_customer.discount.coupon.name
             print_subsection(
