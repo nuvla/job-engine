@@ -1,20 +1,22 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-import logging
-import time
 
 import stripe
 from nuvla.api import Api
 
+dry_run = False
 stripe.api_key = "sk_test_"
+n = Api(endpoint='http://localhost:8200', insecure=True)
+n.login_password('', '')
+n.operation(n.get(n.current_session()),
+            'switch-group',
+            {'claim': 'group/nuvla-admin'})
 
 product_to_delete = ['prod_HYV40L9kxhkxjF', 'prod_HYV8zAoAKMsp5q',
                      'prod_HYVgsIbwoFh8hi']
 product_to_replace = ['prod_HYVCzR5PYSPFLO']
 price_nuvla_edge = 'price_1LAYnzHG9PNMTNBOTrWO9dZg'
 product_nuvla_edge = 'prod_LsJQD6tPSY5Ik7'
-
-dry_run = True
 
 number_preflight_error = 0
 number_migration_error = 0
@@ -130,10 +132,6 @@ def do_migrations(customers):
 
 
 def do_work():
-    n = Api(endpoint='http://localhost:8200', insecure=True)
-    n.operation(n.get(n.current_session()),
-                'switch-group',
-                {'claim': 'group/nuvla-admin'})
     customers = n.search('customer',
                          last=10000,
                          filter='subscription-id!=null').resources
