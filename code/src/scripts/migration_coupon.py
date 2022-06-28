@@ -4,7 +4,7 @@
 import stripe
 from nuvla.api import Api
 
-dry_run = True
+dry_run = False
 stripe.api_key = "sk_test_"
 n = Api(endpoint='http://localhost:8200', insecure=True)
 n.login_password('', '')
@@ -47,7 +47,8 @@ def migrate_coupon(customer):
             if not dry_run:
                 subscription = stripe.Subscription.modify(
                     subscription_id,
-                    coupon=coupon_id)
+                    coupon=coupon_id,
+                    proration_behavior='none')
                 print_subsection(
                     f'Coupon has been moved to subscription: '
                     f'{subscription.discount.coupon.id == coupon_id}')
