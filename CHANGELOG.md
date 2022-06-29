@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## [3.0.0] - 2022-06-29
+
 ### Added
 
 - Register-usage-record - distribution
