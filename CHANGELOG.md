@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Added
+
+- Refresh customer subscription cache - distribution
+
 ### Changed
 
 - Register-usage-record - distribution filter canceled subscription
