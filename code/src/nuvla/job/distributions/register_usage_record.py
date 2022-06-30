@@ -8,10 +8,6 @@ from ..distributions import distribution
 from ..distribution import DistributionBase
 
 
-def customer_is_group(customer):
-    return customer.data['parent'].startswith('group/')
-
-
 @distribution('register_usage_record')
 class RegisterUsageRecordJobsDistribution(DistributionBase):
     DISTRIBUTION_NAME = 'register_usage_record'
@@ -26,10 +22,10 @@ class RegisterUsageRecordJobsDistribution(DistributionBase):
         try:
             return self.distributor.api.search(
                 'customer',
-                filter='subscription-id!=null',
-                select='id, parent',
-                last=10000
-            ).resources
+                filter=filter_and(['subscription-id!=null',
+                                   'subscription-cache/status="canceled"']),
+                select='id',
+                last=10000).resources
         except Exception as ex:
             logging.error(f'Failed to search for customers: {ex}')
             return []
@@ -42,8 +38,7 @@ class RegisterUsageRecordJobsDistribution(DistributionBase):
                 'group',
                 filter=filter_or(ids),
                 select='id',
-                last=10000
-            ).resources
+                last=10000).resources
         except Exception as ex:
             logging.error(f'Failed to search for subgroups: {ex}')
             return []
@@ -56,8 +51,7 @@ class RegisterUsageRecordJobsDistribution(DistributionBase):
                                    "state = 'STARTED'",
                                    "subscription-id != null"]),
                 select='id, module',
-                last=10000
-            ).resources
+                last=10000).resources
         except Exception as ex:
             logging.error(f'Failed to search for deployments: {ex}')
             return []
