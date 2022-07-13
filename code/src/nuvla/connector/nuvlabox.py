@@ -38,6 +38,7 @@ class NuvlaBox(Connector):
         self.nuvlabox = None
         self.nuvlabox_status = None
         self.nb_api_endpoint = None
+        self.base_image = 'python:3.8-alpine3.12'
         self.installer_base_name = 'nuvlabox/installer'
         self.installer_image_name = None
         self.timeout = 60
@@ -241,7 +242,7 @@ class NuvlaBox(Connector):
             self.job.set_progress(90)
 
             r = docker.from_env().containers.run(
-                'alpine',
+                self.base_image,
                 remove=True,
                 command=cmd,
                 environment={
@@ -277,7 +278,7 @@ class NuvlaBox(Connector):
                 raise OperationNotAllowed(err_msg)
             # running in pull, thus the docker socket is being shared
             cmd = "sh -c 'sleep 10 && echo b > /sysrq'"
-            docker.from_env().containers.run('alpine',
+            docker.from_env().containers.run(self.base_image,
                                              command=cmd,
                                              detach=True,
                                              remove=True,
