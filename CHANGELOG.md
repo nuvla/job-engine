@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## [3.1.0] - 2022-07-18
+
 ### Added
 
 - Refresh customer subscription cache - distribution
@@ -9,6 +11,7 @@
 ### Changed
 
 - Register-usage-record - distribution filter canceled subscription
+- Use common base image for all NE components
 
 ## [3.0.0] - 2022-06-29
 
