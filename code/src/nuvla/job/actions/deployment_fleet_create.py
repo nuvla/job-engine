@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 
+import json
 import logging
 from nuvla.api import Api
 
@@ -19,7 +20,7 @@ class DeploymentFleetCreateJob(object):
         self.user_api = self._get_user_api()
 
     def _get_user_api(self):
-        authn_info = self.payload['authn-info']
+        authn_info = json.loads(self.job['payload'])['authn-info']
         insecure = not self.api.session.verify
         return Api(endpoint=self.api.endpoint, insecure=insecure,
                    persist_cookie=False, reauthenticate=True,
@@ -30,10 +31,10 @@ class DeploymentFleetCreateJob(object):
     def _existing_deployments(self, dep_fleet_id):
         query_result = self.user_api.search(
             'deployment',
-            filter=f'deployment-fleet={dep_fleet_id}',
+            filter=f'deployment-fleet="{dep_fleet_id}"',
             last=10000,
-            select='id, parent, module').data
-        return set([(r['parent'], r['module']['href'])
+            select='id, parent, module').resources
+        return set([(r.data['parent'], r.data['module']['href'])
                     for r in query_result])
 
     def _create_deployment(self, target, application):
@@ -51,8 +52,8 @@ class DeploymentFleetCreateJob(object):
         dep_fleet_id = self.job['target-resource']['href']
         log.info('Create {}.'.format(dep_fleet_id))
         deployment_fleet = self.user_api.get(dep_fleet_id).data
-        targets = deployment_fleet['targets']
-        applications = deployment_fleet['applications']
+        targets = deployment_fleet['spec']['targets']
+        applications = deployment_fleet['spec']['applications']
         progress = 10
         self.job.set_progress(progress)
         existing_deployments = self._existing_deployments(dep_fleet_id)
