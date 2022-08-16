@@ -29,9 +29,22 @@ class NotifyCouponEndJobsDistribution(DistributionBase):
             logging.error(f'Failed to list coupons: {ex}')
             return []
 
+    def job_exists(self, job):
+        filters = "(state='QUEUED' or state='RUNNING')" \
+                  " and action='{0}'" \
+                  " and payload='{1}'" \
+            .format(job['action'], job['payload'])
+        jobs = self.distributor.api.search('job', filter=filters, select='',
+                                           last=0)
+        return jobs.count > 0
+
     @override
     def job_generator(self):
         for coupon_id in self.coupon_ids():
-            yield {'action': self.DISTRIBUTION_NAME,
+            job = {'action': self.DISTRIBUTION_NAME,
                    'target-resource': {'href': 'hook/notify-coupon-end'},
                    'payload': json.dumps({'coupon': coupon_id})}
+            if not self.job_exists(job):
+                yield {'action': self.DISTRIBUTION_NAME,
+                       'target-resource': {'href': 'hook/notify-coupon-end'},
+                       'payload': json.dumps({'coupon': coupon_id})}
