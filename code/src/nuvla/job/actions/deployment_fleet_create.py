@@ -37,10 +37,11 @@ class DeploymentFleetCreateJob(object):
         return set([(r.data['parent'], r.data['module']['href'])
                     for r in query_result])
 
-    def _create_deployment(self, target, application):
+    def _create_deployment(self, dep_fleet_id, target, application):
         self.user_api.add('deployment',
                           {'module': {'href': application},
-                           'parent': target})
+                           'parent': target,
+                           'deployment-fleet': dep_fleet_id})
 
     def _update_progress(self):
         new_progress = 100 if self.progress_increment == 0 else int(
@@ -61,7 +62,7 @@ class DeploymentFleetCreateJob(object):
         for target in targets:
             for application in applications:
                 if (target, application) not in existing_deployments:
-                    self._create_deployment(target, application)
+                    self._create_deployment(dep_fleet_id, target, application)
             progress += progress_increment
             self.job.set_progress(int(progress))
         self.user_api.edit(dep_fleet_id, {'state': 'CREATED'})
