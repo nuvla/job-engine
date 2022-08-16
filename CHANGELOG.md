@@ -4,6 +4,7 @@
 
 ### Changed
 
+- Notify-coupon-end - distribution check if job already exist
 - Dockerfile - modprobe.sh moved in docker project repo
 
 ## [3.1.0] - 2022-07-18
