@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## [3.1.1] - 2022-08-25
+
 ### Changed
 
 - Notify-coupon-end - distribution check if job already exist
