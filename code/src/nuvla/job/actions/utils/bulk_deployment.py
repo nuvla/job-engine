@@ -10,6 +10,7 @@ class DeploymentBulkJob(BulkJob):
 
     def __init__(self, _, job):
         super().__init__(_, job)
+        self.log_message = 'Bulk deployment'
 
     def search_deployment(self, filter_str):
         return self.user_api.search('deployment',
@@ -58,7 +59,7 @@ class DeploymentBulkJob(BulkJob):
         while self.monitored_jobs:
             time.sleep(5)
             self._check_monitored_jobs()
-            logging.info(f'Bulk deployment {action} {self.job.id}: '
+            logging.info(f'{self.log_message} {action} {self.job.id}: '
                          f'{len(self.monitored_jobs)} jobs left')
             self._push_result()
             self._update_progress()
