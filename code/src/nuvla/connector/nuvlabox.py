@@ -575,39 +575,33 @@ class NuvlaBox(Connector):
         command.append('--quiet')
 
         install_params_from_payload = json.loads(self.job.get('payload', '{}'))
+        install_params_from_nb_status = self.nuvlabox_status.get('installation-parameters', {})
+        
+        def get_install_params(name):
+            return install_params_from_payload.get(name, install_params_from_nb_status.get(name))
 
-        install_params_from_nb_status = self.nuvlabox_status.get(
-            'installation-parameters', {})
+        mandatory_update_args = ['project-name', 'working-dir', 'config-files']
+        all_arguments = (install_params_from_nb_status.keys()
+                         | install_params_from_payload.keys())
+        missing_arguments = [arg for arg in mandatory_update_args if arg not in all_arguments]
+        if missing_arguments:
+            raise Exception(
+                'The following installation parameters are required '
+                f'but are not present in NuvlaBox status {self.nuvlabox_status.get("id")}, '
+                'nor given via the operation payload attribute: '
+                f'{", ".join(missing_arguments)}')
 
-        if not install_params_from_nb_status:
-            mandatory_update_args = ['project-name', 'working-dir',
-                                     'config-files']
-            mandatory_update_args.sort()
-            payload_keys = list(install_params_from_payload.keys())
-            payload_keys.sort()
-            if mandatory_update_args != list(
-                    filter(lambda x: x in mandatory_update_args, payload_keys)):
-                raise Exception(f'Installation parameters are required, '
-                                f'but are not present in NuvlaBox status {self.nuvlabox_status.get("id")}, '
-                                f'nor given via the operation payload attribute')
-
-        working_dir = install_params_from_payload.get("working-dir",
-                                                      install_params_from_nb_status[
-                                                          "working-dir"])
+        working_dir = get_install_params('working-dir')
         command.append(f'--working-dir={working_dir}')
         volumes[working_dir] = {
             'bind': '/rootfs-working-dir',
             'mode': 'ro'
         }
 
-        project_name = install_params_from_payload.get("project-name",
-                                                       install_params_from_nb_status[
-                                                           "project-name"])
+        project_name = get_install_params('project-name')
         command.append(f'--project={project_name}')
 
-        config_files = install_params_from_payload.get("config-files",
-                                                       install_params_from_nb_status[
-                                                           "config-files"])
+        config_files = get_install_params('config-files')
         compose_files = ','.join(config_files)
         command.append(f'--compose-files={compose_files}')
 
