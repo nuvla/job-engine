@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+### Changed
+
+- Nuvlabox status offline distributor - bugfix when an update of a NuvlaBox
+  status fail, process was aborted #245
+
 ## [3.1.1] - 2022-08-25
 
 ### Changed
