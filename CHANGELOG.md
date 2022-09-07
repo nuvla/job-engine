@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## [3.1.2] - 2022-09-07
+
 ### Changed
 
 - Nuvlabox status offline distributor - bugfix when an update of a NuvlaBox
