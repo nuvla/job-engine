@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+## [3.1.2] - 2022-09-07
+
+### Changed
+
+- Nuvlabox status offline distributor - bugfix when an update of a NuvlaBox
+  status fail, process was aborted #245
+- NuvlaEdge connector - improve and fix update_nuvlabox_engine #244
+
+## [3.1.1] - 2022-08-25
+
 ### Changed
 
 - Notify-coupon-end - distribution check if job already exist
