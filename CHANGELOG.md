@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Changed
+
+- Removed the generator of the individual notification subscriptions.
+
 ## [3.1.2] - 2022-09-07
 
 ### Changed
