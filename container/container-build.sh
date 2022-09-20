@@ -1,11 +1,6 @@
 #!/bin/bash -xe
 
-MANIFEST=${DOCKER_ORG}/${DOCKER_IMAGE}:${DOCKER_TAG}
-
-platforms=(
-amd64
-arm64
-)
+source env.sh
 
 #
 # remove any previous builds

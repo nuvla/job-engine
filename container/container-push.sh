@@ -1,8 +1,7 @@
 #!/bin/bash -xe
 
-MANIFEST=${DOCKER_ORG}/${DOCKER_IMAGE}:${DOCKER_TAG}
+source env.sh
 
-platforms=(amd64)
 manifest_args=(${MANIFEST})
 
 #
