@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+### Changed
+
+- Removed the generator of the individual notification subscriptions.
+- Added build of the image for arm64.
+
 ## [3.1.2] - 2022-09-07
 
 ### Changed
