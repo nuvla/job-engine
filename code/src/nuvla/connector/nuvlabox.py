@@ -7,6 +7,7 @@ import docker
 import json
 import re
 import time
+from packaging.version import Version, InvalidVersion
 from .connector import Connector, should_connect
 from .utils import create_tmp_file, timeout, remove_protocol_from_url
 
@@ -39,8 +40,8 @@ class NuvlaBox(Connector):
         self.nuvlabox_status = None
         self.nb_api_endpoint = None
         self.base_image = 'python:3.8-alpine3.12'
-        self.installer_base_name = 'nuvlabox/installer'
         self.installer_image_name = None
+        self.installer_image_name_fallback = None
         self.timeout = 60
         self.acl = None
         self.cert_file = None
@@ -154,6 +155,19 @@ class NuvlaBox(Connector):
 
     def extract_vm_state(self, vm):
         pass
+    
+    @staticmethod
+    def get_installer_image_names(nuvlaedge_version):
+        repo = 'installer'
+        old = ('nuvlabox', 'master')
+        new = ('nuvlaedge', 'main')
+        try:
+            org, default_tag = new if Version(nuvlaedge_version) >= Version('2.5.0') else old
+        except InvalidVersion:
+            org, default_tag = old if nuvlaedge_version == 'master' else new
+        
+        return (f'{org}/{repo}:{nuvlaedge_version if nuvlaedge_version else default_tag}',
+               f'{org}/{repo}:{default_tag}')
 
     def connect(self):
         logging.info('Connecting to NuvlaBox {}'.format(self.nuvlabox_id))
@@ -162,15 +176,15 @@ class NuvlaBox(Connector):
         self.acl = self.nuvlabox.get('acl')
         self.get_nuvlabox_status()
 
-        installer_tag = self.nuvlabox_status.get('nuvlabox-engine-version')
-        self.installer_image_name = f'{self.installer_base_name}:{installer_tag}' if installer_tag \
-            else f'{self.installer_base_name}:master'
+        engine_version = self.nuvlabox_status.get('nuvlabox-engine-version')
+
+        self.installer_image_name, self.installer_image_name_fallback = \
+            self.get_installer_image_names(engine_version)
 
         if self.job.get('execution-mode', '').lower() == 'pull':
             self.docker_client = docker.from_env()
         else:
-            self.nb_api_endpoint = self.nuvlabox_status.get(
-                "nuvlabox-api-endpoint")
+            self.nb_api_endpoint = self.nuvlabox_status.get("nuvlabox-api-endpoint")
             if not self.nb_api_endpoint:
                 msg = f'NuvlaBox {self.nuvlabox.get("id")} missing API endpoint in its status resource.'
                 logging.warning(msg)
@@ -518,7 +532,7 @@ class NuvlaBox(Connector):
 
         # 3rd - run the Docker command
         image = self.pull_docker_image(self.installer_image_name,
-                                       f'{self.installer_base_name}:master')
+                                       self.installer_image_name_fallback)
         logging.info(
             f'Running NuvlaBox clustering via container from {image}, with args {" ".join(command)}')
 
@@ -638,9 +652,10 @@ class NuvlaBox(Connector):
         # 3rd - run the Docker command
 
         logging.info(
-            f'Running NuvlaBox update container {self.installer_image_name}')
+            f'Running NuvlaBox update container {self.installer_image_name} '
+            f'(fallback: {self.installer_image_name_fallback})')
         image = self.pull_docker_image(self.installer_image_name,
-                                       f'{self.installer_base_name}:master')
+                                       self.installer_image_name_fallback)
         self.run_container_from_installer(image, detach, container_name,
                                           volumes, command, updater_env)
 
