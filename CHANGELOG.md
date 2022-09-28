@@ -4,8 +4,13 @@
 
 ### Changed
 
+## [3.2.0] - 2022-09-28
+
+### Changed
+
 - Removed the generator of the individual notification subscriptions.
 - Added build of the image for arm64.
+- NuvlaEdge connector - add support for nuvlaedge org and main branch
 
 ## [3.1.2] - 2022-09-07
 
@@ -14,7 +19,6 @@
 - Nuvlabox status offline distributor - bugfix when an update of a NuvlaBox
   status fail, process was aborted #245
 - NuvlaEdge connector - improve and fix update_nuvlabox_engine #244
-- NuvlaEdge connector - add support for nuvlaedge org and main branch 
 
 ## [3.1.1] - 2022-08-25
 
