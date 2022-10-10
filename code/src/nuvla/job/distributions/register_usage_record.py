@@ -23,7 +23,7 @@ class RegisterUsageRecordJobsDistribution(DistributionBase):
             return self.distributor.api.search(
                 'customer',
                 filter=filter_and(['subscription-id!=null',
-                                   'subscription-cache/status="canceled"']),
+                                   'subscription-cache/status!="canceled"']),
                 select='id',
                 last=10000).resources
         except Exception as ex:
