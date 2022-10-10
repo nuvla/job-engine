@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## [3.2.2] - 2022-10-10
+
+### Changed
+
+- Register-usage-record - distribution bugfix
+
 ## [3.2.1] - 2022-10-10
 
 ### Changed
