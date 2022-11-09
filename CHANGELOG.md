@@ -2,6 +2,26 @@
 
 ## Unreleased
 
+## [3.2.2] - 2022-10-10
+
+### Changed
+
+- Register-usage-record - distribution bugfix
+
+## [3.2.1] - 2022-10-10
+
+### Changed
+
+- Register-usage-record - distribution filter canceled subscription bugfix
+
+## [3.2.0] - 2022-09-28
+
+### Changed
+
+- Removed the generator of the individual notification subscriptions.
+- Added build of the image for arm64.
+- NuvlaEdge connector - add support for nuvlaedge org and main branch
+
 ## [3.1.2] - 2022-09-07
 
 ### Changed

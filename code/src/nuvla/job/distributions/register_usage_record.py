@@ -23,8 +23,8 @@ class RegisterUsageRecordJobsDistribution(DistributionBase):
             return self.distributor.api.search(
                 'customer',
                 filter=filter_and(['subscription-id!=null',
-                                   'subscription-cache/status="canceled"']),
-                select='id',
+                                   'subscription-cache/status!="canceled"']),
+                select='id, parent',
                 last=10000).resources
         except Exception as ex:
             logging.error(f'Failed to search for customers: {ex}')
@@ -34,11 +34,14 @@ class RegisterUsageRecordJobsDistribution(DistributionBase):
         try:
             ids = [f"parents='{c.data['parent']}'" for c in customers
                    if c.data['parent'].startswith('group/')]
-            return self.distributor.api.search(
-                'group',
-                filter=filter_or(ids),
-                select='id',
-                last=10000).resources
+            if ids:
+                return self.distributor.api.search(
+                    'group',
+                    filter=filter_or(ids),
+                    select='id',
+                    last=10000).resources
+            else:
+                return []
         except Exception as ex:
             logging.error(f'Failed to search for subgroups: {ex}')
             return []
