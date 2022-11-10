@@ -2,6 +2,7 @@
 
 import json
 import logging
+from collections import defaultdict
 from nuvla.api import Api
 from nuvla.api.util.filter import filter_or
 
@@ -14,11 +15,18 @@ log = logging.getLogger(action_name)
 
 def app_compatible_with_target(target_subtype, app_subtype):
     return (app_subtype == 'application_kubernetes' and target_subtype == 'infrastructure-service-kubernetes') or (
-                app_subtype != 'application_kubernetes' and target_subtype != 'infrastructure-service-kubernetes')
+            app_subtype != 'application_kubernetes' and target_subtype != 'infrastructure-service-kubernetes')
 
 
 def app_id(application):
     return application.split("_")[0]
+
+
+def env_dict(env):
+    d = defaultdict(dict)
+    for el in env:
+        d[el['application']][el['name']] = el['value']
+    return d
 
 
 @action(action_name, True)
@@ -30,8 +38,10 @@ class DeploymentSetCreateJob(object):
         self.user_api = self._get_user_api()
         self.dep_set_id = self.job['target-resource']['href']
         self.deployment_set = self.user_api.get(self.dep_set_id).data
-        self.targets = self.deployment_set['spec']['targets']
-        self.applications = self.deployment_set['spec']['applications']
+        spec = self.deployment_set['spec']
+        self.targets = spec['targets']
+        self.applications = spec['applications']
+        self.env_dict = env_dict(spec['env'])
         self.existing_deployments = self._load_existing_deployments()
         self.targets_info = self._load_targets_info()
         self.applications_info = self._load_applications_info()
@@ -80,10 +90,19 @@ class DeploymentSetCreateJob(object):
         return app_compatible_with_target(target_subtype, app_subtype)
 
     def _create_deployment(self, target, application):
-        self.user_api.add('deployment',
-                          {'module': {'href': application},
-                           'parent': target,
-                           'deployment-set': self.dep_set_id})
+        return self.user_api.add('deployment',
+                                 {'module': {'href': application},
+                                  'parent': target,
+                                  'deployment-set': self.dep_set_id}).data['resource-id']
+
+    def _edit_env_deployment(self, deployment_id):
+        deployment = self.user_api.get(deployment_id)
+        env_app = self.env_dict.get(deployment.data['module']['id'])
+        if env_app:
+            for el in deployment.data['module']['content']['environmental-variables']:
+                if el['name'] in env_app:
+                    el['value'] = env_app[el['name']]
+            self.user_api.edit(deployment_id, deployment.data)
 
     def _create(self):
         dep_set_id = self.job['target-resource']['href']
@@ -96,7 +115,9 @@ class DeploymentSetCreateJob(object):
             for application in self.applications:
                 if (target, application) not in self.existing_deployments \
                         and self._compatible_with_target(target_subtype, application):
-                    self._create_deployment(target, application)
+                    deployment_id = self._create_deployment(target, application)
+                    self._edit_env_deployment(deployment_id)
+
             progress += progress_increment
             self.job.set_progress(int(progress))
         self.user_api.edit(dep_set_id, {'state': 'CREATED'})
