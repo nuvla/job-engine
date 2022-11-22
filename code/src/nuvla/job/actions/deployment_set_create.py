@@ -29,6 +29,13 @@ def env_dict(env):
     return d
 
 
+def coupons_dict(coupons):
+    d = {}
+    for el in coupons:
+        d[el['application']] = el['code']
+    return d
+
+
 @action(action_name, True)
 class DeploymentSetCreateJob(object):
 
@@ -42,6 +49,7 @@ class DeploymentSetCreateJob(object):
         self.targets = spec['targets']
         self.applications = spec['applications']
         self.env_dict = env_dict(spec['env'])
+        self.coupons_dict = coupons_dict(spec['coupons'])
         self.existing_deployments = self._load_existing_deployments()
         self.targets_info = self._load_targets_info()
         self.applications_info = self._load_applications_info()
@@ -95,14 +103,17 @@ class DeploymentSetCreateJob(object):
                                   'parent': target,
                                   'deployment-set': self.dep_set_id}).data['resource-id']
 
-    def _edit_env_deployment(self, deployment_id):
-        deployment = self.user_api.get(deployment_id)
-        env_app = self.env_dict.get(deployment.data['module']['id'])
+    def _update_env_deployment(self, deployment):
+        env_app = self.env_dict.get(deployment['module']['id'])
         if env_app:
-            for el in deployment.data['module']['content']['environmental-variables']:
+            for el in deployment['module']['content']['environmental-variables']:
                 if el['name'] in env_app:
                     el['value'] = env_app[el['name']]
-            self.user_api.edit(deployment_id, deployment.data)
+
+    def _update_coupon_deployment(self, deployment):
+        coupon = self.coupons_dict.get(deployment['module']['id'])
+        if coupon:
+            deployment['coupon'] = coupon
 
     def _create(self):
         dep_set_id = self.job['target-resource']['href']
@@ -116,8 +127,10 @@ class DeploymentSetCreateJob(object):
                 if (target, application) not in self.existing_deployments \
                         and self._compatible_with_target(target_subtype, application):
                     deployment_id = self._create_deployment(target, application)
-                    self._edit_env_deployment(deployment_id)
-
+                    deployment = self.user_api.get(deployment_id).data
+                    self._update_env_deployment(deployment)
+                    self._update_coupon_deployment(deployment)
+                    self.user_api.edit(deployment_id, deployment)
             progress += progress_increment
             self.job.set_progress(int(progress))
         self.user_api.edit(dep_set_id, {'state': 'CREATED'})
