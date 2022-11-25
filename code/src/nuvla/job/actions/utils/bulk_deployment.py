@@ -10,6 +10,7 @@ class DeploymentBulkJob(BulkJob):
 
     def __init__(self, _, job):
         super().__init__(_, job)
+        self.log_message = 'Bulk deployment'
 
     def search_deployment(self, filter_str):
         return self.user_api.search('deployment',
@@ -34,7 +35,7 @@ class DeploymentBulkJob(BulkJob):
         for deployment in deployments.resources:
             nested_job_id = None
             try:
-                self.action_deployment(deployment)
+                nested_job_id = self.action_deployment(deployment)
             except Exception as ex:
                 self.result['bootstrap-exceptions'][deployment.id] = repr(ex)
                 self.result['FAILED'].append(deployment.id)
@@ -58,7 +59,7 @@ class DeploymentBulkJob(BulkJob):
         while self.monitored_jobs:
             time.sleep(5)
             self._check_monitored_jobs()
-            logging.info(f'Bulk deployment {action} {self.job.id}: '
+            logging.info(f'{self.log_message} {action} {self.job.id}: '
                          f'{len(self.monitored_jobs)} jobs left')
             self._push_result()
             self._update_progress()

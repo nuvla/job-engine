@@ -11,4 +11,3 @@ class TestDeploymentStateJobsDistributor(unittest.TestCase):
         jd = DeploymentStateJobsDistribution('', None)
 
         self.assertEqual(0, len(list(jd.job_generator())))
-
