@@ -48,6 +48,7 @@ class DeploymentSetCreateJob(object):
         spec = self.deployment_set['spec']
         self.targets = spec['targets']
         self.applications = spec['applications']
+        self.start = spec['start']
         self.env_dict = env_dict(spec['env'])
         self.coupons_dict = coupons_dict(spec['coupons'])
         self.existing_deployments = self._load_existing_deployments()
@@ -134,6 +135,8 @@ class DeploymentSetCreateJob(object):
             progress += progress_increment
             self.job.set_progress(int(progress))
         self.user_api.edit(dep_set_id, {'state': 'CREATED'})
+        if self.start:
+            self.user_api.operation(self.user_api.get(dep_set_id), "start")
         return 0
 
     def do_work(self):
