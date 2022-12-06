@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## [3.2.3] - 2022-12-06
+
 ### Changed
 
 - Deployment set - Experimental feature
