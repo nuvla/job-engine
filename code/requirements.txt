@@ -6,3 +6,4 @@ requests
 docker
 pyyaml
 statsd
+packaging
