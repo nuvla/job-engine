@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## [3.2.4] - 2022-12-12
+
 ### Changed
 
 - Add missing package "packaging" on nuvla/job Docker image
