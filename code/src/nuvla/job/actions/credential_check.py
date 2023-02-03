@@ -10,13 +10,13 @@ action_name = 'credential_check'
 log = logging.getLogger(action_name)
 
 
-def is_swarm_enabled(info):
+def is_swarm_enabled_and_manager(info):
     try:
         node_id = info['Swarm']['NodeID']
         managers = list(map(lambda x: x['NodeID'], info['Swarm']['RemoteManagers']))
-        return node_id and node_id in managers
+        return bool(node_id), node_id in managers
     except (KeyError, TypeError):
-        return False
+        return False, False
     except:
         # it's ok if we cannot infer the Swarm mode...so just move on
         pass
@@ -70,14 +70,14 @@ def docker_info_error_msg_infer(error_msg):
 def k8s_info_error_msg_infer(error_msg):
     error_msg_lowercase = error_msg.lower()
     cert_errors = [
-        'failed to parse', # creds are malformed.
-        'syntax error',    # creds are malformed.
+        'failed to parse',  # creds are malformed.
+        'syntax error',  # creds are malformed.
         'does not match',  # key doesn't match cert.
-        'must be logged in to the server' # server doesn't recognise creds.
+        'must be logged in to the server'  # server doesn't recognise creds.
     ]
     cert_problems = [error in error_msg_lowercase for error in cert_errors]
     server_errors = [
-        'notfound', # requested resource on server not found.
+        'notfound',  # requested resource on server not found.
         'unable to connect to the server',
         'command execution timed out',
         'server rejected our request'
@@ -91,6 +91,12 @@ def k8s_info_error_msg_infer(error_msg):
         return False, "UNKNOWN"
     # In all other cases, we don't know.
     return None, "UNKNOWN"
+
+
+def update_changed(body, infra_service, k, v):
+    if v != infra_service.get(k) and v is not None:
+        body[k] = v
+    return body
 
 
 @action(action_name)
@@ -110,23 +116,23 @@ class CredentialCheck(object):
     def check_coe_swarm_and_set_infra_attributes(self, credential, infra_service):
         infra_online = None
         swarm_enabled = None
+        swarm_manager = None
         try:
             info = self.check_coe_swarm(credential, infra_service)
             infra_online = True
-            swarm_enabled = is_swarm_enabled(info)
+            swarm_enabled, swarm_manager = is_swarm_enabled_and_manager(info)
         except Exception as ex:
             error_msg = ex.args[0]
             infra_online, swarm_enabled, cred_validity = docker_info_error_msg_infer(error_msg)
             self.update_credential_last_check(credential["id"], cred_validity)
             raise Exception(error_msg)
         finally:
-            infra_service_update_body = {}
-            if infra_online != infra_service.get('online') and infra_online is not None:
-                infra_service_update_body['online'] = infra_online
-            if swarm_enabled != infra_service.get('swarm-enabled') and swarm_enabled is not None:
-                infra_service_update_body['swarm-enabled'] = swarm_enabled
-            if infra_service_update_body:
-                self.api.edit(infra_service.get("id"), infra_service_update_body)
+            body = {}
+            update_changed(body, infra_service, 'online', infra_online)
+            update_changed(body, infra_service, 'swarm-enabled', swarm_enabled)
+            update_changed(body, infra_service, 'swarm-manager', swarm_manager)
+            if body:
+                self.api.edit(infra_service.get("id"), body)
 
     def check_coe_k8s_and_set_infra_attributes(self, credential, infra_service):
         infra_online = None
@@ -140,11 +146,10 @@ class CredentialCheck(object):
             self.update_credential_last_check(credential["id"], cred_validity)
             raise Exception(error_msg)
         finally:
-            infra_service_update_body = {}
-            if infra_online != infra_service.get('online') and infra_online is not None:
-                infra_service_update_body['online'] = infra_online
-            if infra_service_update_body:
-                self.api.edit(infra_service.get("id"), infra_service_update_body)
+            body = {}
+            update_changed(body, infra_service, 'online', infra_online)
+            if body:
+                self.api.edit(infra_service.get("id"), body)
 
     def check_coe_kubernetes(self, credential, infra_service):
         connector = kubernetes.instantiate_from_cimi(infra_service, credential)
