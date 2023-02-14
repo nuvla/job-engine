@@ -4,7 +4,8 @@
 
 ### Changed
 
-- Nuvlabox decommission - Delete resource log bugfix #257
+- Nuvlabox decommission action - Delete resource log bugfix #257
+- Credential check action - Swarm manager detection #255
 
 ## [3.2.4] - 2022-12-12
 
