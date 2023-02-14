@@ -51,20 +51,14 @@ class NuvlaBoxDeleteJob(object):
 
         for infra_service_group in infra_service_groups:
 
-            infra_service_group_id = infra_service_group.id
-
-            isg = self.api.get(infra_service_group_id).data
+            isg = self.api.get(infra_service_group.id).data
 
             service_hrefs = isg.get('infrastructure-services')
             for service_href in service_hrefs:
                 service_id = service_href.get('href')
                 self.delete_service(service_id)
 
-            try:
-                self.api.delete(infra_service_group_id)
-            except Exception:
-                self.error += 1
-                logging.warning('problem deleting resource {}.'.format(infra_service_group_id))
+            self.delete_resource(infra_service_group.id)
 
     def delete_peripherals(self, nuvlabox_id):
         self.delete_linked_resources('nuvlabox-peripheral', nuvlabox_id)
