@@ -101,12 +101,10 @@ class NuvlaBoxDeleteJob(object):
                 logging.warning('problem deleting resource {}.'.format(infra_service_group_id))
 
     def delete_peripherals(self, nuvlabox_id):
-        # If the nuvlabox-peripheral collection doesn't exist, then this acts as a no-op.
         self.delete_linked_resources('nuvlabox-peripheral', nuvlabox_id)
 
     def delete_logs(self, nuvlabox_id):
-        # If the nuvlabox-log collection doesn't exist, then this acts as a no-op.
-        self.delete_linked_resources('nuvlabox-log', nuvlabox_id)
+        self.delete_linked_resources('resource-log', nuvlabox_id)
 
     def delete_status(self, nuvlabox_id):
         self.delete_linked_resources('nuvlabox-status', nuvlabox_id)
