@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Changed
+
+- Nuvlabox decommission - Delete resource log bugfix #257
+
 ## [3.2.4] - 2022-12-12
 
 ### Changed
