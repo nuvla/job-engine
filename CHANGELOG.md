@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## [3.2.5] - 2023-02-21
+
 ### Changed
 
 - Nuvlabox decommission action - Delete resource log bugfix #257
