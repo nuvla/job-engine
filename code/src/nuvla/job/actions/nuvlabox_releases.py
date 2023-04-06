@@ -94,6 +94,7 @@ class NuvlaBoxReleasesJob(object):
 
             resource_payload = {
                 'release': release,
+                'published': True,
                 'url': url,
                 'pre-release': pre_release,
                 'release-date': release_date,
