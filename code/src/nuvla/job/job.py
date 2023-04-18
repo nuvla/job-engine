@@ -3,8 +3,9 @@
 import time
 import logging
 import re
+import json
 
-from nuvla.api import NuvlaError, ConnectionError
+from nuvla.api import Api, NuvlaError, ConnectionError
 
 from .util import retry_kazoo_queue_op
 
@@ -53,6 +54,7 @@ class Job(dict):
         self.queue = queue
         self.api = api
         self._context = None
+        self._payload = None
         self._engine_version = version_to_tuple(engine_version)
         if self._engine_version[0] < 2:
             self._engine_version_min = (0, 0, 1)
@@ -247,6 +249,21 @@ class Job(dict):
     @property
     def is_in_pull_mode(self):
         return self.cimi_job.data.get('execution-mode', 'push') == 'pull'
+
+    @property
+    def payload(self):
+        if self._payload is None and self.cimi_job.data.get('payload'):
+            self._payload = json.loads(self.cimi_job.data['payload'])
+        return self._payload
+
+    def get_user_api(self):
+        authn_info = self.payload['authn-info']
+        insecure = not self.api.session.verify
+        return Api(endpoint=self.api.endpoint, insecure=insecure,
+                   persist_cookie=False, reauthenticate=True,
+                   authn_header=f'{authn_info["user-id"]} '
+                                f'{authn_info["active-claim"]} '
+                                f'{" ".join(authn_info["claims"])}')
 
     def __setitem(self, key, value):
         dict.__setitem__(self, key, value)

@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 import unittest
-from nuvla.job.actions.deployment_set_create \
+from nuvla.job.actions.deployment_set_create_old \
     import app_compatible_with_target, env_dict, coupons_dict
 
 module_a = 'module/a'
