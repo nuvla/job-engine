@@ -5,14 +5,14 @@
 
   <artifactId>container-dep</artifactId>
   <packaging>pom</packaging>
-  <version>3.2.6</version>
+  <version>3.2.7-SNAPSHOT</version>
   <name>job-engine/container</name>
   <url>http://sixsq.com/</url>
 
   <parent>
     <groupId>sixsq.nuvla.job-engine</groupId>
     <artifactId>job-engine</artifactId>
-    <version>3.2.6</version>
+    <version>3.2.7-SNAPSHOT</version>
   </parent>
 
   <licenses>
