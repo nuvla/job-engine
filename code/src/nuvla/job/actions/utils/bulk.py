@@ -2,16 +2,13 @@
 
 import logging
 import json
-from nuvla.api import Api
 
 
 class BulkJob(object):
 
     def __init__(self, _, job):
         self.job = job
-        self.api = job.api
-        self.payload = json.loads(self.job['payload'])
-        self.user_api = self._get_user_api()
+        self.user_api = job.get_user_api()
         self.monitored_jobs = []
         self.progress_increment = None
         self.result = {
@@ -19,15 +16,6 @@ class BulkJob(object):
             'FAILED': [],
             'SUCCESS': [],
             'ALL': []}
-
-    def _get_user_api(self):
-        authn_info = self.payload['authn-info']
-        insecure = not self.api.session.verify
-        return Api(endpoint=self.api.endpoint, insecure=insecure,
-                   persist_cookie=False, reauthenticate=True,
-                   authn_header=f'{authn_info["user-id"]} '
-                                f'{authn_info["active-claim"]} '
-                                f'{" ".join(authn_info["claims"])}')
 
     def _push_result(self):
         self.job.set_status_message(json.dumps(self.result))

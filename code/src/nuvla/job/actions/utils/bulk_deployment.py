@@ -28,7 +28,7 @@ class DeploymentBulkJob(BulkJob):
             filter_dep_to_process = ' or '.join(map(lambda job: f'id="{id}"', dep_to_process))
             deployments = self.search_deployment(filter_dep_to_process)
         else:
-            deployments = self.search_deployment(self.payload['filter'])
+            deployments = self.search_deployment(self.job.payload['filter'])
             self.result['ALL'] = [deployment.id for deployment in deployments.resources]
             self._push_result()
 
