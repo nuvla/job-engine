@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+### Changed
+
+## [3.2.6] - 2023-04-24
+
+### Changed
+
+- Deployment set - actions updates (experimental)
+
 ## [3.2.5] - 2023-02-21
 
 ### Changed
