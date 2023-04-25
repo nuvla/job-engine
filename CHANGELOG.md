@@ -4,6 +4,12 @@
 
 ### Changed
 
+## [3.2.7] - 2023-04-25
+
+### Changed
+
+- Docker compose - do not remove named volumes on stop
+
 ## [3.2.6] - 2023-04-24
 
 ### Changed
