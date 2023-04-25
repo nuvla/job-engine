@@ -130,7 +130,7 @@ class DockerCompose(Connector):
             compose_file.close()
 
             cmd = self.build_cmd_line(
-                ['-p', project_name, '-f', compose_file_path, 'down', '-v'])
+                ['-p', project_name, '-f', compose_file_path, 'down'])
             return join_stderr_stdout(self._execute_clean_command(cmd))
 
     update = start
