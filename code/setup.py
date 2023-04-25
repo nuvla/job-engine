@@ -18,9 +18,9 @@ packages = find_packages(where='src/')
 setup(
     name='nuvla-job-engine',
     version=version,
-    author="SixSq Sarl",
+    author="SixSq SA",
     author_email='support@sixsq.com',
-    url='http://sixsq.com/slipstream',
+    url='https://sixsq.com/products',
     description="Nuvla Job Engine.",
     keywords='nuvla devops job engine',
     package_dir={'': 'src'},
