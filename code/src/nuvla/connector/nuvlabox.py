@@ -397,24 +397,21 @@ class NuvlaBox(Connector):
         try:
             with timeout(timeout_after):
                 tries = 0
-                logging.info(
-                    f'Waiting {timeout_after} sec for NuvlaBox operation to finish...')
+                logging.info(f'Waiting {timeout_after} sec for NuvlaBox operation to finish...')
                 while True:
                     if tries > 3:
                         raise Exception(
                             f'Lost connection with the NuvlaBox Docker API at {self.docker_api_endpoint}')
                     try:
-                        this_container = self.infer_docker_client().containers.get(
-                            container_name)
+                        this_container = self.infer_docker_client().containers.get(container_name)
                         if this_container.status == 'exited':
-                            # trick to get rid of bash ASCII chars
+                            logs = this_container.logs().decode()
+                            # Try to remove ANSI Escape Sequences
                             try:
-                                result += re.sub(r'\[.*?;.*?m', '\n',
-                                                 this_container.logs().decode())
+                                result += re.sub(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])', '', logs)
                             except:
-                                result += this_container.logs().decode()
-                            exit_code = this_container.wait().get('StatusCode',
-                                                                  0)
+                                result += logs
+                            exit_code = this_container.wait().get('StatusCode', 0)
                             break
                     except requests.exceptions.ConnectionError:
                         # the compute-api might be being recreated...keep trying
@@ -586,7 +583,7 @@ class NuvlaBox(Connector):
         command = ['update']
 
         # action args
-        command.append('--quiet')
+        # command.append('--quiet')
 
         install_params_from_payload = json.loads(self.job.get('payload', '{}'))
         install_params_from_nb_status = self.nuvlabox_status.get('installation-parameters', {})
