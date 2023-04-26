@@ -4,6 +4,12 @@
 
 ### Changed
 
+- Fix sonarcloud hotspots
+  - docker_machine.py: use https for portainer
+  - Dockerfile: enforce usage of HTTPS with curl
+  - nuvlabox.py: Fixed regex to filter ANSI Escape Sequences
+  - utils.py: replaced md5 by sha256 in unique_id function 
+
 ## [3.2.7] - 2023-04-25
 
 ### Changed
