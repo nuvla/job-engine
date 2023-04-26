@@ -19,7 +19,7 @@ log = logging.getLogger('docker_machine')
 DOCKER_MACHINE_FOLDER = os.path.expanduser("~/.docker/machine/machines")
 K8S_JOIN_PORT = '6443'
 SWARM_TLS_PORT = '2376'
-PORTAINER_PORT = '9000'
+PORTAINER_PORT = '9443'
 RANCHER_PORT = '31443'
 K8S_FLANNEL_VXLAN = '8472/udp'
 
@@ -607,7 +607,7 @@ class DockerMachineConnector(Connector):
         cmd = f'sudo docker stack deploy --compose-file={compose} portainer'
         machine.ssh(inventory.manager, cmd, self.cmd_env)
         ip = self._vm_get_ip(inventory.manager)
-        endpoint = f'http://{ip}:{PORTAINER_PORT}'
+        endpoint = f'https://{ip}:{PORTAINER_PORT}'
         return endpoint
 
     def _install_rancher(self, inventory):

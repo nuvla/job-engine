@@ -36,7 +36,7 @@ def utc_from_now_iso(seconds):
 
 
 def unique_id(*args):
-    return hashlib.md5(':'.join(map(str, args)).encode()).hexdigest()
+    return hashlib.sha256(':'.join(map(str, args)).encode()).hexdigest()
 
 
 def append_os_env(env):
