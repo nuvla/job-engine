@@ -63,7 +63,7 @@ RUN set -eux; \
 	\
 	docker --version
 
-ADD https://raw.githubusercontent.com/docker-library/docker/master/20.10/cli/modprobe.sh /usr/local/bin/modprobe
+ADD https://raw.githubusercontent.com/docker-library/docker/master/modprobe.sh /usr/local/bin/modprobe
 
 RUN set -eux; \
     	\
