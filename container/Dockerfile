@@ -62,7 +62,7 @@ RUN set -eux; \
 	dockerd --version; \
 	docker --version
 
-ADD https://raw.githubusercontent.com/docker-library/docker/master/20.10/cli/modprobe.sh /usr/local/bin/modprobe
+ADD https://raw.githubusercontent.com/docker-library/docker/master/modprobe.sh /usr/local/bin/modprobe
 
 # This only works for amd64 but it also isn't necessary for push mode
 # since its only use is for infrastructure_service_swarm_start/stop, and that's a server-side feature
