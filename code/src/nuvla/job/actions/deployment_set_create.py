@@ -21,6 +21,7 @@ class DeploymentSetCreateJob(object):
         self.dep_set_id = self.job['target-resource']['href']
         self.deployment_set = self.user_api.get(self.dep_set_id)
         self.plan = self.user_api.operation(self.deployment_set, 'plan').data
+        self.progress_increment = 90 / len(self.plan) if self.plan else 90
         self.start = self.deployment_set.data['start']
 
     def _create_deployment(self, target, application):
@@ -39,11 +40,16 @@ class DeploymentSetCreateJob(object):
             if dep_env['name'] in app_env_overwrites:
                 dep_env['value'] = app_env_overwrites[dep_env['name']]
 
+    @staticmethod
+    def _update_regs_creds_deployment(deployment, application):
+        app_regs_creds = application.get('registries-credentials')
+        if app_regs_creds:
+            deployment['registries-credentials'] = app_regs_creds
+
     def _create(self):
         log.info('Create {}.'.format(self.dep_set_id))
         progress = 10
         self.job.set_progress(progress)
-        progress_increment = 90 / len(self.plan)
         for el in self.plan:
             target = el['credential']
             application = el["application"]
@@ -51,8 +57,9 @@ class DeploymentSetCreateJob(object):
             deployment_id = self._create_deployment(target, application_href)
             deployment = self.user_api.get(deployment_id).data
             self._update_env_deployment(deployment, application)
+            self._update_regs_creds_deployment(deployment, application)
             self.user_api.edit(deployment_id, deployment)
-            progress += progress_increment
+            progress += self.progress_increment
         self.user_api.edit(self.dep_set_id, {'state': 'CREATED'})
         if self.start:
             self.user_api.operation(self.user_api.get(self.dep_set_id), "start")
