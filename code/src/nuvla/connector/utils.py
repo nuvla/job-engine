@@ -13,6 +13,8 @@ from tempfile import NamedTemporaryFile
 
 log = logging.getLogger('connector_utils')
 
+LOCAL = 'local'
+
 
 def _time_rm_nanos(time_str):
     time1, time2 = time_str.rsplit('.', 1)

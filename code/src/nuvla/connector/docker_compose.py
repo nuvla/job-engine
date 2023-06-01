@@ -5,7 +5,7 @@ import logging
 from datetime import datetime
 from tempfile import TemporaryDirectory
 from .utils import execute_cmd, create_tmp_file, generate_registry_config, \
-    join_stderr_stdout, remove_protocol_from_url, extract_host_from_url
+    join_stderr_stdout, remove_protocol_from_url, extract_host_from_url, LOCAL
 from .connector import Connector, should_connect
 
 log = logging.getLogger('docker_compose')
@@ -23,9 +23,9 @@ class DockerCompose(Connector):
     def __init__(self, **kwargs):
         super(DockerCompose, self).__init__(**kwargs)
 
-        self.cert = self.kwargs.get('cert')
-        self.key = self.kwargs.get('key')
-        self.endpoint = self.kwargs.get('endpoint', '')
+        self.cert = kwargs.get('cert')
+        self.key = kwargs.get('key')
+        self.endpoint = kwargs.get('endpoint', '') or LOCAL
         self.cert_file = None
         self.key_file = None
 
@@ -34,7 +34,7 @@ class DockerCompose(Connector):
         return 'docker-compose-cli'
 
     def connect(self):
-        log.info('Connecting to endpoint {}'.format(self.endpoint))
+        log.info('Connecting to endpoint "{}"'.format(self.endpoint))
         if self.cert and self.key:
             self.cert_file = create_tmp_file(self.cert)
             self.key_file = create_tmp_file(self.key)
@@ -48,15 +48,15 @@ class DockerCompose(Connector):
             self.key_file = None
 
     def build_cmd_line(self, list_cmd, local=False, binary='docker-compose'):
-        endpoint = remove_protocol_from_url(
-            self.endpoint) if binary == 'docker' else self.endpoint
-        if local:
+        endpoint = remove_protocol_from_url(self.endpoint) if binary == 'docker' else self.endpoint
+
+        if local or endpoint == LOCAL:
             remote_tls = []
         else:
-            remote_tls = ['-H', endpoint, '--tls', '--tlscert',
-                          self.cert_file.name,
-                          '--tlskey', self.key_file.name, '--tlscacert',
-                          self.cert_file.name]
+            remote_tls = ['-H', endpoint, '--tls',
+                          '--tlscert', self.cert_file.name,
+                          '--tlskey', self.key_file.name,
+                          '--tlscacert', self.cert_file.name]
 
         return [binary] + remote_tls + list_cmd
 

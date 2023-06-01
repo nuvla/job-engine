@@ -4,7 +4,7 @@ import logging
 from datetime import datetime
 from tempfile import TemporaryDirectory
 from .utils import execute_cmd, join_stderr_stdout, create_tmp_file, \
-    generate_registry_config, extract_host_from_url
+    generate_registry_config, extract_host_from_url, LOCAL
 from .connector import Connector, should_connect
 
 log = logging.getLogger('docker_stack')
@@ -23,9 +23,9 @@ class DockerStack(Connector):
         super(DockerStack, self).__init__(**kwargs)
 
         # Mandatory kwargs
-        self.cert = self.kwargs['cert']
-        self.key = self.kwargs['key']
-        self.endpoint = self.kwargs['endpoint'].replace('https://', '')
+        self.cert = kwargs.get('cert')
+        self.key = kwargs.get('key')
+        self.endpoint = (kwargs.get('endpoint', '') or LOCAL).replace('https://', '')
         self.cert_file = None
         self.key_file = None
 
@@ -47,11 +47,14 @@ class DockerStack(Connector):
             self.key_file = None
 
     def build_cmd_line(self, list_cmd):
-        return ['docker', '-H', self.endpoint, '--tls', '--tlscert',
-                self.cert_file.name,
-                '--tlskey', self.key_file.name, '--tlscacert',
-                self.cert_file.name] \
-               + list_cmd
+        if self.endpoint == LOCAL:
+            remote_tls = []
+        else:
+            remote_tls = ['-H', self.endpoint, '--tls',
+                          '--tlscert', self.cert_file.name,
+                          '--tlskey', self.key_file.name,
+                          '--tlscacert', self.cert_file.name]
+        return ['docker'] + remote_tls + list_cmd
 
     @should_connect
     def start(self, **kwargs):
