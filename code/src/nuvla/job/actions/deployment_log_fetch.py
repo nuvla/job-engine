@@ -27,8 +27,7 @@ class DeploymentLogFetchJob(ResourceLogFetchJob):
                 connector_class = docker_stack
             else:
                 connector_class = get_connector_class(self.connector_name)
-            self._connector = initialize_connector(
-                connector_class, self.job, self.deployment)
+            self._connector = initialize_connector(connector_class, self.job, self.deployment)
         return self._connector
 
     def get_kubernetes_log(self, component, since, lines):
