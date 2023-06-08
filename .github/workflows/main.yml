@@ -73,6 +73,7 @@ jobs:
           TRAVIS_BRANCH: ${{ steps.extract_branch.outputs.branch }}
           TRAVIS_PULL_REQUEST_BRANCH: ${{ github.head_ref }}
           TRAVIS_BUILD_NUMBER: ${{ github.run_id }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           SIXSQ_DOCKER_USERNAME: ${{ secrets.SIXSQ_DOCKER_USERNAME }}

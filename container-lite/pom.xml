@@ -208,8 +208,7 @@
                 <GIT_COMMIT_ID>${git.commit.id}</GIT_COMMIT_ID>
                 <GIT_DIRTY>${git.dirty}</GIT_DIRTY>
                 <GIT_BUILD_TIME>${git.build.time}</GIT_BUILD_TIME>
-                <TRAVIS_BUILD_NUMBER>${env.TRAVIS_BUILD_NUMBER}</TRAVIS_BUILD_NUMBER>
-                <TRAVIS_BUILD_WEB_URL>${env.TRAVIS_BUILD_WEB_URL}</TRAVIS_BUILD_WEB_URL>
+                <GITHUB_RUN_ID>${env.GITHUB_RUN_ID}</GITHUB_RUN_ID>
               </environmentVariables>
             </configuration>
           </execution>

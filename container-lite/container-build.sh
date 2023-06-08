@@ -23,8 +23,7 @@ for platform in "${platforms[@]}"; do
            --opt build-arg:GIT_BUILD_TIME=${GIT_BUILD_TIME} \
            --opt build-arg:GIT_COMMIT_ID=${GIT_COMMIT_ID} \
            --opt build-arg:GIT_DIRTY=${GIT_DIRTY} \
-           --opt build-arg:TRAVIS_BUILD_NUMBER=${TRAVIS_BUILD_NUMBER} \
-           --opt build-arg:TRAVIS_BUILD_WEB_URL=${TRAVIS_BUILD_WEB_URL} \
+           --opt build-arg:GITHUB_RUN_ID=${GITHUB_RUN_ID} \
            --opt build-arg:IMAGE_NAME=${DOCKER_IMAGE} \
            --output type=docker,name=${MANIFEST}-${platform},dest=/tmp/work/target/${DOCKER_IMAGE}-${platform}.docker.tar \
            --local context=/tmp/work \
