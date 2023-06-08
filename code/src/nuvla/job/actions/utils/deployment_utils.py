@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 
+import os
 import re
 import copy
 from abc import abstractmethod
@@ -23,9 +24,9 @@ def get_connector_name(deployment):
 def get_connector_class(connector_name):
     return {
         'docker_service': docker_service,
-        'docker_stack'  : docker_stack,
+        'docker_stack':   docker_stack,
         'docker_compose': docker_compose,
-        'kubernetes'    : kubernetes
+        'kubernetes':     kubernetes
     }[connector_name]
 
 
@@ -39,16 +40,24 @@ def get_from_context(job, resource_id):
 def initialize_connector(connector_class, job, deployment):
     credential_id = Deployment.credential_id(deployment)
     credential = get_from_context(job, credential_id)
-    infrastructure_service = copy.deepcopy(
-        get_from_context(job, credential['parent']))
+    infrastructure_service = copy.deepcopy(get_from_context(job, credential['parent']))
+    infrastructure_service_type = infrastructure_service.get('subtype', '')
+
+
     # if you uncomment this, the pull-mode deployment_* will only work with the
     # NB compute-api. Which means standalone ISs and k8s capable NuvlaBoxes,
     # are not supported
-    if job.is_in_pull_mode and \
-            infrastructure_service.get('subtype', '') == 'swarm':
-        infrastructure_service['endpoint'] = 'https://compute-api:5000'
-    return connector_class.instantiate_from_cimi(
-        infrastructure_service, credential)
+    if job.is_in_pull_mode:
+        if infrastructure_service_type == 'swarm':
+            infrastructure_service['endpoint'] = None if connector_class is not docker_service \
+                                                 else 'https://compute-api:5000'
+        elif infrastructure_service_type == 'kubernetes':
+            kubernetes_host = os.getenv('KUBERNETES_SERVICE_HOST')
+            kubernetes_port = os.getenv('KUBERNETES_SERVICE_PORT')
+            if kubernetes_host and kubernetes_port:
+                infrastructure_service['endpoint'] = f'https://{kubernetes_host}:{kubernetes_port}'
+
+    return connector_class.instantiate_from_cimi(infrastructure_service, credential)
 
 
 def get_env(deployment: dict):

@@ -117,8 +117,7 @@ class NuvlaBox(Connector):
         try:
             credential, is_endpoint = self.get_credential()
         except TypeError:
-            raise Exception(
-                'Error: could not find infrastructure service credential for this NuvlaBox')
+            raise Exception('Error: could not find infrastructure service credential for this NuvlaEdge')
 
         try:
             secret = credential['cert'] + '\n' + credential['key']
@@ -170,7 +169,7 @@ class NuvlaBox(Connector):
                f'{org}/{repo}:{default_tag}')
 
     def connect(self):
-        logging.info('Connecting to NuvlaBox {}'.format(self.nuvlabox_id))
+        logging.info('Connecting to NuvlaEdge {}'.format(self.nuvlabox_id))
         self.nuvlabox_resource = self.api.get(self.nuvlabox_id)
         self.nuvlabox = self.nuvlabox_resource.data
         self.acl = self.nuvlabox.get('acl')
@@ -186,7 +185,7 @@ class NuvlaBox(Connector):
         else:
             self.nb_api_endpoint = self.nuvlabox_status.get("nuvlabox-api-endpoint")
             if not self.nb_api_endpoint:
-                msg = f'NuvlaBox {self.nuvlabox.get("id")} missing API endpoint in its status resource.'
+                msg = f'NuvlaEdge {self.nuvlabox.get("id")} missing API endpoint in its status resource.'
                 logging.warning(msg)
 
     def clear_connection(self, connect_result):
@@ -220,7 +219,7 @@ class NuvlaBox(Connector):
     @should_connect
     def nuvlabox_manage_ssh_key(self, action: str, pubkey: str):
         """
-        Deletes an SSH key from the NuvlaBox
+        Deletes an SSH key from the NuvlaEdge
 
         :param pubkey: SSH public key string
         :param action: name of the action, as in the mgmt API endpoint
@@ -319,7 +318,7 @@ class NuvlaBox(Connector):
         if self.nb_api_endpoint:
             self.job.set_progress(50)
         else:
-            msg = "NuvlaBox {} missing API endpoint in its status resource".format(
+            msg = "NuvlaEdge {} missing API endpoint in its status resource".format(
                 self.nuvlabox.get("id"))
             logging.warning(msg)
             raise Exception(msg)
@@ -357,9 +356,10 @@ class NuvlaBox(Connector):
         return image_name
 
     def infer_docker_client(self):
-        dc = docker.from_env() if self.job.get('execution-mode',
-                                               '') == 'pull' else self.docker_client
-        return dc
+        if self.job.get('execution-mode', '') == 'pull':
+            return docker.from_env()
+        else:
+            return self.docker_client
 
     def run_container_from_installer(self, image, detach, container_name,
                                      volumes, command, container_env):
@@ -371,23 +371,20 @@ class NuvlaBox(Connector):
                                                       environment=container_env,
                                                       command=command)
         except docker.errors.NotFound as e:
-            raise Exception(f'Unable to reach NuvlaBox Docker API: {str(e)}')
+            raise Exception(f'Unable to reach NuvlaEdge Docker API: {str(e)}')
         except docker.errors.APIError as e:
             if '409' in str(e) and container_name in str(e):
                 try:
-                    existing = self.infer_docker_client().containers.get(
-                        container_name)
+                    existing = self.infer_docker_client().containers.get(container_name)
                     if existing.status.lower() != 'running':
-                        logging.info(
-                            f'Deleting old {container_name} container because its status is {existing.status}')
+                        logging.info(f'Deleting old {container_name} container because its status is {existing.status}')
                         existing.remove(force=True)
                         self.run_container_from_installer(image, detach,
                                                           container_name,
                                                           volumes, command,
                                                           container_env)
                 except Exception as ee:
-                    raise Exception(
-                        f'Operation is already taking place and could not stop it: {str(e)} | {str(ee)}')
+                    raise Exception(f'Operation is already taking place and could not stop it: {str(e)} | {str(ee)}')
             else:
                 raise
 
@@ -397,11 +394,10 @@ class NuvlaBox(Connector):
         try:
             with timeout(timeout_after):
                 tries = 0
-                logging.info(f'Waiting {timeout_after} sec for NuvlaBox operation to finish...')
+                logging.info(f'Waiting {timeout_after} sec for NuvlaEdge operation to finish...')
                 while True:
                     if tries > 3:
-                        raise Exception(
-                            f'Lost connection with the NuvlaBox Docker API at {self.docker_api_endpoint}')
+                        raise Exception(f'Lost connection with the NuvlaEdge Docker API at {self.docker_api_endpoint}')
                     try:
                         this_container = self.infer_docker_client().containers.get(container_name)
                         if this_container.status == 'exited':
@@ -419,8 +415,7 @@ class NuvlaBox(Connector):
                         time.sleep(5)
                     time.sleep(1)
         except TimeoutError:
-            raise Exception(
-                f'NuvlaBox operation timed out after {timeout_after} sec. Operation is incomplete!')
+            raise Exception(f'NuvlaEdge operation timed out after {timeout_after} sec. Operation is incomplete!')
         finally:
             self.infer_docker_client().api.remove_container(container_name,
                                                             force=True)
@@ -430,7 +425,7 @@ class NuvlaBox(Connector):
     def assert_clustering_operation(self, action: str):
         """
         Double checks if the clustering operation can go on. For example, trying to join an existing cluster is
-        only possible if the affected NuvlaBox has no active deployments
+        only possible if the affected NuvlaEdge has no active deployments
 
         :param action: clustering action
         :return: ID of cluster to delete, in case there's need
@@ -442,7 +437,7 @@ class NuvlaBox(Connector):
                                                  filter=f'nuvlabox="{self.nuvlabox_id}" and state!="STOPPED"').resources
 
             if len(active_deployments) > 0:
-                raise ClusterOperationNotAllowed(f"NuvlaBox {self.nuvlabox_id} "
+                raise ClusterOperationNotAllowed(f"NuvlaEdge {self.nuvlabox_id} "
                                                  f"has {len(active_deployments)} active deployments")
         elif action.lower() in ['leave', 'force-new-cluster']:
             current_cluster_filter = f'nuvlabox-managers="{self.nuvlabox_id}" or nuvlabox-workers="{self.nuvlabox_id}"'
@@ -466,14 +461,14 @@ class NuvlaBox(Connector):
         except:
             # we can ignore as it shall be cleanup up later on by the daily cleanup job
             logging.exception(
-                f'Cannot delete leftover NuvlaBox cluster {cluster_id}. Leaving it be')
+                f'Cannot delete leftover NuvlaEdge cluster {cluster_id}. Leaving it be')
             pass
 
     @should_connect
     def cluster_nuvlabox(self, **kwargs):
         self.job.set_progress(10)
 
-        # 1st - get the NuvlaBox Compute API endpoint and credentials
+        # 1st - get the NuvlaEdge Compute API endpoint and credentials
         if self.job.get('execution-mode', '').lower() in ['mixed', 'push']:
             self.setup_ssl_credentials()
 
@@ -485,7 +480,7 @@ class NuvlaBox(Connector):
         self.job.set_progress(50)
 
         # 2nd - set the Docker args
-        logging.info('Preparing parameters for NuvlaBox clustering')
+        logging.info('Preparing parameters for NuvlaEdge clustering')
 
         detach = True
         # container name
@@ -530,15 +525,14 @@ class NuvlaBox(Connector):
         # 3rd - run the Docker command
         image = self.pull_docker_image(self.installer_image_name,
                                        self.installer_image_name_fallback)
-        logging.info(
-            f'Running NuvlaBox clustering via container from {image}, with args {" ".join(command)}')
+        logging.info(f'Running NuvlaEdge clustering via container from {image}, with args {" ".join(command)}')
 
         self.run_container_from_installer(image, detach, container_name,
                                           volumes, command, [])
 
         # 4th - monitor the op, waiting for it to finish to capture the output
         timeout_after = 600  # 10 minutes
-        result = f'[NuvlaBox cluster action {cluster_action}] '
+        result = f'[NuvlaEdge cluster action {cluster_action}] '
         wait_result, exit_code = self.wait_for_container_output(container_name,
                                                                 timeout_after)
         result += wait_result
@@ -554,7 +548,7 @@ class NuvlaBox(Connector):
     def update_nuvlabox_engine(self, **kwargs):
         self.job.set_progress(10)
 
-        # 1st - get the NuvlaBox Compute API endpoint and credentials
+        # 1st - get the NuvlaEdge Compute API endpoint and credentials
         if self.job.get('execution-mode', '').lower() in ['mixed', 'push']:
             self.setup_ssl_credentials()
 
@@ -598,7 +592,7 @@ class NuvlaBox(Connector):
         if missing_arguments:
             raise Exception(
                 'The following installation parameters are required '
-                f'but are not present in NuvlaBox status {self.nuvlabox_status.get("id")}, '
+                f'but are not present in NuvlaEdge status {self.nuvlabox_status.get("id")}, '
                 'nor given via the operation payload attribute: '
                 f'{", ".join(missing_arguments)}')
 
@@ -649,7 +643,7 @@ class NuvlaBox(Connector):
         # 3rd - run the Docker command
 
         logging.info(
-            f'Running NuvlaBox update container {self.installer_image_name} '
+            f'Running NuvlaEdge update container {self.installer_image_name} '
             f'(fallback: {self.installer_image_name_fallback})')
         image = self.pull_docker_image(self.installer_image_name,
                                        self.installer_image_name_fallback)
@@ -658,7 +652,7 @@ class NuvlaBox(Connector):
 
         # 4th - monitor the update, waiting for it to finish to capture the output
         timeout_after = 600  # 10 minutes
-        result = f'[NuvlaBox Engine update to {target_release}] '
+        result = f'[NuvlaEdge Engine update to {target_release}] '
         wait_result, exit_code = self.wait_for_container_output(container_name,
                                                                 timeout_after)
         result += wait_result
@@ -669,8 +663,8 @@ class NuvlaBox(Connector):
 
     # @should_connect
     def update(self, payload, **kwargs):
-        """ Updates the NuvlaBox resource with the provided payload
-        :param payload: content to be updated in the NuvlaBox resource
+        """ Updates the NuvlaEdge resource with the provided payload
+        :param payload: content to be updated in the NuvlaEdge resource
         """
 
         if payload:
@@ -680,13 +674,20 @@ class NuvlaBox(Connector):
 
     # @should_connect
     def commission(self, payload, **kwargs):
-        """ Updates the NuvlaBox resource with the provided payload
-        :param payload: content to be updated in the NuvlaBox resource
+        """ Updates the NuvlaEdge resource with the provided payload
+        :param payload: content to be updated in the NuvlaEdge resource
         """
 
         if payload:
-            self.api.operation(self.nuvlabox_resource, "commission",
-                               data=payload)
+            self.api.operation(self.nuvlabox_resource, "commission", data=payload)
+
+    def _list_containers(self, filters=None, labels=None, all=False):
+        filters_ = filters or {}
+
+        if labels:
+            filters_['label'] = labels
+
+        return self.infer_docker_client().containers.list(filters=filters, all=all)
 
     def list(self):
         """
@@ -694,9 +695,9 @@ class NuvlaBox(Connector):
 
         :return: list of objects
         """
-        filter_label = 'nuvlabox.component=True'
-        return self.infer_docker_client().containers.list(
-            filters={'label': filter_label})
+        return list(set(
+            self._list_containers(labels='nuvlabox.component=True') +
+            self._list_containers(labels='nuvlaedge.component=True')))
 
     def get_all_nuvlabox_components(self, names: list) -> list:
         """
@@ -705,10 +706,10 @@ class NuvlaBox(Connector):
         :param names: list of component names to filter for
         :return: list of objects
         """
-        filter_label = 'nuvlabox.component=True'
-        return self.infer_docker_client().containers.list(
-            filters={'label': filter_label, 'name': names},
-            all=True)
+        kwargs = dict(all=True, filters={'name': names})
+        return list(set(
+            self._list_containers(labels='nuvlabox.component=True', **kwargs) +
+            self._list_containers(labels='nuvlaedge.component=True', **kwargs)))
 
     @should_connect
     def log(self, component: str, since: datetime, lines: int) -> str:
