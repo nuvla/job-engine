@@ -118,7 +118,7 @@
             <configuration>
               <name>docker-tag</name>
               <value>${project.version}</value>
-              <regex>^.*SNAPSHOT$</regex>
+              <regex>^.*dev$</regex>
               <replacement>${git.branch.sanitized}</replacement>
               <failIfNoMatch>false</failIfNoMatch>
             </configuration>
@@ -131,7 +131,7 @@
             <configuration>
               <name>docker-organization</name>
               <value>${project.version} nuvladev nuvla</value>
-              <regex>(?=.*SNAPSHOT).*(nuvladev).*|.*(nuvla).*</regex>
+              <regex>(?=.*dev).*(nuvladev).*|.*(nuvla).*</regex>
               <replacement>$1$2</replacement>
               <failIfNoMatch>false</failIfNoMatch>
             </configuration>
