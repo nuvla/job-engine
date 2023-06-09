@@ -202,9 +202,9 @@ class Kubernetes(Connector):
         return service_info
 
     def _stack_services(self, stack_name):
-        cmd_services = self.build_cmd_line(['get', 'services', '--namespace',
+        cmd_jobs = self.build_cmd_line(['get', 'jobs', '--namespace',
                                             stack_name, '-o', 'json'])
-        kube_services = json.loads(execute_cmd(cmd_services).stdout).get(
+        kube_jobs = json.loads(execute_cmd(cmd_jobs).stdout).get(
             'items', [])
 
         cmd_deployments = self.build_cmd_line(
@@ -214,7 +214,7 @@ class Kubernetes(Connector):
             'items', [])
 
         services = [Kubernetes._extract_service_info(kube_resource)
-                    for kube_resource in kube_services + kube_deployments]
+                    for kube_resource in kube_jobs + kube_deployments]
 
         return services
 
