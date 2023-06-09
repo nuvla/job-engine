@@ -177,6 +177,8 @@ class Kubernetes(Connector):
         list_opts = [component, '--timestamps=true', '--tail', str(lines),
                      '--namespace', namespace] + since_opt
         cmd = self.build_cmd_line(['logs'] + list_opts)
+        log.critical('Built command: {}'.format(self.cmd))
+
         return execute_cmd(cmd).stdout
 
     @staticmethod
@@ -202,9 +204,9 @@ class Kubernetes(Connector):
         return service_info
 
     def _stack_services(self, stack_name):
-        cmd_jobs = self.build_cmd_line(['get', 'jobs', '--namespace',
+        cmd_services = self.build_cmd_line(['get', 'services', '--namespace',
                                             stack_name, '-o', 'json'])
-        kube_jobs = json.loads(execute_cmd(cmd_jobs).stdout).get(
+        kube_services = json.loads(execute_cmd(cmd_services).stdout).get(
             'items', [])
 
         cmd_deployments = self.build_cmd_line(
@@ -214,7 +216,7 @@ class Kubernetes(Connector):
             'items', [])
 
         services = [Kubernetes._extract_service_info(kube_resource)
-                    for kube_resource in kube_jobs + kube_deployments]
+                    for kube_resource in kube_services + kube_deployments]
 
         return services
 
