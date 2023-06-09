@@ -1,4 +1,10 @@
-FROM python:3.11-alpine3.18
+ARG ALPINE_MIN_MAJ_VERSION=3.18
+ARG PYTHON_MAJ_MIN_VERSION=3.11
+ARG BASE_IMAGE=python:${PYTHON_MAJ_MIN_VERSION}-alpine${ALPINE_MIN_MAJ_VERSION}
+
+FROM nuvladev/nuvlaedge AS docker-compose-image
+
+FROM ${BASE_IMAGE}
 
 ARG GIT_BRANCH
 ARG GIT_COMMIT_ID
@@ -6,6 +12,7 @@ ARG GIT_DIRTY
 ARG GIT_BUILD_TIME
 ARG GITHUB_RUN_ID
 ARG IMAGE_NAME
+ARG PYTHON_MAJ_MIN_VERSION
 
 ARG DOCKER_CLIENT_VERSION=23.0
 ARG DOCKER_COMPOSE_VERSION=2.17
@@ -18,8 +25,8 @@ LABEL git.dirty=${GIT_DIRTY}
 LABEL git.build.time=${GIT_BUILD_TIME}
 LABEL ci.build.number=${GITHUB_RUN_ID}
 
-COPY --from=nuvla/job-docker-compose-client:master /usr/local/bin/docker-compose /usr/local/bin/
-COPY --from=nuvla/job-docker-compose-client:master /usr/local/lib/python3.8/site-packages /usr/local/lib/python3.8/site-packages
+COPY --from=docker-compose-image /usr/local/bin/docker-compose /usr/local/bin/
+COPY --from=docker-compose-image /usr/local/lib/python${PYTHON_MAJ_MIN_VERSION}/site-packages /usr/local/lib/python${PYTHON_MAJ_MIN_VERSION}/site-packages
 
 RUN apk --no-cache add gettext \
     "docker-cli~${DOCKER_CLIENT_VERSION}" \
