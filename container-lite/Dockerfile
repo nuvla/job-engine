@@ -18,7 +18,8 @@ LABEL git.dirty=${GIT_DIRTY}
 LABEL git.build.time=${GIT_BUILD_TIME}
 LABEL ci.build.number=${GITHUB_RUN_ID}
 
-COPY --from=docker/compose:alpine-1.29.2 /usr/local/bin/docker-compose /usr/local/bin/
+COPY --from=nuvla/job-docker-compose-client:master /usr/local/bin/docker-compose /usr/local/bin/
+COPY --from=nuvla/job-docker-compose-client:master /usr/local/lib/python3.8/site-packages /usr/local/lib/python3.8/site-packages
 
 RUN apk --no-cache add gettext \
     "docker-cli~${DOCKER_CLIENT_VERSION}" \
