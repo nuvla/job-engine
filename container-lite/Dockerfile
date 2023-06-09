@@ -23,7 +23,7 @@ COPY --from=docker/compose:alpine-1.29.2 /usr/local/bin/docker-compose /usr/loca
 RUN apk --no-cache add gettext \
     "docker-cli~${DOCKER_CLIENT_VERSION}" \
     "docker-cli-compose~${DOCKER_COMPOSE_VERSION}"
-RUN apk --no-cache add --repository http://dl-cdn.alpinelinux.org/alpine/edge/community \
+RUN apk --no-cache add --repository https://dl-cdn.alpinelinux.org/alpine/edge/community \
     "kubectl~${KUBECTL_VERSION}"
 
 ADD target/job /target/job
