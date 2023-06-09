@@ -4,7 +4,7 @@
 
  - Decide what semantic version to use for this release and change the
    version, if necessary, in `code/project.clj` and all the `pom.xml`
-   files.  (It should still have the "-SNAPSHOT" suffix.)
+   files.  (It should still have the ".dev" suffix.)
 
  - Update the `CHANGELOG.md` file.
 

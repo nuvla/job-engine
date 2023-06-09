@@ -82,7 +82,7 @@ class TestJob(unittest.TestCase):
         job.retry_kazoo_queue_op.assert_called_once_with(queue, "release")
         assert jb.nothing_to_do is True
 
-        job.engine_version = '0.0.1-SNAPSHOT'
+        job.engine_version = '0.0.1.dev'
         job.Job.get_cimi_job = Mock(return_value=CimiResource({'version': '0.0.2'}))
         job.retry_kazoo_queue_op = Mock()
         jb = job.Job(None, queue)

@@ -13,7 +13,7 @@ from .version import version as engine_version
 
 log = logging.getLogger('job')
 
-VER_TRIM_RE = re.compile('-.*$')
+VER_TRIM_RE = re.compile(r'\.?[^.0-9]+[0-9]*$')
 
 JOB_SUCCESS = 'SUCCESS'
 JOB_QUEUED = 'QUEUED'
@@ -22,7 +22,7 @@ JOB_FAILED = 'FAILED'
 JOB_STOPPING = 'STOPPING'
 JOB_STOPPED = 'STOPPED'
 
-STATES = (JOB_QUEUED, JOB_RUNNING, JOB_FAILED, JOB_SUCCESS, 'STOPPING', 'STOPPED')
+STATES = (JOB_QUEUED, JOB_RUNNING, JOB_FAILED, JOB_SUCCESS, JOB_STOPPING, JOB_STOPPED)
 
 
 def version_to_tuple(ver: str) -> tuple:
