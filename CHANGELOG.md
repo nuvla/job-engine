@@ -4,13 +4,25 @@
 
 ### Changed
 
+## Released
+
+## [3.3.0] - 2023-06-12
+
+### Changed
+
 - Fix sonarcloud hotspots
   - docker_machine.py: use https for portainer
   - Dockerfile: enforce usage of HTTPS with curl
   - nuvlabox.py: Fixed regex to filter ANSI Escape Sequences
   - utils.py: replaced md5 by sha256 in unique_id function 
-
-## Released
+- Dockerfile - modprobe script location changed
+- Use local docker socket for pull jobs 
+- Use local Kubernetes API endpoint for pull jobs
+- nuvlabox.py:
+  - get components with label "nuvlaedge" and not only with "nuvlabox"
+  - renamed some occurences of NuvlaBox to NuvlaEdge
+- Updated containers base image to python:3.11-alpine3.18
+- Development version numbers compliant with PEP440 version schemes (.dev instead of -SNAPSHOT)
 
 ## [3.2.7] - 2023-04-25
 
