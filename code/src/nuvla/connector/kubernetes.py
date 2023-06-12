@@ -177,7 +177,7 @@ class Kubernetes(Connector):
         list_opts = [component, '--timestamps=true', '--tail', str(lines),
                      '--namespace', namespace] + since_opt
         cmd = self.build_cmd_line(['logs'] + list_opts)
-        log.critical('Built command: {}'.format(self.cmd))
+        log.warning(f'Built command: {cmd}')
 
         return execute_cmd(cmd).stdout
 
