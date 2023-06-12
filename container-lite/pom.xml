@@ -5,14 +5,14 @@
 
   <artifactId>container-lite-dep</artifactId>
   <packaging>pom</packaging>
-  <version>3.2.8-SNAPSHOT</version>
+  <version>3.3.0.dev</version>
   <name>job-engine/container-lite</name>
   <url>http://sixsq.com/</url>
 
   <parent>
     <groupId>sixsq.nuvla.job-engine</groupId>
     <artifactId>job-engine</artifactId>
-    <version>3.2.8-SNAPSHOT</version>
+    <version>3.3.0.dev</version>
   </parent>
 
   <licenses>
@@ -118,7 +118,7 @@
             <configuration>
               <name>docker-tag</name>
               <value>${project.version}</value>
-              <regex>^.*SNAPSHOT$</regex>
+              <regex>^.*dev$</regex>
               <replacement>${git.branch.sanitized}</replacement>
               <failIfNoMatch>false</failIfNoMatch>
             </configuration>
@@ -131,7 +131,7 @@
             <configuration>
               <name>docker-organization</name>
               <value>${project.version} nuvladev nuvla</value>
-              <regex>(?=.*SNAPSHOT).*(nuvladev).*|.*(nuvla).*</regex>
+              <regex>(?=.*dev).*(nuvladev).*|.*(nuvla).*</regex>
               <replacement>$1$2</replacement>
               <failIfNoMatch>false</failIfNoMatch>
             </configuration>
@@ -208,8 +208,7 @@
                 <GIT_COMMIT_ID>${git.commit.id}</GIT_COMMIT_ID>
                 <GIT_DIRTY>${git.dirty}</GIT_DIRTY>
                 <GIT_BUILD_TIME>${git.build.time}</GIT_BUILD_TIME>
-                <TRAVIS_BUILD_NUMBER>${env.TRAVIS_BUILD_NUMBER}</TRAVIS_BUILD_NUMBER>
-                <TRAVIS_BUILD_WEB_URL>${env.TRAVIS_BUILD_WEB_URL}</TRAVIS_BUILD_WEB_URL>
+                <GITHUB_RUN_ID>${env.GITHUB_RUN_ID}</GITHUB_RUN_ID>
               </environmentVariables>
             </configuration>
           </execution>
