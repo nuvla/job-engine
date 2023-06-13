@@ -179,7 +179,13 @@ class Kubernetes(Connector):
         cmd = self.build_cmd_line(['logs'] + list_opts)
         log.warning(f'Built command: {cmd}')
 
-        return execute_cmd(cmd).stdout
+        logging_out = execute_cmd(cmd).stdout
+        logging_negative = "No entries written to log {component} since {since.isoformat()}”
+
+        if len(logging_out) > 0:
+            return logging_out
+        else:
+            return logging_negative
 
     @staticmethod
     def _extract_service_info(kube_resource):
