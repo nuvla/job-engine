@@ -75,6 +75,7 @@ class ResourceLogFetchJob(ABC):
         lines = self.resource_log.get('lines', 200)
         log = {}
         for component in components:
+            self.log.info(f'component: {component}')
             try:
                 component_logs = self.get_component_logs(
                     component, since, lines).strip().splitlines()
