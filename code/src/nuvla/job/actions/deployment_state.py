@@ -145,6 +145,7 @@ class DeploymentStateJob(DeploymentBase):
                                          self.deployment)
         stack_name = Deployment.uuid(self.deployment)
         services = connector.stack_services(stack_name)
+        log.info(f'services: {services}')
         application_params_update(self.api_dpl, self.deployment, services)
 
     def do_work(self):
