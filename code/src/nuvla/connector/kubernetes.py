@@ -174,6 +174,7 @@ class Kubernetes(Connector):
             **kwargs) -> str:
         namespace = kwargs['namespace']
         since_opt = ['--since-time', since.isoformat()] if since else []
+        log.info('kubernetes.log: component: {}'.format(component))
         list_opts = [component, '--timestamps=true', '--tail', str(lines),
                      '--namespace', namespace] + since_opt
         cmd = self.build_cmd_line(['logs'] + list_opts)
