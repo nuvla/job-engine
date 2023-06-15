@@ -74,8 +74,10 @@ class ResourceLogFetchJob(ABC):
         components = self.get_list_components()
         lines = self.resource_log.get('lines', 200)
         log = {}
+        ## FIXME
+        self.log.info(f'list of components : {component}')
         for component in components:
-            self.log.info(f'component: {component}')
+            self.log.info(f'component : {component}')
             try:
                 component_logs = self.get_component_logs(
                     component, since, lines).strip().splitlines()
@@ -96,7 +98,7 @@ class ResourceLogFetchJob(ABC):
                 self.get_components_logs()))
 
     def fetch_resource_log(self):
-        self.log.info(f'Job started for {self.resource_log_id}.')
+        self.log.info(f'Job started for {self.resource_log_id}')
         self.job.set_progress(10)
         try:
             self.fetch_log()
