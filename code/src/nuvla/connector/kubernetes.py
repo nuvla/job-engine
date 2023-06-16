@@ -181,8 +181,11 @@ class Kubernetes(Connector):
         # can we generate a kubectl command to return all the possible containers?
         # then we can loop over all the containers HERE
         # and return the total logs together.
-        # issue a get pods on the "high level" name... extract the correct names from JSON.
-        list_opts_pods = ['-o json', '--namespace', namespace] 
+        # issue a get pods on the "high level" name...
+        # but in fact, the component name is not needed.
+        # we just ask for all pods from the namespace. 
+        # extract the correct names from JSON.
+        list_opts_pods = ['-o', 'json', '--namespace', namespace] 
         cmd_pods = self.build_cmd_line(['get', 'pods'] + list_opts_pods)
         pods = json.loads(execute_cmd(cmd_pods).stdout).get('items', [])['metadata']['name']
         # FIXME
