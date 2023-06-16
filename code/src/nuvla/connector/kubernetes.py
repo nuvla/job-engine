@@ -197,18 +197,18 @@ class Kubernetes(Connector):
         # but in fact, the component name is not needed.
         # we just ask for all pods from the namespace. 
         # extract the correct names from JSON.
-        # list_opts_pods = ['-o', 'json', '--namespace', namespace] 
-        # cmd_pods = self.build_cmd_line(['get', 'pods'] + list_opts_pods)
-        # log.info('Generated command line to get pods: {}'.format(cmd_pods))
+        # FIXME
         log.info('Running Pods search...')
-        # pods = json.loads(execute_cmd(cmd_pods).stdout).get('items', [])['metadata']['name']
-        pods = self._get_pods(namespace)
+        try:
+            pods = self._get_pods(namespace)
+        except Exception as e_pod:
+            self.log.error(f'Fetching Pods failed: {str(e_pod)}')
+            pods = ""
         # FIXME
         # once we have a correct pod list, we can loop over the pods 
         # and return the concatenated results
         # need to sort out the formatting to be presentable
         log.info('Pods search run... ')
-        # log.info('We have found the pods : {}'.format(pods))
 
         list_opts_log = [component, '--timestamps=true', '--tail', str(lines),
                      '--namespace', namespace] + since_opt
