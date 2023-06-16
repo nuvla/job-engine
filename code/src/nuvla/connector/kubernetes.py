@@ -174,10 +174,13 @@ class Kubernetes(Connector):
             **kwargs) -> str:
         namespace = kwargs['namespace']
         since_opt = ['--since-time', since.isoformat()] if since else []
+        # FIXME
         log.info('component set to: {}'.format(component))
         list_opts = [component, '--timestamps=true', '--tail', str(lines),
                      '--namespace', namespace] + since_opt
         cmd = self.build_cmd_line(['logs'] + list_opts)
+        # FIXME
+        log.info('Generated command line : {}'.format(cmd))
         return execute_cmd(cmd).stdout
 
     @staticmethod
