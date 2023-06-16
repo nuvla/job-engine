@@ -195,13 +195,13 @@ class Kubernetes(Connector):
         # and return the concatentated results
         # need to sort out the formatting to be presentable
         log.info('Pods search run... ')
-        log.info('We have found the pods : {}'.format(pods))
+        # log.info('We have found the pods : {}'.format(pods))
 
         list_opts_log = [component, '--timestamps=true', '--tail', str(lines),
                      '--namespace', namespace] + since_opt
         cmd = self.build_cmd_line(['logs'] + list_opts_log)
         # FIXME
-        log.info('Generated command line : {}'.format(cmd))
+        log.info('Generated logs command line : {}'.format(cmd))
         return execute_cmd(cmd).stdout
 
     @staticmethod
