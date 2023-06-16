@@ -188,12 +188,13 @@ class Kubernetes(Connector):
         list_opts_pods = ['-o', 'json', '--namespace', namespace] 
         cmd_pods = self.build_cmd_line(['get', 'pods'] + list_opts_pods)
         log.info('Generated command line to get pods: {}'.format(cmd_pods))
+        log.info('Running Pods search...')
         pods = json.loads(execute_cmd(cmd_pods).stdout).get('items', [])['metadata']['name']
         # FIXME
         # once we have a correct pod list, we can loop over the pods 
         # and return the concatentated results
         # need to sort out the formatting to be presentable
-
+        log.info('Pods search run... ')
         log.info('We have found the pods : {}'.format(pods))
 
         list_opts_log = [component, '--timestamps=true', '--tail', str(lines),
