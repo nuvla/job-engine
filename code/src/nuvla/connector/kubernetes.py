@@ -190,6 +190,7 @@ class Kubernetes(Connector):
         log.info('Generated command line to get pods: {}'.format(cmd_pods))
         log.info('Running Pods search...')
         # pods = json.loads(execute_cmd(cmd_pods).stdout).get('items', [])['metadata']['name']
+        pods = get_pods()
         # FIXME
         # once we have a correct pod list, we can loop over the pods 
         # and return the concatentated results
@@ -204,6 +205,19 @@ class Kubernetes(Connector):
         log.info('Generated logs command line : {}'.format(cmd))
         return execute_cmd(cmd).stdout
 
+    def get_pods(self, **kwargs):
+
+        namespace = kwargs['namespace']
+
+        list_opts_pods = ['-o', 'json', '--namespace', namespace]
+        cmd_pods = self.build_cmd_line(['get', 'pods'] + list_opts_pods)
+        log.info('Generated command line to get pods: {}'.format(cmd_pods))
+        log.info('Running Pods search...')
+        pods = json.loads(execute_cmd(cmd_pods).stdout).get('items', [])['metadata']['name']
+        log.info('Pods search run... ')
+        log.info('We have found the pods : {}'.format(pods))
+        return pods     
+   
     @staticmethod
     def _extract_service_info(kube_resource):
         resource_kind = kube_resource['kind']
