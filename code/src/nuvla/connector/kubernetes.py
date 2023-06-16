@@ -175,7 +175,8 @@ class Kubernetes(Connector):
         cmd_pods = self.build_cmd_line(['get', 'pods'] + list_opts_pods)
         log.info('Generated command line to get pods: {}'.format(cmd_pods))
         log.info('Running Pods search...')
-        pods = json.loads(execute_cmd(cmd_pods).stdout).get('items', [])['metadata']['name']
+        # pods = json.loads(execute_cmd(cmd_pods).stdout).get('items', [])['metadata']['name']
+        pods = execute_cmd(cmd_pods).stdout
         log.info('Pods search run... ')
         log.info('We have found the pods : {}'.format(pods))
         return pods
