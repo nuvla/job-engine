@@ -187,6 +187,7 @@ class Kubernetes(Connector):
         # extract the correct names from JSON.
         list_opts_pods = ['-o', 'json', '--namespace', namespace] 
         cmd_pods = self.build_cmd_line(['get', 'pods'] + list_opts_pods)
+        log.info('Generated command line to get pods: {}'.format(cmd_pods))
         pods = json.loads(execute_cmd(cmd_pods).stdout).get('items', [])['metadata']['name']
         # FIXME
         # once we have a correct pod list, we can loop over the pods 
