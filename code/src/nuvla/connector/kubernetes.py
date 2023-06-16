@@ -182,10 +182,14 @@ class Kubernetes(Connector):
         # then we can loop over all the containers HERE
         # and return the total logs together.
         # issue a get pods on the "high level" name... extract the correct names from JSON.
-        list_opts_pods = [component, '-o json', '--namespace', namespace] 
+        list_opts_pods = ['-o json', '--namespace', namespace] 
         cmd_pods = self.build_cmd_line(['get', 'pods'] + list_opts_pods)
         pods = json.loads(execute_cmd(cmd_pods).stdout).get('items', [])['metadata']['name']
         # FIXME
+        # once we have a correct pod list, we can loop over the pods 
+        # and return the concatentated results
+        # need to sort out the formatting to be presentable
+
         log.info('We have found the pods : {}'.format(pods))
 
         list_opts_log = [component, '--timestamps=true', '--tail', str(lines),
