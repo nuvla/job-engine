@@ -176,9 +176,21 @@ class Kubernetes(Connector):
         since_opt = ['--since-time', since.isoformat()] if since else []
         # FIXME
         log.info('component set to: {}'.format(component))
-        list_opts = [component, '--timestamps=true', '--tail', str(lines),
+        # FIXME
+        # here the component will be the "high level" name... i.e. not the container
+        # can we generate a kubectl command to return all the possible containers?
+        # then we can loop over all the containers HERE
+        # and return the total logs together.
+        # issue a get pods on the "high level" name... extract the correct names from JSON.
+        list_opts_pods = [component, '-o json', '--namespace', namespace] 
+        cmd_pods = self.build_cmd_line(['get', 'pods'] + list_opts_pods)
+        pods = json.loads(execute_cmd(cmd_pods).stdout).get('items', [])['metadata']['name']
+        # FIXME
+        log.info('We have found the pods : {}'.format(pods))
+
+        list_opts_log = [component, '--timestamps=true', '--tail', str(lines),
                      '--namespace', namespace] + since_opt
-        cmd = self.build_cmd_line(['logs'] + list_opts)
+        cmd = self.build_cmd_line(['logs'] + list_opts_log)
         # FIXME
         log.info('Generated command line : {}'.format(cmd))
         return execute_cmd(cmd).stdout
