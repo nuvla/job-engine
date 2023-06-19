@@ -169,7 +169,10 @@ class Kubernetes(Connector):
         # return execute_cmd(cmd)
         pass
 
-    def _get_containers(self, namespace, values, since_opt, lines: int):
+    def _get_containers(self, namespace, values, since_opt, lines: int) -> str:
+
+        logs_string = "Done"
+
         for items_list in values['items']:
             if items_list["kind"] == 'Pod':
                 print (items_list["kind"])
@@ -210,6 +213,7 @@ class Kubernetes(Connector):
                     print("No Deployment containers?")
             else:
                 print (f'Kind not used: ',items_list["kind"])
+        return logs_string
 
     def _get_container_logs(self, namespace, since_opt, lines: int):
 
@@ -226,7 +230,7 @@ class Kubernetes(Connector):
             all_json_out = json.loads(execute_cmd(cmd_pods).stdout)
             try:
                 log.info('Getting containers...')
-                self._get_containers(self, namespace, all_json_out, since_opt, lines)
+                logs_string = self._get_containers(self, namespace, all_json_out, since_opt, lines)
             except Exception as e_cont:
                 self.log.error(f'Fetching Containers failed: {str(e_cont)}')
         except Exception as e_json:
