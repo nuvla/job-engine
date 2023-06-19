@@ -214,6 +214,8 @@ class Kubernetes(Connector):
     def _get_container_logs(self, namespace, since_opt, lines: int):
 
         list_opts_pods = ['-o', 'json', '--namespace', namespace]
+        # FIXME
+        # Should this be a "get all" below?
         cmd_pods = self.build_cmd_line(['get', 'pods'] + list_opts_pods)
         log.info('Generated command line to get pods: {}'.format(cmd_pods))
         try:
@@ -227,7 +229,7 @@ class Kubernetes(Connector):
         except Exception as e_json:
             self.log.error(f'Fetching JSON failed: {str(e_json)}')
         log.info('Pods search run... ')
-        log.info('We have found the pods : {}'.format(pods))
+        # log.info('We have found the pods : {}'.format(pods))
         return pods
 
     @should_connect
@@ -237,15 +239,6 @@ class Kubernetes(Connector):
         since_opt = ['--since-time', since.isoformat()] if since else []
         # FIXME
         log.info('component set to: {}'.format(component))
-        # FIXME
-        # here the component will be the "high level" name... i.e. not the container
-        # can we generate a kubectl command to return all the possible containers?
-        # then we can loop over all the containers HERE
-        # and return the total logs together.
-        # issue a get pods on the "high level" name...
-        # but in fact, the component name is not needed.
-        # we just ask for all pods from the namespace. 
-        # extract the correct names from JSON.
         try:
             # FIXME
             log.info('log: Running Pods search...')
