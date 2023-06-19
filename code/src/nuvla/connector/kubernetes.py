@@ -169,7 +169,7 @@ class Kubernetes(Connector):
         # return execute_cmd(cmd)
         pass
 
-    def _get_containers(self, namespace, values, since_opt, lines):
+    def _get_containers(self, namespace, values, since_opt, lines: int):
         for items_list in values['items']:
             if items_list["kind"] == 'Pod':
                 print (items_list["kind"])
@@ -211,7 +211,7 @@ class Kubernetes(Connector):
             else:
                 print (f'Kind not used: ',items_list["kind"])
 
-    def _get_container_logs(self, namespace, since_opt [], lines: int):
+    def _get_container_logs(self, namespace, since_opt, lines: int):
 
         list_opts_pods = ['-o', 'json', '--namespace', namespace]
         cmd_pods = self.build_cmd_line(['get', 'pods'] + list_opts_pods)
