@@ -218,7 +218,10 @@ class Kubernetes(Connector):
         log.info('Generated command line to get pods: {}'.format(cmd_pods))
         log.info('Running Pods search...')
         all_json_out = json.loads(execute_cmd(cmd_pods).stdout)
-        temp_string = _get_containers(self, namespace, all_json_out, since_opt, lines)
+        try:
+            temp_string = _get_containers(self, namespace, all_json_out, since_opt, lines)
+        except Exception as e_cont:
+            self.log.error(f'Fetching Containers failed: {str(e_cont)}')
         # pods = execute_cmd(cmd_pods).stdout
         log.info('Pods search run... ')
         log.info('We have found the pods : {}'.format(pods))
