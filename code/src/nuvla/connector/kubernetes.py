@@ -177,13 +177,13 @@ class Kubernetes(Connector):
                 print ("Unique pod ID: ",pod_unique_id)
                 try:
                     for containers_list in items_list['spec']['containers']:
-                    container = containers_list['name']
-                    print (container)
-                    list_opts_log = ['--timestamps=true', '--tail', str(lines),
-                                     '--namespace', namespace] + since_opt
-                    container_opts = ['pod/' + pod_unique_id, '--container=' + container]
-                    cmd = self.build_cmd_line(['logs'] + container_opts + list_opts_log)
-                    log.info('Generated logs command line : {}'.format(cmd))
+                        container = containers_list['name']
+                        print (container)
+                        list_opts_log = ['--timestamps=true', '--tail', str(lines),
+                                         '--namespace', namespace] + since_opt
+                        container_opts = ['pod/' + pod_unique_id, '--container=' + container]
+                        cmd = self.build_cmd_line(['logs'] + container_opts + list_opts_log)
+                        log.info('Generated logs command line : {}'.format(cmd))
                 except Exception as e_cont:
                     print("No Pod containers?")
             elif items_list["kind"] == 'ReplicaSet':
@@ -193,8 +193,8 @@ class Kubernetes(Connector):
                 # print (temporary_debug)
                 try:
                     for containers_list in temporary_debug['containers']:
-                    container = containers_list['name']
-                    print (container)
+                        container = containers_list['name']
+                        print (container)
                 except Exception as e_cont:
                     print("No ReplicaSet containers?")
                 # .items[].spec.template.spec.containers[].name
@@ -204,8 +204,8 @@ class Kubernetes(Connector):
                 # print (temporary_debug)
                 try:
                     for containers_list in temporary_debug['containers']:
-                    container = containers_list['name']
-                    print (container)
+                        container = containers_list['name']
+                        print (container)
                 except Exception as e_cont:
                     print("No Deployment containers?")
             else:
