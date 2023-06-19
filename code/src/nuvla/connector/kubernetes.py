@@ -174,7 +174,7 @@ class Kubernetes(Connector):
         logs_string = "None"
 
         # FIXME
-        lines = 10
+        # lines = 10
         log.info('Starting _get_containers.')
 
         for items_list in values['items']:
@@ -192,8 +192,10 @@ class Kubernetes(Connector):
                         cmd = self.build_cmd_line(['logs'] + container_opts + list_opts_log)
                         # FIXME
                         log.info('Generated logs command line : {}'.format(cmd))
-                        logs_string = logs_string + "Log for Container {container} in Pod {pod_unique_id} \n\n" 
-                        + execute_cmd(cmd).stdout 
+                        logs_string = logs_string + \
+                        "Log for Container " + container + " in Pod " + pod_unique_id + "\n\n" + \ 
+                        execute_cmd(cmd).stdout
+                        log.info('_get_containers logs string : ',logs_string) 
                 except Exception as e_cont:
                     print("No Pod containers?")
             elif items_list["kind"] == 'ReplicaSet':
