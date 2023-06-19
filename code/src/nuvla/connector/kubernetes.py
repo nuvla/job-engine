@@ -195,7 +195,7 @@ class Kubernetes(Connector):
                         logs_string = logs_string + \
                         "Log for Container " + container + " in Pod " + pod_unique_id + " \n\n" + \
                         execute_cmd(cmd).stdout
-                        log.info('_get_containers logs string : ',logs_string) 
+                        print('_get_containers logs string : ',logs_string) 
                 except Exception as e_cont:
                     print("No Pod containers?")
             elif items_list["kind"] == 'ReplicaSet':
@@ -222,7 +222,7 @@ class Kubernetes(Connector):
                     print("No Deployment containers?")
             else:
                 print (f'Kind not used: ',items_list["kind"])
-        log.info('_get_containers logs string : ',logs_string)
+        print('_get_containers logs string : ',logs_string)
         return logs_string
 
     def _get_container_logs(self, namespace, since_opt, lines: int) -> str:
@@ -243,8 +243,9 @@ class Kubernetes(Connector):
                 self.log.error(f'Fetching Containers failed: {str(e_cont)}')
         except Exception as e_json:
             self.log.error(f'Fetching JSON failed: {str(e_json)}')
-        log.info('Pods search run... ')
-        log.info('We have found the pods : {}'.format(pods))
+        # FIXME
+        log.info('We should have container logs now.')
+        # log.info('We have found the pods : {}'.format(pods))
         return logs_string
 
     @should_connect
@@ -265,13 +266,13 @@ class Kubernetes(Connector):
         # once we have a correct pod list, we can loop over the pods 
         # and return the concatenated results
         # need to sort out the formatting to be presentable
-        log.info('Pods search run... ')
+        log.info('Container search run... ')
 
-        list_opts_log = [component, '--timestamps=true', '--tail', str(lines),
-                     '--namespace', namespace] + since_opt
-        cmd = self.build_cmd_line(['logs'] + list_opts_log)
+        # list_opts_log = [component, '--timestamps=true', '--tail', str(lines),
+        #              '--namespace', namespace] + since_opt
+        # cmd = self.build_cmd_line(['logs'] + list_opts_log)
         # FIXME
-        log.info('Generated logs command line : {}'.format(cmd))
+        # log.info('Generated logs command line : {}'.format(cmd))
         # return execute_cmd(cmd).stdout
         return logs_string
 
