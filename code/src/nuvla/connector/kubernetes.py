@@ -213,6 +213,9 @@ class Kubernetes(Connector):
 
     def _get_container_logs(self, namespace, since_opt, lines: int):
 
+        # FIXME
+        pods = ""
+
         list_opts_pods = ['-o', 'json', '--namespace', namespace]
         # FIXME
         # Should this be a "get all" below?
@@ -229,7 +232,7 @@ class Kubernetes(Connector):
         except Exception as e_json:
             self.log.error(f'Fetching JSON failed: {str(e_json)}')
         log.info('Pods search run... ')
-        # log.info('We have found the pods : {}'.format(pods))
+        log.info('We have found the pods : {}'.format(pods))
         return pods
 
     @should_connect
