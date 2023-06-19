@@ -171,9 +171,10 @@ class Kubernetes(Connector):
 
     def _get_containers(self, namespace, values, since_opt, lines: int) -> str:
 
-        logs_string = "Done"
+        logs_string = ""
 
         # FIXME
+        lines = 10
         log.info('Starting _get_containers. ',logs_string)
 
         for items_list in values['items']:
@@ -189,7 +190,10 @@ class Kubernetes(Connector):
                                          '--namespace', namespace] + since_opt
                         container_opts = ['pod/' + pod_unique_id, '--container=' + container]
                         cmd = self.build_cmd_line(['logs'] + container_opts + list_opts_log)
+                        # FIXME
                         log.info('Generated logs command line : {}'.format(cmd))
+                        logs_string = logs_string + "Log for Container {container} in Pod {pod_unique_id} \n\n"
+                                    + if execute_cmd(cmd).stdout else "" 
                 except Exception as e_cont:
                     print("No Pod containers?")
             elif items_list["kind"] == 'ReplicaSet':
@@ -220,9 +224,6 @@ class Kubernetes(Connector):
 
     def _get_container_logs(self, namespace, since_opt, lines: int):
 
-        # FIXME
-        pods = ""
-
         list_opts_pods = ['-o', 'json', '--namespace', namespace]
         # FIXME
         # Should this be a "get all" below?
@@ -241,7 +242,7 @@ class Kubernetes(Connector):
             self.log.error(f'Fetching JSON failed: {str(e_json)}')
         log.info('Pods search run... ')
         log.info('We have found the pods : {}'.format(pods))
-        return pods
+        return logs_string
 
     @should_connect
     def log(self, component: str, since: datetime, lines: int,
@@ -253,10 +254,10 @@ class Kubernetes(Connector):
         try:
             # FIXME
             log.info('log: Running Pods search...')
-            pods = self._get_container_logs(namespace, since_opt, lines)
+            logs_string = self._get_container_logs(namespace, since_opt, lines)
         except Exception as e_pod:
             self.log.error(f'Fetching Pods failed: {str(e_pod)}')
-            pods = ""
+            # pods = ""
         # FIXME
         # once we have a correct pod list, we can loop over the pods 
         # and return the concatenated results
@@ -268,7 +269,8 @@ class Kubernetes(Connector):
         cmd = self.build_cmd_line(['logs'] + list_opts_log)
         # FIXME
         log.info('Generated logs command line : {}'.format(cmd))
-        return execute_cmd(cmd).stdout
+        # return execute_cmd(cmd).stdout
+        return if logs_string else "None"
 
     @staticmethod
     def _extract_service_info(kube_resource):
