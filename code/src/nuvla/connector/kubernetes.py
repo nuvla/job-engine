@@ -175,8 +175,8 @@ class Kubernetes(Connector):
         cmd_pods = self.build_cmd_line(['get', 'pods'] + list_opts_pods)
         log.info('Generated command line to get pods: {}'.format(cmd_pods))
         log.info('Running Pods search...')
-        pods = json.loads(execute_cmd(cmd_pods).stdout).get('items', [])['metadata']['name']
-        # pods = execute_cmd(cmd_pods).stdout
+        # pods = json.loads(execute_cmd(cmd_pods).stdout).get('items', [])['metadata']['name']
+        pods = execute_cmd(cmd_pods).stdout
         log.info('Pods search run... ')
         log.info('We have found the pods : {}'.format(pods))
         return pods
@@ -198,7 +198,7 @@ class Kubernetes(Connector):
         # we just ask for all pods from the namespace. 
         # extract the correct names from JSON.
         # FIXME
-        log.info('Running Pods search...')
+        log.info('log: Running Pods search...')
         try:
             pods = self._get_pods(namespace)
         except Exception as e_pod:
