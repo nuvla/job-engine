@@ -171,11 +171,11 @@ class Kubernetes(Connector):
 
     def _get_containers(self, namespace, values, since_opt, lines: int) -> str:
 
-        logs_string = ""
+        logs_string = "None"
 
         # FIXME
         lines = 10
-        log.info('Starting _get_containers. ',logs_string)
+        log.info('Starting _get_containers.')
 
         for items_list in values['items']:
             if items_list["kind"] == 'Pod':
@@ -220,9 +220,10 @@ class Kubernetes(Connector):
                     print("No Deployment containers?")
             else:
                 print (f'Kind not used: ',items_list["kind"])
+        log.info('_get_containers logs string : ',logs_string)
         return logs_string
 
-    def _get_container_logs(self, namespace, since_opt, lines: int):
+    def _get_container_logs(self, namespace, since_opt, lines: int) -> str:
 
         list_opts_pods = ['-o', 'json', '--namespace', namespace]
         # FIXME
