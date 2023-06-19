@@ -171,10 +171,10 @@ class Kubernetes(Connector):
 
     def _get_containers(self, namespace, values, since_opt, lines: int) -> str:
 
-        logs_string = "None"
+        logs_string = "\n"
 
         # FIXME
-        # lines = 10
+        lines = 5
         log.info('Starting _get_containers.')
 
         for items_list in values['items']:
@@ -235,7 +235,7 @@ class Kubernetes(Connector):
         try:
             log.info('Running Pods search...')
             all_json_out = json.loads(execute_cmd(cmd_pods).stdout)
-            log.info('JSON : ', json.dumps(all_json_out))
+            # log.info('JSON : ', json.dumps(all_json_out))
             try:
                 log.info('Getting containers...')
                 logs_string = self._get_containers(namespace, all_json_out, since_opt, lines)
