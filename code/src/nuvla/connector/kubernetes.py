@@ -193,7 +193,7 @@ class Kubernetes(Connector):
                         # FIXME
                         log.info('Generated logs command line : {}'.format(cmd))
                         logs_string = logs_string + "Log for Container {container} in Pod {pod_unique_id} \n\n" 
-                        + if execute_cmd(cmd).stdout else "" 
+                        + execute_cmd(cmd).stdout 
                 except Exception as e_cont:
                     print("No Pod containers?")
             elif items_list["kind"] == 'ReplicaSet':
@@ -270,7 +270,7 @@ class Kubernetes(Connector):
         # FIXME
         log.info('Generated logs command line : {}'.format(cmd))
         # return execute_cmd(cmd).stdout
-        return if logs_string else "None"
+        return logs_string
 
     @staticmethod
     def _extract_service_info(kube_resource):
