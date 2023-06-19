@@ -216,11 +216,12 @@ class Kubernetes(Connector):
         list_opts_pods = ['-o', 'json', '--namespace', namespace]
         cmd_pods = self.build_cmd_line(['get', 'pods'] + list_opts_pods)
         log.info('Generated command line to get pods: {}'.format(cmd_pods))
-        log.info('Running Pods search...')
         try:
+            log.info('Running Pods search...')
             all_json_out = json.loads(execute_cmd(cmd_pods).stdout)
             try:
-                temp_string = self._get_containers(self, namespace, all_json_out, since_opt, lines)
+                log.info('Getting containers...')
+                # temp_string = self._get_containers(self, namespace, all_json_out, since_opt, lines)
             except Exception as e_cont:
                 self.log.error(f'Fetching Containers failed: {str(e_cont)}')
         except Exception as e_json:
@@ -245,9 +246,9 @@ class Kubernetes(Connector):
         # but in fact, the component name is not needed.
         # we just ask for all pods from the namespace. 
         # extract the correct names from JSON.
-        # FIXME
-        log.info('log: Running Pods search...')
         try:
+            # FIXME
+            log.info('log: Running Pods search...')
             pods = self._get_container_logs(namespace, since_opt, lines)
         except Exception as e_pod:
             self.log.error(f'Fetching Pods failed: {str(e_pod)}')
