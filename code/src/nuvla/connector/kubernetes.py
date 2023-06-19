@@ -173,6 +173,9 @@ class Kubernetes(Connector):
 
         logs_string = "Done"
 
+        # FIXME
+        log.info('Starting _get_containers. ',logs_string)
+
         for items_list in values['items']:
             if items_list["kind"] == 'Pod':
                 print (items_list["kind"])
@@ -228,6 +231,7 @@ class Kubernetes(Connector):
         try:
             log.info('Running Pods search...')
             all_json_out = json.loads(execute_cmd(cmd_pods).stdout)
+            log.info('JSON : ', json.dumps(all_json_out))
             try:
                 log.info('Getting containers...')
                 logs_string = self._get_containers(self, namespace, all_json_out, since_opt, lines)
