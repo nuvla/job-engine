@@ -219,7 +219,7 @@ class Kubernetes(Connector):
         log.info('Running Pods search...')
         all_json_out = json.loads(execute_cmd(cmd_pods).stdout)
         try:
-            temp_string = _get_containers(self, namespace, all_json_out, since_opt, lines)
+            temp_string = self._get_containers(self, namespace, all_json_out, since_opt, lines)
         except Exception as e_cont:
             self.log.error(f'Fetching Containers failed: {str(e_cont)}')
         # pods = execute_cmd(cmd_pods).stdout
