@@ -193,7 +193,7 @@ class Kubernetes(Connector):
                         # FIXME
                         log.info('Generated logs command line : {}'.format(cmd))
                         logs_string = logs_string + \
-                        "Log for Container " + container + " in Pod " + pod_unique_id + "\n\n" + \ 
+                        "Log for Container " + container + " in Pod " + pod_unique_id + " \n\n" + \
                         execute_cmd(cmd).stdout
                         log.info('_get_containers logs string : ',logs_string) 
                 except Exception as e_cont:
