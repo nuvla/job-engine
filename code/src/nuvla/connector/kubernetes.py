@@ -234,7 +234,7 @@ class Kubernetes(Connector):
             log.info('JSON : ', json.dumps(all_json_out))
             try:
                 log.info('Getting containers...')
-                logs_string = self._get_containers(self, namespace, all_json_out, since_opt, lines)
+                logs_string = self._get_containers(namespace, all_json_out, since_opt, lines)
             except Exception as e_cont:
                 self.log.error(f'Fetching Containers failed: {str(e_cont)}')
         except Exception as e_json:
