@@ -192,8 +192,8 @@ class Kubernetes(Connector):
                         cmd = self.build_cmd_line(['logs'] + container_opts + list_opts_log)
                         # FIXME
                         log.info('Generated logs command line : {}'.format(cmd))
-                        logs_string = logs_string + "Log for Container {container} in Pod {pod_unique_id} \n\n"
-                                    + if execute_cmd(cmd).stdout else "" 
+                        logs_string = logs_string + "Log for Container {container} in Pod {pod_unique_id} \n\n" 
+                        + if execute_cmd(cmd).stdout else "" 
                 except Exception as e_cont:
                     print("No Pod containers?")
             elif items_list["kind"] == 'ReplicaSet':
