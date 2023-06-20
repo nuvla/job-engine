@@ -169,6 +169,21 @@ class Kubernetes(Connector):
         # return execute_cmd(cmd)
         pass
 
+    def _get_podlogs(self, namespace, values, since_opt, lines: int) -> str:
+        for containers_list in values['spec']['containers']:
+            container = containers_list['name']
+            print (container)
+            list_opts_log = ['--timestamps=true', '--tail', str(lines),
+                             '--namespace', namespace] + since_opt
+            container_opts = ['pod/' + pod_unique_id, '--container=' + container]
+            cmd = self.build_cmd_line(['logs'] + container_opts + list_opts_log)
+            log.info('Generated logs command line : {}'.format(cmd))
+            logs_string = logs_string + \
+            "\n\n --> Log last " + lines + " lines for Container " + container + " in Pod " + pod_unique_id + " \n\n" + \
+            execute_cmd(cmd).stdout
+            print('_get_containers logs string : ',logs_string)
+
+
     def _get_containers(self, namespace, values, since_opt, lines: int) -> str:
 
         logs_string = "\n"
@@ -181,11 +196,12 @@ class Kubernetes(Connector):
             if items_list["kind"] == 'Pod':
                 print (items_list["kind"])
                 pod_unique_id = items_list["metadata"]["name"]
-                print ("Unique pod ID: ",pod_unique_id)
+                # FIXME
+                log.info("Unique pod ID: ",pod_unique_id)
                 try:
                     for containers_list in items_list['spec']['containers']:
                         container = containers_list['name']
-                        print (container)
+                        log.info("Got container: ",container)
                         list_opts_log = ['--timestamps=true', '--tail', str(lines),
                                          '--namespace', namespace] + since_opt
                         container_opts = ['pod/' + pod_unique_id, '--container=' + container]
@@ -193,9 +209,9 @@ class Kubernetes(Connector):
                         # FIXME
                         log.info('Generated logs command line : {}'.format(cmd))
                         logs_string = logs_string + \
-                        "\n\n --> Log lines " + lines + " for Container " + container + " in Pod " + pod_unique_id + " \n\n" + \
+                        "\n\n --> Log last " + lines + " lines for Container " + container + " in Pod " + pod_unique_id + " \n\n" + \
                         execute_cmd(cmd).stdout
-                        print('_get_containers logs string : ',logs_string) 
+                        log.info('_get_containers logs string : ',logs_string) 
                 except Exception as e_cont:
                     print("No Pod containers?")
             elif items_list["kind"] == 'ReplicaSet':
