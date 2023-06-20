@@ -196,7 +196,7 @@ class Kubernetes(Connector):
                 pod_unique_id = items_list["metadata"]["name"]
                 # FIXME
                 log.info('Unique pod ID: {}'.format(pod_unique_id))
-                try:
+                # try:
                     for containers_list in items_list['spec']['containers']:
                         container = containers_list['name']
                         log.info('Got container: {}'.format(container))
@@ -210,8 +210,8 @@ class Kubernetes(Connector):
                         "\n\n --> Log last " + lines + " lines for Container " + container + " in Pod " + pod_unique_id + " \n\n" + \
                         execute_cmd(cmd).stdout
                         log.info('_get_containers logs string : {}'.format(logs_string)) 
-                except Exception as e_cont:
-                    print("No Pod containers?")
+                # except Exception as e_cont:
+                    # print("No Pod containers?")
             elif items_list["kind"] == 'ReplicaSet':
                 print (items_list["kind"])
                 # .items[].spec.template.spec.containers[].name
@@ -242,14 +242,12 @@ class Kubernetes(Connector):
     def _get_container_logs(self, namespace, since_opt, lines: int) -> str:
 
         list_opts_pods = ['-o', 'json', '--namespace', namespace]
-        # FIXME
-        # Should this be a "get all" below?
+        # FIXME Should this be a "get all" below?
         cmd_pods = self.build_cmd_line(['get', 'pods'] + list_opts_pods)
         log.info('Generated command line to get pods: {}'.format(cmd_pods))
         try:
             log.info('Running Pods search...')
             all_json_out = json.loads(execute_cmd(cmd_pods).stdout)
-            # log.info('JSON : ', json.dumps(all_json_out))
             try:
                 log.info('Getting containers...')
                 logs_string = self._get_containers(namespace, all_json_out, since_opt, lines)
