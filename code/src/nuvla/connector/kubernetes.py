@@ -185,23 +185,21 @@ class Kubernetes(Connector):
 
 
     def _get_containers(self, namespace, values, since_opt, lines: int) -> str:
-
         logs_string = "\n"
-
         # FIXME
         lines = 5
         log.info('Starting _get_containers.')
-
         for items_list in values['items']:
             if items_list["kind"] == 'Pod':
-                print (items_list["kind"])
+                # FIXME
+                log.info(items_list["kind"])
                 pod_unique_id = items_list["metadata"]["name"]
                 # FIXME
-                log.info("Unique pod ID: ",pod_unique_id)
+                log.info('Unique pod ID: {}'.format(pod_unique_id))
                 try:
                     for containers_list in items_list['spec']['containers']:
                         container = containers_list['name']
-                        log.info("Got container: ",container)
+                        log.info('Got container: {}'.format(container))
                         list_opts_log = ['--timestamps=true', '--tail', str(lines),
                                          '--namespace', namespace] + since_opt
                         container_opts = ['pod/' + pod_unique_id, '--container=' + container]
@@ -211,7 +209,7 @@ class Kubernetes(Connector):
                         logs_string = logs_string + \
                         "\n\n --> Log last " + lines + " lines for Container " + container + " in Pod " + pod_unique_id + " \n\n" + \
                         execute_cmd(cmd).stdout
-                        log.info('_get_containers logs string : ',logs_string) 
+                        log.info('_get_containers logs string : {}'.format(logs_string)) 
                 except Exception as e_cont:
                     print("No Pod containers?")
             elif items_list["kind"] == 'ReplicaSet':
