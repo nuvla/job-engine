@@ -179,7 +179,7 @@ class Kubernetes(Connector):
             cmd = self.build_cmd_line(['logs'] + container_opts + list_opts_log)
             log.info('Generated logs command line : {}'.format(cmd))
             logs_string = logs_string + \
-            "\n\n --> Log last " + lines + " lines for Container " + container + " in Pod " + pod_unique_id + " \n\n" + \
+            "\n\n --> Log last " + str(lines) + " lines for Container " + container + " in Pod " + pod_unique_id + " \n\n" + \
             execute_cmd(cmd).stdout
             print('_get_containers logs string : ',logs_string)
 
@@ -207,7 +207,7 @@ class Kubernetes(Connector):
                     # FIXME
                     log.info('Generated logs command line : {}'.format(cmd))
                     logs_string = logs_string + \
-                    "\n\n --> Log last " + lines + " lines for Container " + container + " in Pod " + pod_unique_id + " \n\n" + \
+                    "\n\n Log last " + str(lines) + " lines for Container " + container + " in Pod " + pod_unique_id + " \n\n" + \
                     execute_cmd(cmd).stdout
                     log.info('_get_containers logs string : {}'.format(logs_string)) 
                 # except Exception as e_cont:
@@ -236,7 +236,8 @@ class Kubernetes(Connector):
                     print("No Deployment containers?")
             else:
                 print (f'Kind not used: ',items_list["kind"])
-        print('_get_containers logs string : ',logs_string)
+        log.info('_get_containers FINAL log string : {}'.format(logs_string))
+
         return logs_string
 
     def _get_container_logs(self, namespace, since_opt, lines: int) -> str:
