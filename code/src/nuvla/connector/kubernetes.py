@@ -197,19 +197,19 @@ class Kubernetes(Connector):
                 # FIXME
                 log.info('Unique pod ID: {}'.format(pod_unique_id))
                 # try:
-                    for containers_list in items_list['spec']['containers']:
-                        container = containers_list['name']
-                        log.info('Got container: {}'.format(container))
-                        list_opts_log = ['--timestamps=true', '--tail', str(lines),
-                                         '--namespace', namespace] + since_opt
-                        container_opts = ['pod/' + pod_unique_id, '--container=' + container]
-                        cmd = self.build_cmd_line(['logs'] + container_opts + list_opts_log)
-                        # FIXME
-                        log.info('Generated logs command line : {}'.format(cmd))
-                        logs_string = logs_string + \
-                        "\n\n --> Log last " + lines + " lines for Container " + container + " in Pod " + pod_unique_id + " \n\n" + \
-                        execute_cmd(cmd).stdout
-                        log.info('_get_containers logs string : {}'.format(logs_string)) 
+                for containers_list in items_list['spec']['containers']:
+                    container = containers_list['name']
+                    log.info('Got container: {}'.format(container))
+                    list_opts_log = ['--timestamps=true', '--tail', str(lines),
+                                     '--namespace', namespace] + since_opt
+                    container_opts = ['pod/' + pod_unique_id, '--container=' + container]
+                    cmd = self.build_cmd_line(['logs'] + container_opts + list_opts_log)
+                    # FIXME
+                    log.info('Generated logs command line : {}'.format(cmd))
+                    logs_string = logs_string + \
+                    "\n\n --> Log last " + lines + " lines for Container " + container + " in Pod " + pod_unique_id + " \n\n" + \
+                    execute_cmd(cmd).stdout
+                    log.info('_get_containers logs string : {}'.format(logs_string)) 
                 # except Exception as e_cont:
                     # print("No Pod containers?")
             elif items_list["kind"] == 'ReplicaSet':
