@@ -173,16 +173,12 @@ class Kubernetes(Connector):
         tail_lines=lines
         tail_lines=5
         logs_string=str()
-        # FIXME
-        log.info(values["kind"])
         pod_unique_id = values["metadata"]["name"]
-        # FIXME
-        log.info('Unique pod ID: {}'.format(pod_unique_id))
+        log.debug('Unique pod ID: {}'.format(pod_unique_id))
         try:
             for containers_list in values['spec']['containers']:
                 container = containers_list['name']
-                # FIXME
-                log.info('Got container: {}'.format(container))
+                log.info('Found container: {}'.format(container))
                 list_opts_log = ['--timestamps=true', '--tail', str(tail_lines),
                                  '--namespace', namespace] + since_opt
                 container_opts = ['pod/' + pod_unique_id, '--container=' + container]
@@ -196,117 +192,21 @@ class Kubernetes(Connector):
                 log.info('_get_podlogs logs string : {}'.format(logs_string))
         except Exception as e_cont:
             ex_string = "There was a problem getting logs from Pod " + pod_unique_id
-            log.info("An exception caught: {}".format(e_cont))
+            log.debug("An exception caught: {}".format(e_cont))
             logs_string = str(ex_string)
         return logs_string 
 
-    def _get_containers(self, namespace, values, since_opt, lines: int) -> str:
-        logs_string = "\n"
-        # FIXME
-        lines = 5
-        log.info('Starting _get_containers.')
-        for items_list in values['items']:
-            if items_list["kind"] == 'Pod':
-                # FIXME
-                # 
-                log.info(items_list["kind"])
-                pod_unique_id = items_list["metadata"]["name"]
-                # FIXME
-                log.info('Unique pod ID: {}'.format(pod_unique_id))
-                # try:
-                for containers_list in items_list['spec']['containers']:
-                    container = containers_list['name']
-                    log.info('Got container: {}'.format(container))
-                    list_opts_log = ['--timestamps=true', '--tail', str(lines),
-                                     '--namespace', namespace] + since_opt
-                    container_opts = ['pod/' + pod_unique_id, '--container=' + container]
-                    cmd = self.build_cmd_line(['logs'] + container_opts + list_opts_log)
-                    # FIXME
-                    log.info('Generated logs command line : {}'.format(cmd))
-                    logs_string = logs_string + \
-                    "\n\n Log last " + str(lines) + " lines for Container " + container + " in Pod " + pod_unique_id + " \n\n" + \
-                    execute_cmd(cmd).stdout
-                    log.info('_get_containers logs string : {}'.format(logs_string)) 
-                # except Exception as e_cont:
-                    # print("No Pod containers?")
-            elif items_list["kind"] == 'ReplicaSet':
-                print (items_list["kind"])
-                # .items[].spec.template.spec.containers[].name
-                temporary_debug = items_list["spec"]["template"]["spec"]
-                # print (temporary_debug)
-                try:
-                    for containers_list in temporary_debug['containers']:
-                        container = containers_list['name']
-                        print (container)
-                except Exception as e_cont:
-                    print("No ReplicaSet containers?")
-                # .items[].spec.template.spec.containers[].name
-            elif items_list["kind"] == 'Deployment':
-                print (items_list["kind"])
-                temporary_debug = items_list["spec"]["template"]["spec"]
-                # print (temporary_debug)
-                try:
-                    for containers_list in temporary_debug['containers']:
-                        container = containers_list['name']
-                        print (container)
-                except Exception as e_cont:
-                    print("No Deployment containers?")
-            else:
-                print (f'Kind not used: ',items_list["kind"])
-        log.info('_get_containers FINAL log string : {}'.format(logs_string))
-
-        return logs_string
-
-    def _get_containers_3(self, namespace, values, since_opt, lines: int) -> str:
+    def _get_containers_logs(self, namespace, values, since_opt, lines: int) -> str:
         logs_string = str()
-        # FIXME
-        lines = 5
-        log.info('Starting _get_containers.')
+        log.debug('Starting _get_containers_logs.')
         for items_list in values['items']:
             if items_list["kind"] == 'Pod':
                 logs_string = self._get_podlogs(namespace, items_list, since_opt, lines)
-        log.info('_get_containers FINAL log string : {}'.format(logs_string))
+        log.debug('_get_containers FINAL log string : {}'.format(logs_string))
 
         return logs_string
 
-    def _get_containers_2(self, namespace, values, since_opt, lines: int) -> str:
-        logs_string = str()
-        # FIXME
-        lines = 5
-        log.info('Starting _get_containers.')
-        for items_list in values['items']:
-            if items_list["kind"] == 'Pod':
-                # FIXME
-                logs_string = self._get_podlogs(namespace, items_list, since_opt, lines)
-            elif items_list["kind"] == 'ReplicaSet':
-                print (items_list["kind"])
-                # .items[].spec.template.spec.containers[].name
-                temporary_debug = items_list["spec"]["template"]["spec"]
-                # print (temporary_debug)
-                try:
-                    for containers_list in temporary_debug['containers']:
-                        container = containers_list['name']
-                        print (container)
-                except Exception as e_cont:
-                    print("No ReplicaSet containers?")
-                # .items[].spec.template.spec.containers[].name
-            elif items_list["kind"] == 'Deployment':
-                print (items_list["kind"])
-                temporary_debug = items_list["spec"]["template"]["spec"]
-                # print (temporary_debug)
-                try:
-                    for containers_list in temporary_debug['containers']:
-                        container = containers_list['name']
-                        print (container)
-                except Exception as e_cont:
-                    print("No Deployment containers?")
-            else:
-                print (f'Kind not used: ',items_list["kind"])
-        log.info('_get_containers FINAL log string : {}'.format(logs_string))
-
-        return logs_string
-
-    def _get_container_logs(self, namespace, since_opt, lines: int) -> str:
+     def _get_container_logs(self, namespace, since_opt, lines: int) -> str:
         list_opts_pods = ['-o', 'json', '--namespace', namespace]
         cmd_pods = self.build_cmd_line(['get', 'pods'] + list_opts_pods)
         log.info('Generated command line to get pods: {}'.format(cmd_pods))
@@ -314,13 +214,11 @@ class Kubernetes(Connector):
             all_json_out = json.loads(execute_cmd(cmd_pods).stdout)
             try:
                 log.info('Getting containers...')
-                # logs_string = self._get_containers(namespace, all_json_out, since_opt, lines)
-                # logs_string = self._get_containers_2(namespace, all_json_out, since_opt, lines)
-                logs_string = self._get_containers_3(namespace, all_json_out, since_opt, lines)
+                logs_string = self._get_containers_logs(namespace, all_json_out, since_opt, lines)
             except Exception as e_cont:
-                self.log.error(f'Fetching Containers failed: {str(e_cont)}')
+                self.log.debug(f'Fetching Containers failed: {str(e_cont)}')
         except Exception as e_json:
-            self.log.error(f'Fetching JSON failed: {str(e_json)}')
+            self.log.debug(f'Fetching JSON failed: {str(e_json)}')
         # FIXME
         log.info('Container logs string: {}'.format(logs_string))
         return logs_string
