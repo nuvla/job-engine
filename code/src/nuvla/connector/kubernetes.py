@@ -294,7 +294,6 @@ class Kubernetes(Connector):
 
 
     def _get_container_logs(self, namespace, since_opt, lines: int) -> str:
-
         list_opts_pods = ['-o', 'json', '--namespace', namespace]
         # FIXME Should this be a "get all" below?
         cmd_pods = self.build_cmd_line(['get', 'pods'] + list_opts_pods)
@@ -320,13 +319,16 @@ class Kubernetes(Connector):
             **kwargs) -> str:
         namespace = kwargs['namespace']
         since_opt = ['--since-time', since.isoformat()] if since else []
-        # if the compoment above is NOT Service then proceed. Create a list of blocked deployments?
-        try:
-            # FIXME
-            log.info('Getting container logs for {}'.format(component))
-            logs_string = self._get_container_logs(namespace, since_opt, lines)
-        except Exception as e_pod:
-            log.error(f'Fetching Pods failed: {str(e_pod)}')
+        do_not_send_logs = ["Service"]
+        if component.split("/")[0] not in do_not_send_logs:
+            try:
+                # FIXME
+                log.info('Getting container logs for {}'.format(component))
+                logs_string = self._get_container_logs(namespace, since_opt, lines)
+            except Exception as e_pod:
+                log.error(f'Fetching Pods failed: {str(e_pod)}')
+        else:
+            logs_string = "There are no meaningful logs for " + component
 
         return logs_string
 
