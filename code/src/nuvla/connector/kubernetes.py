@@ -170,19 +170,33 @@ class Kubernetes(Connector):
         pass
 
     def _get_podlogs(self, namespace, values, since_opt, lines: int) -> str:
-        for containers_list in values['spec']['containers']:
-            container = containers_list['name']
-            print (container)
-            list_opts_log = ['--timestamps=true', '--tail', str(lines),
-                             '--namespace', namespace] + since_opt
-            container_opts = ['pod/' + pod_unique_id, '--container=' + container]
-            cmd = self.build_cmd_line(['logs'] + container_opts + list_opts_log)
-            log.info('Generated logs command line : {}'.format(cmd))
-            logs_string = logs_string + \
-            "\n\n --> Log last " + str(lines) + " lines for Container " + container + " in Pod " + pod_unique_id + " \n\n" + \
-            execute_cmd(cmd).stdout
-            print('_get_containers logs string : ',logs_string)
-
+        tail_lines=lines
+        tail_lines=5
+        # FIXME
+        log.info(values["kind"])
+        pod_unique_id = values["metadata"]["name"]
+        # FIXME
+        log.info('Unique pod ID: {}'.format(pod_unique_id))
+        try:
+            for containers_list in values['spec']['containers']:
+                container = containers_list['name']
+                # FIXME
+                log.info('Got container: {}'.format(container))
+                list_opts_log = ['--timestamps=true', '--tail', str(tail_lines),
+                                 '--namespace', namespace] + since_opt
+                container_opts = ['pod/' + pod_unique_id, '--container=' + container]
+                cmd = self.build_cmd_line(['logs'] + container_opts + list_opts_log)
+                log.info('Generated logs command line : {}'.format(cmd))
+                header_line = "\n\nLog last " + str(tail_lines) + \
+                  " lines for Container " + \
+                  container + " in Pod " + pod_unique_id + " \n"
+                logs_string = logs_string + header_line + execute_cmd(cmd).stdout
+                log.info('_get_containers logs string : {}'.format(logs_string))
+        except Exception as e_cont:
+            ex_string = "No containers were found in Pod " + pod_unique_id
+            log.info(ex_string))
+            logs_string = ex_string
+        return logs_string 
 
     def _get_containers(self, namespace, values, since_opt, lines: int) -> str:
         logs_string = "\n"
@@ -192,6 +206,7 @@ class Kubernetes(Connector):
         for items_list in values['items']:
             if items_list["kind"] == 'Pod':
                 # FIXME
+                # 
                 log.info(items_list["kind"])
                 pod_unique_id = items_list["metadata"]["name"]
                 # FIXME
@@ -240,6 +255,44 @@ class Kubernetes(Connector):
 
         return logs_string
 
+   def _get_containers_2(self, namespace, values, since_opt, lines: int) -> str:
+        logs_string = "\n"
+        # FIXME
+        lines = 5
+        log.info('Starting _get_containers.')
+        for items_list in values['items']:
+            if items_list["kind"] == 'Pod':
+                # FIXME
+                logs_string = self._get_podlogs(namespace, values, since_opt, lines)
+            elif items_list["kind"] == 'ReplicaSet':
+                print (items_list["kind"])
+                # .items[].spec.template.spec.containers[].name
+                temporary_debug = items_list["spec"]["template"]["spec"]
+                # print (temporary_debug)
+                try:
+                    for containers_list in temporary_debug['containers']:
+                        container = containers_list['name']
+                        print (container)
+                except Exception as e_cont:
+                    print("No ReplicaSet containers?")
+                # .items[].spec.template.spec.containers[].name
+            elif items_list["kind"] == 'Deployment':
+                print (items_list["kind"])
+                temporary_debug = items_list["spec"]["template"]["spec"]
+                # print (temporary_debug)
+                try:
+                    for containers_list in temporary_debug['containers']:
+                        container = containers_list['name']
+                        print (container)
+                except Exception as e_cont:
+                    print("No Deployment containers?")
+            else:
+                print (f'Kind not used: ',items_list["kind"])
+        log.info('_get_containers FINAL log string : {}'.format(logs_string))
+
+        return logs_string
+
+
     def _get_container_logs(self, namespace, since_opt, lines: int) -> str:
 
         list_opts_pods = ['-o', 'json', '--namespace', namespace]
@@ -251,7 +304,8 @@ class Kubernetes(Connector):
             all_json_out = json.loads(execute_cmd(cmd_pods).stdout)
             try:
                 log.info('Getting containers...')
-                logs_string = self._get_containers(namespace, all_json_out, since_opt, lines)
+                # logs_string = self._get_containers(namespace, all_json_out, since_opt, lines)
+                logs_string = self._get_containers_2(namespace, all_json_out, since_opt, lines)
             except Exception as e_cont:
                 self.log.error(f'Fetching Containers failed: {str(e_cont)}')
         except Exception as e_json:
