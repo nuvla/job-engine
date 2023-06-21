@@ -263,7 +263,7 @@ class Kubernetes(Connector):
         for items_list in values['items']:
             if items_list["kind"] == 'Pod':
                 # FIXME
-                logs_string = self._get_podlogs(namespace, values, since_opt, lines)
+                logs_string = self._get_podlogs(namespace, items_list, since_opt, lines)
             elif items_list["kind"] == 'ReplicaSet':
                 print (items_list["kind"])
                 # .items[].spec.template.spec.containers[].name
