@@ -74,8 +74,6 @@ class ResourceLogFetchJob(ABC):
         components = self.get_list_components()
         lines = self.resource_log.get('lines', 200)
         log = {}
-        # FIXME
-        self.log.info(f'list of components : {components}')
         for component in components:
             self.log.info(f'component : {component}')
             try:
