@@ -195,9 +195,9 @@ class Kubernetes(Connector):
                 logs_string = header_line + logs_string + execute_cmd(cmd).stdout
                 log.info('_get_podlogs logs string : {}'.format(logs_string))
         except Exception as e_cont:
-            ex_string = "No containers were found in Pod " + pod_unique_id
-            log.info(ex_string)
-            logs_string = ex_string
+            ex_string = "There was a problem getting logs from Pod " + pod_unique_id
+            log.info("An exception caught: {}".format(e_cont))
+            logs_string = str(ex_string)
         return logs_string 
 
     def _get_containers(self, namespace, values, since_opt, lines: int) -> str:
@@ -265,7 +265,7 @@ class Kubernetes(Connector):
         for items_list in values['items']:
             if items_list["kind"] == 'Pod':
                 # FIXME
-                logs_string = self._get_podlogs(namespace, items_list, since_opt, lines)
+                logs_string = logs_string + self._get_podlogs(namespace, items_list, since_opt, lines)
             elif items_list["kind"] == 'ReplicaSet':
                 print (items_list["kind"])
                 # .items[].spec.template.spec.containers[].name
