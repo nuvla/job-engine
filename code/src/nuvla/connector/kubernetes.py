@@ -172,7 +172,7 @@ class Kubernetes(Connector):
     def _get_podlogs(self, namespace, values, since_opt, lines: int) -> str:
         tail_lines=lines
         tail_lines=5
-        logs_string="\n"
+        logs_string=str()
         # FIXME
         log.info(values["kind"])
         pod_unique_id = values["metadata"]["name"]
@@ -192,7 +192,7 @@ class Kubernetes(Connector):
                 " lines for Container " + \
                 container + " in Pod " + pod_unique_id + " \n"
                 log.info('Header line : {}'.format(header_line))
-                logs_string = header_line + logs_string + execute_cmd(cmd).stdout
+                logs_string = logs_string + header_line + execute_cmd(cmd).stdout
                 log.info('_get_podlogs logs string : {}'.format(logs_string))
         except Exception as e_cont:
             ex_string = "There was a problem getting logs from Pod " + pod_unique_id
