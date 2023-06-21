@@ -188,10 +188,11 @@ class Kubernetes(Connector):
                 cmd = self.build_cmd_line(['logs'] + container_opts + list_opts_log)
                 log.info('Generated logs command line : {}'.format(cmd))
                 header_line = "\n\nLog last " + str(tail_lines) + \
-                  " lines for Container " + \
-                  container + " in Pod " + pod_unique_id + " \n"
-                logs_string = logs_string + header_line + execute_cmd(cmd).stdout
-                log.info('_get_containers logs string : {}'.format(logs_string))
+                " lines for Container " + \
+                container + " in Pod " + pod_unique_id + " \n"
+                log.info('Header line : {}'.format(header_line))
+                logs_string = header_line + logs_string + execute_cmd(cmd).stdout
+                log.info('_get_podlogs logs string : {}'.format(logs_string))
         except Exception as e_cont:
             ex_string = "No containers were found in Pod " + pod_unique_id
             log.info(ex_string)
