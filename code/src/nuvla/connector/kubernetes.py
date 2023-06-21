@@ -257,15 +257,27 @@ class Kubernetes(Connector):
 
         return logs_string
 
+    def _get_containers_3(self, namespace, values, since_opt, lines: int) -> str:
+        logs_string = str()
+        # FIXME
+        lines = 5
+        log.info('Starting _get_containers.')
+        for items_list in values['items']:
+            if items_list["kind"] == 'Pod':
+                logs_string = self._get_podlogs(namespace, items_list, since_opt, lines)
+        log.info('_get_containers FINAL log string : {}'.format(logs_string))
+
+        return logs_string
+
     def _get_containers_2(self, namespace, values, since_opt, lines: int) -> str:
-        logs_string = "\n"
+        logs_string = str()
         # FIXME
         lines = 5
         log.info('Starting _get_containers.')
         for items_list in values['items']:
             if items_list["kind"] == 'Pod':
                 # FIXME
-                logs_string = logs_string + self._get_podlogs(namespace, items_list, since_opt, lines)
+                logs_string = self._get_podlogs(namespace, items_list, since_opt, lines)
             elif items_list["kind"] == 'ReplicaSet':
                 print (items_list["kind"])
                 # .items[].spec.template.spec.containers[].name
@@ -294,26 +306,23 @@ class Kubernetes(Connector):
 
         return logs_string
 
-
     def _get_container_logs(self, namespace, since_opt, lines: int) -> str:
         list_opts_pods = ['-o', 'json', '--namespace', namespace]
-        # FIXME Should this be a "get all" below?
         cmd_pods = self.build_cmd_line(['get', 'pods'] + list_opts_pods)
         log.info('Generated command line to get pods: {}'.format(cmd_pods))
         try:
-            log.info('Running Pods search...')
             all_json_out = json.loads(execute_cmd(cmd_pods).stdout)
             try:
                 log.info('Getting containers...')
                 # logs_string = self._get_containers(namespace, all_json_out, since_opt, lines)
-                logs_string = self._get_containers_2(namespace, all_json_out, since_opt, lines)
+                # logs_string = self._get_containers_2(namespace, all_json_out, since_opt, lines)
+                logs_string = self._get_containers_3(namespace, all_json_out, since_opt, lines)
             except Exception as e_cont:
                 self.log.error(f'Fetching Containers failed: {str(e_cont)}')
         except Exception as e_json:
             self.log.error(f'Fetching JSON failed: {str(e_json)}')
         # FIXME
-        log.info('We should have container logs now.')
-        # log.info('We have found the pods : {}'.format(pods))
+        log.info('Container logs string: {}'.format(logs_string))
         return logs_string
 
     @should_connect
@@ -324,13 +333,14 @@ class Kubernetes(Connector):
         do_not_send_logs = ["Service"]
         if component.split("/")[0] not in do_not_send_logs:
             try:
-                # FIXME
-                log.info('Getting container logs for {}'.format(component))
+                log.debug('Getting container logs for {}'.format(component))
                 logs_string = self._get_container_logs(namespace, since_opt, lines)
             except Exception as e_pod:
                 log.error(f'Fetching Pods failed: {str(e_pod)}')
         else:
-            logs_string = "There are no meaningful logs for " + component
+            logs_string = "There are no meaningful logs for " + str(component)
+            # FIXME
+            log.info(logs_string)
 
         return logs_string
 
