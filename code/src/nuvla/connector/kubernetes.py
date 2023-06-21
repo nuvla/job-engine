@@ -194,7 +194,7 @@ class Kubernetes(Connector):
                 log.info('_get_containers logs string : {}'.format(logs_string))
         except Exception as e_cont:
             ex_string = "No containers were found in Pod " + pod_unique_id
-            log.info(ex_string))
+            log.info(ex_string)
             logs_string = ex_string
         return logs_string 
 
@@ -320,27 +320,14 @@ class Kubernetes(Connector):
             **kwargs) -> str:
         namespace = kwargs['namespace']
         since_opt = ['--since-time', since.isoformat()] if since else []
-        # FIXME
-        log.info('component set to: {}'.format(component))
+        # if the compoment above is NOT Service then proceed. Create a list of blocked deployments?
         try:
             # FIXME
-            log.info('log: Running Pods search...')
+            log.info('Getting container logs for {}'.format(component))
             logs_string = self._get_container_logs(namespace, since_opt, lines)
         except Exception as e_pod:
-            self.log.error(f'Fetching Pods failed: {str(e_pod)}')
-            # pods = ""
-        # FIXME
-        # once we have a correct pod list, we can loop over the pods 
-        # and return the concatenated results
-        # need to sort out the formatting to be presentable
-        log.info('Container search run... ')
+            log.error(f'Fetching Pods failed: {str(e_pod)}')
 
-        # list_opts_log = [component, '--timestamps=true', '--tail', str(lines),
-        #              '--namespace', namespace] + since_opt
-        # cmd = self.build_cmd_line(['logs'] + list_opts_log)
-        # FIXME
-        # log.info('Generated logs command line : {}'.format(cmd))
-        # return execute_cmd(cmd).stdout
         return logs_string
 
     @staticmethod
