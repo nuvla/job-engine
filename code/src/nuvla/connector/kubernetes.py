@@ -172,6 +172,7 @@ class Kubernetes(Connector):
     def _get_podlogs(self, namespace, values, since_opt, lines: int) -> str:
         tail_lines=lines
         tail_lines=5
+        logs_string="\n"
         # FIXME
         log.info(values["kind"])
         pod_unique_id = values["metadata"]["name"]
