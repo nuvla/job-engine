@@ -255,7 +255,7 @@ class Kubernetes(Connector):
 
         return logs_string
 
-   def _get_containers_2(self, namespace, values, since_opt, lines: int) -> str:
+    def _get_containers_2(self, namespace, values, since_opt, lines: int) -> str:
         logs_string = "\n"
         # FIXME
         lines = 5
