@@ -1,1 +1,0 @@
-'kubectl', '-s', 'https://159.100.241.179:6443', '--client-certificate', '/tmp/tmpg33to0sa', '--client-key', '/tmp/tmpy0c_xd93', '--certificate-authority', '/tmp/tmpzm26n2pf', 'logs', 'Service/my-nginx-svc-80', '--timestamps=true', '--tail', '200', '--namespace', '9192d3bd-9d35-4c9e-af14-dccfacf10a69', '--since-time', '2023-06-16T14:43:58.074000+00:00'

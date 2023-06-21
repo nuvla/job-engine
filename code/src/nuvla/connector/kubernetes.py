@@ -206,7 +206,7 @@ class Kubernetes(Connector):
 
         return logs_string
 
-     def _get_container_logs(self, namespace, since_opt, lines: int) -> str:
+    def _get_container_logs(self, namespace, since_opt, lines: int) -> str:
         list_opts_pods = ['-o', 'json', '--namespace', namespace]
         cmd_pods = self.build_cmd_line(['get', 'pods'] + list_opts_pods)
         log.info('Generated command line to get pods: {}'.format(cmd_pods))
