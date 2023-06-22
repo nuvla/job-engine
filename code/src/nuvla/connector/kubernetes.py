@@ -173,7 +173,7 @@ class Kubernetes(Connector):
         tail_lines=lines # wtf
         tail_lines=5 # wtf
         logs_string=str()
-        pod_unique_id = values["metadata"]["name"]
+        pod_unique_id = str(values["metadata"]["name"])
         log.debug('Unique pod ID: %s ', pod_unique_id)
         try:
             for containers_list in values['spec']['containers']:
@@ -192,7 +192,7 @@ class Kubernetes(Connector):
                 log.debug('Header line : %s', header_line)
                 logs_string = \
                 logs_string + header_line + execute_cmd(cmd).stdout
-                log.debug('_get_podlogs logs string : %s', logs_string)
+                log.debug('_get_container_logs logs string : %s', logs_string)
         except Exception as e_cont:
             ex_string = "There was a problem getting logs from Pod " \
             + pod_unique_id
@@ -242,9 +242,9 @@ class Kubernetes(Connector):
             except Exception as e_pod:
                 log.error('Fetching Pods failed: %s', e_pod)
         else:
-            logs_string = "There are no meaningful logs for " + str(component)
+            logs_string = "There are no meaningful logs for " + str(component) + "\n"
             # FIXME I leave for now
-            log.info('logs string for Service !!? : %s ',logs_string)
+            log.info('A log is requested for type Service ? : %s ',logs_string)
 
         return logs_string
 
