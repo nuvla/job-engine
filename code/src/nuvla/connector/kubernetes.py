@@ -177,7 +177,7 @@ class Kubernetes(Connector):
         log.debug('Unique pod ID: %s ', pod_unique_id)
         try:
             for containers_list in values['spec']['containers']:
-                container = containers_list['name']
+                container = str(containers_list['name'])
                 log.debug('Found container: %s ', container)
                 list_opts_log = ['--timestamps=true', '--tail', str(tail_lines),
                                  '--namespace', namespace] + since_opt
@@ -204,7 +204,7 @@ class Kubernetes(Connector):
         logs_string = str()
         log.debug('Starting _get_containers_logs.')
         for items_list in values['items']:
-            if items_list["kind"] == 'Pod':
+            if str(items_list["kind"]) == 'Pod':
                 logs_string = logs_string + \
                 self._get_container_logs(namespace, items_list, since_opt, lines)
         log.debug('_get_containers FINAL log string : %s', logs_string)
