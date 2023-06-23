@@ -277,14 +277,16 @@ class Kubernetes(Connector):
     def log(self, component: str, since: datetime, lines: int,
             **kwargs) -> str:
         namespace = kwargs['namespace']
-        lines = 10 # we set this here. FIXME needs to be removed after work on the UI?
-        WORKLOAD_OBJECT_KINDS = ["Deployment", "Job", "CronJob", "StatefulSet", "DaemonSet"]
+        temporary_lines = int(10)
+        lines = temporary_lines # we set this here. Needs to be removed after work on the UI?
+        WORKLOAD_OBJECT_KINDS = \
+            ["Deployment", "Job", "CronJob", "StatefulSet", "DaemonSet"]
         if component.split("/")[0] not in WORKLOAD_OBJECT_KINDS:
             msg = f'Logs can not be collected for {component} object kind.'
             log.info(msg)
             logs_string = \
-                self._timestamp_kubernetes() + " There are no meaningful logs for " \
-                + str(component) + "\n"
+                self._timestamp_kubernetes() + " Logs are not returned for " \
+                + str(component) + " type\n"
             return logs_string
         try:
             log.debug('Getting container logs for %s', component)
@@ -294,7 +296,7 @@ class Kubernetes(Connector):
             logs_string = \
                 self._timestamp_kubernetes() + " There was an error getting logs for " \
                 + str(component) + "\n"
-            return '' # if a caller of the method can't handle None
+            return logs_string # if a caller of the method can't handle None
 
     @should_connect
     def log_old(self, component: str, since: datetime, lines: int,
@@ -311,8 +313,7 @@ class Kubernetes(Connector):
             logs_string = \
                 self._timestamp_kubernetes() + " There are no meaningful logs for " \
                 + str(component) + "\n"
-            # FIXME I leave for now
-            log.info('A log is requested for type Service ? : %s ',logs_string)
+            log.debug('A log is requested for type Service ? : %s ',logs_string)
 
         return logs_string
 
