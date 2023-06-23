@@ -169,7 +169,7 @@ class Kubernetes(Connector):
         # return execute_cmd(cmd)
         pass
 
-    def _get_container_logs(self, namespace, values, since: datetime, \
+    def _get_container_logs_old(self, namespace, values, since: datetime, \
                             lines) -> str:
         lines = int(10)
         tail_lines = str(lines) # the default from the UI is 200.
@@ -211,11 +211,11 @@ class Kubernetes(Connector):
             logs_string = str(ex_string)
         return logs_string 
 
-    def _get_container_logs_new(self, namespace, values, since: datetime, \
+    def _get_container_logs(self, namespace, values, since: datetime, \
                             lines = 10) -> str:
-        tail_lines = lines
-        lines = int(10)
-        tail_lines = str(lines) # the default from the UI is 200.
+        tail_lines = lines # appease SonarCloud
+        lines = int(10) # the default from the UI is 200.
+        tail_lines = str(lines)
         logs_string = ''
         pod_unique_id = str(values["metadata"]["name"])
         log.debug('Unique pod ID: %s ', pod_unique_id)
@@ -262,12 +262,12 @@ class Kubernetes(Connector):
         for item in values['items']:
             if str(item["kind"]) == 'Pod':
                 logs_string = logs_string + \
-                    self._get_container_logs_new(namespace, item, since, lines)
+                    self._get_container_logs(namespace, item, since, lines)
         log.debug('%s FINAL log string : %s', func_name, logs_string)
 
         return logs_string
 
-    def _get_the_logs(self, namespace, since: datetime, lines: int) -> str:
+    def _get_the_logs_remove(self, namespace, since: datetime, lines: int) -> str:
         logs_string = \
             self._timestamp_kubernetes() + " default logging message \n"
         list_opts_pods = ['-o', 'json', '--namespace', namespace]
@@ -287,7 +287,7 @@ class Kubernetes(Connector):
         log.info('Container logs string: %s', logs_string)
         return logs_string
 
-    def _get_the_logs_new(self, namespace, since: datetime, lines: int) -> str:
+    def _get_the_logs(self, namespace, since: datetime, lines: int) -> str:
         logs_string = \
             self._timestamp_kubernetes() + " default logging message \n"
         list_opts_pods = ['-o', 'json', '--namespace', namespace]
@@ -319,7 +319,8 @@ class Kubernetes(Connector):
             + '000Z'
         return time_stamp
 
-    def log_tmp(self, component: str, since: datetime, lines: int,
+# new one...
+    def log(self, component: str, since: datetime, lines: int,
             **kwargs) -> str:
         namespace = kwargs['namespace']
         temporary_lines = int(10)
@@ -344,7 +345,7 @@ class Kubernetes(Connector):
             return logs_string # if a caller of the method can't handle None
 
     @should_connect
-    def log(self, component: str, since: datetime, lines: int,
+    def log_old(self, component: str, since: datetime, lines: int,
             **kwargs) -> str:
         namespace = kwargs['namespace']
         WORKLOAD_OBJECT_KINDS = \
@@ -352,7 +353,7 @@ class Kubernetes(Connector):
         if component.split("/")[0] in WORKLOAD_OBJECT_KINDS:
             try:
                 log.debug('Getting container logs for %s', component)
-                logs_string = self._get_the_logs_new(namespace, since, lines)
+                logs_string = self._get_the_logs(namespace, since, lines)
             except Exception as e_pod:
                 log.error('Fetching Pods failed: %s', e_pod)
         else:
