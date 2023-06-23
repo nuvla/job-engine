@@ -243,8 +243,11 @@ class Kubernetes(Connector):
                 log.error('Fetching Pods failed: %s', e_pod)
         else:
             time_now = datetime.timestamp(datetime.now())
-            time_stamp = str(datetime.utcfromtimestamp(time_now)) + '000Z'
-            logs_string = time_stamp + " There are no meaningful logs for " \
+            time_stamp = \
+                str(datetime.utcfromtimestamp(time_now)).replace(' ','T') \
+                + '000Z'
+            logs_string = \
+                time_stamp + " There are no meaningful logs for " \
                 + str(component) + "\n"
             # FIXME I leave for now
             log.info('A log is requested for type Service ? : %s ',logs_string)
