@@ -169,53 +169,56 @@ class Kubernetes(Connector):
         # return execute_cmd(cmd)
         pass
 
-    def _get_container_logs(self, namespace, values, since: datetime, lines: int) -> str:
-        tail_lines=lines # wtf
-        tail_lines=5 # wtf
-        logs_string=str()
+    def _get_container_logs(self, namespace, values, since: datetime, \
+                            lines = 5) -> str:
+        tail_lines = str(lines) # the default from the UI is 200.
+        logs_string = ''
         pod_unique_id = str(values["metadata"]["name"])
         log.debug('Unique pod ID: %s ', pod_unique_id)
         try:
-            for containers_list in values['spec']['containers']:
-                container = str(containers_list['name'])
+            for container_name in values['spec']['containers']:
+                container = str(container_name['name'])
                 log.debug('Found container: %s ', container)
-                since_opt = ['--since-time', since.isoformat()] if since else []
-                list_opts_log = ['--timestamps=true', '--tail', str(tail_lines),
+                since_opt = ['--since-time', since.isoformat()] \
+                if since else []
+                list_opts_log = ['--timestamps=true', '--tail', tail_lines,
                                  '--namespace', namespace] + since_opt
                 container_opts = \
-                ['pod/' + pod_unique_id, '--container=' + container]
+                    ['pod/' + pod_unique_id, '--container=' + container]
                 cmd = \
-                self.build_cmd_line(['logs'] + container_opts + list_opts_log)
+                    self.build_cmd_line \
+                    (['logs'] + container_opts + list_opts_log)
                 log.debug('Generated logs command line : %s', cmd)
-                header_line = "\n\nLog last " + str(tail_lines) + \
-                " lines for Container " + \
-                container + " in Pod " + pod_unique_id + " \n"
+                header_line = "\n\nLog last " + tail_lines + \
+                    " lines for Container " + \
+                    container + " in Pod " + pod_unique_id + " \n"
                 log.debug('Header line : %s', header_line)
                 return_string = execute_cmd(cmd).stdout
                 if return_string:
                     logs_string = \
-                    logs_string + header_line + execute_cmd(cmd).stdout
+                        logs_string + header_line + execute_cmd(cmd).stdout
                 else:
                     logs_string = logs_string + self._timestamp_kubernetes() \
-                            + " There are no meaningful logs for " + \
+                            + " There are no log entries for " + \
                             container + " in Pod " + pod_unique_id + \
                             " since " + since.isoformat() + "\n"
                 log.debug('_get_container_logs logs string : %s', logs_string)
         except Exception as e_cont:
             ex_string = "There was a problem getting logs from Pod " \
-            + pod_unique_id
+                + pod_unique_id
             log.debug('An exception caught: %s ', e_cont)
             logs_string = str(ex_string)
         return logs_string 
 
     def _get_the_pods(self, namespace, values, since: datetime, lines: int) -> str:
         logs_string = str()
-        log.debug('Starting _get_containers_logs.')
-        for items_list in values['items']:
-            if str(items_list["kind"]) == 'Pod':
+        func_name = "_get_the_pods"
+        log.debug('%s Starting _get_containers_logs.',func_name)
+        for item in values['items']:
+            if str(item["kind"]) == 'Pod':
                 logs_string = logs_string + \
-                self._get_container_logs(namespace, items_list, since, lines)
-        log.debug('_get_containers FINAL log string : %s', logs_string)
+                    self._get_container_logs(namespace, item, since, lines)
+        log.debug('%s FINAL log string : %s', func_name, logs_string)
 
         return logs_string
 
@@ -228,7 +231,7 @@ class Kubernetes(Connector):
             try:
                 log.info('Getting containers...')
                 logs_string = \
-                self._get_the_pods(namespace, all_json_out, since, lines)
+                    self._get_the_pods(namespace, all_json_out, since, lines)
             except Exception as e_cont:
                 log.debug('Fetching Containers failed: %s ', e_cont)
         except Exception as e_json:
@@ -248,7 +251,6 @@ class Kubernetes(Connector):
     def log(self, component: str, since: datetime, lines: int,
             **kwargs) -> str:
         namespace = kwargs['namespace']
-        # since_opt = ['--since-time', since.isoformat()] if since else []
         do_not_send_logs = ["Service"]
         if component.split("/")[0] not in do_not_send_logs:
             try:
@@ -325,3 +327,45 @@ class Kubernetes(Connector):
 
     def extract_vm_state(self, vm):
         pass
+
+    def _get_container_logs_new(self, namespace, values, since: datetime, \
+                            lines = 5) -> str:
+        tail_lines = str(lines) # the default from the UI is 200.
+        logs_string = ''
+        pod_unique_id = str(values["metadata"]["name"])
+        log.debug('Unique pod ID: %s ', pod_unique_id)
+        for container_name in values['spec']['containers']:
+            container = str(container_name['name'])
+            log.debug('Found container: %s ', container)
+            since_opt = ['--since-time', since.isoformat()] \
+            if since else []
+            list_opts_log = ['--timestamps=true', '--tail', tail_lines, \
+                '--namespace', namespace] + since_opt
+            container_opts = \
+                ['pod/' + pod_unique_id, '--container=' + container]
+            cmd = \
+                self.build_cmd_line \
+                (['logs'] + container_opts + list_opts_log)
+            log.debug('Generated logs command line : %s', cmd)
+            header_line = "\n\nLog last " + tail_lines + \
+                " lines for Container " + \
+                container + " in Pod " + pod_unique_id + " \n"
+            log.debug('Header line : %s', header_line)
+            try:
+                return_string = execute_cmd(cmd).stdout
+            except Exception:
+                ex_string = \
+                "There is a problem getting logs from container " \
+                + container + " in Pod " + pod_unique_id + "\n"
+                log.info(ex_string)
+                continue
+            if return_string:
+                logs_string = \
+                    logs_string + header_line + execute_cmd(cmd).stdout
+            else:
+                logs_string = logs_string + self._timestamp_kubernetes() \
+                    + " There are no log entries for " + \
+                    container + " in Pod " + pod_unique_id + \
+                    " since " + since.isoformat() + "\n"
+            log.debug('_get_container_logs logs string : %s', logs_string)
+        return logs_string 
