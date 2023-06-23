@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 import os
 import json
-import yaml
+from datetime import datetime
 import base64
 import logging
-import datetime
+import yaml
 from tempfile import TemporaryDirectory
 from .utils import execute_cmd, join_stderr_stdout, create_tmp_file, \
     generate_registry_config, extract_host_from_url
