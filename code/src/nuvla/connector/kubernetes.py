@@ -171,6 +171,7 @@ class Kubernetes(Connector):
 
     def _get_container_logs(self, namespace, values, since: datetime, \
                             lines) -> str:
+        lines = int(10)
         tail_lines = str(lines) # the default from the UI is 200.
         logs_string = ''
         pod_unique_id = str(values["metadata"]["name"])
