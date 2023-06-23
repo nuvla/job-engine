@@ -323,8 +323,6 @@ class Kubernetes(Connector):
     def log(self, component: str, since: datetime, lines: int,
             **kwargs) -> str:
         namespace = kwargs['namespace']
-        temporary_lines = int(10)
-        lines = temporary_lines # we set this here. Needs to be removed after work on the UI?
         WORKLOAD_OBJECT_KINDS = \
             ["Deployment", "Job", "CronJob", "StatefulSet", "DaemonSet"]
         if component.split("/")[0] not in WORKLOAD_OBJECT_KINDS:
