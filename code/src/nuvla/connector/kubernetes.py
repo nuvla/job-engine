@@ -223,6 +223,8 @@ class Kubernetes(Connector):
         return logs_string
 
     def _get_the_logs(self, namespace, since: datetime, lines: int) -> str:
+        logs_string = \
+            self._timestamp_kubernetes() + " default logging message \n"
         list_opts_pods = ['-o', 'json', '--namespace', namespace]
         cmd_pods = self.build_cmd_line(['get', 'pods'] + list_opts_pods)
         log.debug('Generated command line to get pods: %s', cmd_pods)
@@ -236,6 +238,31 @@ class Kubernetes(Connector):
                 log.debug('Fetching Containers failed: %s ', e_cont)
         except Exception as e_json:
             log.debug('Fetching JSON failed: %s', e_json)
+        # FIXME I leave for now
+        log.info('Container logs string: %s', logs_string)
+        return logs_string
+
+    def _get_the_logs_new(self, namespace, since: datetime, lines: int) -> str:
+        logs_string = \
+            self._timestamp_kubernetes() + " default logging message \n"
+        list_opts_pods = ['-o', 'json', '--namespace', namespace]
+        cmd_pods = self.build_cmd_line(['get', 'pods'] + list_opts_pods)
+        log.debug('Generated command line to get pods: %s', cmd_pods)
+
+        try:
+            cmd_string_out = execute_cmd(cmd_pods).stdout
+        except Exception as e_json_all:
+            log.info('Problem getting pods string %s ', e_json_all)
+        try:
+            all_json_out = json.loads(cmd_string_out)
+        except Exception as e_json_out:
+            log.info('Problem with loading pods JSON %s ', e_json_out)
+        try:
+            logs_string = \
+                self._get_the_pods(namespace, all_json_out, since, lines)
+        except Exception as e_logs_string:
+            log.info('Problem getting logs string %s ', e_logs_string)
+
         # FIXME I leave for now
         log.info('Container logs string: %s', logs_string)
         return logs_string
@@ -255,7 +282,7 @@ class Kubernetes(Connector):
         if component.split("/")[0] not in do_not_send_logs:
             try:
                 log.debug('Getting container logs for %s', component)
-                logs_string = self._get_the_logs(namespace, since, lines)
+                logs_string = self._get_the_logs_new(namespace, since, lines)
             except Exception as e_pod:
                 log.error('Fetching Pods failed: %s', e_pod)
         else:
