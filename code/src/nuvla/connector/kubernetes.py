@@ -213,7 +213,8 @@ class Kubernetes(Connector):
 
     def _get_container_logs_new(self, namespace, values, since: datetime, \
                             lines = 10) -> str:
-        # lines = int(10)
+        tail_lines = lines
+        lines = int(10)
         tail_lines = str(lines) # the default from the UI is 200.
         logs_string = ''
         pod_unique_id = str(values["metadata"]["name"])
@@ -237,11 +238,11 @@ class Kubernetes(Connector):
             log.debug('Header line : %s', header_line)
             try:
                 return_string = execute_cmd(cmd).stdout
-            except Exception:
+            except Exception as ex_ret_str:
                 ex_string = \
                 "There is a problem getting logs from container " \
                 + container + " in Pod " + pod_unique_id + "\n"
-                log.info(ex_string)
+                log.info('%s %s',ex_string, ex_ret_str)
                 continue
             if return_string:
                 logs_string = \
@@ -346,7 +347,6 @@ class Kubernetes(Connector):
     def log(self, component: str, since: datetime, lines: int,
             **kwargs) -> str:
         namespace = kwargs['namespace']
-        do_not_send_logs = ["Service"]
         WORKLOAD_OBJECT_KINDS = \
             ["Deployment", "Job", "CronJob", "StatefulSet", "DaemonSet"]
         if component.split("/")[0] in WORKLOAD_OBJECT_KINDS:
