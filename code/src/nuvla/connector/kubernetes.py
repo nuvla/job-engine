@@ -190,8 +190,14 @@ class Kubernetes(Connector):
                 " lines for Container " + \
                 container + " in Pod " + pod_unique_id + " \n"
                 log.debug('Header line : %s', header_line)
-                logs_string = \
-                logs_string + header_line + execute_cmd(cmd).stdout
+                return_string = execute_cmd(cmd).stdout
+                if return_string:
+                    logs_string = \
+                    logs_string + header_line + execute_cmd(cmd).stdout
+                else:
+                    logs_string = logs_string + self._timestamp_kubernetes() \
+                            + " There are no meaningful logs for " + \
+                            container + " in Pod " + pod_unique_id + " since \n"
                 log.debug('_get_container_logs logs string : %s', logs_string)
         except Exception as e_cont:
             ex_string = "There was a problem getting logs from Pod " \
@@ -229,6 +235,13 @@ class Kubernetes(Connector):
         log.info('Container logs string: %s', logs_string)
         return logs_string
 
+    def _timestamp_kubernetes(self) -> str:
+        time_now = datetime.timestamp(datetime.now())
+        time_stamp = \
+            str(datetime.utcfromtimestamp(time_now)).replace(' ','T') \
+            + '000Z'
+        return time_stamp
+
     @should_connect
     def log(self, component: str, since: datetime, lines: int,
             **kwargs) -> str:
@@ -242,12 +255,8 @@ class Kubernetes(Connector):
             except Exception as e_pod:
                 log.error('Fetching Pods failed: %s', e_pod)
         else:
-            time_now = datetime.timestamp(datetime.now())
-            time_stamp = \
-                str(datetime.utcfromtimestamp(time_now)).replace(' ','T') \
-                + '000Z'
             logs_string = \
-                time_stamp + " There are no meaningful logs for " \
+                self._timestamp_kubernetes() + " There are no meaningful logs for " \
                 + str(component) + "\n"
             # FIXME I leave for now
             log.info('A log is requested for type Service ? : %s ',logs_string)
