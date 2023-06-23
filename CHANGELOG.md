@@ -6,6 +6,11 @@
 
 ## Released
 
+## [3.3.1] - 2023-06-23
+
+- Deployment set actions - Align with api server changes
+- Container build - Fix docker hub organization selection
+
 ## [3.3.0] - 2023-06-12
 
 ### Changed
