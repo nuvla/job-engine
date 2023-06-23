@@ -274,8 +274,30 @@ class Kubernetes(Connector):
             + '000Z'
         return time_stamp
 
-    @should_connect
     def log(self, component: str, since: datetime, lines: int,
+            **kwargs) -> str:
+        namespace = kwargs['namespace']
+        lines = 10 # we set this here. FIXME needs to be removed after work on the UI?
+        WORKLOAD_OBJECT_KINDS = ["Deployment", "Job", "CronJob", "StatefulSet", "DaemonSet"]
+        if component.split("/")[0] not in WORKLOAD_OBJECT_KINDS:
+            msg = f'Logs can not be collected for {component} object kind.'
+            log.info(msg)
+            logs_string = \
+                self._timestamp_kubernetes() + " There are no meaningful logs for " \
+                + str(component) + "\n"
+            return logs_string
+        try:
+            log.debug('Getting container logs for %s', component)
+            return self._get_the_logs(namespace, since, lines)
+        except Exception as ex:
+            log.error('Failed getting container logs for %s: %s', component, ex)
+            logs_string = \
+                self._timestamp_kubernetes() + " There was an error getting logs for " \
+                + str(component) + "\n"
+            return '' # if a caller of the method can't handle None
+
+    @should_connect
+    def log_old(self, component: str, since: datetime, lines: int,
             **kwargs) -> str:
         namespace = kwargs['namespace']
         do_not_send_logs = ["Service"]
