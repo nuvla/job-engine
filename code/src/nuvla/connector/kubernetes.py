@@ -170,7 +170,7 @@ class Kubernetes(Connector):
         pass
 
     def _get_container_logs(self, namespace, values, since: datetime, \
-                            lines = 5) -> str:
+                            lines) -> str:
         tail_lines = str(lines) # the default from the UI is 200.
         logs_string = ''
         pod_unique_id = str(values["metadata"]["name"])
@@ -274,7 +274,7 @@ class Kubernetes(Connector):
             + '000Z'
         return time_stamp
 
-    def log(self, component: str, since: datetime, lines: int,
+    def log_tmp(self, component: str, since: datetime, lines: int,
             **kwargs) -> str:
         namespace = kwargs['namespace']
         temporary_lines = int(10)
@@ -299,11 +299,13 @@ class Kubernetes(Connector):
             return logs_string # if a caller of the method can't handle None
 
     @should_connect
-    def log_old(self, component: str, since: datetime, lines: int,
+    def log(self, component: str, since: datetime, lines: int,
             **kwargs) -> str:
         namespace = kwargs['namespace']
         do_not_send_logs = ["Service"]
-        if component.split("/")[0] not in do_not_send_logs:
+        WORKLOAD_OBJECT_KINDS = \
+            ["Deployment", "Job", "CronJob", "StatefulSet", "DaemonSet"]
+        if component.split("/")[0] in WORKLOAD_OBJECT_KINDS:
             try:
                 log.debug('Getting container logs for %s', component)
                 logs_string = self._get_the_logs_new(namespace, since, lines)
