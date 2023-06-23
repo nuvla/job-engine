@@ -50,6 +50,7 @@ class DeploymentSetCreateJob(object):
         log.info('Create {}.'.format(self.dep_set_id))
         progress = 10
         self.job.set_progress(progress)
+        self.user_api.edit(self.dep_set_id, {'state': 'CREATING'})
         for el in self.plan:
             target = el['credential']
             application = el["application"]
