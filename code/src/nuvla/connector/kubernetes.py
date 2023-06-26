@@ -333,7 +333,7 @@ class Kubernetes(Connector):
             return logs_string
         log.info('Getting container logs for %s', component)
         try:
-            return self._get_the_logs_new(namespace, since, lines)
+            return self._get_the_logs(namespace, since, lines)
         except Exception as ex:
             log.error('Failed getting container logs for %s: %s', component, ex)
             logs_string = \
