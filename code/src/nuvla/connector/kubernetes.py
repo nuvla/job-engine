@@ -320,7 +320,7 @@ class Kubernetes(Connector):
         log.info('Container logs string: %s', logs_string)
         return logs_string
 # new one...
-    def log_new(self, component: str, since: datetime, lines: int,
+    def log(self, component: str, since: datetime, lines: int,
             **kwargs) -> str:
         namespace = kwargs['namespace']
         WORKLOAD_OBJECT_KINDS = \
@@ -332,18 +332,20 @@ class Kubernetes(Connector):
                 self._timestamp_kubernetes() + " Logs are not returned for " \
                 + str(component) + " type\n"
             return logs_string
-        try:
-            log.debug('Getting container logs for %s', component)
-            return self._get_the_logs_remove(namespace, since, lines)
-        except Exception as ex:
-            log.error('Failed getting container logs for %s: %s', component, ex)
-            logs_string = \
-                self._timestamp_kubernetes() + " There was an error getting logs for " \
-                + str(component) + "\n"
-            return logs_string # if a caller of the method can't handle None
+        else:
+            try:
+                log.info('Getting container logs for %s', component)
+                return self._get_the_logs_new(namespace, since, lines)
+            except Exception as ex:
+                log.error('Failed getting container logs for %s: %s', component, ex)
+                logs_string = \
+                    self._timestamp_kubernetes() + \
+                    " There was an error getting logs for component: " \
+                    + str(component) + "\n"
+                return logs_string # if a caller of the method can't handle None
 
     @should_connect
-    def log(self, component: str, since: datetime, lines: int,
+    def log_old(self, component: str, since: datetime, lines: int,
             **kwargs) -> str:
         namespace = kwargs['namespace']
         WORKLOAD_OBJECT_KINDS = \
