@@ -75,6 +75,9 @@ class NuvlaBoxReleasesJob(object):
             for asset in assets:
                 try:
                     name = asset['name']
+                    if not name.startswith('docker-compose.') or not name.endswith('.yml'):
+                        logging.debug(f'Skipping asset "{name}". Not a docker-compose yaml file.')
+                        continue
                     download_asset_url = asset['browser_download_url']
                 except KeyError:
                     logging.warning(
