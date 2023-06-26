@@ -234,17 +234,15 @@ class Kubernetes(Connector):
     def _get_the_logs(self, namespace, since: datetime, lines: int) -> str:
         list_opts_pods = ['-o', 'json', '--namespace', namespace]
         cmd_pods = self.build_cmd_line(['get', 'pods'] + list_opts_pods)
-        log.info('Generated command line to get pods: %s', cmd_pods)
+        log.debug('Generated command line to get pods: %s', cmd_pods)
         try:
             cmd_string_out = execute_cmd(cmd_pods).stdout
         except Exception as e_json_all:
             log.info('Problem getting pods string %s ', e_json_all)
-        log.info('Successfully got the pods string')
         try:
             all_json_out = json.loads(cmd_string_out)
         except Exception as e_json_out:
             log.info('Problem with loading pods JSON %s ', e_json_out)
-        log.info('Successfully got the JSON')
         try:
             logs_string = \
                 self._get_the_pods(namespace, all_json_out, since, lines)
@@ -258,7 +256,7 @@ class Kubernetes(Connector):
             **kwargs) -> str:
         namespace = kwargs['namespace']
         logs_string = self._timestamp_kubernetes() \
-            + " default logging message \n"
+            + " the default logging message \n" # should we add that this never should be seen on the UI?
         WORKLOAD_OBJECT_KINDS = \
             ["Deployment", "Job", "CronJob", "StatefulSet", "DaemonSet"]
         if component.split("/")[0] not in WORKLOAD_OBJECT_KINDS:
