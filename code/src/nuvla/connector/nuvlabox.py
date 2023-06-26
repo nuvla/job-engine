@@ -249,15 +249,14 @@ class NuvlaBox(Connector):
             # running in pull, thus the docker socket is being shared
             user_home = self.nuvlabox_status.get('host-user-home')
             if not user_home:
-                raise Exception(
-                    f'Cannot manage SSH keys unless the parameter host-user-home is set')
+                raise ValueError('Cannot manage SSH keys unless the parameter host-user-home is set')
 
             if action.startswith('revoke'):
-                cmd = "sh -c 'grep -v \"${SSH_PUB}\" %s > /tmp/temp && mv /tmp/temp %s && echo Success'" \
+                cmd = "-c 'grep -v \"${SSH_PUB}\" %s > /tmp/temp && mv /tmp/temp %s && echo Success'" \
                       % (f'/rootfs/{user_home}/.ssh/authorized_keys',
                          f'/rootfs/{user_home}/.ssh/authorized_keys')
             else:
-                cmd = "sh -c 'echo -e \"${SSH_PUB}\" >> %s && echo Success'" \
+                cmd = "-c 'echo -e \"${SSH_PUB}\" >> %s && echo Success'" \
                       % f'/rootfs/{user_home}/.ssh/authorized_keys'
 
             self.job.set_progress(90)
@@ -265,6 +264,7 @@ class NuvlaBox(Connector):
             r = docker.from_env().containers.run(
                 self.base_image,
                 remove=True,
+                entrypoint='sh',
                 command=cmd,
                 environment={
                     'SSH_PUB': pubkey
@@ -298,17 +298,19 @@ class NuvlaBox(Connector):
                 err_msg = 'The management-api does not exist, so "reboot" must run asynchronously (pull mode)'
                 raise OperationNotAllowed(err_msg)
             # running in pull, thus the docker socket is being shared
-            cmd = "sh -c 'sleep 10 && echo b > /sysrq'"
-            docker.from_env().containers.run(self.base_image,
-                                             command=cmd,
-                                             detach=True,
-                                             remove=True,
-                                             volumes={
-                                                 '/proc/sysrq-trigger': {
-                                                     'bind': '/sysrq'
-                                                 }
-                                             }
-                                             )
+            cmd = "-c 'sleep 10 && echo b > /sysrq'"
+            docker.from_env().containers.run(
+                self.base_image,
+                entrypoint='sh',
+                command=cmd,
+                detach=True,
+                remove=True,
+                volumes={
+                    '/proc/sysrq-trigger': {
+                        'bind': '/sysrq'
+                    }
+                }
+            )
             r = 'Reboot ongoing'
 
         return r
