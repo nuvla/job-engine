@@ -186,6 +186,7 @@ class Kubernetes(Connector):
         log.debug('Unique pod ID: %s ', pod_unique_id)
         for container_name in values['spec']['containers']:
             container = str(container_name['name'])
+            CONTAINER_POD = container + " in Pod " + pod_unique_id # Appease SonarCloud
             log.debug('Found container: %s ', container)
             since_opt = ['--since-time', since.isoformat()] \
             if since else []
@@ -197,16 +198,16 @@ class Kubernetes(Connector):
                 self.build_cmd_line \
                 (['logs'] + container_opts + list_opts_log)
             log.debug('Generated logs command line : %s', cmd)
-            header_line = "\n\nLog last " + tail_lines + \
+            header_line = "\nLog last " + tail_lines + \
                 " lines for Container " + \
-                container + " in Pod " + pod_unique_id + " \n"
+                CONTAINER_POD + " \n"
             log.debug('Header line : %s', header_line)
             try:
                 return_string = execute_cmd(cmd).stdout
             except Exception as ex_ret_str:
                 ex_string = \
                 "There is a problem getting logs from container " \
-                + container + " in Pod " + pod_unique_id + "\n"
+                CONTAINER_POD + "\n"
                 log.info('%s %s',ex_string, ex_ret_str)
                 continue
             if return_string:
@@ -215,8 +216,7 @@ class Kubernetes(Connector):
             else:
                 logs_string = logs_string + self._timestamp_kubernetes() \
                     + " There are no log entries for " + \
-                    container + " in Pod " + pod_unique_id + \
-                    " since " + since.isoformat() + "\n"
+                    CONTAINER_POD + " since " + since.isoformat() + "\n"
             log.debug('_get_container_logs logs string : %s', logs_string)
         return logs_string 
 
@@ -251,12 +251,37 @@ class Kubernetes(Connector):
                 self._get_the_pods(namespace, all_json_out, since, lines)
         except Exception as e_logs_string:
             log.info('Problem getting logs string %s ', e_logs_string)
-        # FIXME I leave for now
-        log.info('Container logs string: %s', logs_string)
+        log.debug('Container logs string: %s', logs_string)
         return logs_string
 
     @should_connect
     def log(self, component: str, since: datetime, lines: int,
+            **kwargs) -> str:
+        namespace = kwargs['namespace']
+        logs_string = self._timestamp_kubernetes() \
+            + " default logging message \n"
+        WORKLOAD_OBJECT_KINDS = \
+            ["Deployment", "Job", "CronJob", "StatefulSet", "DaemonSet"]
+        if component.split("/")[0] not in WORKLOAD_OBJECT_KINDS:
+            logs_string = \
+                self._timestamp_kubernetes() + " There are no meaningful logs for " \
+                + str(component) + "\n"
+            log.debug('A log is requested for type Service ? : %s ',logs_string)
+            return logs_string
+        
+        try:
+            log.debug('Getting the container logs for: %s', component)
+            logs_string = self._get_the_logs(namespace, since, lines)
+        except Exception as ex:
+            log.error('Failed getting container logs for %s: %s', component, ex)
+            logs_string = \
+                self._timestamp_kubernetes() + \
+                " There was an error getting logs for component: " \
+                + str(component) + "\n"
+        return logs_string
+
+    @should_connect
+    def log_original(self, component: str, since: datetime, lines: int,
             **kwargs) -> str:
         namespace = kwargs['namespace']
         logs_string = self._timestamp_kubernetes() \
