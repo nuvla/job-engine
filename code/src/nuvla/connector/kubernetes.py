@@ -169,6 +169,13 @@ class Kubernetes(Connector):
         # return execute_cmd(cmd)
         pass
 
+    def _timestamp_kubernetes(self) -> str:
+        time_now = datetime.timestamp(datetime.now())
+        time_stamp = \
+            str(datetime.utcfromtimestamp(time_now)).replace(' ','T') \
+            + '000Z'
+        return time_stamp
+
     def _get_container_logs_old(self, namespace, values, since: datetime, \
                             lines) -> str:
         lines = int(10)
@@ -298,27 +305,20 @@ class Kubernetes(Connector):
             cmd_string_out = execute_cmd(cmd_pods).stdout
         except Exception as e_json_all:
             log.info('Problem getting pods string %s ', e_json_all)
+        log.info('Successfully got the pods string')
         try:
             all_json_out = json.loads(cmd_string_out)
         except Exception as e_json_out:
             log.info('Problem with loading pods JSON %s ', e_json_out)
+        log.info('Successfully got the JSON')
         try:
             logs_string = \
                 self._get_the_pods(namespace, all_json_out, since, lines)
         except Exception as e_logs_string:
             log.info('Problem getting logs string %s ', e_logs_string)
-
         # FIXME I leave for now
         log.info('Container logs string: %s', logs_string)
         return logs_string
-
-    def _timestamp_kubernetes(self) -> str:
-        time_now = datetime.timestamp(datetime.now())
-        time_stamp = \
-            str(datetime.utcfromtimestamp(time_now)).replace(' ','T') \
-            + '000Z'
-        return time_stamp
-
 # new one...
     def log(self, component: str, since: datetime, lines: int,
             **kwargs) -> str:
