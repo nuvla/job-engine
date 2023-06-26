@@ -295,12 +295,11 @@ class Kubernetes(Connector):
         return logs_string
 
     def _get_the_logs_new(self, namespace, since: datetime, lines: int) -> str:
-        logs_string = \
-            self._timestamp_kubernetes() + " default logging message \n"
+        logs_string = self._timestamp_kubernetes() \
+            + " default logging message \n"
         list_opts_pods = ['-o', 'json', '--namespace', namespace]
         cmd_pods = self.build_cmd_line(['get', 'pods'] + list_opts_pods)
-        log.debug('Generated command line to get pods: %s', cmd_pods)
-
+        log.info('Generated command line to get pods: %s', cmd_pods)
         try:
             cmd_string_out = execute_cmd(cmd_pods).stdout
         except Exception as e_json_all:
@@ -332,17 +331,16 @@ class Kubernetes(Connector):
                 self._timestamp_kubernetes() + " Logs are not returned for " \
                 + str(component) + " type\n"
             return logs_string
-        else:
-            try:
-                log.info('Getting container logs for %s', component)
-                return self._get_the_logs_new(namespace, since, lines)
-            except Exception as ex:
-                log.error('Failed getting container logs for %s: %s', component, ex)
-                logs_string = \
-                    self._timestamp_kubernetes() + \
-                    " There was an error getting logs for component: " \
-                    + str(component) + "\n"
-                return logs_string # if a caller of the method can't handle None
+        log.info('Getting container logs for %s', component)
+        try:
+            return self._get_the_logs_new(namespace, since, lines)
+        except Exception as ex:
+            log.error('Failed getting container logs for %s: %s', component, ex)
+            logs_string = \
+                self._timestamp_kubernetes() + \
+                " There was an error getting logs for component: " \
+                + str(component) + "\n"
+            return logs_string # if a caller of the method can't handle None
 
     @should_connect
     def log_old(self, component: str, since: datetime, lines: int,
