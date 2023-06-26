@@ -1,13 +1,16 @@
 # -*- coding: utf-8 -*-
 import datetime
-
-import requests
-import logging
-import docker
 import json
+import logging
+import os
 import re
 import time
+
+import docker
+import requests
+
 from packaging.version import Version, InvalidVersion
+
 from .connector import Connector, should_connect
 from .utils import create_tmp_file, timeout, remove_protocol_from_url
 
@@ -39,7 +42,12 @@ class NuvlaBox(Connector):
         self.nuvlabox = None
         self.nuvlabox_status = None
         self.nb_api_endpoint = None
-        self.base_image = 'python:3.8-alpine3.12'
+        self.ne_image_registry = os.getenv('NE_IMAGE_REGISTRY', '')
+        self.ne_image_org = os.getenv('NE_IMAGE_ORGANIZATION', 'sixsq')
+        self.ne_image_repo = os.getenv('NE_IMAGE_REPOSITORY', 'nuvlaedge')
+        self.ne_image_tag = os.getenv('NE_IMAGE_TAG', 'latest')
+        self.ne_image_name = os.getenv('NE_IMAGE_NAME', f'{self.ne_image_org}/{self.ne_image_repo}')
+        self.base_image = f'{self.ne_image_registry}{self.ne_image_name}:{self.ne_image_tag}'
         self.installer_image_name = None
         self.installer_image_name_fallback = None
         self.timeout = 60
@@ -154,7 +162,7 @@ class NuvlaBox(Connector):
 
     def extract_vm_state(self, vm):
         pass
-    
+
     @staticmethod
     def get_installer_image_names(nuvlaedge_version):
         repo = 'installer'
@@ -164,9 +172,9 @@ class NuvlaBox(Connector):
             org, default_tag = new if Version(nuvlaedge_version) >= Version('2.5.0') else old
         except InvalidVersion:
             org, default_tag = old if nuvlaedge_version == 'master' else new
-        
+
         return (f'{org}/{repo}:{nuvlaedge_version if nuvlaedge_version else default_tag}',
-               f'{org}/{repo}:{default_tag}')
+                f'{org}/{repo}:{default_tag}')
 
     def connect(self):
         logging.info('Connecting to NuvlaEdge {}'.format(self.nuvlabox_id))
@@ -581,7 +589,7 @@ class NuvlaBox(Connector):
 
         install_params_from_payload = json.loads(self.job.get('payload', '{}'))
         install_params_from_nb_status = self.nuvlabox_status.get('installation-parameters', {})
-        
+
         def get_install_params(name):
             return install_params_from_payload.get(name, install_params_from_nb_status.get(name))
 
