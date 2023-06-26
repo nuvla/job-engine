@@ -294,7 +294,7 @@ class Kubernetes(Connector):
         log.info('Container logs string: %s', logs_string)
         return logs_string
 
-    def _get_the_logs(self, namespace, since: datetime, lines: int) -> str:
+    def _get_the_logs_new(self, namespace, since: datetime, lines: int) -> str:
         logs_string = \
             self._timestamp_kubernetes() + " default logging message \n"
         list_opts_pods = ['-o', 'json', '--namespace', namespace]
@@ -350,8 +350,8 @@ class Kubernetes(Connector):
             ["Deployment", "Job", "CronJob", "StatefulSet", "DaemonSet"]
         if component.split("/")[0] in WORKLOAD_OBJECT_KINDS:
             try:
-                log.debug('Getting container logs for %s', component)
-                logs_string = self._get_the_logs_old(namespace, since, lines)
+                log.debug('Getting the container logs for: %s', component)
+                logs_string = self._get_the_logs_new(namespace, since, lines)
             except Exception as e_pod:
                 log.error('Fetching Pods failed: %s', e_pod)
         else:
