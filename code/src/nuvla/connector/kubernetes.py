@@ -205,9 +205,8 @@ class Kubernetes(Connector):
             try:
                 return_string = execute_cmd(cmd).stdout
             except Exception as ex_ret_str:
-                ex_string = \
-                "There is a problem getting logs from container " \
-                CONTAINER_POD + "\n"
+                ex_string = "There is a problem getting logs from container " \
+                + CONTAINER_POD + "\n"
                 log.info('%s %s',ex_string, ex_ret_str)
                 continue
             if return_string:
@@ -278,32 +277,6 @@ class Kubernetes(Connector):
                 self._timestamp_kubernetes() + \
                 " There was an error getting logs for component: " \
                 + str(component) + "\n"
-        return logs_string
-
-    @should_connect
-    def log_original(self, component: str, since: datetime, lines: int,
-            **kwargs) -> str:
-        namespace = kwargs['namespace']
-        logs_string = self._timestamp_kubernetes() \
-            + " default logging message \n"
-        WORKLOAD_OBJECT_KINDS = \
-            ["Deployment", "Job", "CronJob", "StatefulSet", "DaemonSet"]
-        if component.split("/")[0] in WORKLOAD_OBJECT_KINDS:
-            try:
-                log.debug('Getting the container logs for: %s', component)
-                logs_string = self._get_the_logs(namespace, since, lines)
-            except Exception as ex:
-                log.error('Failed getting container logs for %s: %s', component, ex)
-                logs_string = \
-                    self._timestamp_kubernetes() + \
-                    " There was an error getting logs for component: " \
-                    + str(component) + "\n"
-        else:
-            logs_string = \
-                self._timestamp_kubernetes() + " There are no meaningful logs for " \
-                + str(component) + "\n"
-            log.debug('A log is requested for type Service ? : %s ',logs_string)
-
         return logs_string
 
     @staticmethod
