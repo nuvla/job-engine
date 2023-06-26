@@ -274,7 +274,7 @@ class Kubernetes(Connector):
 
         return logs_string
 
-    def _get_the_logs_remove(self, namespace, since: datetime, lines: int) -> str:
+    def _get_the_logs_old(self, namespace, since: datetime, lines: int) -> str:
         logs_string = \
             self._timestamp_kubernetes() + " default logging message \n"
         list_opts_pods = ['-o', 'json', '--namespace', namespace]
@@ -320,7 +320,7 @@ class Kubernetes(Connector):
         log.info('Container logs string: %s', logs_string)
         return logs_string
 # new one...
-    def log(self, component: str, since: datetime, lines: int,
+    def log_new(self, component: str, since: datetime, lines: int,
             **kwargs) -> str:
         namespace = kwargs['namespace']
         WORKLOAD_OBJECT_KINDS = \
@@ -343,7 +343,7 @@ class Kubernetes(Connector):
             return logs_string # if a caller of the method can't handle None
 
     @should_connect
-    def log_old(self, component: str, since: datetime, lines: int,
+    def log(self, component: str, since: datetime, lines: int,
             **kwargs) -> str:
         namespace = kwargs['namespace']
         WORKLOAD_OBJECT_KINDS = \
@@ -351,7 +351,7 @@ class Kubernetes(Connector):
         if component.split("/")[0] in WORKLOAD_OBJECT_KINDS:
             try:
                 log.debug('Getting container logs for %s', component)
-                logs_string = self._get_the_logs(namespace, since, lines)
+                logs_string = self._get_the_logs_old(namespace, since, lines)
             except Exception as e_pod:
                 log.error('Fetching Pods failed: %s', e_pod)
         else:
