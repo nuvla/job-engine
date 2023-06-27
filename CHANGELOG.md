@@ -6,7 +6,17 @@
 
 ## Released
 
+## [3.4.0] - 2023-06-27
+
+### Changed
+
+- Action nuvlabox_release - do not add GH release asset if it's not a docker-compose yaml file
+- NuvlaEdge SSH and reboot actions - fix to work with the new NE base image
+- NuvlaEdge base image - updated base_image and allow to edit it with environment variables
+
 ## [3.3.1] - 2023-06-23
+
+### Changed
 
 - Deployment set actions - Align with api server changes
 - Container build - Fix docker hub organization selection
