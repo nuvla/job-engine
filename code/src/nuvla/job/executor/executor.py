@@ -39,6 +39,8 @@ class Executor(Base):
         action = get_action(action_name)
         if not action:
             raise ActionNotImplemented(action_name)
+        # FIXME
+        logging.info('Action name: {}'.format(action))
 
         return action(self, job)
 
