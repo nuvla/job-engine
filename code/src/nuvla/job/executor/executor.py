@@ -69,6 +69,8 @@ class Executor(Base):
             try:
                 action_instance = self._get_action_instance(job)
                 job.set_state('RUNNING')
+                # FIXME
+                logging.info('Action instance: {}'.format(action_instance))
                 return_code = action_instance.do_work()
             except ActionNotImplemented as e:
                 logging.error('Action "{}" not implemented'.format(str(e)))
