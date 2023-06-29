@@ -243,7 +243,7 @@ class Kubernetes(Connector):
 
 class K8sEdgeMgmt(Kubernetes):
     def __init__(self, **kwargs):
-        super().__init__(**kwargs)    
+        super().__init__(**kwargs)
         log.info('CA cert: %s', self.ca)
         log.info('User cert: %s', self.cert)
         log.info('User key: %s', self.key)
@@ -251,4 +251,5 @@ class K8sEdgeMgmt(Kubernetes):
         pass
 
     def reboot(self):
+        log.info('We would be rebooting now... %s ', self.endpoint)
         pass

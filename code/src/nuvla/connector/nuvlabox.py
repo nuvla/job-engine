@@ -298,6 +298,7 @@ class NuvlaBox(Connector):
                           'must run asynchronously (pull mode)'
                 raise OperationNotAllowed(err_msg)
             if os.getenv('KUBERNETES_SERVICE_HOST'):
+                logging.info('We are using Kubernetes : %s ',self.nuvlabox_id)
                 self._reboot_k8s()
             else:
                 self._reboot_docker()
