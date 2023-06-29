@@ -38,7 +38,7 @@ class Kubernetes(Connector):
 
     @property
     def connector_type(self):
-        return 'Kubernetes-cli'
+        return 'Kubernetes-cli' # should this just be kubernetes ?
 
     def connect(self):
         log.info('Connecting to endpoint {}'.format(self.endpoint))
@@ -242,7 +242,12 @@ class Kubernetes(Connector):
 
 
 class K8sEdgeMgmt(Kubernetes):
-    def __init__(self):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)    
+        log.info('CA cert: %s', self.ca)
+        log.info('User cert: %s', self.cert)
+        log.info('User key: %s', self.key)
+        log.info('Endpoint: %s', self.endpoint)
         pass
 
     def reboot(self):
