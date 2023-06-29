@@ -286,7 +286,7 @@ class NuvlaBox(Connector):
 
         return r
 
-    @shoud_connect
+    @should_connect
     def reboot(self):
         self.job.set_progress(10)
         if self.nb_api_endpoint:

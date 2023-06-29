@@ -16,7 +16,7 @@ class NBRebootJob(object):
     def reboot(self):
         nuvlabox_id = self.job['target-resource']['href']
 
-        logging.info('Rebooting NuvlaBox {}.'.format(nuvlabox_id))
+        logging.info('Rebooting NuvlaBox %s', nuvlabox_id)
         connector = NB.NuvlaBox(api=self.api, nuvlabox_id=nuvlabox_id, job=self.job)
 
         # IMPORTANT BIT THAT MUST CHANGE FOR EVERY NUVLABOX API ACTION
@@ -26,3 +26,4 @@ class NBRebootJob(object):
 
     def do_work(self):
         return self.reboot()
+    
