@@ -8,13 +8,12 @@ import time
 
 import docker
 import requests
-from nuvla.connector.kubernetes import K8sEdgeMgmt
 
 from packaging.version import Version, InvalidVersion
 
 from .connector import Connector, should_connect
 from .utils import create_tmp_file, timeout, remove_protocol_from_url
-
+from ..connector.kubernetes import K8sEdgeMgmt
 
 class ClusterOperationNotAllowed(Exception):
     pass
@@ -189,7 +188,7 @@ class NuvlaBox(Connector):
         self.installer_image_name, self.installer_image_name_fallback = \
             self.get_installer_image_names(engine_version)
 
-        if self.job.get('execution-mode', '').lower() == 'pull':
+        if self.job.get('execution-mode', '').lower() == 'pull': # here we need a kubernetes switch?
             self.docker_client = docker.from_env()
         else:
             self.nb_api_endpoint = self.nuvlabox_status.get("nuvlabox-api-endpoint")

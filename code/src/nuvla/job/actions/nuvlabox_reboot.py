@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
-
+import os
 import logging
 
 from ..actions import action
 from ...connector import nuvlabox as NB
-
+from ...connector.kubernetes import K8sEdgeMgmt
 
 @action('reboot_nuvlabox', True)
 class NBRebootJob(object):
@@ -17,12 +17,19 @@ class NBRebootJob(object):
         nuvlabox_id = self.job['target-resource']['href']
 
         logging.info('Rebooting NuvlaBox %s', nuvlabox_id)
-        connector = NB.NuvlaBox(api=self.api, nuvlabox_id=nuvlabox_id, job=self.job)
-
+        if os.getenv('KUBERNETES_SERVICE_HOST'):
+            logging.info('We are using Kubernetes on nuvlabox ID : %s ',nuvlabox_id)
+            self._reboot_k8s()
+        else:
+            connector = NB.NuvlaBox(api=self.api, nuvlabox_id=nuvlabox_id, job=self.job)
+            r = connector.reboot()
         # IMPORTANT BIT THAT MUST CHANGE FOR EVERY NUVLABOX API ACTION
-        r = connector.reboot()
 
         return 0
+
+    def _reboot_k8s(self):
+        connector = K8sEdgeMgmt()
+        connector.reboot()
 
     def do_work(self):
         return self.reboot()
