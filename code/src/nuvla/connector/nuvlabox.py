@@ -122,10 +122,13 @@ class NuvlaBox(Connector):
                     return credentials[0].data, infra_service.get("endpoint")
 
     def setup_ssl_credentials(self):
+        if self.job.get('execution-mode', '').lower() not in ['mixed', 'push']:
+            return False
+
         try:
             credential, is_endpoint = self.get_credential()
         except TypeError:
-            raise Exception('Error: could not find infrastructure service credential for this NuvlaEdge')
+            raise RuntimeError('Error: could not find infrastructure service credential for this NuvlaEdge')
 
         try:
             secret = credential['cert'] + '\n' + credential['key']
