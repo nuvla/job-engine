@@ -18,7 +18,7 @@ class NBRebootJob(object):
 
         logging.info('Rebooting NuvlaBox %s', nuvlabox_id)
         if os.getenv('KUBERNETES_SERVICE_HOST'):
-            logging.info('We are using Kubernetes on nuvlabox ID : %s ',nuvlabox_id)
+            logging.debug('We are using Kubernetes on nuvlabox ID : %s ',nuvlabox_id)
             self._reboot_k8s()
         else:
             connector = NB.NuvlaBox(api=self.api, nuvlabox_id=nuvlabox_id, job=self.job)
