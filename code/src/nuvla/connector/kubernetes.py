@@ -239,3 +239,11 @@ class Kubernetes(Connector):
 
     def extract_vm_state(self, vm):
         pass
+
+
+class K8sEdgeMgmt(Kubernetes):
+    def __init__(self):
+        pass
+
+    def reboot(self):
+        pass

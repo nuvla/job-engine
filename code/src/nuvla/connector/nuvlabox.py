@@ -8,6 +8,7 @@ import time
 
 import docker
 import requests
+from nuvla.connector.kubernetes import K8sEdgeMgmt
 
 from packaging.version import Version, InvalidVersion
 
@@ -285,35 +286,42 @@ class NuvlaBox(Connector):
 
         return r
 
-    @should_connect
+    @shoud_connect
     def reboot(self):
         self.job.set_progress(10)
         if self.nb_api_endpoint:
             action_endpoint = f'{self.nb_api_endpoint}/reboot'
-
             r = self.mgmt_api_request(action_endpoint, 'POST', {}, None)
-            self.job.set_progress(90)
         else:
             if self.job.get('execution-mode', '').lower() in ['mixed', 'push']:
-                err_msg = 'The management-api does not exist, so "reboot" must run asynchronously (pull mode)'
+                err_msg = 'The management-api does not exist, so "reboot" ' \
+                          'must run asynchronously (pull mode)'
                 raise OperationNotAllowed(err_msg)
-            # running in pull, thus the docker socket is being shared
-            cmd = "-c 'sleep 10 && echo b > /sysrq'"
-            docker.from_env().containers.run(
-                self.base_image,
-                entrypoint='sh',
-                command=cmd,
-                detach=True,
-                remove=True,
-                volumes={
-                    '/proc/sysrq-trigger': {
-                        'bind': '/sysrq'
-                    }
-                }
-            )
-            r = 'Reboot ongoing'
-
+            if os.getenv('KUBERNETES_SERVICE_HOST'):
+                self._reboot_k8s()
+            else:
+                self._reboot_docker()
+            r = 'Reboot is ongoing'
+        self.job.set_progress(90)
         return r
+
+    def _reboot_k8s(self):
+        connector = K8sEdgeMgmt()
+        connector.reboot()
+
+    def _reboot_docker(self):
+        # running in pull, thus the docker socket is being shared
+        cmd = "sh -c 'sleep 10 && echo b > /sysrq'"
+        docker.from_env().containers.run(self.base_image,
+                                         command=cmd,
+                                         detach=True,
+                                         remove=True,
+                                         volumes={
+                                             '/proc/sysrq-trigger': {
+                                                 'bind': '/sysrq'
+                                             }
+                                         }
+                                         )
 
     @should_connect
     def start(self, **kwargs):
