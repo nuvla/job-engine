@@ -10,6 +10,9 @@ from .utils import execute_cmd, join_stderr_stdout, create_tmp_file, \
     generate_registry_config, extract_host_from_url
 from .connector import Connector, should_connect
 
+from kubernetes import config
+
+
 log = logging.getLogger('kubernetes')
 
 
@@ -243,8 +246,13 @@ class Kubernetes(Connector):
 
 class K8sEdgeMgmt(Kubernetes):
 
-    def __init__(self, **kwargs):
-        log.info('CA cert: %s', self.ca)
+    def __init__(self):
+        endpoint = os.getenv('KUBERNETES_SERVICE_HOST')
+        config.load_incluster_config()
+
+        super(K8sEdgeMgmt, self).__init__(cert=self._cert_filename, key=self._token_filename, cert=, endpoint=endpoint)
+
+        # log.info('CA cert: %s', self.ca)
         log.info('User cert: %s', self.cert)
         log.info('User key: %s', self.key)
         log.info('Endpoint: %s', self.endpoint)
