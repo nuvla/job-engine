@@ -244,7 +244,7 @@ class Kubernetes(Connector):
 class K8sEdgeMgmt(Kubernetes):
     def __init__(self):
         # FIXME: this path needs to be parameterised everywhere
-        path = '/srv/nuvlaedge/shared/'
+        path = '/srv/nuvlaedge/shared'
         super(K8sEdgeMgmt, self).__init__(ca=open(f'{path}/ca.pem',encoding="utf8").read(),
                                           key=open(f'{path}/key.pem',encoding="utf8").read(),
                                           cert=open(f'{path}/cert.pem',encoding="utf8").read(),
@@ -252,5 +252,6 @@ class K8sEdgeMgmt(Kubernetes):
         
     @should_connect
     def reboot(self):
+        log.info('This is where the reboot command is called on %s', self.endpoint)
         # here goes the kubectl command
         pass       
