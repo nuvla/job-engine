@@ -238,20 +238,11 @@ class Kubernetes(Connector):
         pass
 
     def extract_vm_state(self, vm):
-        pass
+        pass 
 
-
-class K8sEdgeMgmt(Kubernetes):
-    def __init__(self):
-        # FIXME: this path needs to be parameterised everywhere
-        path = '/srv/nuvlaedge/shared'
-        super(K8sEdgeMgmt, self).__init__(ca=open(f'{path}/ca.pem',encoding="utf8").read(),
-                                          key=open(f'{path}/key.pem',encoding="utf8").read(),
-                                          cert=open(f'{path}/cert.pem',encoding="utf8").read(),
-                                          endpoint=os.environ['KUBERNETES_SERVICE_HOST'])
-        
     @should_connect
     def reboot(self):
+        '''here'''
         log.info('This is where the reboot command is called on %s', self.endpoint)
         # here goes the kubectl command
         pass       
