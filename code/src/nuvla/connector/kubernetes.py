@@ -255,4 +255,5 @@ class K8sEdgeMgmt(Kubernetes):
         
     @should_connect
     def reboot(self):
+        # here goes the kubectl command
         pass       
