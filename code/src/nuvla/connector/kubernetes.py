@@ -250,7 +250,7 @@ class K8sEdgeMgmt(Kubernetes):
         endpoint = os.getenv('KUBERNETES_SERVICE_HOST')
         config.load_incluster_config()
 
-        super(K8sEdgeMgmt, self).__init__(cert=self._cert_filename, key=self._token_filename, cert=, endpoint=endpoint)
+        super(K8sEdgeMgmt, self).__init__(cert=self._cert_filename, key=self._token_filename, endpoint=endpoint)
 
         # log.info('CA cert: %s', self.ca)
         log.info('User cert: %s', self.cert)
