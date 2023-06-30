@@ -10,9 +10,6 @@ from .utils import execute_cmd, join_stderr_stdout, create_tmp_file, \
     generate_registry_config, extract_host_from_url
 from .connector import Connector, should_connect
 
-from kubernetes import config
-
-
 log = logging.getLogger('kubernetes')
 
 
