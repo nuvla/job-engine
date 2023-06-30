@@ -13,7 +13,6 @@ from packaging.version import Version, InvalidVersion
 
 from .connector import Connector, should_connect
 from .utils import create_tmp_file, timeout, remove_protocol_from_url
-from ..connector.kubernetes import K8sEdgeMgmt
 
 class ClusterOperationNotAllowed(Exception):
     pass
@@ -298,16 +297,12 @@ class NuvlaBox(Connector):
                 raise OperationNotAllowed(err_msg)
             if os.getenv('KUBERNETES_SERVICE_HOST'):
                 logging.info('We are using Kubernetes : %s ',self.nuvlabox_id)
-                self._reboot_k8s()
             else:
                 self._reboot_docker()
             r = 'Reboot is ongoing'
         self.job.set_progress(90)
         return r
 
-    def _reboot_k8s(self):
-        connector = K8sEdgeMgmt()
-        connector.reboot()
 
     def _reboot_docker(self):
         # running in pull, thus the docker socket is being shared
