@@ -245,19 +245,14 @@ class Kubernetes(Connector):
 
 
 class K8sEdgeMgmt(Kubernetes):
-
     def __init__(self):
-        endpoint = os.getenv('KUBERNETES_SERVICE_HOST')
-        config.load_incluster_config()
-
-        super(K8sEdgeMgmt, self).__init__(cert=self._cert_filename, key=self._token_filename, endpoint=endpoint)
-
-        # log.info('CA cert: %s', self.ca)
-        log.info('User cert: %s', self.cert)
-        log.info('User key: %s', self.key)
-        log.info('Endpoint: %s', self.endpoint)
-        pass
-
+        # FIXME: this path needs to be parameterised everywhere
+        path = '/srv/nuvlaedge/shared/'
+        super(K8sEdgeMgmt, self).__init__(ca=open(f'{path}/ca.pem',encoding="utf8").read(),
+                                          key=open(f'{path}/key.pem',encoding="utf8").read(),
+                                          cert=open(f'{path}/cert.pem',encoding="utf8").read(),
+                                          endpoint=os.environ['KUBERNETES_SERVICE_HOST'])
+        
+    @should_connect
     def reboot(self):
-        log.info('We would be rebooting now... %s ', self.endpoint)
-        pass
+        pass       
