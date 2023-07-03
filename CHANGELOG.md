@@ -6,6 +6,13 @@
 
 ## Released
 
+## [3.4.1] - 2023-07-04
+
+### Changed
+
+- NuvlaEdge actions - ensure local docker socket is used in pull mode
+- NuvlaEdge installer - allow to define image name with NE_IMAGE_INSTALLER environment variable
+
 ## [3.4.0] - 2023-06-27
 
 ### Changed
