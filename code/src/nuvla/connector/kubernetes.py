@@ -280,7 +280,7 @@ class K8sEdgeMgmt(Kubernetes):
             restartPolicy: Never
         ''')
         with TemporaryDirectory() as tmp_dir_name:
-            with open(tmp_dir_name'/reboot_job_manifest.yaml', 'w') as manifest_file:
+            with open(tmp_dir_name + '/reboot_job_manifest.yaml', 'w') as manifest_file:
                 manifest = yaml.dump(yaml_manifest, manifest_file)
             cmd_reboot = self.build_cmd_line(['apply', '-f', manifest_file])   
  
