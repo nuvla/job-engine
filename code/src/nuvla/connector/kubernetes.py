@@ -244,7 +244,7 @@ class K8sEdgeMgmt(Kubernetes):
     '''Here'''
     def __init__(self):
         # FIXME: need to be parametrised.
-        path = '/srv/nuvlaedge/shared/'
+        path = '/srv/nuvlaedge/shared'
         super(K8sEdgeMgmt, self).__init__(ca=open(f'{path}/ca.pem',encoding="utf8").read(),
                                           key=open(f'{path}/key.pem',encoding="utf8").read(),
                                           cert=open(f'{path}/cert.pem',encoding="utf8").read(),
@@ -253,3 +253,6 @@ class K8sEdgeMgmt(Kubernetes):
     @should_connect
     def reboot(self):
         log.info('We have CA file %s ', self.ca)
+        log.info('We have certificate file %s ', self.cert)
+        log.info('We have key file %s ', self.key)
+        log.info('We have endpoint %s ', self.endpoint)
