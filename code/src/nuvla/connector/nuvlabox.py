@@ -578,7 +578,7 @@ class NuvlaBox(Connector):
         detach = True
 
         # container name
-        container_name = f'installer'
+        container_name = 'installer'
 
         # volumes
         volumes = {
@@ -643,9 +643,13 @@ class NuvlaBox(Connector):
         command.append(f'--target-version={target_release}')
 
         if all(k in self.api.session.login_params for k in ['key', 'secret']):
+            key = self.api.session.login_params['key']
+            secret = self.api.session.login_params['secret']
             updater_env = {
-                'NUVLABOX_API_KEY': self.api.session.login_params['key'],
-                'NUVLABOX_API_SECRET': self.api.session.login_params['secret']
+                'NUVLABOX_API_KEY': key,
+                'NUVLABOX_API_SECRET': secret,
+                'NUVLAEDGE_API_KEY': key,
+                'NUVLAEDGE_API_SECRET': secret
             }
         else:
             updater_env = {}
