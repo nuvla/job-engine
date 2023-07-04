@@ -282,6 +282,7 @@ class K8sEdgeMgmt(Kubernetes):
         with TemporaryDirectory() as tmp_dir_name:
             with open(tmp_dir_name + '/reboot_job_manifest.yaml', 'w') as manifest_file:
                 manifest = yaml.dump(yaml_manifest, manifest_file)
-            cmd_reboot = self.build_cmd_line(['apply', '-f', manifest_file])
+            cmd_reboot = 
+                self.build_cmd_line(['apply', '-f', tmp_dir_name + '/reboot_job_manifest.yaml'])
             reboot_result = join_stderr_stdout(execute_cmd(cmd_reboot))
             log.info('Result id reboot %s',reboot_result)
