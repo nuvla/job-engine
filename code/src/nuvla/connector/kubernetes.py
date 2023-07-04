@@ -38,7 +38,7 @@ class Kubernetes(Connector):
 
     @property
     def connector_type(self):
-        return 'Kubernetes-cli' # should this just be kubernetes ? A bit confusing?
+        return 'Kubernetes-cli'
 
     def connect(self):
         log.info('Connecting to endpoint {}'.format(self.endpoint))
@@ -249,6 +249,7 @@ class K8sEdgeMgmt(Kubernetes):
                                           key=open(f'{path}/key.pem',encoding="utf8").read(),
                                           cert=open(f'{path}/cert.pem',encoding="utf8").read(),
                                           endpoint=os.environ['KUBERNETES_SERVICE_HOST'])
+        log.info('Where does this logging message land?')
 
     @should_connect
     def reboot(self):
