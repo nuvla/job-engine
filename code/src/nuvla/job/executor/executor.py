@@ -40,7 +40,7 @@ class Executor(Base):
         if not action:
             raise ActionNotImplemented(action_name)
         # FIXME
-        logging.info('Action name: {}'.format(action))
+        logging.info('Action name: {}'.format(action)) # FIXME
 
         return action(self, job)
 
@@ -69,8 +69,7 @@ class Executor(Base):
             try:
                 action_instance = self._get_action_instance(job)
                 job.set_state('RUNNING')
-                # FIXME
-                logging.info('Action instance: {}'.format(action_instance))
+                logging.info('Action instance: {}'.format(action_instance)) # FIX ME
                 return_code = action_instance.do_work()
             except ActionNotImplemented as e:
                 logging.error('Action "{}" not implemented'.format(str(e)))
