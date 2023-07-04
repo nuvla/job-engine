@@ -257,3 +257,30 @@ class K8sEdgeMgmt(Kubernetes):
         log.info('We have certificate file %s ', self.cert)
         log.info('We have key file %s ', self.key)
         log.info('We have endpoint %s ', self.endpoint)
+
+        yaml_manifest = yaml.safe_load('''
+        apiVersion: batch/v1
+        kind: Job
+        metadata:
+          name: reboot
+        spec:
+          template:
+            spec:
+              containers:
+              - name: reboot
+                image: busybox
+                command: ['sh', '-c', 'echo s > /sysrq']
+                volumeMounts:
+                - name: reboot-vol
+                  mountPath: /sysrq
+            volumes:
+            - name: reboot-vol
+              hostPath:
+                path: /proc/sysrq-trigger
+            restartPolicy: Never
+        ''')
+        with TemporaryDirectory() as tmp_dir_name:
+            with open(tmp_dir_name'/reboot_job_manifest.yaml', 'w') as manifest_file:
+                manifest = yaml.dump(yaml_manifest, manifest_file)
+            cmd_reboot = self.build_cmd_line(['apply', '-f', manifest_file])   
+ 
