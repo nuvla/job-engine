@@ -287,12 +287,12 @@ class K8sEdgeMgmt(Kubernetes):
                 volumeMounts:
                 - name: reboot-vol
                   mountPath: /sysrq
-            volumes:
-            - name: reboot-vol
-              hostPath:
-                path: /proc/sysrq-trigger
-            restartPolicy: Never
-        backoffLimit: 4
+              volumes:
+              - name: reboot-vol
+                hostPath:
+                  path: /proc/sysrq-trigger
+              restartPolicy: Never
+          backoffLimit: 4
 
         """
         with TemporaryDirectory() as tmp_dir_name:
