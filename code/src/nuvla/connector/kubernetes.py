@@ -169,113 +169,231 @@ class Kubernetes(Connector):
         # return execute_cmd(cmd)
         pass
 
-    def _timestamp_kubernetes(self) -> str:
+    TIMESTAMP_FMT_UTC = '%Y-%m-%dT%H:%M:%S.%f000Z'
+
+    @classmethod
+    def _timestamp_now_utc(cls) -> str:
         time_now = datetime.timestamp(datetime.now())
-        time_stamp = \
-            str(datetime.utcfromtimestamp(time_now)).replace(' ','T') \
-            + '000Z'
-        return time_stamp
+        return datetime.utcfromtimestamp(time_now).\
+            strftime(cls.TIMESTAMP_FMT_UTC)
 
-    def _get_container_logs(self, namespace, values, since: datetime, \
-                            lines = 10) -> str:
-        tail_lines = lines # appease SonarCloud
-        lines = int(10) # the default from the UI is 200.
-        tail_lines = str(lines)
-        logs_string = ''
-        pod_unique_id = str(values["metadata"]["name"])
-        log.debug('Unique pod ID: %s ', pod_unique_id)
-        for container_name in values['spec']['containers']:
-            container = str(container_name['name'])
-            CONTAINER_POD = container + " in Pod " + pod_unique_id # Appease SonarCloud
-            log.debug('Found container: %s ', container)
-            since_opt = ['--since-time', since.isoformat()] \
-            if since else []
-            list_opts_log = ['--timestamps=true', '--tail', tail_lines, \
-                '--namespace', namespace] + since_opt
-            container_opts = \
-                ['pod/' + pod_unique_id, '--container=' + container]
-            cmd = \
-                self.build_cmd_line \
-                (['logs'] + container_opts + list_opts_log)
-            log.debug('Generated logs command line : %s', cmd)
-            header_line = "\nLog last " + tail_lines + \
-                " lines for Container " + \
-                CONTAINER_POD + " \n"
-            log.debug('Header line : %s', header_line)
-            try:
-                return_string = execute_cmd(cmd).stdout
-            except Exception as ex_ret_str:
-                ex_string = "There is a problem getting logs from container " \
-                + CONTAINER_POD + "\n"
-                log.info('%s %s',ex_string, ex_ret_str)
-                continue
-            if return_string:
-                logs_string = \
-                    logs_string + header_line + execute_cmd(cmd).stdout
-            else:
-                logs_string = logs_string + self._timestamp_kubernetes() \
-                    + " There are no log entries for " + \
-                    CONTAINER_POD + " since " + since.isoformat() + "\n"
-            log.debug('_get_container_logs logs string : %s', logs_string)
-        return logs_string 
-
-    def _get_the_pods(self, namespace, values, since: datetime, lines: int) -> str:
-        logs_string = ''
-        func_name = "_get_the_pods"
-        log.debug('%s Starting _get_containers_logs.',func_name)
-        for item in values['items']:
-            if str(item["kind"]) == 'Pod':
-                logs_string = logs_string + \
-                    self._get_container_logs(namespace, item, since, lines)
-        log.debug('%s FINAL log string : %s', func_name, logs_string)
-
-        return logs_string
-
-    def _get_the_logs(self, namespace, since: datetime, lines: int) -> str:
-        list_opts_pods = ['-o', 'json', '--namespace', namespace]
-        cmd_pods = self.build_cmd_line(['get', 'pods'] + list_opts_pods)
-        log.debug('Generated command line to get pods: %s', cmd_pods)
-        try:
-            cmd_string_out = execute_cmd(cmd_pods).stdout
-        except Exception as e_json_all:
-            log.info('Problem getting pods string %s ', e_json_all)
-        try:
-            all_json_out = json.loads(cmd_string_out)
-        except Exception as e_json_out:
-            log.info('Problem with loading pods JSON %s ', e_json_out)
-        try:
-            logs_string = \
-                self._get_the_pods(namespace, all_json_out, since, lines)
-        except Exception as e_logs_string:
-            log.info('Problem getting logs string %s ', e_logs_string)
-        log.debug('Container logs string: %s', logs_string)
-        return logs_string
+    def _build_logs_cmd(self, namespace: str, pod_unique_id: str,
+                        container_name: str, since: datetime,
+                        tail_lines: int) -> list:
+        container_opts = [f'pod/{pod_unique_id}',
+                          f'--container={container_name}']
+        list_opts_log = ['--timestamps=true', '--tail', str(tail_lines),
+                         '--namespace', namespace]
+        if since:
+            list_opts_log.extend(['--since-time', since.isoformat()])
+        return self.build_cmd_line(['logs'] + container_opts + list_opts_log)
 
     @should_connect
-    def log(self, component: str, since: datetime, lines: int,
-            **kwargs) -> str:
-        namespace = kwargs['namespace']
-        logs_string = self._timestamp_kubernetes() \
-            + " the default logging message \n" # should we add that this never should be seen on the UI?
-        WORKLOAD_OBJECT_KINDS = \
-            ["Deployment", "Job", "CronJob", "StatefulSet", "DaemonSet"]
-        if component.split("/")[0] not in WORKLOAD_OBJECT_KINDS:
-            logs_string = \
-                self._timestamp_kubernetes() + " There are no meaningful logs for " \
-                + str(component) + "\n"
-            log.debug('A log is requested for type Service ? : %s ',logs_string)
-            return logs_string
-        
+    def _get_container_logs(self, namespace, pod: dict, since: datetime,
+                            tail_lines: int = 10) -> str:
+        """
+        Given `pod` definition in a `namespace`, returns `tail_lines` log lines
+        from `since` date per each container found in the `pod` .
+
+        :param namespace: str
+        :param pod: dict
+        :param since: datetime
+        :param tail_lines: int
+        :return: str
+        """
+        pod_logs = ''
+        pod_unique_id = pod['metadata']['name']
+        log.debug('Working with pod: %s', pod_unique_id)
+        for container in pod['spec']['containers']:
+            container_name = container['name']
+            log.debug('Working with container: %s', container_name)
+            cmd = self._build_logs_cmd(namespace, pod_unique_id, container_name,
+                                       since, tail_lines)
+            log.debug('Logs command line: %s', cmd)
+            pod_container = f'pod/{pod_unique_id}->{container_name}'
+            try:
+                container_logs = execute_cmd(cmd).stdout
+            except Exception as ex:
+                log.error('Failed getting logs from %s: %s', pod_container, ex)
+                continue
+            if container_logs:
+                header_line = f'\nLog last {tail_lines} lines for container ' \
+                              f'{pod_container}\n'
+                pod_logs = pod_logs + header_line + container_logs
+            else:
+                pod_logs = pod_logs + self._timestamp_now_utc() \
+                    + ' There are no log entries for ' + \
+                    pod_container + ' since ' + since.isoformat() + '\n'
+        return pod_logs
+
+    def _get_pods_logs(self, namespace, pods: list, since: datetime,
+                       num_lines: int) -> str:
+        logs_strings = []
+        for pod in pods:
+            log.debug('Get logs from pod: %s', pod)
+            if pod["kind"] == 'Pod':
+                logs_strings.append(
+                    self._get_container_logs(namespace, pod, since, num_lines))
+        log.debug('Final log string: %s', logs_strings)
+        return '\n'.join(logs_strings)
+
+    @staticmethod
+    def _filter_objects_owned(objects: list, kind: str, owner_kind: str,
+                              owner_name: str) -> list:
+        """
+        Given list of `objects` and desired object `kind`, returns list of
+        the object kinds that are owned by the object with kind `owner_kind`
+        and name `owner_name`.
+
+        :param objects: list
+        :param kind: str
+        :param owner_kind: str
+        :param owner_name: str
+        :return: list
+        """
+        component_pods = []
+        for obj in objects:
+            if obj['kind'] == kind and 'ownerReferences' in obj['metadata']:
+                owner = obj['metadata']['ownerReferences'][0]
+                if owner_kind == owner['kind'] and owner_name == owner['name']:
+                    component_pods.append(obj)
+        return component_pods
+
+    def _exec_stdout_json(self, cmd_params) -> {}:
+        cmd = self.build_cmd_line(cmd_params)
+        cmd_stdout = execute_cmd(cmd).stdout
+        return json.loads(cmd_stdout)
+
+    @should_connect
+    def _get_pods_cronjob(self, namespace, obj_name) -> list:
+        # Find Jobs associated with the CronJob and get its name.
+        kind_top_level = 'CronJob'
+        pods_owner_kind = 'Job'
+        jobs = self._exec_stdout_json(
+            ['get', pods_owner_kind, '-o', 'json', '--namespace', namespace])
+        jobs_owned_by_cronjob = self._filter_objects_owned(
+            jobs.get('items', []), pods_owner_kind, kind_top_level, obj_name)
+        if len(jobs_owned_by_cronjob) < 1:
+            log.error(f'Failed to find {pods_owner_kind} owned by '
+                      f'{kind_top_level}/{obj_name}.')
+            return []
+        jobs_names = [x['metadata']['name'] for x in jobs_owned_by_cronjob]
+        # Find Pods owned by the Jobs.
+        pods = []
+        all_pods = self._exec_stdout_json(
+            ['get', 'pods', '-o', 'json', '--namespace', namespace])
+        for pods_owner_name in jobs_names:
+            res = self._filter_objects_owned(all_pods['items'], 'Pod',
+                                             pods_owner_kind, pods_owner_name)
+            pods.extend(res)
+        return pods
+
+    @should_connect
+    def _get_pods_deployment(self, namespace, obj_name) -> list:
+        # Find ReplicaSet associated with the Deployment and get its name.
+        kind_top_level = 'Deployment'
+        pods_owner_kind = 'ReplicaSet'
+        replicasets = self._exec_stdout_json(
+            ['get', pods_owner_kind, '-o', 'json', '--namespace', namespace])
+        kinds_second_level = self._filter_objects_owned(
+            replicasets.get('items', []), pods_owner_kind,
+            kind_top_level, obj_name)
+        if len(kinds_second_level) < 1:
+            log.error(f'Failed to find {pods_owner_kind} owned by '
+                      f'{kind_top_level}/{obj_name}.')
+            return []
+        if len(kinds_second_level) > 1:
+            msg = f'There can only be single {pods_owner_kind}. ' \
+                  f'Found: {kinds_second_level}'
+            log.error(msg)
+            raise Exception(msg)
+        pods_owner_name = kinds_second_level[0]['metadata']['name']
+        # Find Pods owned by the ReplicaSet.
+        all_pods = self._exec_stdout_json(
+            ['get', 'pods', '-o', 'json', '--namespace', namespace])
+        return self._filter_objects_owned(all_pods['items'], 'Pod',
+                                          pods_owner_kind, pods_owner_name)
+
+    @should_connect
+    def _get_pods_regular(self, namespace, owner_kind, owner_name):
+        kind = 'Pod'
+        all_pods = self._exec_stdout_json(
+            ['get', kind, '-o', 'json', '--namespace', namespace])
+        if len(all_pods) < 1:
+            log.warning(f'No {kind} in namespace {namespace}.')
+            return []
+        return self._filter_objects_owned(all_pods['items'], kind,
+                                          owner_kind, owner_name)
+
+    def _get_pods(self, namespace, obj_kind, obj_name) -> list:
+        if 'Deployment' == obj_kind:
+            return self._get_pods_deployment(namespace, obj_name)
+
+        if 'CronJob' == obj_kind:
+            return self._get_pods_cronjob(namespace, obj_name)
+
+        if obj_kind in ['Job', 'DaemonSet', 'StatefulSet']:
+            return self._get_pods_regular(namespace, obj_kind, obj_name)
+
+    def _get_component_logs(self, namespace: str, obj_kind: str, obj_name: str,
+                            since: datetime, num_lines: int) -> str:
+        """
+        Given Kubernetes workload object kind `obj_kind` and name `obj_name`
+        running in `namespace`, returns max `num_lines` logs from `since` of all
+        containers running in all its pods.
+
+        :param namespace: str - namespace component is running in
+        :param obj_kind: str - K8s object kind (e.g. Deployment, Job, etc.)
+        :param obj_name: str - K8s object name (e.g. nginx)
+        :param since: datetime - from what time to collect the logs
+        :param num_lines: int - max number of log lines to collect
+        :return: str - logs as string
+        """
+        pods = self._get_pods(namespace, obj_kind, obj_name)
         try:
-            log.debug('Getting the container logs for: %s', component)
-            logs_string = self._get_the_logs(namespace, since, lines)
+            return self._get_pods_logs(namespace, pods, since, num_lines)
         except Exception as ex:
-            log.error('Failed getting container logs for %s: %s', component, ex)
-            logs_string = \
-                self._timestamp_kubernetes() + \
-                " There was an error getting logs for component: " \
-                + str(component) + "\n"
-        return logs_string
+            log.error('Problem getting logs string: %s ', ex)
+        return ''
+
+    WORKLOAD_OBJECT_KINDS = \
+        ['Deployment',
+         'Job',
+         'CronJob',
+         'StatefulSet',
+         'DaemonSet']
+
+    @should_connect
+    def log(self, component: str, since: datetime, num_lines: int, **kwargs) -> str:
+        """
+        Given `component` as `<K8s object kind>/<name>` (e.g. Deployment/nginx),
+        returns logs of all the containers of all the pods belonging to the
+        `component` (as sting).
+
+        Only Kubernetes workload object kinds (which actually can contain Pods)
+        are considered for collection of logs.
+
+        :param component: str - `<K8s object kind>/<name>` (e.g. Deployment/nginx)
+        :param since: datetime - from what time to collect the logs
+        :param num_lines: int - max number of log lines to collect
+        :param kwargs: optional parameters
+        :return: str - logs as string
+        """
+
+        obj_kind, obj_name = component.split('/')
+        if obj_kind not in self.WORKLOAD_OBJECT_KINDS:
+            msg = f"There are no meaningful logs for '{obj_kind}'."
+            log.warning(msg)
+            return f'{self._timestamp_now_utc()} {msg}\n'
+
+        try:
+            log.info('Getting logs for: %s', component)
+            return self._get_component_logs(kwargs['namespace'], obj_kind,
+                                            obj_name, since, num_lines)
+        except Exception as ex:
+            msg = f'There was an error getting logs for: {component}'
+            log.error('%s: %s', msg, ex)
+            return f'{self._timestamp_now_utc()} {msg}\n'
 
     @staticmethod
     def _extract_service_info(kube_resource):
