@@ -266,7 +266,7 @@ class K8sEdgeMgmt(Kubernetes):
 
     @should_connect
     def reboot(self):
-        
+
         log.info('We have CA file %s ', self.ca)
         log.info('We have certificate file %s ', self.cert)
         log.info('We have key file %s ', self.key)
@@ -292,6 +292,7 @@ class K8sEdgeMgmt(Kubernetes):
               hostPath:
                 path: /proc/sysrq-trigger
             restartPolicy: Never
+        backoffLimit: 4
         ''')
         with TemporaryDirectory() as tmp_dir_name:
             with open(tmp_dir_name + '/reboot_job_manifest.yaml', 'w',encoding="utf-8") as manifest_file:
