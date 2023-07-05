@@ -21,6 +21,14 @@ def instantiate_from_cimi(api_infrastructure_service, api_credential):
         endpoint=api_infrastructure_service.get('endpoint'))
 
 
+def get_kubernetes_local_endpoint():
+    kubernetes_host = os.getenv('KUBERNETES_SERVICE_HOST')
+    kubernetes_port = os.getenv('KUBERNETES_SERVICE_PORT')
+    if kubernetes_host and kubernetes_port:
+        return f'https://{kubernetes_host}:{kubernetes_port}'
+    return ''
+
+
 class Kubernetes(Connector):
 
     def __init__(self, **kwargs):
@@ -240,15 +248,19 @@ class Kubernetes(Connector):
     def extract_vm_state(self, vm):
         pass
 
+
 class K8sEdgeMgmt(Kubernetes):
     '''Here'''
-    def __init__(self):
+    def __init__(self, job):
+        if not job.is_in_pull_mode():
+            raise ValueError('This action is only supported by pull mode')
+
         # FIXME: need to be parametrised.
         path = '/srv/nuvlaedge/shared'
         super(K8sEdgeMgmt, self).__init__(ca=open(f'{path}/ca.pem',encoding="utf8").read(),
                                           key=open(f'{path}/key.pem',encoding="utf8").read(),
                                           cert=open(f'{path}/cert.pem',encoding="utf8").read(),
-                                          endpoint=os.environ['KUBERNETES_SERVICE_HOST'])
+                                          endpoint=get_kubernetes_local_endpoint())
         log.info('Where does this logging message land?')
 
     @should_connect
@@ -280,7 +292,7 @@ class K8sEdgeMgmt(Kubernetes):
             restartPolicy: Never
         ''')
         with TemporaryDirectory() as tmp_dir_name:
-            with open(tmp_dir_name + '/reboot_job_manifest.yaml', 'w') as manifest_file:
+            with open(tmp_dir_name + '/reboot_job_manifest.yaml', 'w',encoding="utf-8") as manifest_file:
                 manifest = yaml.dump(yaml_manifest, manifest_file)
             cmd_reboot = \
                 self.build_cmd_line(['apply', '-f', tmp_dir_name + '/reboot_job_manifest.yaml'])
