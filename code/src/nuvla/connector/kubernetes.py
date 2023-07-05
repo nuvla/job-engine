@@ -278,6 +278,7 @@ class K8sEdgeMgmt(Kubernetes):
         metadata:
           name: reboot
         spec:
+          ttlSecondsAfterFinished: 120
           template:
             spec:
               containers:
@@ -288,7 +289,7 @@ class K8sEdgeMgmt(Kubernetes):
                 - name: reboot-vol
                   mountPath: /sysrq
               volumes:
-              - name: reboot-vol
+              - name: reboot-vol   
                 hostPath:
                   path: /proc/sysrq-trigger
               restartPolicy: Never
