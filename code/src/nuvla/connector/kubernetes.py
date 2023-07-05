@@ -272,7 +272,7 @@ class K8sEdgeMgmt(Kubernetes):
         log.info('We have key file %s ', self.key)
         log.info('We have endpoint %s ', self.endpoint)
 
-        yaml_manifest = yaml.safe_load('''
+        reboot_yaml_manifest = """
         apiVersion: batch/v1
         kind: Job
         metadata:
@@ -294,11 +294,11 @@ class K8sEdgeMgmt(Kubernetes):
             restartPolicy: Never
         backoffLimit: 4
 
-        ''')
+        """
         with TemporaryDirectory() as tmp_dir_name:
-            with open(tmp_dir_name + '/reboot_job_manifest.yaml', 'w',encoding="utf-8") as manifest_file:
-                yaml.dump(yaml_manifest, manifest_file)
+            with open(tmp_dir_name + '/reboot_job_manifest.yaml', 'w',encoding="utf-8") as reboot_manifest_file:
+                reboot_manifest_file.write(reboot_yaml_manifest)
             cmd_reboot = \
                 self.build_cmd_line(['apply', '-f', tmp_dir_name + '/reboot_job_manifest.yaml'])
             reboot_result = join_stderr_stdout(execute_cmd(cmd_reboot))
-            log.info('Result id reboot %s',reboot_result)
+            log.info('Result of the reboot ... does not really make sense... %s',reboot_result)
