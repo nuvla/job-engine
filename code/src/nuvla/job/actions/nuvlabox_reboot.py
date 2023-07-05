@@ -15,11 +15,12 @@ class NBRebootJob(object):
 
     def reboot(self):
         nuvlabox_id = self.job['target-resource']['href']
-
-        logging.info('Rebooting NuvlaBox %s', nuvlabox_id) # FIXME
+        reboot_cmd = "sh -c 'sleep 10 && echo b > /sysrq'" # FIX ME ... Kubernetes takes a list for manifest whereas Docker takes a string?
+        # FIX ME pass the string to k8s and then convert to list? hmmm...
+        logging.debug('Rebooting NuvlaBox %s', nuvlabox_id)
         if os.getenv('KUBERNETES_SERVICE_HOST'):
             logging.debug('We are using Kubernetes on nuvlabox ID : %s ',nuvlabox_id)
-            self._reboot_k8s()
+            self._reboot_k8s(reboot_cmd)
         else:
             connector = NB.NuvlaBox(api=self.api, nuvlabox_id=nuvlabox_id, job=self.job)
             r = connector.reboot()
@@ -27,10 +28,9 @@ class NBRebootJob(object):
 
         return 0
 
-    def _reboot_k8s(self):
-        logging.info('Now we start the connector')
+    def _reboot_k8s(self, reboot_cmd):
         connector = K8sEdgeMgmt(self.job)
-        connector.reboot()
+        connector.reboot(reboot_cmd)
 
     def do_work(self):
         return self.reboot()

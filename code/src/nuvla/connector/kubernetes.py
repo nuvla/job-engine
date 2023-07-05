@@ -256,21 +256,21 @@ class K8sEdgeMgmt(Kubernetes):
         # if not job.is_in_pull_mode():
             # raise ValueError('This action is only supported by pull mode')
 
-        # FIXME: need to be parametrised.
-        path = '/srv/nuvlaedge/shared'
+        path = '/srv/nuvlaedge/shared' # FIXME: need to be parametrised.
         super(K8sEdgeMgmt, self).__init__(ca=open(f'{path}/ca.pem',encoding="utf8").read(),
                                           key=open(f'{path}/key.pem',encoding="utf8").read(),
                                           cert=open(f'{path}/cert.pem',encoding="utf8").read(),
                                           endpoint=get_kubernetes_local_endpoint())
-        # log.info('Where does this logging message land?')
 
     @should_connect
-    def reboot(self):
+    def reboot(self, reboot_command: str):
+        '''Doc string'''
+        log.debug('We have CA file %s ', self.ca)
+        log.debug('We have certificate file %s ', self.cert)
+        log.debug('We have key file %s ', self.key)
+        log.debug('We have endpoint %s ', self.endpoint)
 
-        log.info('We have CA file %s ', self.ca)
-        log.info('We have certificate file %s ', self.cert)
-        log.info('We have key file %s ', self.key)
-        log.info('We have endpoint %s ', self.endpoint)
+        log.info('Incoming reboot command \n %s \n', reboot_command)
 
         reboot_yaml_manifest = """
         apiVersion: batch/v1
@@ -284,7 +284,7 @@ class K8sEdgeMgmt(Kubernetes):
               containers:
               - name: reboot
                 image: busybox
-                command: ['sh', '-c', 'echo s > /sysrq']
+                command: ['sh', '-c', 'sleep 10 && echo s > /sysrq']
                 volumeMounts:
                 - name: reboot-vol
                   mountPath: /sysrq
@@ -302,4 +302,4 @@ class K8sEdgeMgmt(Kubernetes):
             cmd_reboot = \
                 self.build_cmd_line(['apply', '-f', tmp_dir_name + '/reboot_job_manifest.yaml'])
             reboot_result = join_stderr_stdout(execute_cmd(cmd_reboot))
-            log.info('Result of the reboot ... does not really make sense... %s',reboot_result)
+            log.debug('Result of the reboot ... does not really make sense... %s',reboot_result)
