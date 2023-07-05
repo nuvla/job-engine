@@ -1,13 +1,17 @@
 # -*- coding: utf-8 -*-
 import datetime
-
-import requests
-import logging
-import docker
 import json
+import logging
+import os
 import re
 import time
+
+import docker
+import docker.errors
+import requests
+
 from packaging.version import Version, InvalidVersion
+
 from .connector import Connector, should_connect
 from .utils import create_tmp_file, timeout, remove_protocol_from_url
 
@@ -39,7 +43,13 @@ class NuvlaBox(Connector):
         self.nuvlabox = None
         self.nuvlabox_status = None
         self.nb_api_endpoint = None
-        self.base_image = 'python:3.8-alpine3.12'
+        self.ne_image_registry = os.getenv('NE_IMAGE_REGISTRY', '')
+        self.ne_image_org = os.getenv('NE_IMAGE_ORGANIZATION', 'sixsq')
+        self.ne_image_repo = os.getenv('NE_IMAGE_REPOSITORY', 'nuvlaedge')
+        self.ne_image_tag = os.getenv('NE_IMAGE_TAG', 'latest')
+        self.ne_image_name = os.getenv('NE_IMAGE_NAME', f'{self.ne_image_org}/{self.ne_image_repo}')
+        self.base_image = f'{self.ne_image_registry}{self.ne_image_name}:{self.ne_image_tag}'
+        self.installer_image = os.getenv('NE_IMAGE_INSTALLER')
         self.installer_image_name = None
         self.installer_image_name_fallback = None
         self.timeout = 60
@@ -114,10 +124,13 @@ class NuvlaBox(Connector):
                     return credentials[0].data, infra_service.get("endpoint")
 
     def setup_ssl_credentials(self):
+        if self.job.get('execution-mode', '').lower() not in ['mixed', 'push']:
+            return False
+
         try:
             credential, is_endpoint = self.get_credential()
         except TypeError:
-            raise Exception('Error: could not find infrastructure service credential for this NuvlaEdge')
+            raise RuntimeError('Error: could not find infrastructure service credential for this NuvlaEdge')
 
         try:
             secret = credential['cert'] + '\n' + credential['key']
@@ -154,9 +167,8 @@ class NuvlaBox(Connector):
 
     def extract_vm_state(self, vm):
         pass
-    
-    @staticmethod
-    def get_installer_image_names(nuvlaedge_version):
+
+    def get_installer_image_names(self, nuvlaedge_version):
         repo = 'installer'
         old = ('nuvlabox', 'master')
         new = ('nuvlaedge', 'main')
@@ -164,9 +176,15 @@ class NuvlaBox(Connector):
             org, default_tag = new if Version(nuvlaedge_version) >= Version('2.5.0') else old
         except InvalidVersion:
             org, default_tag = old if nuvlaedge_version == 'master' else new
-        
-        return (f'{org}/{repo}:{nuvlaedge_version if nuvlaedge_version else default_tag}',
-               f'{org}/{repo}:{default_tag}')
+
+        tag = nuvlaedge_version if nuvlaedge_version else default_tag
+
+        if self.installer_image:
+            return (f'{self.installer_image}:{tag}',
+                    f'{self.installer_image}:{default_tag}')
+
+        return (f'{org}/{repo}:{tag}',
+                f'{org}/{repo}:{default_tag}')
 
     def connect(self):
         logging.info('Connecting to NuvlaEdge {}'.format(self.nuvlabox_id))
@@ -241,15 +259,14 @@ class NuvlaBox(Connector):
             # running in pull, thus the docker socket is being shared
             user_home = self.nuvlabox_status.get('host-user-home')
             if not user_home:
-                raise Exception(
-                    f'Cannot manage SSH keys unless the parameter host-user-home is set')
+                raise ValueError('Cannot manage SSH keys unless the parameter host-user-home is set')
 
             if action.startswith('revoke'):
-                cmd = "sh -c 'grep -v \"${SSH_PUB}\" %s > /tmp/temp && mv /tmp/temp %s && echo Success'" \
+                cmd = "-c 'grep -v \"${SSH_PUB}\" %s > /tmp/temp && mv /tmp/temp %s && echo Success'" \
                       % (f'/rootfs/{user_home}/.ssh/authorized_keys',
                          f'/rootfs/{user_home}/.ssh/authorized_keys')
             else:
-                cmd = "sh -c 'echo -e \"${SSH_PUB}\" >> %s && echo Success'" \
+                cmd = "-c 'echo -e \"${SSH_PUB}\" >> %s && echo Success'" \
                       % f'/rootfs/{user_home}/.ssh/authorized_keys'
 
             self.job.set_progress(90)
@@ -257,6 +274,7 @@ class NuvlaBox(Connector):
             r = docker.from_env().containers.run(
                 self.base_image,
                 remove=True,
+                entrypoint='sh',
                 command=cmd,
                 environment={
                     'SSH_PUB': pubkey
@@ -290,17 +308,19 @@ class NuvlaBox(Connector):
                 err_msg = 'The management-api does not exist, so "reboot" must run asynchronously (pull mode)'
                 raise OperationNotAllowed(err_msg)
             # running in pull, thus the docker socket is being shared
-            cmd = "sh -c 'sleep 10 && echo b > /sysrq'"
-            docker.from_env().containers.run(self.base_image,
-                                             command=cmd,
-                                             detach=True,
-                                             remove=True,
-                                             volumes={
-                                                 '/proc/sysrq-trigger': {
-                                                     'bind': '/sysrq'
-                                                 }
-                                             }
-                                             )
+            cmd = "-c 'sleep 10 && echo b > /sysrq'"
+            docker.from_env().containers.run(
+                self.base_image,
+                entrypoint='sh',
+                command=cmd,
+                detach=True,
+                remove=True,
+                volumes={
+                    '/proc/sysrq-trigger': {
+                        'bind': '/sysrq'
+                    }
+                }
+            )
             r = 'Reboot ongoing'
 
         return r
@@ -344,7 +364,7 @@ class NuvlaBox(Connector):
     def pull_docker_image(self, image_name, fallback_image_name=None):
         try:
             self.infer_docker_client().images.pull(image_name)
-        except (docker.errors.ImageNotFound, docker.errors.NotFound):
+        except (docker.errors.ImageNotFound, docker.errors.NotFound, docker.errors.APIError):
             if fallback_image_name:
                 logging.warning(f'Cannot pull image {image_name}')
                 image_name = fallback_image_name
@@ -558,7 +578,7 @@ class NuvlaBox(Connector):
         detach = True
 
         # container name
-        container_name = f'installer'
+        container_name = 'installer'
 
         # volumes
         volumes = {
@@ -581,7 +601,7 @@ class NuvlaBox(Connector):
 
         install_params_from_payload = json.loads(self.job.get('payload', '{}'))
         install_params_from_nb_status = self.nuvlabox_status.get('installation-parameters', {})
-        
+
         def get_install_params(name):
             return install_params_from_payload.get(name, install_params_from_nb_status.get(name))
 
@@ -623,9 +643,13 @@ class NuvlaBox(Connector):
         command.append(f'--target-version={target_release}')
 
         if all(k in self.api.session.login_params for k in ['key', 'secret']):
+            key = self.api.session.login_params['key']
+            secret = self.api.session.login_params['secret']
             updater_env = {
-                'NUVLABOX_API_KEY': self.api.session.login_params['key'],
-                'NUVLABOX_API_SECRET': self.api.session.login_params['secret']
+                'NUVLABOX_API_KEY': key,
+                'NUVLABOX_API_SECRET': secret,
+                'NUVLAEDGE_API_KEY': key,
+                'NUVLAEDGE_API_SECRET': secret
             }
         else:
             updater_env = {}

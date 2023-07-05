@@ -4,13 +4,47 @@
 
 ### Changed
 
+## Released
+
+## [3.4.1] - 2023-07-04
+
+### Changed
+
+- NuvlaEdge actions - ensure local docker socket is used in pull mode
+- NuvlaEdge installer - allow to define image name with NE_IMAGE_INSTALLER environment variable
+
+## [3.4.0] - 2023-06-27
+
+### Changed
+
+- Action nuvlabox_release - do not add GH release asset if it's not a docker-compose yaml file
+- NuvlaEdge SSH and reboot actions - fix to work with the new NE base image
+- NuvlaEdge base image - updated base_image and allow to edit it with environment variables
+
+## [3.3.1] - 2023-06-23
+
+### Changed
+
+- Deployment set actions - Align with api server changes
+- Container build - Fix docker hub organization selection
+
+## [3.3.0] - 2023-06-12
+
+### Changed
+
 - Fix sonarcloud hotspots
   - docker_machine.py: use https for portainer
   - Dockerfile: enforce usage of HTTPS with curl
   - nuvlabox.py: Fixed regex to filter ANSI Escape Sequences
   - utils.py: replaced md5 by sha256 in unique_id function 
-
-## Released
+- Dockerfile - modprobe script location changed
+- Use local docker socket for pull jobs 
+- Use local Kubernetes API endpoint for pull jobs
+- nuvlabox.py:
+  - get components with label "nuvlaedge" and not only with "nuvlabox"
+  - renamed some occurences of NuvlaBox to NuvlaEdge
+- Updated containers base image to python:3.11-alpine3.18
+- Development version numbers compliant with PEP440 version schemes (.dev instead of -SNAPSHOT)
 
 ## [3.2.7] - 2023-04-25
 

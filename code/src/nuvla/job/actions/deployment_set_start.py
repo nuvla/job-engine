@@ -21,6 +21,6 @@ class DeploymentSetStartJob(DeploymentBulkJob):
         logging.info(f'Start deployment set start {self.job.id}')
         result = self.run('start')
         deployment_set_id = self.job['target-resource']['href']
-        self.api.edit(deployment_set_id, {'state': 'STARTED'})
+        self.user_api.edit(deployment_set_id, {'state': 'STARTED'})
         logging.info(f'End of deployment set start {self.job.id}')
         return result

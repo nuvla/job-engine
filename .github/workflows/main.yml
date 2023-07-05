@@ -25,8 +25,8 @@ jobs:
             ${{ runner.os }}-maven-
             - name: Cache local Maven repository
 
-      - name: Multi-arch docker image build prerequired
-        run: sudo docker run --privileged linuxkit/binfmt:v0.7
+      - name: Set up QEMU for multi-arch docker image build
+        uses: docker/setup-qemu-action@v2
 
       - name: Set up JDK 1.8
         uses: actions/setup-java@v1
@@ -73,6 +73,7 @@ jobs:
           TRAVIS_BRANCH: ${{ steps.extract_branch.outputs.branch }}
           TRAVIS_PULL_REQUEST_BRANCH: ${{ github.head_ref }}
           TRAVIS_BUILD_NUMBER: ${{ github.run_id }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           SIXSQ_DOCKER_USERNAME: ${{ secrets.SIXSQ_DOCKER_USERNAME }}
