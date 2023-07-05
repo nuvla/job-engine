@@ -293,6 +293,7 @@ class K8sEdgeMgmt(Kubernetes):
                 path: /proc/sysrq-trigger
             restartPolicy: Never
         backoffLimit: 4
+
         ''')
         with TemporaryDirectory() as tmp_dir_name:
             with open(tmp_dir_name + '/reboot_job_manifest.yaml', 'w',encoding="utf-8") as manifest_file:
