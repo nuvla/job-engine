@@ -256,7 +256,7 @@ class K8sEdgeMgmt(Kubernetes):
         # if not job.is_in_pull_mode():
             # raise ValueError('This action is only supported by pull mode')
 
-        path = '/srv/nuvlaedge/shared' # FIXME: need to be parametrised.
+        path = '/srv/nuvlaedge/shared' # FIXME: needs to be parametrised.
         super(K8sEdgeMgmt, self).__init__(ca=open(f'{path}/ca.pem',encoding="utf8").read(),
                                           key=open(f'{path}/key.pem',encoding="utf8").read(),
                                           cert=open(f'{path}/cert.pem',encoding="utf8").read(),
@@ -265,12 +265,13 @@ class K8sEdgeMgmt(Kubernetes):
     @should_connect
     def reboot(self, reboot_command: str):
         '''Doc string'''
+
         log.debug('We have CA file %s ', self.ca)
         log.debug('We have certificate file %s ', self.cert)
         log.debug('We have key file %s ', self.key)
         log.debug('We have endpoint %s ', self.endpoint)
 
-        log.info('Incoming reboot command \n %s \n', reboot_command)
+        log.info('Incoming reboot command \n\n %s \n', reboot_command)
 
         reboot_yaml_manifest = """
         apiVersion: batch/v1
