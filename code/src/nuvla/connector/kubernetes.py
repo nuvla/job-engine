@@ -248,12 +248,13 @@ class Kubernetes(Connector):
     def extract_vm_state(self, vm):
         pass
 
-
+from ..job import Job
 class K8sEdgeMgmt(Kubernetes):
     '''Here'''
     def __init__(self, job):
-        if not job.is_in_pull_mode():
-            raise ValueError('This action is only supported by pull mode')
+
+        # if not job.is_in_pull_mode():
+            # raise ValueError('This action is only supported by pull mode')
 
         # FIXME: need to be parametrised.
         path = '/srv/nuvlaedge/shared'
@@ -261,10 +262,11 @@ class K8sEdgeMgmt(Kubernetes):
                                           key=open(f'{path}/key.pem',encoding="utf8").read(),
                                           cert=open(f'{path}/cert.pem',encoding="utf8").read(),
                                           endpoint=get_kubernetes_local_endpoint())
-        log.info('Where does this logging message land?')
+        # log.info('Where does this logging message land?')
 
     @should_connect
     def reboot(self):
+        
         log.info('We have CA file %s ', self.ca)
         log.info('We have certificate file %s ', self.cert)
         log.info('We have key file %s ', self.key)
@@ -293,7 +295,7 @@ class K8sEdgeMgmt(Kubernetes):
         ''')
         with TemporaryDirectory() as tmp_dir_name:
             with open(tmp_dir_name + '/reboot_job_manifest.yaml', 'w',encoding="utf-8") as manifest_file:
-                manifest = yaml.dump(yaml_manifest, manifest_file)
+                yaml.dump(yaml_manifest, manifest_file)
             cmd_reboot = \
                 self.build_cmd_line(['apply', '-f', tmp_dir_name + '/reboot_job_manifest.yaml'])
             reboot_result = join_stderr_stdout(execute_cmd(cmd_reboot))
