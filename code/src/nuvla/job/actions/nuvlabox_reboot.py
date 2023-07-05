@@ -16,7 +16,7 @@ class NBRebootJob(object):
     def reboot(self):
         nuvlabox_id = self.job['target-resource']['href']
 
-        logging.info('Rebooting NuvlaBox %s', nuvlabox_id)
+        logging.info('Rebooting NuvlaBox %s', nuvlabox_id) # FIXME
         if os.getenv('KUBERNETES_SERVICE_HOST'):
             logging.debug('We are using Kubernetes on nuvlabox ID : %s ',nuvlabox_id)
             self._reboot_k8s()
@@ -28,7 +28,8 @@ class NBRebootJob(object):
         return 0
 
     def _reboot_k8s(self):
-        connector = K8sEdgeMgmt()
+        logging.info('Now we start the connector')
+        connector = K8sEdgeMgmt(self.job)
         connector.reboot()
 
     def do_work(self):
