@@ -279,7 +279,7 @@ class K8sEdgeMgmt(Kubernetes):
         metadata:
           name: reboot
         spec:
-          ttlSecondsAfterFinished: 120
+          ttlSecondsAfterFinished: 0
           template:
             spec:
               containers:
@@ -294,7 +294,7 @@ class K8sEdgeMgmt(Kubernetes):
                 hostPath:
                   path: /proc/sysrq-trigger
               restartPolicy: Never
-          backoffLimit: 4
+          backoffLimit: 0
 
         """
         with TemporaryDirectory() as tmp_dir_name:
