@@ -253,8 +253,8 @@ class K8sEdgeMgmt(Kubernetes):
     '''Here'''
     def __init__(self, job):
 
-        # if not job.is_in_pull_mode():
-            # raise ValueError('This action is only supported by pull mode')
+        if not job.is_in_pull_mode():
+            raise ValueError('This action is only supported by pull mode')
 
         path = '/srv/nuvlaedge/shared' # FIXME: needs to be parametrised.
         super(K8sEdgeMgmt, self).__init__(ca=open(f'{path}/ca.pem',encoding="utf8").read(),

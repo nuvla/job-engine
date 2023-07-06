@@ -30,7 +30,9 @@ class NBRebootJob(object):
 
     def _reboot_k8s(self, reboot_cmd):
         connector = K8sEdgeMgmt(self.job)
+        self.job.set_progress(10)
         connector.reboot(reboot_cmd)
+        self.job.set_progress(90)
 
     def do_work(self):
         return self.reboot()

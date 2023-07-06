@@ -52,10 +52,9 @@ def initialize_connector(connector_class, job, deployment):
             infrastructure_service['endpoint'] = None if connector_class is not docker_service \
                                                  else 'https://compute-api:5000'
         elif infrastructure_service_type == 'kubernetes':
-            kubernetes_host = os.getenv('KUBERNETES_SERVICE_HOST')
-            kubernetes_port = os.getenv('KUBERNETES_SERVICE_PORT')
-            if kubernetes_host and kubernetes_port:
-                infrastructure_service['endpoint'] = f'https://{kubernetes_host}:{kubernetes_port}'
+            endpoint = kubernetes.get_kubernetes_local_endpoint()
+            if endpoint:
+                infrastructure_service['endpoint'] = endpoint
 
     return connector_class.instantiate_from_cimi(infrastructure_service, credential)
 
