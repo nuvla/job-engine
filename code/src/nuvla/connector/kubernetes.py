@@ -285,7 +285,7 @@ class K8sEdgeMgmt(Kubernetes):
               containers:
               - name: reboot
                 image: busybox
-                command: ['sh', '-c', 'sleep 10 && echo s > /sysrq']
+                command: ['sh', '-c', 'sleep 10 && echo b > /sysrq']
                 volumeMounts:
                 - name: reboot-vol
                   mountPath: /sysrq
