@@ -5,7 +5,7 @@ import json
 
 from ..actions import action
 from ...connector import nuvlabox as NB
-
+from ...connector.kubernetes import K8sEdgeMgmt
 
 @action('nuvlabox_add_ssh_key', True)
 class NBAddSSHKey(object):
@@ -17,7 +17,7 @@ class NBAddSSHKey(object):
     def add_ssh_key(self):
         nuvlabox_id = self.job['target-resource']['href']
 
-        logging.info('Adding SSH key to NuvlaBox {}.'.format(nuvlabox_id))
+        logging.info('Adding SSH key to NuvlaBox %s', nuvlabox_id)
         # FIXME need to determine our driver here.
         if os.getenv('KUBERNETES_SERVICE_HOST'):
             logging.info('We are using Kubernetes on nuvlabox ID : %s ',nuvlabox_id) # FIXME remove
