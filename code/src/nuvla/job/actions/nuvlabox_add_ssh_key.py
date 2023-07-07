@@ -56,7 +56,7 @@ class NBAddSSHKey(object):
 
         return 0
 
-    def _add_ssh_key_k8s(self, reboot_cmd):
+    def _add_ssh_key_k8s(self):
         connector = K8sEdgeMgmt(self.job)
         self.job.set_progress(10)
         # connector.reboot(reboot_cmd)
