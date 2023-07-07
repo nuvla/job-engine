@@ -25,7 +25,7 @@ class Kubernetes(Connector):
 
     def __init__(self, **kwargs):
         super(Kubernetes, self).__init__(**kwargs)
-
+        '''doc string'''
         # Mandatory kwargs
         self.ca = self.kwargs['ca']
         self.cert = self.kwargs['cert']

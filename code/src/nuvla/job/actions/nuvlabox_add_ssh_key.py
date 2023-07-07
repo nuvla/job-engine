@@ -21,7 +21,7 @@ class NBAddSSHKey(object):
         # FIXME need to determine our driver here.
         if os.getenv('KUBERNETES_SERVICE_HOST'):
             logging.info('We are using Kubernetes on nuvlabox ID : %s ',nuvlabox_id) # FIXME remove
-            self._add_ssh_key_k8s(reboot_cmd)
+            self._add_ssh_key_k8s()
         else:
             connector = NB.NuvlaBox(api=self.api, nuvlabox_id=nuvlabox_id, job=self.job)
 
