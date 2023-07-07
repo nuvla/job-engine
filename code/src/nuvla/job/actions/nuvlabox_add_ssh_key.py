@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-
+import os
 import logging
 import json
 
@@ -18,7 +18,12 @@ class NBAddSSHKey(object):
         nuvlabox_id = self.job['target-resource']['href']
 
         logging.info('Adding SSH key to NuvlaBox {}.'.format(nuvlabox_id))
-        connector = NB.NuvlaBox(api=self.api, nuvlabox_id=nuvlabox_id, job=self.job)
+        # FIXME need to determine our driver here.
+        if os.getenv('KUBERNETES_SERVICE_HOST'):
+            logging.info('We are using Kubernetes on nuvlabox ID : %s ',nuvlabox_id) # FIXME remove
+            self._add_ssh_key_k8s(reboot_cmd)
+        else:
+            connector = NB.NuvlaBox(api=self.api, nuvlabox_id=nuvlabox_id, job=self.job)
 
         # IMPORTANT BIT THAT MUST CHANGE FOR EVERY NUVLABOX API ACTION
         # for this, we need to get the respective SSH public key
@@ -30,6 +35,7 @@ class NBAddSSHKey(object):
                 break
 
         if credential_id:
+            logging.info("Connecting to %s : ", nuvlabox_id)
             connector.connect()
             pubkey = self.job.context[credential_id]['public-key']
             ssh_keys = connector.nuvlabox.get('ssh-keys', [])
@@ -49,6 +55,12 @@ class NBAddSSHKey(object):
         self.job.update_job(status_message=json.dumps(r))
 
         return 0
+
+    def _add_ssh_key_k8s(self, reboot_cmd):
+        connector = K8sEdgeMgmt(self.job)
+        self.job.set_progress(10)
+        # connector.reboot(reboot_cmd)
+        self.job.set_progress(90)
 
     def do_work(self):
         return self.add_ssh_key()
