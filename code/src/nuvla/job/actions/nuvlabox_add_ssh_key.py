@@ -17,13 +17,13 @@ class NBAddSSHKey(object):
     def add_ssh_key(self):
         nuvlabox_id = self.job['target-resource']['href']
 
-        logging.info('Adding SSH key to NuvlaBox %s', nuvlabox_id)
+        logging.info('Adding SSH key to NuvlaBox %s', nuvlabox_id) # FIXME remove
         # FIXME need to determine our driver here.
         # if os.getenv('KUBERNETES_SERVICE_HOST'):
           #   logging.info('We are using Kubernetes on nuvlabox ID : %s ',nuvlabox_id) # FIXME remove
-            # self._add_ssh_key_k8s()
+          #   self._add_ssh_key_k8s()
         # else:
-        connector = NB.NuvlaBox(api=self.api, nuvlabox_id=nuvlabox_id, job=self.job)
+          #   connector = NB.NuvlaBox(api=self.api, nuvlabox_id=nuvlabox_id, job=self.job)
 
         # IMPORTANT BIT THAT MUST CHANGE FOR EVERY NUVLABOX API ACTION
         # for this, we need to get the respective SSH public key
@@ -35,9 +35,14 @@ class NBAddSSHKey(object):
                 break
 
         if credential_id:
-            logging.info("Connecting to %s : ", nuvlabox_id)
-            connector.connect()
             pubkey = self.job.context[credential_id]['public-key']
+            if os.getenv('KUBERNETES_SERVICE_HOST'):
+                logging.info('We are using Kubernetes on nuvlabox ID : %s ',nuvlabox_id) # FIXME remove
+                self._add_ssh_key_k8s(pubkey)
+            else:
+                connector = NB.NuvlaBox(api=self.api, nuvlabox_id=nuvlabox_id, job=self.job)
+
+            connector.connect()
             ssh_keys = connector.nuvlabox.get('ssh-keys', [])
 
             if credential_id not in ssh_keys:
@@ -56,11 +61,11 @@ class NBAddSSHKey(object):
 
         return 0
 
-    def _add_ssh_key_k8s(self):
+    def _add_ssh_key_k8s(self, pubkey):
         logging.info('We must wait for the other pull request to be merged.') # FIXME
         connector = K8sSSHKey(self.job)
         self.job.set_progress(10)
-        # connector.reboot(reboot_cmd)
+        # connector.handleSSHKey()
         self.job.set_progress(90)
 
     def do_work(self):
