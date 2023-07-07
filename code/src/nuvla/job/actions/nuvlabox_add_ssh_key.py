@@ -5,7 +5,7 @@ import json
 
 from ..actions import action
 from ...connector import nuvlabox as NB
-from ...connector.kubernetes import K8sEdgeMgmt
+from ...connector.kubernetes import K8sSSHKey
 
 @action('nuvlabox_add_ssh_key', True)
 class NBAddSSHKey(object):
@@ -57,7 +57,8 @@ class NBAddSSHKey(object):
         return 0
 
     def _add_ssh_key_k8s(self):
-        connector = K8sEdgeMgmt(self.job)
+        logging.info('We must wait for the other pull request to be merged.') # FIXME
+        connector = K8sSSHKey(self.job)
         self.job.set_progress(10)
         # connector.reboot(reboot_cmd)
         self.job.set_progress(90)
