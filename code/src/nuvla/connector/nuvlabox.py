@@ -270,7 +270,7 @@ class NuvlaBox(Connector):
                       % f'/rootfs/{user_home}/.ssh/authorized_keys'
 
             self.job.set_progress(90)
-
+            logging.info('I think we get to here: %s',user_home)
             r = docker.from_env().containers.run(
                 self.base_image,
                 remove=True,
