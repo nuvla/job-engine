@@ -187,7 +187,7 @@ class NuvlaBox(Connector):
         self.installer_image_name, self.installer_image_name_fallback = \
             self.get_installer_image_names(engine_version)
 
-        if self.job.get('execution-mode', '').lower() == 'pull': # here we need a kubernetes switch?
+        if self.job.get('execution-mode', '').lower() == 'pull':
             self.docker_client = docker.from_env()
         else:
             self.nb_api_endpoint = self.nuvlabox_status.get("nuvlabox-api-endpoint")

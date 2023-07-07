@@ -271,7 +271,7 @@ class K8sEdgeMgmt(Kubernetes):
         log.debug('We have key file %s ', self.key)
         log.debug('We have endpoint %s ', self.endpoint)
 
-        log.info('Incoming reboot command \n\n %s \n', reboot_command)
+        log.debug('Incoming reboot command \n\n %s \n', reboot_command)
 
         reboot_yaml_manifest = """
         apiVersion: batch/v1
