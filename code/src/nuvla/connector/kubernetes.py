@@ -248,7 +248,7 @@ class K8sSSHKey(Kubernetes):
             raise ValueError('This action is only supported by pull mode')
 
         path = '/srv/nuvlaedge/shared' # FIXME: needs to be parametrised.
-        super(K8sSSHkey, self).__init__(ca=open(f'{path}/ca.pem',encoding="utf8").read(),
+        super(K8sSSHKey, self).__init__(ca=open(f'{path}/ca.pem',encoding="utf8").read(),
                                           key=open(f'{path}/key.pem',encoding="utf8").read(),
                                           cert=open(f'{path}/cert.pem',encoding="utf8").read(),
                                           endpoint=get_kubernetes_local_endpoint())
