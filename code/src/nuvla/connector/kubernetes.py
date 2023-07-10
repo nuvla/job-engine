@@ -146,21 +146,21 @@ class Kubernetes(Connector):
 
     @should_connect
     def stop(self, **kwargs):
-        # Mandatory kwargs
-        stack_name = kwargs['stack_name']
+        namespace = kwargs['stack_name']
 
-        cmd_stop = self.build_cmd_line(['delete', 'namespace', stack_name])
+        cmd_stop = self.build_cmd_line(['delete', 'namespace', namespace])
 
         try:
             return join_stderr_stdout(execute_cmd(cmd_stop))
         except Exception as ex:
             if 'NotFound' in ex.args[0] if len(ex.args) > 0 else '':
-                return f'Namespace "{stack_name}" already stopped (not found)'
+                return f'Namespace "{namespace}" not found.'
             else:
                 raise ex
 
     @should_connect
     def list(self, filters=None):
+        # FIXME: Implement.
         # cmd = self.build_cmd_line(['stack', 'ls'])
         # return execute_cmd(cmd)
         pass

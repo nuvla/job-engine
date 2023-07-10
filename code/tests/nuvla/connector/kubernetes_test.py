@@ -61,7 +61,6 @@ class TestKubernetesFilterPods(unittest.TestCase):
         # existent DaemonSet/deamonset object
         pods_found = Kubernetes._filter_objects_owned(pods['items'], 'Pod',
                                                       'DaemonSet', 'daemonset')
-        print(pods_found)
         assert 1 == len(pods_found)
         assert 'daemonset-b2wsr' == pods_found[0]['metadata']['name']
 
