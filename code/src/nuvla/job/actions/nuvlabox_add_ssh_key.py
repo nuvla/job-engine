@@ -67,6 +67,7 @@ class NBAddSSHKey(object):
         connector = K8sSSHKey(self.job)
         # FIXME ... get the home directory here?
         nuvlabox_status = api.get("nuvlabox-status").data
+        logging.info('The nuvlabox status from API : %s ',nuvlabox_status) # FIXME
         user_home = nuvlabox_status.get('host-user-home')
         logging.info('Extracted a user home value of : %s ',user_home) # FIXME
         self.job.set_progress(10)
