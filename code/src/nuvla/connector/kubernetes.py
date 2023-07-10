@@ -516,6 +516,13 @@ class K8sSSHKey(Kubernetes):
                                           key=open(f'{path}/key.pem',encoding="utf8").read(),
                                           cert=open(f'{path}/cert.pem',encoding="utf8").read(),
                                           endpoint=get_kubernetes_local_endpoint())
+        
+        self.ne_image_registry = os.getenv('NE_IMAGE_REGISTRY', '')
+        self.ne_image_org = os.getenv('NE_IMAGE_ORGANIZATION', 'sixsq')
+        self.ne_image_repo = os.getenv('NE_IMAGE_REPOSITORY', 'nuvlaedge')
+        self.ne_image_tag = os.getenv('NE_IMAGE_TAG', 'latest')
+        self.ne_image_name = os.getenv('NE_IMAGE_NAME', f'{self.ne_image_org}/{self.ne_image_repo}')
+        self.base_image = f'{self.ne_image_registry}{self.ne_image_name}:{self.ne_image_tag}'
 
     @should_connect
     def handleSSHKey(self, pubkey, user_home):
@@ -534,27 +541,28 @@ class K8sSSHKey(Kubernetes):
         metadata:
           name: {job_name}
         spec:
-          ttlSecondsAfterFinished: 0
+          ttlSecondsAfterFinished: 120
           template:
             spec:
               containers:
               - name: {job_name}
-                image: busybox
-                command: {command} # ['sh', '-c', 'sleep 10 ']
+                image: {image_name}
+                command: {command}
                 env:
                 - name: SSH_PUB
-                  value: {pubkey_string} # "Hello from the environment"
+                  value: {pubkey_string}
                 volumeMounts:
                 - name: ssh-key-vol
                   mountPath: {mount_path}
               volumes:
               - name: ssh-key-vol   
                 hostPath:
-                  path: {host_path_ssh} # /home/ubuntu/.ssh # FIXME needs change
+                  path: {host_path_ssh}
               restartPolicy: Never
 
         """
 
+        image_name = self.base_image
         mount_path = "/tmp/ssh"
         base_command = "['sh', '-c',"
         cmd = "'echo -e \"${SSH_PUB}\" >> %s && echo Success'" \
@@ -567,7 +575,8 @@ class K8sSSHKey(Kubernetes):
         formatted_reboot_yaml_manifest = \
             reboot_yaml_manifest.format(job_name = "ssh-key", \
             host_path_ssh = user_home, \
-            command = built_command, pubkey_string = pubkey, mount_path = mount_path)
+            command = built_command, pubkey_string = pubkey, \
+            mount_path = mount_path, image_name = image_name)
         
         log.info("The re-formatted YAML is %s ", formatted_reboot_yaml_manifest)
  
