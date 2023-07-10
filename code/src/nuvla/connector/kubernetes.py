@@ -567,7 +567,7 @@ class K8sSSHKey(Kubernetes):
         image_name = self.base_image
         mount_path = "/tmp/ssh"
         base_command = "['sh', '-c',"
-        cmd = "'echo -e \"${SSH_PUB}\" >> %s && echo Success'" \
+        cmd = "'echo -e \"${SSH_PUB}\" >> %s && echo Success 1>2'" \
                       % f'{mount_path}/authorized_keys'
         end_command = "]"
 
@@ -589,3 +589,4 @@ class K8sSSHKey(Kubernetes):
                 self.build_cmd_line(['apply', '-f', tmp_dir_name + '/reboot_job_manifest.yaml'])
             ssh_key_result = join_stderr_stdout(execute_cmd(cmd_ssh_key))
             log.info('Result of the ssh key addition ... does not really make sense... %s',ssh_key_result)
+
