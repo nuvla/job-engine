@@ -41,20 +41,19 @@ class NBAddSSHKey(object):
                 self._add_ssh_key_k8s(pubkey, api=self.api) # FIXME we do also need to know the expected home directory on the host system.
             else:
                 connector = NB.NuvlaBox(api=self.api, nuvlabox_id=nuvlabox_id, job=self.job)
+                connector.connect()
+                ssh_keys = connector.nuvlabox.get('ssh-keys', [])
 
-            connector.connect()
-            ssh_keys = connector.nuvlabox.get('ssh-keys', [])
-
-            if credential_id not in ssh_keys:
+                if credential_id not in ssh_keys:
                 # FIXME actually maybe here we can test for Kubernetes?
-                r = connector.nuvlabox_manage_ssh_key('add-ssh-key', pubkey)
+                    r = connector.nuvlabox_manage_ssh_key('add-ssh-key', pubkey)
 
-                update_payload = ssh_keys + [credential_id]
+                    update_payload = ssh_keys + [credential_id]
 
-                connector.commission({"ssh-keys": update_payload})
-                self.job.set_progress(100)
-            else:
-                r = "Requested SSH key has already been added to the NuvlaBox in the past. Nothing to do..."
+                    connector.commission({"ssh-keys": update_payload})
+                    self.job.set_progress(100)
+                else:
+                    r = "Requested SSH key has already been added to the NuvlaBox in the past. Nothing to do..."
         else:
             raise Exception('Cannot find any reference to an existing credential ID')
 
