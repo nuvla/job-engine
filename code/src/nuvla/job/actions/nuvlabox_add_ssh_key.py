@@ -65,7 +65,7 @@ class NBAddSSHKey(object):
         logging.info('We must wait for the other pull request to be merged.') # FIXME
         connector = K8sSSHKey(self.job)
         self.job.set_progress(10)
-        # connector.handleSSHKey()
+        connector.handleSSHKey()
         self.job.set_progress(90)
 
     def do_work(self):
