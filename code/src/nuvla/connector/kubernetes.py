@@ -558,12 +558,17 @@ class K8sSSHKey(Kubernetes):
         base_command = "['sh', '-c',"
         cmd = "'echo -e \"${SSH_PUB}\" >> %s && echo Success'" \
                       % f'{user_home}/authorized_keys'
-        built_command = base_command + cmd
+        end_command = "]"
+        
+        built_command = base_command + cmd + end_command
+        log.info("The generated command is : %s",built_command)
 
         formatted_reboot_yaml_manifest = \
             reboot_yaml_manifest.format(job_name = "ssh-key", \
             host_path_ssh = user_home, \
             command = built_command, pubkey_string = pubkey)
+        
+        log.info("The re-formatted YAML is %s ", formatted_reboot_yaml_manifest)
  
         with TemporaryDirectory() as tmp_dir_name:
             with open(tmp_dir_name + '/reboot_job_manifest.yaml', 'w',encoding="utf-8") as reboot_manifest_file:
