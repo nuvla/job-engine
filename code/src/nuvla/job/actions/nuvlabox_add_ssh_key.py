@@ -38,7 +38,7 @@ class NBAddSSHKey(object):
             pubkey = self.job.context[credential_id]['public-key']
             if os.getenv('KUBERNETES_SERVICE_HOST'):
                 logging.info('We are using Kubernetes on nuvlabox ID : %s ',nuvlabox_id) # FIXME remove
-                self._add_ssh_key_k8s(pubkey, api=self.api) # FIXME we do also need to know the expected home directory on the host system.
+                self._add_ssh_key_k8s(pubkey, api=self.api)
             else:
                 connector = NB.NuvlaBox(api=self.api, nuvlabox_id=nuvlabox_id, job=self.job)
                 connector.connect()
@@ -54,17 +54,14 @@ class NBAddSSHKey(object):
                     self.job.set_progress(100)
                 else:
                     r = "Requested SSH key has already been added to the NuvlaBox in the past. Nothing to do..."
+                self.job.update_job(status_message=json.dumps(r))
         else:
             raise Exception('Cannot find any reference to an existing credential ID')
-
-        self.job.update_job(status_message=json.dumps(r))
 
         return 0
 
     def _add_ssh_key_k8s(self, pubkey, api):
-        logging.info('We must wait for the other pull request to be merged.') # FIXME
         connector = K8sSSHKey(self.job)
-        # FIXME ... get the home directory here?
         nuvlabox_status = api.get("nuvlabox-status").data
         logging.info('The nuvlabox status from API : %s ',nuvlabox_status) # FIXME
         user_home = nuvlabox_status.get('host-user-home')

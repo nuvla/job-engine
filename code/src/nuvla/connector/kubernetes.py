@@ -585,8 +585,7 @@ class K8sSSHKey(Kubernetes):
         with TemporaryDirectory() as tmp_dir_name:
             with open(tmp_dir_name + '/reboot_job_manifest.yaml', 'w',encoding="utf-8") as reboot_manifest_file:
                 reboot_manifest_file.write(formatted_reboot_yaml_manifest)
-            cmd_reboot = \
+            cmd_ssh_key = \
                 self.build_cmd_line(['apply', '-f', tmp_dir_name + '/reboot_job_manifest.yaml'])
-            reboot_result = join_stderr_stdout(execute_cmd(cmd_reboot))
-            log.info('Result of the reboot ... does not really make sense... %s',reboot_result)
-
+            ssh_key_result = join_stderr_stdout(execute_cmd(cmd_ssh_key))
+            log.info('Result of the ssh key addition ... does not really make sense... %s',ssh_key_result)
