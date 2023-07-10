@@ -546,7 +546,7 @@ class K8sSSHKey(Kubernetes):
                   value: {pubkey_string} # "Hello from the environment"
                 volumeMounts:
                 - name: ssh-key-vol
-                  mountPath: /tmp/ssh
+                  mountPath: {mount_path}
               volumes:
               - name: ssh-key-vol   
                 hostPath:
@@ -555,18 +555,19 @@ class K8sSSHKey(Kubernetes):
 
         """
 
+        mount_path = "/tmp/ssh"
         base_command = "['sh', '-c',"
         cmd = "'echo -e \"${SSH_PUB}\" >> %s && echo Success'" \
-                      % f'{user_home}/authorized_keys'
+                      % f'{mount_path}/authorized_keys'
         end_command = "]"
-        
+
         built_command = base_command + cmd + end_command
         log.info("The generated command is : %s",built_command)
 
         formatted_reboot_yaml_manifest = \
             reboot_yaml_manifest.format(job_name = "ssh-key", \
             host_path_ssh = user_home, \
-            command = built_command, pubkey_string = pubkey)
+            command = built_command, pubkey_string = pubkey, mount_path = mount_path)
         
         log.info("The re-formatted YAML is %s ", formatted_reboot_yaml_manifest)
  
