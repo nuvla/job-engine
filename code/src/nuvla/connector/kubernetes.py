@@ -517,6 +517,7 @@ class K8sSSHKey(Kubernetes):
                                           cert=open(f'{path}/cert.pem',encoding="utf8").read(),
                                           endpoint=get_kubernetes_local_endpoint())
         
+        # borrowed from nuvlabox.py
         self.ne_image_registry = os.getenv('NE_IMAGE_REGISTRY', '')
         self.ne_image_org = os.getenv('NE_IMAGE_ORGANIZATION', 'sixsq')
         self.ne_image_repo = os.getenv('NE_IMAGE_REPOSITORY', 'nuvlaedge')
@@ -532,8 +533,9 @@ class K8sSSHKey(Kubernetes):
         log.debug('We have certificate file %s ', self.cert)
         log.debug('We have key file %s ', self.key)
         log.debug('We have endpoint %s ', self.endpoint)
-        user_home = "/home/ubuntu/.ssh"
-        log.info("Attention! We have set user home to be : %s ",user_home)
+        if not user_home:
+            user_home = "/home/ubuntu/.ssh"
+            log.info("Attention! We have set user home to be : %s ",user_home)
 
         reboot_yaml_manifest = """
         apiVersion: batch/v1
