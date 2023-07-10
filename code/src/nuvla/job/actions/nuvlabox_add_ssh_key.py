@@ -68,7 +68,7 @@ class NBAddSSHKey(object):
         nuvlabox_status = api.get("nuvlabox-status").data
         logging.info('The nuvlabox status from API : %s ',nuvlabox_status) # FIXME
         user_home = nuvlabox_status.get('host-user-home')
-        logging.info('Extracted a user home value of : %s ',user_home) # FIXME
+        logging.info('Attention: Extracted a user home value of : %s ',user_home) # FIXME
         self.job.set_progress(10)
         connector.handleSSHKey(pubkey, user_home)
         self.job.set_progress(90)
