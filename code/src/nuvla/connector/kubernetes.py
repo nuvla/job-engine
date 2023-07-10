@@ -259,40 +259,56 @@ class K8sSSHKey(Kubernetes):
                                           endpoint=get_kubernetes_local_endpoint())
 
     @should_connect
-    def handleSSHKey(self):
+    def handleSSHKey(self, pubkey, user_home):
         '''Doc string'''
 
         log.debug('We have CA file %s ', self.ca)
         log.debug('We have certificate file %s ', self.cert)
         log.debug('We have key file %s ', self.key)
         log.debug('We have endpoint %s ', self.endpoint)
+        user_home = "/home/ubuntu/.ssh"
+        log.info("Attention! We have set user home to be : %s ",user_home)
 
         reboot_yaml_manifest = """
         apiVersion: batch/v1
         kind: Job
         metadata:
-          name: ssh-key
+          name: {job_name}
         spec:
           ttlSecondsAfterFinished: 0
           template:
             spec:
               containers:
-              - name: ssh-key
+              - name: {job_name}
                 image: busybox
-                command: ['sh', '-c', 'sleep 10 '] # FIXME needs change
+                command: {command} # ['sh', '-c', 'sleep 10 ']
+                env:
+                - name: SSH_PUB
+                  value: {pubkey_string} # "Hello from the environment"
                 volumeMounts:
                 - name: ssh-key-vol
                   mountPath: /tmp/ssh
               volumes:
               - name: ssh-key-vol   
                 hostPath:
-                  path: /home/ubuntu/.ssh # FIXME needs change
+                  path: {host_path_ssh} # /home/ubuntu/.ssh # FIXME needs change
               restartPolicy: Never
 
         """
+
+        base_command = "['sh', '-c',"
+        cmd = "'echo -e \"${SSH_PUB}\" >> %s && echo Success'" \
+                      % f'{user_home}/authorized_keys'
+        built_command = base_command + cmd
+
+        formatted_reboot_yaml_manifest = \
+            reboot_yaml_manifest.format(job_name = "ssh-key", \
+            host_path_ssh = user_home, \
+            command = built_command, pubkey_string = pubkey)
+ 
         with TemporaryDirectory() as tmp_dir_name:
             with open(tmp_dir_name + '/reboot_job_manifest.yaml', 'w',encoding="utf-8") as reboot_manifest_file:
-                reboot_manifest_file.write(reboot_yaml_manifest)
+                reboot_manifest_file.write(formatted_reboot_yaml_manifest)
             cmd_reboot = \
                 self.build_cmd_line(['apply', '-f', tmp_dir_name + '/reboot_job_manifest.yaml'])
             reboot_result = join_stderr_stdout(execute_cmd(cmd_reboot))

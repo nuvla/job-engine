@@ -70,7 +70,7 @@ class NBAddSSHKey(object):
         user_home = nuvlabox_status.get('host-user-home')
         logging.info('Extracted a user home value of : %s ',user_home) # FIXME
         self.job.set_progress(10)
-        connector.handleSSHKey()
+        connector.handleSSHKey(pubkey, user_home)
         self.job.set_progress(90)
 
     def do_work(self):
