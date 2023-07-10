@@ -20,7 +20,12 @@ def instantiate_from_cimi(api_infrastructure_service, api_credential):
         key=api_credential.get('key', '').replace("\\n", "\n"),
         endpoint=api_infrastructure_service.get('endpoint'))
 
-
+def get_kubernetes_local_endpoint():
+    kubernetes_host = os.getenv('KUBERNETES_SERVICE_HOST')
+    kubernetes_port = os.getenv('KUBERNETES_SERVICE_PORT')
+    if kubernetes_host and kubernetes_port:
+        return f'https://{kubernetes_host}:{kubernetes_port}'
+    return ''
 class Kubernetes(Connector):
 
     def __init__(self, **kwargs):
