@@ -567,7 +567,7 @@ class K8sSSHKey(Kubernetes):
         image_name = self.base_image
         mount_path = "/tmp/ssh"
         base_command = "['sh', '-c',"
-        cmd = "'echo -e \"${SSH_PUB}\" >> %s && echo Success 1>2'" \
+        cmd = "'echo -e \"${SSH_PUB}\" >> %s && echo Success'" \
                       % f'{mount_path}/authorized_keys'
         end_command = "]"
 
