@@ -503,6 +503,15 @@ class Kubernetes(Connector):
     def extract_vm_state(self, vm):
         pass
 
+    # @should_connect
+    def commission(self, payload, **kwargs):
+        """ Updates the NuvlaEdge resource with the provided payload
+        :param payload: content to be updated in the NuvlaEdge resource
+        """
+        pass
+        # if payload:
+          #  self.api.operation(self.nuvlabox_resource, "commission", data=payload)
+
 
 class K8sSSHKey(Kubernetes):
     '''Here'''
@@ -534,7 +543,7 @@ class K8sSSHKey(Kubernetes):
         log.debug('We have key file %s ', self.key)
         log.debug('We have endpoint %s ', self.endpoint)
         if not user_home:
-            user_home = "/home/ubuntu/.ssh"
+            user_home = "/home/ubuntu"
             log.info("Attention! We have set user home to be : %s ",user_home)
 
         reboot_yaml_manifest = """
@@ -543,7 +552,7 @@ class K8sSSHKey(Kubernetes):
         metadata:
           name: {job_name}
         spec:
-          ttlSecondsAfterFinished: 120
+          ttlSecondsAfterFinished: 5
           template:
             spec:
               containers:
@@ -566,27 +575,29 @@ class K8sSSHKey(Kubernetes):
 
         image_name = self.base_image
         mount_path = "/tmp/ssh"
+        sleep_value = 2
         base_command = "['sh', '-c',"
-        cmd = "'echo -e \"${SSH_PUB}\" >> %s && echo Success'" \
-                      % f'{mount_path}/authorized_keys'
+        cmd = "'sleep %s && echo -e \"${SSH_PUB}\" >> %s && echo Success adding public key'" \
+                      % (f'{sleep_value}', f'{mount_path}/.ssh/authorized_keys')
         end_command = "]"
 
         built_command = base_command + cmd + end_command
-        log.info("The generated command is : %s",built_command)
+        log.debug("The generated command is : %s",built_command)
 
         formatted_reboot_yaml_manifest = \
             reboot_yaml_manifest.format(job_name = "ssh-key", \
             host_path_ssh = user_home, \
             command = built_command, pubkey_string = pubkey, \
             mount_path = mount_path, image_name = image_name)
-        
+
         log.info("The re-formatted YAML is %s ", formatted_reboot_yaml_manifest)
- 
+
         with TemporaryDirectory() as tmp_dir_name:
-            with open(tmp_dir_name + '/reboot_job_manifest.yaml', 'w',encoding="utf-8") as reboot_manifest_file:
+            with open(tmp_dir_name + '/reboot_job_manifest.yaml', 'w',encoding="utf-8") \
+                as reboot_manifest_file:
                 reboot_manifest_file.write(formatted_reboot_yaml_manifest)
             cmd_ssh_key = \
                 self.build_cmd_line(['apply', '-f', tmp_dir_name + '/reboot_job_manifest.yaml'])
             ssh_key_result = execute_cmd(cmd_ssh_key)
-            log.info('Result of the ssh key addition ... does not really make sense... %s',ssh_key_result)
-
+            log.debug('The result of the ssh key addition : %s',ssh_key_result)
+        return ssh_key_result
