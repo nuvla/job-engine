@@ -587,6 +587,6 @@ class K8sSSHKey(Kubernetes):
                 reboot_manifest_file.write(formatted_reboot_yaml_manifest)
             cmd_ssh_key = \
                 self.build_cmd_line(['apply', '-f', tmp_dir_name + '/reboot_job_manifest.yaml'])
-            ssh_key_result = join_stderr_stdout(execute_cmd(cmd_ssh_key))
+            ssh_key_result = execute_cmd(cmd_ssh_key)
             log.info('Result of the ssh key addition ... does not really make sense... %s',ssh_key_result)
 
