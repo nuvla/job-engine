@@ -6,6 +6,19 @@
 
 ## Released
 
+## [3.5.0] - 2023-07-16
+
+### Changed
+
+- Kubernetes logs - refactored and improved Kubernetes logs retrival
+- Credential check action - handle properly local docker credentials
+
+## [3.4.2] - 2023-07-04
+
+### Changed
+
+- NuvlaEdge installer - fix NuvlaEdge credential environment variables 
+
 ## [3.4.1] - 2023-07-04
 
 ### Changed
