@@ -7,6 +7,7 @@ import re
 import time
 
 import docker
+import docker.errors
 import requests
 
 from packaging.version import Version, InvalidVersion
@@ -49,6 +50,7 @@ class NuvlaBox(Connector):
         self.ne_image_tag = os.getenv('NE_IMAGE_TAG', 'latest')
         self.ne_image_name = os.getenv('NE_IMAGE_NAME', f'{self.ne_image_org}/{self.ne_image_repo}')
         self.base_image = f'{self.ne_image_registry}{self.ne_image_name}:{self.ne_image_tag}'
+        self.installer_image = os.getenv('NE_IMAGE_INSTALLER')
         self.installer_image_name = None
         self.installer_image_name_fallback = None
         self.timeout = 60
@@ -123,10 +125,13 @@ class NuvlaBox(Connector):
                     return credentials[0].data, infra_service.get("endpoint")
 
     def setup_ssl_credentials(self):
+        if self.job.get('execution-mode', '').lower() not in ['mixed', 'push']:
+            return False
+
         try:
             credential, is_endpoint = self.get_credential()
         except TypeError:
-            raise Exception('Error: could not find infrastructure service credential for this NuvlaEdge')
+            raise RuntimeError('Error: could not find infrastructure service credential for this NuvlaEdge')
 
         try:
             secret = credential['cert'] + '\n' + credential['key']
@@ -164,8 +169,7 @@ class NuvlaBox(Connector):
     def extract_vm_state(self, vm):
         pass
 
-    @staticmethod
-    def get_installer_image_names(nuvlaedge_version):
+    def get_installer_image_names(self, nuvlaedge_version):
         repo = 'installer'
         old = ('nuvlabox', 'master')
         new = ('nuvlaedge', 'main')
@@ -174,7 +178,13 @@ class NuvlaBox(Connector):
         except InvalidVersion:
             org, default_tag = old if nuvlaedge_version == 'master' else new
 
-        return (f'{org}/{repo}:{nuvlaedge_version if nuvlaedge_version else default_tag}',
+        tag = nuvlaedge_version if nuvlaedge_version else default_tag
+
+        if self.installer_image:
+            return (f'{self.installer_image}:{tag}',
+                    f'{self.installer_image}:{default_tag}')
+
+        return (f'{org}/{repo}:{tag}',
                 f'{org}/{repo}:{default_tag}')
 
     def connect(self):
@@ -359,7 +369,7 @@ class NuvlaBox(Connector):
     def pull_docker_image(self, image_name, fallback_image_name=None):
         try:
             self.infer_docker_client().images.pull(image_name)
-        except (docker.errors.ImageNotFound, docker.errors.NotFound):
+        except (docker.errors.ImageNotFound, docker.errors.NotFound, docker.errors.APIError):
             if fallback_image_name:
                 logging.warning(f'Cannot pull image {image_name}')
                 image_name = fallback_image_name
@@ -573,7 +583,7 @@ class NuvlaBox(Connector):
         detach = True
 
         # container name
-        container_name = f'installer'
+        container_name = 'installer'
 
         # volumes
         volumes = {
@@ -638,9 +648,13 @@ class NuvlaBox(Connector):
         command.append(f'--target-version={target_release}')
 
         if all(k in self.api.session.login_params for k in ['key', 'secret']):
+            key = self.api.session.login_params['key']
+            secret = self.api.session.login_params['secret']
             updater_env = {
-                'NUVLABOX_API_KEY': self.api.session.login_params['key'],
-                'NUVLABOX_API_SECRET': self.api.session.login_params['secret']
+                'NUVLABOX_API_KEY': key,
+                'NUVLABOX_API_SECRET': secret,
+                'NUVLAEDGE_API_KEY': key,
+                'NUVLAEDGE_API_SECRET': secret
             }
         else:
             updater_env = {}

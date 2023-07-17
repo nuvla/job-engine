@@ -6,6 +6,26 @@
 
 ## Released
 
+## [3.5.0] - 2023-07-16
+
+### Changed
+
+- Kubernetes logs - refactored and improved Kubernetes logs retrival
+- Credential check action - handle properly local docker credentials
+
+## [3.4.2] - 2023-07-04
+
+### Changed
+
+- NuvlaEdge installer - fix NuvlaEdge credential environment variables 
+
+## [3.4.1] - 2023-07-04
+
+### Changed
+
+- NuvlaEdge actions - ensure local docker socket is used in pull mode
+- NuvlaEdge installer - allow to define image name with NE_IMAGE_INSTALLER environment variable
+
 ## [3.4.0] - 2023-06-27
 
 ### Changed
