@@ -39,7 +39,6 @@ class Executor(Base):
         action = get_action(action_name)
         if not action:
             raise ActionNotImplemented(action_name)
-        logging.debug('Action name: {}'.format(action))
 
         return action(self, job)
 
@@ -68,7 +67,6 @@ class Executor(Base):
             try:
                 action_instance = self._get_action_instance(job)
                 job.set_state('RUNNING')
-                logging.debug('Current action instance: {}'.format(action_instance))
                 return_code = action_instance.do_work()
             except ActionNotImplemented as e:
                 logging.error('Action "{}" not implemented'.format(str(e)))

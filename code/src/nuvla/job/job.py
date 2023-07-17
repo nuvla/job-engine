@@ -265,6 +265,12 @@ class Job(dict):
                                 f'{authn_info["active-claim"]} '
                                 f'{" ".join(authn_info["claims"])}')
 
+    @property
+    def target_resource(self) -> str:
+        return self['target-resource']['href']
+
+    nuvlaedge_id = target_resource
+
     def __setitem(self, key, value):
         dict.__setitem__(self, key, value)
 

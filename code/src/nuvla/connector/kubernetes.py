@@ -6,11 +6,18 @@ import base64
 import logging
 import datetime
 from tempfile import TemporaryDirectory
+
+from ..job.job import Job
+from .connector import Connector, should_connect
 from .utils import execute_cmd, join_stderr_stdout, create_tmp_file, \
     generate_registry_config, extract_host_from_url
-from .connector import Connector, should_connect
+
 
 log = logging.getLogger('kubernetes')
+
+
+class OperationNotAllowed(Exception):
+    pass
 
 
 def instantiate_from_cimi(api_infrastructure_service, api_credential):
@@ -248,59 +255,54 @@ class Kubernetes(Connector):
     def extract_vm_state(self, vm):
         pass
 
-from ..job import Job
+
 class K8sEdgeMgmt(Kubernetes):
-    '''Here'''
-    def __init__(self, job):
+    def __init__(self, job: Job):
 
         if not job.is_in_pull_mode:
-            raise ValueError('This action is only supported by pull mode')
+            raise OperationNotAllowed(
+                'NuvlaEdge management actions are only supported in pull mode.')
 
-        path = '/srv/nuvlaedge/shared' # FIXME: needs to be parametrised.
-        super(K8sEdgeMgmt, self).__init__(ca=open(f'{path}/ca.pem',encoding="utf8").read(),
-                                          key=open(f'{path}/key.pem',encoding="utf8").read(),
-                                          cert=open(f'{path}/cert.pem',encoding="utf8").read(),
-                                          endpoint=get_kubernetes_local_endpoint())
+        # FIXME: This needs to be parametrised.
+        path = '/srv/nuvlaedge/shared'
+        super(K8sEdgeMgmt, self).__init__(
+            ca=open(f'{path}/ca.pem', encoding="utf8").read(),
+            key=open(f'{path}/key.pem', encoding="utf8").read(),
+            cert=open(f'{path}/cert.pem', encoding="utf8").read(),
+            endpoint=get_kubernetes_local_endpoint())
 
     @should_connect
-    def reboot(self, reboot_command: str):
-        '''Doc string'''
-
-        log.debug('We have CA file %s ', self.ca)
-        log.debug('We have certificate file %s ', self.cert)
-        log.debug('We have key file %s ', self.key)
-        log.debug('We have endpoint %s ', self.endpoint)
-
-        log.debug('Incoming reboot command \n\n %s \n', reboot_command)
-
+    def reboot(self):
         reboot_yaml_manifest = """
-        apiVersion: batch/v1
-        kind: Job
-        metadata:
-          name: reboot
-        spec:
-          ttlSecondsAfterFinished: 0
-          template:
-            spec:
-              containers:
-              - name: reboot
-                image: busybox
-                command: ['sh', '-c', 'sleep 10 && echo b > /sysrq']
-                volumeMounts:
-                - name: reboot-vol
-                  mountPath: /sysrq
-              volumes:
-              - name: reboot-vol   
-                hostPath:
-                  path: /proc/sysrq-trigger
-              restartPolicy: Never
-          backoffLimit: 0
-
-        """
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: reboot
+spec:
+  ttlSecondsAfterFinished: 0
+  template:
+    spec:
+      containers:
+      - name: reboot
+        image: busybox
+        command: ['sh', '-c', 'sleep 10 && echo b > /sysrq']
+        volumeMounts:
+        - name: reboot-vol
+          mountPath: /sysrq
+      volumes:
+      - name: reboot-vol   
+        hostPath:
+          path: /proc/sysrq-trigger
+      restartPolicy: Never
+  backoffLimit: 0
+"""
         with TemporaryDirectory() as tmp_dir_name:
-            with open(tmp_dir_name + '/reboot_job_manifest.yaml', 'w',encoding="utf-8") as reboot_manifest_file:
-                reboot_manifest_file.write(reboot_yaml_manifest)
-            cmd_reboot = \
-                self.build_cmd_line(['apply', '-f', tmp_dir_name + '/reboot_job_manifest.yaml'])
-            reboot_result = join_stderr_stdout(execute_cmd(cmd_reboot))
-            log.debug('Result of the reboot ... does not really make sense... %s',reboot_result)
+
+            fpath = os.path.join(tmp_dir_name, 'reboot_job_manifest.yaml')
+            with open(fpath, 'w', encoding="utf-8") as fh:
+                fh.write(reboot_yaml_manifest)
+
+            cmd_reboot = self.build_cmd_line(['apply', '-f', fpath])
+            output = join_stderr_stdout(execute_cmd(cmd_reboot))
+
+            log.debug('Output from reboot Job: %s', output)

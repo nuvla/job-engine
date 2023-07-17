@@ -1,14 +1,15 @@
 # -*- coding: utf-8 -*-
 
-import os
 import re
 import copy
 from abc import abstractmethod
+
 from nuvla.api import Api
 from nuvla.api.resources import Deployment
 from nuvla.api.resources.base import ResourceNotFound
 from ....connector import docker_service, docker_stack, docker_compose, \
     kubernetes
+from ....connector.kubernetes import get_kubernetes_local_endpoint
 
 
 def get_connector_name(deployment):
@@ -52,7 +53,7 @@ def initialize_connector(connector_class, job, deployment):
             infrastructure_service['endpoint'] = None if connector_class is not docker_service \
                                                  else 'https://compute-api:5000'
         elif infrastructure_service_type == 'kubernetes':
-            endpoint = kubernetes.get_kubernetes_local_endpoint()
+            endpoint = get_kubernetes_local_endpoint()
             if endpoint:
                 infrastructure_service['endpoint'] = endpoint
 

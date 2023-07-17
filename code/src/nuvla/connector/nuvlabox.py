@@ -11,8 +11,10 @@ import requests
 
 from packaging.version import Version, InvalidVersion
 
+from ..job.job import Job
 from .connector import Connector, should_connect
 from .utils import create_tmp_file, timeout, remove_protocol_from_url
+
 
 class ClusterOperationNotAllowed(Exception):
     pass
@@ -27,7 +29,7 @@ class NuvlaBox(Connector):
         super(NuvlaBox, self).__init__(**kwargs)
 
         self.api = kwargs.get("api")
-        self.job = kwargs.get("job")
+        self.job: Job = kwargs.get("job")
         self.ssl_file = None
         self.docker_client = None
         self.docker_api_endpoint = None
@@ -36,7 +38,7 @@ class NuvlaBox(Connector):
         self.nuvlabox_api.headers = {'Content-Type': 'application/json',
                                      'Accept': 'application/json'}
 
-        self.nuvlabox_id = kwargs.get("nuvlabox_id")
+        self.nuvlabox_id = self.job.nuvlaedge_id
         self.nuvlabox_resource = None
         self.nuvlabox = None
         self.nuvlabox_status = None
@@ -286,42 +288,42 @@ class NuvlaBox(Connector):
 
     @should_connect
     def reboot(self):
+
         self.job.set_progress(10)
+
         if self.nb_api_endpoint:
-            action_endpoint = f'{self.nb_api_endpoint}/reboot'
-            r = self.mgmt_api_request(action_endpoint, 'POST', {}, None)
+            r = self.mgmt_api_request(f'{self.nb_api_endpoint}/reboot',
+                                      'POST', {}, None)
         else:
             if self.job.get('execution-mode', '').lower() in ['mixed', 'push']:
-                err_msg = 'The management-api does not exist, so "reboot" ' \
-                          'must run asynchronously (pull mode)'
-                raise OperationNotAllowed(err_msg)
-            if os.getenv('KUBERNETES_SERVICE_HOST'):
-                logging.info('We are using Kubernetes : %s ',self.nuvlabox_id) # FIX ME
-            else:
-                self._reboot_docker()
-            r = 'Reboot is ongoing'
+                raise OperationNotAllowed(
+                    'The management-api does not exist, so "reboot" must run '
+                    'asynchronously (pull mode)')
+            # running in pull, thus the docker socket is being shared
+            cmd = "-c 'sleep 10 && echo b > /sysrq'"
+            docker.from_env().containers.run(
+                self.base_image,
+                entrypoint='sh',
+                command=cmd,
+                detach=True,
+                remove=True,
+                volumes={
+                    '/proc/sysrq-trigger': {
+                        'bind': '/sysrq'
+                    }
+                }
+            )
+            r = 'Reboot ongoing'
+
         self.job.set_progress(90)
+
         return r
-
-
-    def _reboot_docker(self):
-        # running in pull, thus the docker socket is being shared
-        cmd = "sh -c 'sleep 10 && echo b > /sysrq'"
-        docker.from_env().containers.run(self.base_image,
-                                         command=cmd,
-                                         detach=True,
-                                         remove=True,
-                                         volumes={
-                                             '/proc/sysrq-trigger': {
-                                                 'bind': '/sysrq'
-                                             }
-                                         }
-                                         )
 
     @should_connect
     def start(self, **kwargs):
         """
-        This method is being kept as a generic Mgmt API function, for backward compatibility with NB v1
+        This method is being kept as a generic Mgmt API function, for backward
+        compatibility with NB v1.
 
         :param kwargs:
         :return:
