@@ -119,7 +119,7 @@ class CredentialCheck(object):
 
         if is_in_pull_mode == False:
             endpoint = infra_service.get('endpoint', '')
-            if endpoint and (endpoint.startswith('unix://') or endpoint == utils.LOCAL):
+            if utils.is_endpoint_local(endpoint):
                 self.update_credential_last_check(credential["id"], 'UNKNOWN')
                 raise Exception('Endpoint is local, cannot check credential, only "pull" mode can be used.')
 
