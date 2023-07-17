@@ -7,8 +7,11 @@ from abc import abstractmethod
 from nuvla.api import Api
 from nuvla.api.resources import Deployment
 from nuvla.api.resources.base import ResourceNotFound
-from ....connector import docker_service, docker_stack, docker_compose, \
-    kubernetes
+from ....connector import (docker_service,
+                           docker_stack,
+                           docker_compose,
+                           kubernetes,
+                           utils)
 
 
 def get_connector_name(deployment):
@@ -56,6 +59,12 @@ def initialize_connector(connector_class, job, deployment):
             kubernetes_port = os.getenv('KUBERNETES_SERVICE_PORT')
             if kubernetes_host and kubernetes_port:
                 infrastructure_service['endpoint'] = f'https://{kubernetes_host}:{kubernetes_port}'
+    else:
+        # Not in pull mode (mixed or push) but endpoint is local
+        endpoint = infrastructure_service['endpoint']
+        if utils.is_endpoint_local(endpoint):
+            raise RuntimeError(f'Endpoint is local ({endpoint}) so only "pull" mode is supported')
+
 
     return connector_class.instantiate_from_cimi(infrastructure_service, credential)
 
