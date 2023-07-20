@@ -35,7 +35,7 @@ class RegisterUsageRecordUpdatedDeploymentJobsDistribution(DistributionBase):
                 'deployment',
                 filter=filter_and(["module/price!=null",
                                    "state='STARTED'",
-                                   "updated>'now-10m'"]),
+                                   "updated>'now-5m'"]),
                 select='id, owner, module',
                 last=10000).resources
         except Exception as ex:
