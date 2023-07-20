@@ -58,11 +58,11 @@ def execute_cmd(cmd, **kwargs) -> CompletedProcess:
     opt_input = kwargs.get('input')
     timeout = kwargs.get('timeout', 120)
     stderr = STDOUT if kwargs.get('sterr_in_stdout', False) else PIPE
-    log.debug(f'Run command: {cmd}')
+    log.debug('Run command: %s', cmd)
     try:
         result = run(cmd, stdout=PIPE, stderr=stderr, env=opt_env, input=opt_input,
                      timeout=timeout, encoding='UTF-8')
-        log.debug(f'Command result: {result}')
+        log.debug('Command result: %s', result)
     except TimeoutExpired:
         message = 'Command execution timed out after {} seconds'.format(timeout)
         log.exception(message)

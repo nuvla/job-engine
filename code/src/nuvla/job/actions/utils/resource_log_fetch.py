@@ -95,7 +95,7 @@ class ResourceLogFetchJob(ABC):
                 self.get_components_logs()))
 
     def fetch_resource_log(self):
-        self.log.info(f'Job started for {self.resource_log_id}.')
+        self.log.info(f'Job started for {self.resource_log_id}')
         self.job.set_progress(10)
         try:
             self.fetch_log()
