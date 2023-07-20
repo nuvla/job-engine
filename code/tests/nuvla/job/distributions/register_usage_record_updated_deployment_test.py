@@ -3,12 +3,12 @@
 import unittest
 from unittest.mock import patch
 from nuvla.job.distribution import DistributionBase
-from nuvla.job.distributions.register_usage_record_updated_deployment import \
-    RegisterUsageRecordUpdatedDeploymentJobsDistribution
+from nuvla.job.distributions.register_usage_record_new_deployment import \
+    RegisterUsageRecordNewDeploymentJobsDistribution
 from nuvla.api.models import CimiResource
 
 
-class TestRegisterUsageRecordUpdatedDeploymentJobsDistribution(unittest.TestCase):
+class TestRegisterUsageRecordNewDeploymentJobsDistribution(unittest.TestCase):
     def setUp(self):
         self.patcher = patch.object(DistributionBase, '_start_distribution')
         self.mock_object = self.patcher.start()
@@ -17,7 +17,7 @@ class TestRegisterUsageRecordUpdatedDeploymentJobsDistribution(unittest.TestCase
         self.patcher.stop()
 
     def test_unique_owners(self):
-        jd = RegisterUsageRecordUpdatedDeploymentJobsDistribution(None)
+        jd = RegisterUsageRecordNewDeploymentJobsDistribution(None)
 
         self.assertEqual([], jd.unique_owners([]))
 
