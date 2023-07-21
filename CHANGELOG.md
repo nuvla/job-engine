@@ -6,7 +6,7 @@
 
 ## Released
 
-## [3.6.0] - 2023-07-21
+## [3.5.1] - 2023-07-21
 
 - Updated nuvla-api from 3.0.8 to 3.0.9 to fix build issue with pyyaml and
   cython
