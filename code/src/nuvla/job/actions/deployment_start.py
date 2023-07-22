@@ -104,8 +104,7 @@ class DeploymentStartJob(DeploymentBase):
 
         result, services = connector.start(
             docker_compose=module_content['docker-compose'],
-            stack_name=Deployment.uuid(
-                deployment),
+            stack_name=Deployment.uuid(deployment),
             env=get_env(deployment),
             files=module_content.get('files'),
             registries_auth=registries_auth)
