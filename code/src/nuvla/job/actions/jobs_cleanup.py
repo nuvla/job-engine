@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 
+from ..job import JOB_FAILED, JOB_SUCCESS
 from ..actions import action
 from nuvla.api.api import Api as Nuvla
 
@@ -17,8 +18,9 @@ class JobsCleanupJob(object):
         logging.info('Cleanup of completed jobs started.')
 
         days_back = 7
-        filter = f"(state='SUCCESS' or state='FAILED') and created<'now-{days_back}d'"
-        ret = self.nuvla.delete_bulk('job', filter)
+        filter_str = f"(state='{JOB_SUCCESS}' or state='{JOB_FAILED}') " \
+                     f"and created<'now-{days_back}d'"
+        ret = self.nuvla.delete_bulk('job', filter_str)
         if ret.data['timed_out']:
             msg = f'Cleanup of completed jobs have some failures: {ret.data}.'
             logging.warning(msg)

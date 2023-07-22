@@ -23,6 +23,9 @@ class RegisterUsageRecord(object):
         self.job.set_progress(10)
         response = self.api.hook('register-usage-record',
                                  {'resource-href': resource_href})
+
         self.job.set_status_message(response.data)
 
-        return 0
+        errors_count = len(response.data.get('errors', []))
+
+        return 1 if errors_count > 0 else 0
