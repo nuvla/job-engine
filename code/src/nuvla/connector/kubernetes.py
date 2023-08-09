@@ -46,7 +46,7 @@ class Kubernetes(Connector):
         return 'Kubernetes-cli'
 
     def connect(self):
-        log.info('Connecting to endpoint {}'.format(self.endpoint))
+        log.info('Connecting to endpoint: %s', self.endpoint)
         self.ca_file = create_tmp_file(self.ca)
         self.cert_file = create_tmp_file(self.cert)
         self.key_file = create_tmp_file(self.key)
@@ -63,6 +63,7 @@ class Kubernetes(Connector):
             self.key_file = None
 
     def build_cmd_line(self, list_cmd):
+        '''Doc string'''
         return ['kubectl', '-s', self.endpoint,
                 '--client-certificate', self.cert_file.name,
                 '--client-key', self.key_file.name,
@@ -508,17 +509,23 @@ class Kubernetes(Connector):
         """ Updates the NuvlaEdge resource with the provided payload
         :param payload: content to be updated in the NuvlaEdge resource
         """
-        pass
-        # if payload:
-          #  self.api.operation(self.nuvlabox_resource, "commission", data=payload)
+        # pass
+        if payload:
+            self.api.operation(self.nuvlabox_resource, "commission", data=payload)
 
 
 class K8sSSHKey(Kubernetes):
     '''Here'''
-    def __init__(self, job):
+    # def __init__(self, job):
+    def __init__(self, **kwargs):
 
-        if not job.is_in_pull_mode:
+        self.job = kwargs.get("job")
+        if not self.job.is_in_pull_mode:
             raise ValueError('This action is only supported by pull mode')
+        
+        self.api = kwargs.get("api")
+
+        self.nuvlabox_resource = self.api.get(kwargs.get("nuvlabox_id"))
 
         path = '/srv/nuvlaedge/shared' # FIXME: needs to be parametrised.
         super(K8sSSHKey, self).__init__(ca=open(f'{path}/ca.pem',encoding="utf8").read(),
@@ -535,17 +542,15 @@ class K8sSSHKey(Kubernetes):
         self.base_image = f'{self.ne_image_registry}{self.ne_image_name}:{self.ne_image_tag}'
 
     @should_connect
-    def handleSSHKey(self, pubkey, user_home):
+    def handleSSHKey(self, action, pubkey, user_home):
         '''Doc string'''
 
         log.debug('We have CA file %s ', self.ca)
         log.debug('We have certificate file %s ', self.cert)
         log.debug('We have key file %s ', self.key)
         log.debug('We have endpoint %s ', self.endpoint)
-        if not user_home:
-            user_home = "/home/ubuntu"
-            log.info("Attention! We have set user home to be : %s ",user_home)
-
+        log.debug('We have user home directory %s ', user_home)
+        
         reboot_yaml_manifest = """
         apiVersion: batch/v1
         kind: Job
@@ -577,20 +582,28 @@ class K8sSSHKey(Kubernetes):
         mount_path = "/tmp/ssh"
         sleep_value = 2
         base_command = "['sh', '-c',"
-        cmd = "'sleep %s && echo -e \"${SSH_PUB}\" >> %s && echo Success adding public key'" \
-                      % (f'{sleep_value}', f'{mount_path}/.ssh/authorized_keys')
+        if action.startswith('revoke'):
+            cmd = "'grep -v \"${SSH_PUB}\" %s > \
+                    /tmp/temp && mv /tmp/temp %s && echo Success deleting public key'" \
+                      % (f'{mount_path}/.ssh/authorized_keys',
+                         f'{mount_path}/.ssh/authorized_keys')
+            the_job_name="revoke-ssh-key"
+        else:
+            cmd = "'sleep %s && echo -e \"${SSH_PUB}\" >> %s && echo Success adding public key'" \
+                % (f'{sleep_value}', f'{mount_path}/.ssh/authorized_keys')
+            the_job_name="add-ssh-key"
         end_command = "]"
 
         built_command = base_command + cmd + end_command
         log.debug("The generated command is : %s",built_command)
 
         formatted_reboot_yaml_manifest = \
-            reboot_yaml_manifest.format(job_name = "ssh-key", \
+            reboot_yaml_manifest.format(job_name = the_job_name, \
             host_path_ssh = user_home, \
             command = built_command, pubkey_string = pubkey, \
             mount_path = mount_path, image_name = image_name)
 
-        log.info("The re-formatted YAML is %s ", formatted_reboot_yaml_manifest)
+        logging.debug("The re-formatted YAML is %s ", formatted_reboot_yaml_manifest)
 
         with TemporaryDirectory() as tmp_dir_name:
             with open(tmp_dir_name + '/reboot_job_manifest.yaml', 'w',encoding="utf-8") \
@@ -601,3 +614,68 @@ class K8sSSHKey(Kubernetes):
             ssh_key_result = execute_cmd(cmd_ssh_key)
             log.debug('The result of the ssh key addition : %s',ssh_key_result)
         return ssh_key_result
+
+    def handle_ssh_key(self, action, pubkey, credential_id, nuvlabox_id):
+        '''Doc string'''
+        nuvlabox_status = self.api.get("nuvlabox-status").data
+        nuvlabox_resource = self.api.get(nuvlabox_id)
+        nuvlabox = nuvlabox_resource.data
+        logging.debug('nuvlabox: %s',nuvlabox)
+        user_home = self._get_user_home(nuvlabox_status)
+        ssh_keys = nuvlabox.get('ssh-keys', [])
+        logging.debug("Current ssh keys:\n%s\n", ssh_keys)
+        logging.info("The credential being added/revoked is: %s",credential_id)
+        if action.startswith('add'):
+            if credential_id in ssh_keys:
+                logging.debug('The credential ID to be added is already present: %s',credential_id)
+                self.job.update_job(status_message=json.dumps("SSH public key already present"))
+                return 1
+        else:
+            if credential_id not in ssh_keys:
+                logging.debug('The credential ID to be revoked is not in the list: %s',\
+                    credential_id)
+                self.job.update_job(status_message=json.dumps\
+                    ("The credential ID to be revoked is not in the list"))
+                return 1
+        result = self.handleSSHKey(action, pubkey, user_home)
+        if result.returncode == 0 and not result.stderr:
+            self.update_results(credential_id, ssh_keys, action, nuvlabox_resource)
+            return 0
+        self.job.update_job(status_message=json.dumps("The SSH public key add/revoke has failed."))
+        return 2
+
+    def update_results(self, credential_id, ssh_keys, action, nuvlabox_resource):
+        '''Update the server side nuvla.io list of credentials'''
+        logging.debug('Adding or deleting credential ID: %s',credential_id)
+        if action.startswith('add'):
+            update_payload = ssh_keys + [credential_id]
+            message_out="SSH public key added successfully"
+        else:
+            try:
+                ssh_keys.remove(credential_id)
+                logging.debug('The SSH keys (update_payload) after removal :\n%s\n',ssh_keys)
+                update_payload = ssh_keys
+            except ValueError:
+                update_payload = None
+            message_out="SSH public key deleted successfully"
+
+        if update_payload is not None:
+            # self.commission(update_payload)
+            logging.debug('The update payload is:\n%s\n',update_payload)
+            self.api.operation(nuvlabox_resource, "commission", {"ssh-keys": update_payload})
+            self.job.update_job(status_message=json.dumps(message_out))
+            return 0
+        return 1
+
+    def _get_user_home(self, nuvlabox_status):
+        '''
+        Get the user home directory
+        '''
+        user_home = nuvlabox_status.get('host-user-home')
+        if not user_home:
+            user_home = os.getenv('HOME')
+            if not user_home:
+                user_home = "/root"
+                # this could be interesting point to e.g. create a generic user edge_login and add ssh key?
+                logging.info('Attention: The user home has been set to: %s ',user_home)
+        return user_home
