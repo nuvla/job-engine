@@ -6,6 +6,7 @@ import base64
 import logging
 import yaml
 from tempfile import TemporaryDirectory
+import tempfile
 from .utils import execute_cmd, join_stderr_stdout, create_tmp_file, \
     generate_registry_config, extract_host_from_url
 from .connector import Connector, should_connect
@@ -505,7 +506,7 @@ class Kubernetes(Connector):
         pass
 
     # @should_connect
-    def commission(self, payload, **kwargs):
+    def commission(self, payload):
         """ Updates the NuvlaEdge resource with the provided payload
         :param payload: content to be updated in the NuvlaEdge resource
         """
@@ -522,7 +523,7 @@ class K8sSSHKey(Kubernetes):
         self.job = kwargs.get("job")
         if not self.job.is_in_pull_mode:
             raise ValueError('This action is only supported by pull mode')
-        
+
         self.api = kwargs.get("api")
 
         self.nuvlabox_resource = self.api.get(kwargs.get("nuvlabox_id"))
@@ -532,7 +533,7 @@ class K8sSSHKey(Kubernetes):
                                           key=open(f'{path}/key.pem',encoding="utf8").read(),
                                           cert=open(f'{path}/cert.pem',encoding="utf8").read(),
                                           endpoint=get_kubernetes_local_endpoint())
-        
+
         # borrowed from nuvlabox.py
         self.ne_image_registry = os.getenv('NE_IMAGE_REGISTRY', '')
         self.ne_image_org = os.getenv('NE_IMAGE_ORGANIZATION', 'sixsq')
@@ -542,7 +543,7 @@ class K8sSSHKey(Kubernetes):
         self.base_image = f'{self.ne_image_registry}{self.ne_image_name}:{self.ne_image_tag}'
 
     @should_connect
-    def handleSSHKey(self, action, pubkey, user_home):
+    def k8s_ssh_key(self, action, pubkey, user_home):
         '''Doc string'''
 
         log.debug('We have CA file %s ', self.ca)
@@ -550,7 +551,7 @@ class K8sSSHKey(Kubernetes):
         log.debug('We have key file %s ', self.key)
         log.debug('We have endpoint %s ', self.endpoint)
         log.debug('We have user home directory %s ', user_home)
-        
+
         reboot_yaml_manifest = """
         apiVersion: batch/v1
         kind: Job
@@ -579,7 +580,7 @@ class K8sSSHKey(Kubernetes):
         """
 
         image_name = self.base_image
-        mount_path = "/tmp/ssh"
+        mount_path = tempfile.gettempdir()
         sleep_value = 2
         base_command = "['sh', '-c',"
         if action.startswith('revoke'):
@@ -637,7 +638,7 @@ class K8sSSHKey(Kubernetes):
                 self.job.update_job(status_message=json.dumps\
                     ("The credential ID to be revoked is not in the list"))
                 return 1
-        result = self.handleSSHKey(action, pubkey, user_home)
+        result = self.k8s_ssh_key(action, pubkey, user_home)
         if result.returncode == 0 and not result.stderr:
             self.update_results(credential_id, ssh_keys, action, nuvlabox_resource)
             return 0

@@ -19,7 +19,7 @@ class NBAddSSHKey(object):
     def add_ssh_key(self):
         '''Here'''
         nuvlabox_id = self.job['target-resource']['href']
-        logging.debug('Adding SSH key to NuvlaBox %s', nuvlabox_id) # FIXME remove
+        logging.debug('Adding SSH key to NuvlaBox %s', nuvlabox_id)
         affected_resources = self.job['affected-resources']
         credential_id = None
         for ar in affected_resources:
