@@ -17,11 +17,16 @@ from ....connector import (docker_service,
 def get_connector_name(deployment):
     if Deployment.is_component(deployment):
         return 'docker_service'
+
     elif Deployment.is_application(deployment):
         is_compose = Deployment.is_compatibility_docker_compose(deployment)
         return 'docker_compose' if is_compose else 'docker_stack'
+
     elif Deployment.is_application_kubernetes(deployment):
         return 'kubernetes'
+
+    subtype = Deployment.subtype(deployment)
+    raise ValueError(f'Unsupported deployment subtype "{subtype}"')
 
 
 def get_connector_class(connector_name):
@@ -46,7 +51,6 @@ def initialize_connector(connector_class, job, deployment):
     infrastructure_service = copy.deepcopy(get_from_context(job, credential['parent']))
     infrastructure_service_type = infrastructure_service.get('subtype', '')
 
-
     # if you uncomment this, the pull-mode deployment_* will only work with the
     # NB compute-api. Which means standalone ISs and k8s capable NuvlaBoxes,
     # are not supported
@@ -64,7 +68,6 @@ def initialize_connector(connector_class, job, deployment):
         endpoint = infrastructure_service['endpoint']
         if utils.is_endpoint_local(endpoint):
             raise RuntimeError(f'Endpoint is local ({endpoint}) so only "pull" mode is supported')
-
 
     return connector_class.instantiate_from_cimi(infrastructure_service, credential)
 
@@ -93,7 +96,9 @@ def application_params_update(api_dpl, deployment, services):
                 api_dpl.set_parameter_create_if_needed(
                     Deployment.id(deployment),
                     Deployment.owner(deployment),
-                    f'{node_id}.{key}', param_value=value, node_id=node_id)
+                    f'{node_id}.{key}',
+                    param_value=value,
+                    node_id=node_id)
 
 
 class DeploymentBase(object):
