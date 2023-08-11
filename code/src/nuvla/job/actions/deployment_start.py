@@ -125,11 +125,12 @@ class DeploymentStartJob(DeploymentBase):
     def handle_deployment(self):
         deployment = self.deployment.data
 
+        self.create_user_output_params(deployment)
+
         if Deployment.is_component(self.deployment):
             self.start_component(deployment)
         else:
             self.start_application(deployment)
-        self.create_user_output_params(deployment)
 
     def start_deployment(self):
 
