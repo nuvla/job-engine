@@ -15,7 +15,8 @@ log = logging.getLogger(action_name)
 @action(action_name, True)
 class DeploymentUpdateJob(DeploymentBase):
 
-    def get_update_params_docker_service(self, deployment, registries_auth):
+    @staticmethod
+    def get_update_params_docker_service(deployment, registries_auth):
         module_content = Deployment.module_content(deployment)
         restart_policy = module_content.get('restart-policy', {})
         module_ports   = module_content.get('ports')
@@ -33,7 +34,8 @@ class DeploymentUpdateJob(DeploymentBase):
                   'restart_policy_window'      : restart_policy.get('window')}
         return kwargs
 
-    def get_update_params_docker_stack(self, deployment, registries_auth):
+    @staticmethod
+    def get_update_params_docker_stack(deployment, registries_auth):
         module_content = Deployment.module_content(deployment)
         kwargs = {'env'            : get_env(deployment),
                   'files'          : module_content.get('files'),
@@ -58,6 +60,8 @@ class DeploymentUpdateJob(DeploymentBase):
         registries_auth = self.private_registries_auth(deployment)
         connector       = initialize_connector(connector_class, self.job, self.deployment)
 
+        self.create_user_output_params(deployment, log)
+
         self.job.set_progress(20)
 
         kwargs = {
@@ -77,7 +81,6 @@ class DeploymentUpdateJob(DeploymentBase):
                 self.api_dpl.update_port_parameters(deployment, ports_mapping)
         else:
             application_params_update(self.api_dpl, deployment, services)
-        self.create_user_output_params(deployment)
 
         self.api_dpl.set_state_started(self.deployment_id)
         return 0

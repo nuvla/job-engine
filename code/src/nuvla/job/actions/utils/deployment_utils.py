@@ -3,16 +3,17 @@
 import os
 import re
 import copy
+import logging
+
 from abc import abstractmethod
 from nuvla.api import Api
-from nuvla.api.resources import Deployment
+from nuvla.api.resources import Deployment, DeploymentParameter
 from nuvla.api.resources.base import ResourceNotFound
 from ....connector import (docker_service,
                            docker_stack,
                            docker_compose,
                            kubernetes,
                            utils)
-
 
 def get_connector_name(deployment):
     if Deployment.is_component(deployment):
@@ -113,12 +114,20 @@ class DeploymentBase(object):
     def get_from_context(self, resource_id):
         return get_from_context(self.job, resource_id)
 
-    def get_hostname(self):
+    def get_hostname(self, log):
+        try:
+            nuvlaedge_id = self.deployment.data.get('nuvlabox')
+            if nuvlaedge_id:
+                nuvlaedge = self.get_from_context(nuvlaedge_id)
+                nuvlaedge_status = self.get_from_context(nuvlaedge['nuvlabox-status'])
+                return nuvlaedge_status['ip']
+        except Exception as e:
+            log.error(f'Failed to get hostname/ip from NuvlaEdge: {e}')
+
         credential_id = Deployment.credential_id(self.deployment)
         credential = self.get_from_context(credential_id)
         endpoint = self.get_from_context(credential['parent'])['endpoint']
-        return re.search('(?:http.*://)?(?P<host>[^:/ ]+)', endpoint).group(
-            'host')
+        return re.search('(?:http.*://)?(?P<host>[^:/ ]+)', endpoint).group('host')
 
     def get_deployment_api(self, deployment_id):
         creds = Deployment._get_attr(Deployment(self.api).get(deployment_id),
@@ -155,12 +164,22 @@ class DeploymentBase(object):
                                           user_id, param_name, param_value,
                                           node_id, param_description)
 
-    def create_user_output_params(self, deployment):
+    def create_user_output_params(self, deployment, log):
+        deployment_id = Deployment.id(deployment)
+        deployment_owner = Deployment.owner(deployment)
+
+        self.create_deployment_parameter(
+            deployment_id=deployment_id,
+            user_id=deployment_owner,
+            param_name=DeploymentParameter.HOSTNAME['name'],
+            param_description=DeploymentParameter.HOSTNAME['description'],
+            param_value=self.get_hostname(log))
+
         module_content = Deployment.module_content(deployment)
         for output_param in module_content.get('output-parameters', []):
             self.create_deployment_parameter(
-                deployment_id=Deployment.id(deployment),
-                user_id=Deployment.owner(deployment),
+                deployment_id=deployment_id,
+                user_id=deployment_owner,
                 param_name=output_param['name'],
                 param_description=output_param.get('description'))
 
