@@ -67,7 +67,6 @@ class DeploymentStartJob(DeploymentBase):
 
         deployment_parameters = (
             (DeploymentParameter.SERVICE_ID, connector.extract_vm_id(service)),
-            (DeploymentParameter.HOSTNAME, self.get_hostname()),
             (DeploymentParameter.REPLICAS_DESIRED, str(desired)),
             (DeploymentParameter.REPLICAS_RUNNING, '0'),
             (DeploymentParameter.CURRENT_DESIRED, ''),
@@ -94,13 +93,12 @@ class DeploymentStartJob(DeploymentBase):
         self.api_dpl.update_port_parameters(deployment, ports_mapping)
 
     def start_application(self, deployment: dict):
-        deployment_id = Deployment.id(deployment)
-
         connector_name   = get_connector_name(deployment)
         connector_class  = get_connector_class(connector_name)
         connector        = initialize_connector(connector_class, self.job, deployment)
         module_content   = Deployment.module_content(deployment)
         deployment_owner = Deployment.owner(deployment)
+        deployment_id    = Deployment.id(deployment)
         registries_auth  = self.private_registries_auth(deployment)
 
         result, services = connector.start(
@@ -112,20 +110,13 @@ class DeploymentStartJob(DeploymentBase):
 
         self.job.set_status_message(result)
 
-        self.create_deployment_parameter(
-            deployment_id=deployment_id,
-            user_id=deployment_owner,
-            param_name=DeploymentParameter.HOSTNAME['name'],
-            param_value=self.get_hostname(),
-            param_description=DeploymentParameter.HOSTNAME['description'])
-
         application_params_update(self.api_dpl, deployment, services)
 
     @override
     def handle_deployment(self):
         deployment = self.deployment.data
 
-        self.create_user_output_params(deployment)
+        self.create_user_output_params(deployment, log)
 
         if Deployment.is_component(self.deployment):
             self.start_component(deployment)
