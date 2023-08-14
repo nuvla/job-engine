@@ -18,7 +18,7 @@ class DeploymentLogFetchJob(ResourceLogFetchJob):
         super().__init__(executor, job)
         self.api_dpl = Deployment(self.api)
         self.deployment = self.api_dpl.get(self.resource_log_parent)
-        self.connector_name = get_connector_name(self.deployment)
+        self._connector_name = None
 
     @property
     def connector(self):
@@ -29,6 +29,12 @@ class DeploymentLogFetchJob(ResourceLogFetchJob):
                 connector_class = get_connector_class(self.connector_name)
             self._connector = initialize_connector(connector_class, self.job, self.deployment)
         return self._connector
+
+    @property
+    def connector_name(self):
+        if not self._connector_name:
+            self._connector_name = get_connector_name(self.deployment)
+        return self._connector_name
 
     def get_kubernetes_log(self, component, since, lines):
         return self.connector.log(component, since, lines,
