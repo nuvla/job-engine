@@ -15,6 +15,7 @@ from ....connector import (docker_service,
                            kubernetes,
                            utils)
 
+
 def get_connector_name(deployment):
     if Deployment.is_component(deployment):
         return 'docker_service'
