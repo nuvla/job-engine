@@ -158,8 +158,20 @@ class DeploymentBase(object):
     def create_deployment_parameter(self, deployment_id, user_id,
                                     param_name, param_value=None,
                                     node_id=None, param_description=None):
+        return self.create_update_deployment_parameter(deployment_id, user_id,
+                                                       param_name, param_value,
+                                                       node_id, param_description,
+                                                       update=False)
+
+    def create_update_deployment_parameter(self, deployment_id, user_id,
+                                           param_name, param_value=None,
+                                           node_id=None, param_description=None,
+                                           update=True):
         try:
-            self.api_dpl._get_parameter(deployment_id, param_name, node_id)
+            param = self.api_dpl._get_parameter(deployment_id, param_name, node_id)
+            if update and param and param_value:
+                # self.api_dpl.set_parameter(deployment_id, node_id, param_name, param_value)
+                self.api_dpl.nuvla.edit(param.id, {'value': param_value})
         except ResourceNotFound:
             self.api_dpl.create_parameter(deployment_id,
                                           user_id, param_name, param_value,
@@ -169,7 +181,7 @@ class DeploymentBase(object):
         deployment_id = Deployment.id(deployment)
         deployment_owner = Deployment.owner(deployment)
 
-        self.create_deployment_parameter(
+        self.create_update_deployment_parameter(
             deployment_id=deployment_id,
             user_id=deployment_owner,
             param_name=DeploymentParameter.HOSTNAME['name'],
