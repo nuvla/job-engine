@@ -19,6 +19,7 @@ def instantiate_from_cimi(api_infrastructure_service, api_credential):
 
 
 class DockerCompose(Connector):
+    DEFAULT_DOCKER_TIMEOUT = "1800" # Default timeout for docker and docker-compose commands
 
     def __init__(self, **kwargs):
         super(DockerCompose, self).__init__(**kwargs)
@@ -47,7 +48,7 @@ class DockerCompose(Connector):
             self.key_file.close()
             self.key_file = None
 
-    def build_cmd_line(self, list_cmd, local=False, binary='docker-compose'):
+    def build_cmd_line(self, list_cmd, local=False, binary='docker compose'):
         endpoint = remove_protocol_from_url(self.endpoint) if binary == 'docker' else self.endpoint
 
         if local or endpoint == LOCAL:
@@ -88,8 +89,8 @@ class DockerCompose(Connector):
                 config.close()
                 env['DOCKER_CONFIG'] = tmp_dir_name
 
-            env['DOCKER_CLIENT_TIMEOUT'] = "300"
-            env['COMPOSE_HTTP_TIMEOUT'] = "300"
+            env['DOCKER_CLIENT_TIMEOUT'] = self.DEFAULT_DOCKER_TIMEOUT
+            env['COMPOSE_HTTP_TIMEOUT'] = self.DEFAULT_DOCKER_TIMEOUT
 
             cmd_pull = self.build_cmd_line(
                 ['-p', project_name, '-f', compose_file_path, 'pull'])
@@ -293,7 +294,7 @@ class DockerCompose(Connector):
             compose_file.write(docker_compose)
             compose_file.close()
 
-            cmd = ["docker-compose", "-f", compose_file_path, "config", "-q"]
+            cmd = ["docker compose", "-f", compose_file_path, "config", "-q"]
             result = execute_cmd(cmd, env=env).stdout
 
         return result
