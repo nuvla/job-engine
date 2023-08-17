@@ -19,7 +19,7 @@ def instantiate_from_cimi(api_infrastructure_service, api_credential):
 
 
 class DockerCompose(Connector):
-    DEFAULT_DOCKER_TIMEOUT = "1800" # Default timeout for docker and docker-compose commands
+    _DEFAULT_DOCKER_TIMEOUT = "1800" # Default timeout for docker and docker-compose commands
 
     def __init__(self, **kwargs):
         super(DockerCompose, self).__init__(**kwargs)
@@ -48,7 +48,7 @@ class DockerCompose(Connector):
             self.key_file.close()
             self.key_file = None
 
-    def build_cmd_line(self, list_cmd, local=False, binary='docker compose'):
+    def build_cmd_line(self, list_cmd, local=False, binary='docker'):
         endpoint = remove_protocol_from_url(self.endpoint) if binary == 'docker' else self.endpoint
 
         if local or endpoint == LOCAL:
@@ -58,6 +58,9 @@ class DockerCompose(Connector):
                           '--tlscert', self.cert_file.name,
                           '--tlskey', self.key_file.name,
                           '--tlscacert', self.cert_file.name]
+
+        # Compose command needs to go after security and connectivity parameters in composeV2
+        list_cmd = ['compose'] + list_cmd
 
         return [binary] + remote_tls + list_cmd
 
@@ -89,8 +92,8 @@ class DockerCompose(Connector):
                 config.close()
                 env['DOCKER_CONFIG'] = tmp_dir_name
 
-            env['DOCKER_CLIENT_TIMEOUT'] = self.DEFAULT_DOCKER_TIMEOUT
-            env['COMPOSE_HTTP_TIMEOUT'] = self.DEFAULT_DOCKER_TIMEOUT
+            env['DOCKER_CLIENT_TIMEOUT'] = self._DEFAULT_DOCKER_TIMEOUT
+            env['COMPOSE_HTTP_TIMEOUT'] = self._DEFAULT_DOCKER_TIMEOUT
 
             cmd_pull = self.build_cmd_line(
                 ['-p', project_name, '-f', compose_file_path, 'pull'])
