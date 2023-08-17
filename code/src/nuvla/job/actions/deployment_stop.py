@@ -2,11 +2,14 @@
 
 import logging
 
-from ...connector import docker_service, docker_stack, \
-    docker_compose, kubernetes
+from ...connector import docker_service
 from nuvla.api import NuvlaError, ConnectionError
 from nuvla.api.resources import Deployment, Credential
-from .utils.deployment_utils import initialize_connector, DeploymentBase
+from .utils.deployment_utils import (DeploymentBase,
+                                     get_connector_class,
+                                     get_connector_name,
+                                     get_env,
+                                     initialize_connector)
 from ..util import override
 from ..actions import action
 
@@ -39,7 +42,8 @@ class DeploymentStopJob(DeploymentBase):
         if len(deployment_params) > 0:
             service_id = deployment_params[0].data.get('value')
             if service_id is not None:
-                connector.stop(service_id=service_id)
+                connector.stop(service_id=service_id,
+                               env=get_env(self.deployment))
             else:
                 self.job.set_status_message("Deployment parameter {} doesn't have a value!"
                                             .format(deployment_params[0].data.get('id')))
@@ -47,21 +51,14 @@ class DeploymentStopJob(DeploymentBase):
             self.job.set_status_message('No deployment parameters with service ID found!')
 
     def stop_application(self):
-        if Deployment.is_compatibility_docker_compose(self.deployment):
-            connector = initialize_connector(docker_compose, self.job, self.deployment)
-        else:
-            connector = initialize_connector(docker_stack, self.job, self.deployment)
+        env  = get_env(self.deployment.data)
+        name = Deployment.uuid(self.deployment)
+        connector_name  = get_connector_name(self.deployment)
+        connector_class = get_connector_class(connector_name)
+        connector = initialize_connector(connector_class, self.job, self.deployment)
+        docker_compose = Deployment.module_content(self.deployment)['docker-compose']
 
-        result = connector.stop(stack_name=Deployment.uuid(self.deployment),
-                                docker_compose=Deployment.module_content(self.deployment)[
-                                    'docker-compose'])
-
-        self.job.set_status_message(result)
-
-    def stop_application_kubernetes(self):
-        connector = initialize_connector(kubernetes, self.job, self.deployment)
-
-        result = connector.stop(stack_name=Deployment.uuid(self.deployment))
+        result = connector.stop(name=name, env=env, docker_compose=docker_compose)
 
         self.job.set_status_message(result)
 
@@ -69,10 +66,8 @@ class DeploymentStopJob(DeploymentBase):
     def handle_deployment(self):
         if Deployment.is_component(self.deployment):
             self.stop_component()
-        elif Deployment.is_application(self.deployment):
+        else:
             self.stop_application()
-        elif Deployment.is_application_kubernetes(self.deployment):
-            self.stop_application_kubernetes()
 
     def stop_deployment(self):
         log.info('Job started for {}.'.format(self.deployment_id))

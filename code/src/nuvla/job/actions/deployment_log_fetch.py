@@ -4,8 +4,11 @@ import logging
 from datetime import datetime
 from nuvla.api.resources import Deployment
 from ..actions import action
-from .utils.deployment_utils import get_connector_class, get_connector_name, \
-    initialize_connector, docker_stack
+from .utils.deployment_utils import (get_connector_class,
+                                     get_connector_name,
+                                     initialize_connector,
+                                     docker_stack,
+                                     get_env)
 from .utils.resource_log_fetch import ResourceLogFetchJob
 
 action_name = 'fetch_deployment_log'
@@ -45,7 +48,9 @@ class DeploymentLogFetchJob(ResourceLogFetchJob):
         return self.connector.log(
             component, since, lines,
             deployment_uuid=Deployment.uuid(self.deployment),
-            docker_compose=module_content['docker-compose'])
+            docker_compose=module_content['docker-compose'],
+            env=get_env(self.deployment.data)
+        )
 
     def get_docker_stack_log(self, component, since, lines):
         if self.connector_name == 'docker_service':

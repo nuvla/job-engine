@@ -40,6 +40,7 @@ class Connector(object):
     def connect(self):
         pass
 
+    @abstractmethod
     def clear_connection(self, connect_result):
         pass
 
@@ -63,17 +64,6 @@ class Connector(object):
         pass
 
     @abstractmethod
-    def extract_vm_id(self, vm):
-        pass
-
-    @abstractmethod
-    def extract_vm_ip(self, vm):
-        pass
-
-    @abstractmethod
-    def extract_vm_ports_mapping(self, vm):
-        pass
-
-    @abstractmethod
-    def extract_vm_state(self, vm):
+    @should_connect
+    def get_services(self, name, env, **kwargs):
         pass

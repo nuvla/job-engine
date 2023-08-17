@@ -66,7 +66,7 @@ class DeploymentStartJob(DeploymentBase):
         desired = 1
 
         deployment_parameters = (
-            (DeploymentParameter.SERVICE_ID, connector.extract_vm_id(service)),
+            (DeploymentParameter.SERVICE_ID, service['ID']),
             (DeploymentParameter.REPLICAS_DESIRED, str(desired)),
             (DeploymentParameter.REPLICAS_RUNNING, '0'),
             (DeploymentParameter.CURRENT_DESIRED, ''),
@@ -97,13 +97,11 @@ class DeploymentStartJob(DeploymentBase):
         connector_class  = get_connector_class(connector_name)
         connector        = initialize_connector(connector_class, self.job, deployment)
         module_content   = Deployment.module_content(deployment)
-        deployment_owner = Deployment.owner(deployment)
-        deployment_id    = Deployment.id(deployment)
         registries_auth  = self.private_registries_auth(deployment)
 
         result, services = connector.start(
+            name=Deployment.uuid(deployment),
             docker_compose=module_content['docker-compose'],
-            stack_name=Deployment.uuid(deployment),
             env=get_env(deployment),
             files=module_content.get('files'),
             registries_auth=registries_auth)
