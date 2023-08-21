@@ -1,17 +1,19 @@
 # -*- coding: utf-8 -*-
-import os
-import json
-from datetime import datetime
 import base64
+import json
 import logging
+import os
 import yaml
+
+from datetime import datetime
 from tempfile import TemporaryDirectory
 
 from ..job.job import Job
 from .connector import Connector, should_connect
-from .utils import execute_cmd, join_stderr_stdout, create_tmp_file, \
-    generate_registry_config, extract_host_from_url
-
+from .utils import (create_tmp_file,
+                    execute_cmd,
+                    generate_registry_config,
+                    join_stderr_stdout)
 
 log = logging.getLogger('kubernetes')
 
@@ -80,7 +82,7 @@ class Kubernetes(Connector):
                + list_cmd
 
     @staticmethod
-    def _create_deployment_context(directory_path, stack_name, docker_compose,
+    def _create_deployment_context(directory_path, namespace, docker_compose,
                                    files, registries_auth):
         manifest_file_path = directory_path + '/manifest.yml'
         with open(manifest_file_path, 'w') as manifest_file:
@@ -90,18 +92,18 @@ class Kubernetes(Connector):
         with open(namespace_file_path, 'w') as namespace_file:
             namespace_data = {'apiVersion': 'v1',
                               'kind': 'Namespace',
-                              'metadata': {'name': stack_name}}
+                              'metadata': {'name': namespace}}
             yaml.safe_dump(namespace_data, namespace_file, allow_unicode=True)
 
-        kustomization_data = {'namespace': stack_name,
+        kustomization_data = {'namespace': namespace,
                               'resources': ['manifest.yml', 'namespace.yml']}
 
         if files:
             for file_info in files:
                 file_path = directory_path + "/" + file_info['file-name']
-                file = open(file_path, 'w')
-                file.write(file_info['file-content'])
-                file.close()
+                f = open(file_path, 'w')
+                f.write(file_info['file-content'])
+                f.close()
 
         if registries_auth:
             config = generate_registry_config(registries_auth)
@@ -132,20 +134,21 @@ class Kubernetes(Connector):
     def start(self, **kwargs):
         # Mandatory kwargs
         env = kwargs['env']
-        docker_compose = kwargs['docker_compose']
+        files = kwargs['files']
+        manifest = kwargs['docker_compose']
+        namespace = kwargs['name']
+        registries_auth = kwargs['registries_auth']
+
         envsubst_shell_format = ' '.join(['${}'.format(k) for k in env.keys()])
         cmd = ['envsubst', envsubst_shell_format]
-        docker_compose_env_subs = execute_cmd(cmd,
-                                              env=env,
-                                              input=docker_compose).stdout
-        registries_auth = kwargs['registries_auth']
-        stack_name = kwargs['stack_name']
-        files = kwargs['files']
+        manifest_env_subs = execute_cmd(cmd,
+                                        env=env,
+                                        input=manifest).stdout
 
         with TemporaryDirectory() as tmp_dir_name:
             Kubernetes._create_deployment_context(tmp_dir_name,
-                                                  stack_name,
-                                                  docker_compose_env_subs,
+                                                  namespace,
+                                                  manifest_env_subs,
                                                   files,
                                                   registries_auth)
 
@@ -153,7 +156,7 @@ class Kubernetes(Connector):
 
             result = join_stderr_stdout(execute_cmd(cmd_deploy))
 
-            services = self._stack_services(stack_name)
+            services = self._get_services(namespace)
 
             return result, services
 
@@ -161,7 +164,7 @@ class Kubernetes(Connector):
 
     @should_connect
     def stop(self, **kwargs):
-        namespace = kwargs['stack_name']
+        namespace = kwargs['name']
 
         cmd_stop = self.build_cmd_line(['delete', 'namespace', namespace])
 
@@ -474,15 +477,15 @@ class Kubernetes(Connector):
                         external_port)
         return service_info
 
-    def _stack_services(self, stack_name):
+    def _get_services(self, namespace):
         cmd_services = self.build_cmd_line(['get', 'services', '--namespace',
-                                            stack_name, '-o', 'json'])
+                                            namespace, '-o', 'json'])
         kube_services = json.loads(execute_cmd(cmd_services).stdout).get(
             'items', [])
 
         cmd_deployments = self.build_cmd_line(
             ['get', 'deployments', '--namespace',
-             stack_name, '-o', 'json'])
+             namespace, '-o', 'json'])
         kube_deployments = json.loads(execute_cmd(cmd_deployments).stdout).get(
             'items', [])
 
@@ -498,8 +501,8 @@ class Kubernetes(Connector):
         return json.loads(version)
 
     @should_connect
-    def stack_services(self, stack_name):
-        return self._stack_services(stack_name)
+    def get_services(self, name, env, **kwargs):
+        return self._get_services(name)
 
     def extract_vm_id(self, vm):
         pass

@@ -157,18 +157,6 @@ class NuvlaBox(Connector):
 
         return True
 
-    def extract_vm_id(self, vm):
-        pass
-
-    def extract_vm_ip(self, services):
-        pass
-
-    def extract_vm_ports_mapping(self, vm):
-        pass
-
-    def extract_vm_state(self, vm):
-        pass
-
     def get_installer_image_names(self, nuvlaedge_version):
         repo = 'installer'
         old = ('nuvlabox', 'master')
