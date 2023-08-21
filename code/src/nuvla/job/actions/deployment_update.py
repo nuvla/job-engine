@@ -4,8 +4,12 @@ import logging
 
 from nuvla.api.resources import Deployment
 from ..actions import action
-from .utils.deployment_utils import get_connector_name, get_connector_class, \
-    initialize_connector, DeploymentBase, get_env, application_params_update
+from .utils.deployment_utils import (application_params_update,
+                                     DeploymentBase,
+                                     get_env,
+                                     get_connector_class,
+                                     get_connector_name,
+                                     initialize_connector)
 
 action_name = 'update_deployment'
 
@@ -20,7 +24,7 @@ class DeploymentUpdateJob(DeploymentBase):
         module_content = Deployment.module_content(deployment)
         restart_policy = module_content.get('restart-policy', {})
         module_ports   = module_content.get('ports')
-        kwargs = {'service_name'   : Deployment.uuid(deployment),
+        kwargs = {'name'           : Deployment.uuid(deployment),
                   'env'            : get_env(deployment),
                   'image'          : module_content['image'],
                   'mounts_opt'     : module_content.get('mounts'),
@@ -39,7 +43,7 @@ class DeploymentUpdateJob(DeploymentBase):
         module_content = Deployment.module_content(deployment)
         kwargs = {'env'            : get_env(deployment),
                   'files'          : module_content.get('files'),
-                  'stack_name'     : Deployment.uuid(deployment),
+                  'name'           : Deployment.uuid(deployment),
                   'docker_compose' : module_content['docker-compose'],
                   'registries_auth': registries_auth}
         return kwargs
