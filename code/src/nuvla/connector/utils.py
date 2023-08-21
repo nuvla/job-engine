@@ -16,6 +16,11 @@ log = logging.getLogger('connector_utils')
 LOCAL = 'local'
 
 
+def is_endpoint_local(endpoint):
+    is_local = isinstance(endpoint, str) and (endpoint.startswith('unix://') or endpoint == LOCAL)
+    return not endpoint or is_local
+
+
 def _time_rm_nanos(time_str):
     time1, time2 = time_str.rsplit('.', 1)
     return '.'.join([time1, time2[:6]])

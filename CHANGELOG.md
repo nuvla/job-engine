@@ -6,6 +6,27 @@
 
 ## Released
 
+## [3.5.1] - 2023-07-21
+
+- Updated nuvla-api from 3.0.8 to 3.0.9 to fix build issue with pyyaml and
+  cython
+- Distribution register usage record - Report for customer and subgroups
+- Distribution register usage record new deployments - Faster report for
+  customer and subgroups for new deployments
+
+## [3.5.0] - 2023-07-16
+
+### Changed
+
+- Kubernetes logs - refactored and improved Kubernetes logs retrival
+- Credential check action - handle properly local docker credentials
+
+## [3.4.2] - 2023-07-04
+
+### Changed
+
+- NuvlaEdge installer - fix NuvlaEdge credential environment variables
+
 ## [3.4.1] - 2023-07-04
 
 ### Changed
@@ -33,16 +54,16 @@
 ### Changed
 
 - Fix sonarcloud hotspots
-  - docker_machine.py: use https for portainer
-  - Dockerfile: enforce usage of HTTPS with curl
-  - nuvlabox.py: Fixed regex to filter ANSI Escape Sequences
-  - utils.py: replaced md5 by sha256 in unique_id function 
+- docker_machine.py: use https for portainer
+- Dockerfile: enforce usage of HTTPS with curl
+- nuvlabox.py: Fixed regex to filter ANSI Escape Sequences
+- utils.py: replaced md5 by sha256 in unique_id function
 - Dockerfile - modprobe script location changed
-- Use local docker socket for pull jobs 
+- Use local docker socket for pull jobs
 - Use local Kubernetes API endpoint for pull jobs
 - nuvlabox.py:
-  - get components with label "nuvlaedge" and not only with "nuvlabox"
-  - renamed some occurences of NuvlaBox to NuvlaEdge
+- get components with label "nuvlaedge" and not only with "nuvlabox"
+- renamed some occurences of NuvlaBox to NuvlaEdge
 - Updated containers base image to python:3.11-alpine3.18
 - Development version numbers compliant with PEP440 version schemes (.dev instead of -SNAPSHOT)
 

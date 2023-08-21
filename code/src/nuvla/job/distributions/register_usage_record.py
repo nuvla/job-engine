@@ -46,19 +46,6 @@ class RegisterUsageRecordJobsDistribution(DistributionBase):
             logging.error(f'Failed to search for subgroups: {ex}')
             return []
 
-    def deployments(self):
-        try:
-            return self.distributor.api.search(
-                'deployment',
-                filter=filter_and(["module/price != null",
-                                   "state = 'STARTED'",
-                                   "subscription-id != null"]),
-                select='id, module',
-                last=10000).resources
-        except Exception as ex:
-            logging.error(f'Failed to search for deployments: {ex}')
-            return []
-
     def job_exists(self, job):
         jobs = self.distributor.api.search(
             'job',
@@ -73,11 +60,9 @@ class RegisterUsageRecordJobsDistribution(DistributionBase):
     def job_generator(self):
         customers = self.customers()
         subgroups = self.subgroups(customers)
-        deployments = self.deployments()
         logging.info(f'Customers count: {len(customers)}')
         logging.info(f'Subgroups count: {len(subgroups)}')
-        logging.info(f'Deployments count: {len(deployments)}')
-        for resource in customers + subgroups + deployments:
+        for resource in customers + subgroups:
             job = {'action': self.DISTRIBUTION_NAME,
                    'target-resource': {'href': resource.id}}
             if self.job_exists(job):

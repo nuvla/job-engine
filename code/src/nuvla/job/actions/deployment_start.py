@@ -3,12 +3,16 @@
 import logging
 
 from ..util import override
-from nuvla.api.resources import Deployment, DeploymentParameter
-from ...connector import docker_service, docker_stack, \
-    docker_compose, kubernetes
+from ...connector import docker_service
 from ..actions import action
-from .utils.deployment_utils import initialize_connector, DeploymentBase, \
-    get_env, application_params_update
+from .utils.deployment_utils import (DeploymentBase,
+                                     get_connector_name,
+                                     get_connector_class,
+                                     initialize_connector,
+                                     get_env,
+                                     application_params_update)
+
+from nuvla.api.resources import Deployment, DeploymentParameter
 
 action_name = 'start_deployment'
 
@@ -62,8 +66,7 @@ class DeploymentStartJob(DeploymentBase):
         desired = 1
 
         deployment_parameters = (
-            (DeploymentParameter.SERVICE_ID, connector.extract_vm_id(service)),
-            (DeploymentParameter.HOSTNAME, self.get_hostname()),
+            (DeploymentParameter.SERVICE_ID, service['ID']),
             (DeploymentParameter.REPLICAS_DESIRED, str(desired)),
             (DeploymentParameter.REPLICAS_RUNNING, '0'),
             (DeploymentParameter.CURRENT_DESIRED, ''),
@@ -90,74 +93,33 @@ class DeploymentStartJob(DeploymentBase):
         self.api_dpl.update_port_parameters(deployment, ports_mapping)
 
     def start_application(self, deployment: dict):
-        deployment_id = Deployment.id(deployment)
-
-        if Deployment.is_compatibility_docker_compose(deployment):
-            connector = initialize_connector(docker_compose, self.job,
-                                             deployment)
-        else:
-            connector = initialize_connector(docker_stack, self.job, deployment)
-
-        module_content = Deployment.module_content(deployment)
-        deployment_owner = Deployment.owner(deployment)
-        registries_auth = self.private_registries_auth(deployment)
+        connector_name   = get_connector_name(deployment)
+        connector_class  = get_connector_class(connector_name)
+        connector        = initialize_connector(connector_class, self.job, deployment)
+        module_content   = Deployment.module_content(deployment)
+        registries_auth  = self.private_registries_auth(deployment)
 
         result, services = connector.start(
+            name=Deployment.uuid(deployment),
             docker_compose=module_content['docker-compose'],
-            stack_name=Deployment.uuid(
-                deployment),
-            env=get_env(deployment),
-            files=module_content.get('files'),
-            registries_auth=registries_auth)
-        self.job.set_status_message(result)
-
-        self.create_deployment_parameter(
-            deployment_id=deployment_id,
-            user_id=deployment_owner,
-            param_name=DeploymentParameter.HOSTNAME['name'],
-            param_value=self.get_hostname(),
-            param_description=DeploymentParameter.HOSTNAME['description'])
-
-        application_params_update(self.api_dpl, deployment, services)
-
-    def start_application_kubernetes(self, deployment: dict):
-        deployment_id = Deployment.id(deployment)
-
-        connector = initialize_connector(kubernetes, self.job, deployment)
-
-        module_content = Deployment.module_content(deployment)
-        deployment_owner = Deployment.owner(deployment)
-        registries_auth = self.private_registries_auth(deployment)
-
-        result, services = connector.start(
-            docker_compose=module_content['docker-compose'],
-            stack_name=Deployment.uuid(deployment),
             env=get_env(deployment),
             files=module_content.get('files'),
             registries_auth=registries_auth)
 
         self.job.set_status_message(result)
-
-        self.create_deployment_parameter(
-            deployment_id=deployment_id,
-            user_id=deployment_owner,
-            param_name=DeploymentParameter.HOSTNAME['name'],
-            param_value=self.get_hostname(),
-            param_description=DeploymentParameter.HOSTNAME['description'])
 
         application_params_update(self.api_dpl, deployment, services)
 
     @override
     def handle_deployment(self):
         deployment = self.deployment.data
+
+        self.create_user_output_params(deployment, log)
+
         if Deployment.is_component(self.deployment):
             self.start_component(deployment)
-        elif Deployment.is_application(self.deployment):
+        else:
             self.start_application(deployment)
-        elif Deployment.is_application_kubernetes(self.deployment):
-            self.start_application_kubernetes(deployment)
-
-        self.create_user_output_params(deployment)
 
     def start_deployment(self):
 

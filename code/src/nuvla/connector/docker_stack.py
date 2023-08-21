@@ -3,8 +3,11 @@ import json
 import logging
 from datetime import datetime
 from tempfile import TemporaryDirectory
-from .utils import execute_cmd, join_stderr_stdout, create_tmp_file, \
-    generate_registry_config, extract_host_from_url, LOCAL
+from .utils import (create_tmp_file,
+                    execute_cmd,
+                    generate_registry_config,
+                    join_stderr_stdout,
+                    LOCAL)
 from .connector import Connector, should_connect
 
 log = logging.getLogger('docker_stack')
@@ -60,7 +63,7 @@ class DockerStack(Connector):
     def start(self, **kwargs):
         # Mandatory kwargs
         docker_compose = kwargs['docker_compose']
-        stack_name = kwargs['stack_name']
+        stack_name = kwargs['name']
         env = kwargs['env']
         files = kwargs['files']
         registries_auth = kwargs['registries_auth']
@@ -98,7 +101,7 @@ class DockerStack(Connector):
     @should_connect
     def stop(self, **kwargs):
         # Mandatory kwargs
-        stack_name = kwargs['stack_name']
+        stack_name = kwargs['name']
 
         cmd = self.build_cmd_line(['stack', 'rm', stack_name])
         return join_stderr_stdout(execute_cmd(cmd))
@@ -185,8 +188,8 @@ class DockerStack(Connector):
         return services
 
     @should_connect
-    def stack_services(self, stack_name):
-        return self._stack_services(stack_name)
+    def get_services(self, name, **kwargs):
+        return self._stack_services(name)
 
     @should_connect
     def info(self):
@@ -196,18 +199,6 @@ class DockerStack(Connector):
         if len(server_errors) > 0:
             raise Exception(server_errors[0])
         return info
-
-    def extract_vm_id(self, vm):
-        pass
-
-    def extract_vm_ip(self, services):
-        return extract_host_from_url(self.endpoint)
-
-    def extract_vm_ports_mapping(self, vm):
-        pass
-
-    def extract_vm_state(self, vm):
-        pass
 
     @staticmethod
     def registry_login(**kwargs):

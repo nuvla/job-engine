@@ -2,7 +2,7 @@
 
 import logging
 
-from ...connector import docker_stack, kubernetes
+from ...connector import docker_stack, kubernetes, utils
 from ..actions import action
 
 action_name = 'credential_check'
@@ -107,16 +107,22 @@ class CredentialCheck(object):
         self.api = job.api
 
     def check_coe_swarm(self, credential, infra_service):
-
         connector = docker_stack.instantiate_from_cimi(infra_service, credential)
         info = connector.info()
         self.job.set_status_message(info)
         return info
 
-    def check_coe_swarm_and_set_infra_attributes(self, credential, infra_service):
+    def check_coe_swarm_and_set_infra_attributes(self, credential, infra_service, is_in_pull_mode=None):
         infra_online = None
         swarm_enabled = None
         swarm_manager = None
+
+        if is_in_pull_mode == False:
+            endpoint = infra_service.get('endpoint', '')
+            if utils.is_endpoint_local(endpoint):
+                self.update_credential_last_check(credential["id"], 'UNKNOWN')
+                raise Exception('Endpoint is local, cannot check credential, only "pull" mode can be used.')
+
         try:
             info = self.check_coe_swarm(credential, infra_service)
             infra_online = True
@@ -187,7 +193,7 @@ class CredentialCheck(object):
 
         try:
             if infra_service_subtype == 'swarm':
-                self.check_coe_swarm_and_set_infra_attributes(credential, infra_service)
+                self.check_coe_swarm_and_set_infra_attributes(credential, infra_service, self.job.is_in_pull_mode)
             elif infra_service_subtype == 'kubernetes':
                 self.check_coe_k8s_and_set_infra_attributes(credential, infra_service)
             elif infra_service_subtype == 'registry':

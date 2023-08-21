@@ -126,7 +126,7 @@ class DockerService(Connector):
         image = kwargs['image']
 
         # Optional kwargs
-        service_name = kwargs.get('service_name')
+        service_name = kwargs.get('name')
         env = kwargs.get('env')
         mounts_opt = kwargs.get('mounts_opt', [])
         ports_opt = kwargs.get('ports_opt', [])
@@ -374,15 +374,6 @@ class DockerService(Connector):
 
     def nodes_list_active(self):
         return self.nodes_list(availability='active')
-
-    def extract_vm_id(self, vm):
-        return vm['ID']
-
-    def extract_vm_ip(self, vm):
-        return extract_host_from_url(self.endpoint)
-
-    def extract_vm_state(self, vm):
-        return 'running'
 
     def extract_vm_ports_mapping(self, vm):
         published_ports_list = [":".join([str(pp.get("Protocol")),

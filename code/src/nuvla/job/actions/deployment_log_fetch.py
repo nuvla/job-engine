@@ -4,8 +4,11 @@ import logging
 from datetime import datetime
 from nuvla.api.resources import Deployment
 from ..actions import action
-from .utils.deployment_utils import get_connector_class, get_connector_name, \
-    initialize_connector, docker_stack
+from .utils.deployment_utils import (get_connector_class,
+                                     get_connector_name,
+                                     initialize_connector,
+                                     docker_stack,
+                                     get_env)
 from .utils.resource_log_fetch import ResourceLogFetchJob
 
 action_name = 'fetch_deployment_log'
@@ -18,7 +21,7 @@ class DeploymentLogFetchJob(ResourceLogFetchJob):
         super().__init__(executor, job)
         self.api_dpl = Deployment(self.api)
         self.deployment = self.api_dpl.get(self.resource_log_parent)
-        self.connector_name = get_connector_name(self.deployment)
+        self._connector_name = None
 
     @property
     def connector(self):
@@ -30,6 +33,12 @@ class DeploymentLogFetchJob(ResourceLogFetchJob):
             self._connector = initialize_connector(connector_class, self.job, self.deployment)
         return self._connector
 
+    @property
+    def connector_name(self):
+        if not self._connector_name:
+            self._connector_name = get_connector_name(self.deployment)
+        return self._connector_name
+
     def get_kubernetes_log(self, component, since, lines):
         return self.connector.log(component, since, lines,
                                   namespace=Deployment.uuid(self.deployment))
@@ -39,7 +48,9 @@ class DeploymentLogFetchJob(ResourceLogFetchJob):
         return self.connector.log(
             component, since, lines,
             deployment_uuid=Deployment.uuid(self.deployment),
-            docker_compose=module_content['docker-compose'])
+            docker_compose=module_content['docker-compose'],
+            env=get_env(self.deployment.data)
+        )
 
     def get_docker_stack_log(self, component, since, lines):
         if self.connector_name == 'docker_service':

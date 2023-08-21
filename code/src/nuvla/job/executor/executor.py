@@ -7,7 +7,8 @@ from requests.adapters import HTTPAdapter
 
 from ..actions import get_action, ActionNotImplemented
 from ..base import Base
-from ..job import Job, JobUpdateError
+from ..job import Job, JobUpdateError, \
+    JOB_FAILED, JOB_SUCCESS, JOB_QUEUED, JOB_RUNNING
 from ..util import override, retry_kazoo_queue_op, status_message_from_exception
 
 CONNECTION_POOL_SIZE = 4
@@ -66,7 +67,7 @@ class Executor(Base):
 
             try:
                 action_instance = self._get_action_instance(job)
-                job.set_state('RUNNING')
+                job.set_state(JOB_RUNNING)
                 return_code = action_instance.do_work()
             except ActionNotImplemented as e:
                 logging.error('Action "{}" not implemented'.format(str(e)))
@@ -74,7 +75,7 @@ class Executor(Base):
                 # to be filled with not implemented actions
                 msg = f'Not implemented action {job.id}'
                 status_message = '{}: {}'.format(msg, str(e))
-                job.update_job(state='FAILED', status_message=status_message)
+                job.update_job(state=JOB_FAILED, status_message=status_message)
             except JobUpdateError as e:
                 logging.error('{} update error: {}'.format(job.id, str(e)))
             except Exception:
@@ -82,15 +83,15 @@ class Executor(Base):
                 if job.get('execution-mode', '').lower() == 'mixed':
                     status_message = 'Re-running job in pull mode after failed first attempt: ' \
                                      f'{status_message}'
-                    job._edit_job_multi({'state': 'QUEUED',
+                    job._edit_job_multi({'state': JOB_QUEUED,
                                          'status-message': status_message,
                                          'execution-mode': 'pull'})
                     retry_kazoo_queue_op(job.queue, 'consume')
                 else:
-                    job.update_job(state='FAILED', status_message=status_message, return_code=1)
+                    job.update_job(state=JOB_FAILED, status_message=status_message, return_code=1)
                 logging.error(f'Failed to process {job.id}, with error: {status_message}')
             else:
-                state = 'SUCCESS' if return_code == 0 else 'FAILED'
+                state = JOB_SUCCESS if return_code == 0 else JOB_FAILED
                 job.update_job(state=state, return_code=return_code)
                 logging.info('Finished {} with return_code {}.'.format(job.id, return_code))
 
