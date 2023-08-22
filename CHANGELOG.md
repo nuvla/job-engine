@@ -6,6 +6,17 @@
 
 ## Released
 
+## [3.5.2] - 2023-08-22
+
+- Deployment set create - Resolve deployment set target
+- Deployment actions - Improved detection of local endpoint and take it into account
+- Deployment start - Create output parameters (from app) before starting the deployment
+- Deployment start and update -Improved creation, update and retrieval of "hostname" parameter
+- Deployment log fetch - Improve connector name retrieval through a property
+- Kubernetes test - Fix when executed on a machine not on UTC timezone
+- Docker compose - Give environment to all commands that might requires it
+- Connectors - Refactor connectors and deployment related job actions
+
 ## [3.5.1] - 2023-07-21
 
 - Updated nuvla-api from 3.0.8 to 3.0.9 to fix build issue with pyyaml and
