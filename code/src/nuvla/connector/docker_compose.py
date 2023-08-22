@@ -93,8 +93,8 @@ class DockerCompose(Connector):
                 config.close()
                 env['DOCKER_CONFIG'] = tmp_dir_name
 
-            env['DOCKER_CLIENT_TIMEOUT'] = self._DEFAULT_DOCKER_TIMEOUT
-            env['COMPOSE_HTTP_TIMEOUT'] = self._DEFAULT_DOCKER_TIMEOUT
+            env['DOCKER_CLIENT_TIMEOUT'] = kwargs.get('docker_timeout') or self._DEFAULT_DOCKER_TIMEOUT
+            env['COMPOSE_HTTP_TIMEOUT'] = kwargs.get('docker_timeout') or self._DEFAULT_DOCKER_TIMEOUT
 
             cmd_pull = self.build_cmd_line(
                 ['-p', project_name, '-f', compose_file_path, 'pull'])
