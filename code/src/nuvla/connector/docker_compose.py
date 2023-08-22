@@ -10,6 +10,7 @@ from .connector import Connector, should_connect
 
 log = logging.getLogger('docker_compose')
 
+docker_compose_filename = 'docker-compose.yaml'
 
 def instantiate_from_cimi(api_infrastructure_service, api_credential):
     return DockerCompose(
@@ -69,18 +70,18 @@ class DockerCompose(Connector):
             return execute_cmd(cmd, **kwargs)
         except Exception as e:
             error = self.sanitize_command_output(str(e))
-            raise Exception(error)
+            raise RuntimeError(error)
 
     @should_connect
     def start(self, **kwargs):
         # Mandatory kwargs
         docker_compose = kwargs['docker_compose']
-        project_name = kwargs['stack_name']
+        project_name = kwargs['name']
         env = kwargs['env']
         registries_auth = kwargs['registries_auth']
 
         with TemporaryDirectory() as tmp_dir_name:
-            compose_file_path = tmp_dir_name + "/docker-compose.yaml"
+            compose_file_path = f'{tmp_dir_name}/{docker_compose_filename}'
             compose_file = open(compose_file_path, 'w')
             compose_file.write(docker_compose)
             compose_file.close()
@@ -117,25 +118,26 @@ class DockerCompose(Connector):
                     env=env,
                     timeout=int(env['DOCKER_CLIENT_TIMEOUT'])))
 
-            services = self._stack_services(project_name, compose_file_path)
+            services = self._get_services(project_name, compose_file_path, env)
 
             return result, services
 
     @should_connect
     def stop(self, **kwargs):
         # Mandatory kwargs
-        project_name = kwargs['stack_name']
+        project_name = kwargs['name']
         docker_compose = kwargs['docker_compose']
+        env = kwargs.get('env')
 
         with TemporaryDirectory() as tmp_dir_name:
-            compose_file_path = tmp_dir_name + "/docker-compose.yaml"
+            compose_file_path = f'{tmp_dir_name}/{docker_compose_filename}'
             compose_file = open(compose_file_path, 'w')
             compose_file.write(docker_compose)
             compose_file.close()
 
             cmd = self.build_cmd_line(
                 ['-p', project_name, '-f', compose_file_path, 'down'])
-            return join_stderr_stdout(self._execute_clean_command(cmd))
+            return join_stderr_stdout(self._execute_clean_command(cmd, env=env))
 
     update = start
 
@@ -144,17 +146,18 @@ class DockerCompose(Connector):
         pass
 
     @should_connect
-    def log(self, component: str, since: datetime, lines: int,
-            **kwargs) -> str:
+    def log(self, component: str, since: datetime, lines: int, **kwargs) -> str:
         deployment_uuid = kwargs['deployment_uuid']
         docker_compose = kwargs['docker_compose']
+        env = kwargs.get('env')
+
         with TemporaryDirectory() as tmp_dir_name:
-            compose_file_path = tmp_dir_name + "/docker-compose.yaml"
+            compose_file_path = f'{tmp_dir_name}/{docker_compose_filename}'
             compose_file = open(compose_file_path, 'w')
             compose_file.write(docker_compose)
             compose_file.close()
             service_id = self._get_service_id(deployment_uuid, component,
-                                              compose_file_path)
+                                              compose_file_path, env)
         if service_id:
             since_opt = ['--since', since.isoformat()] if since else []
             list_opts = ['-t', '--tail', str(lines)] + since_opt + [service_id]
@@ -170,11 +173,11 @@ class DockerCompose(Connector):
         except KeyError:
             return ''
 
-    def _get_service_id(self, project_name, service, docker_compose_path):
+    def _get_service_id(self, project_name, service, docker_compose_path, env):
         cmd = self.build_cmd_line(
             ['-p', project_name, '-f', docker_compose_path,
              'ps', '-q', service])
-        stdout = self._execute_clean_command(cmd).stdout
+        stdout = self._execute_clean_command(cmd, env=env).stdout
 
         return yaml.load(stdout, Loader=yaml.FullLoader)
 
@@ -185,15 +188,15 @@ class DockerCompose(Connector):
         except KeyError:
             return {}
 
-    def _get_container_inspect(self, service_id):
+    def _get_container_inspect(self, service_id, env):
         cmd = self.build_cmd_line(['inspect', service_id], binary='docker')
 
-        return json.loads(self._execute_clean_command(cmd).stdout)
+        return json.loads(self._execute_clean_command(cmd, env=env).stdout)
 
-    def _extract_service_info(self, project_name, service, docker_compose_path):
+    def _extract_service_info(self, project_name, service, docker_compose_path, env):
         service_id = self._get_service_id(project_name, service,
-                                          docker_compose_path)
-        inspection = self._get_container_inspect(service_id)
+                                          docker_compose_path, env)
+        inspection = self._get_container_inspect(service_id, env)
         service_info = {
             'image': self._get_image(inspection),
             'service-id': service_id,
@@ -224,26 +227,27 @@ class DockerCompose(Connector):
                       "InsecureRequestWarning" not in line]
         return '\n'.join(new_output)
 
-    def _stack_services(self, project_name, docker_compose_path):
+    def _get_services(self, project_name, docker_compose_path, env):
         cmd = self.build_cmd_line(
             ['-f', docker_compose_path, 'config', '--services'], local=True)
 
-        stdout = self._execute_clean_command(cmd).stdout
+        stdout = self._execute_clean_command(cmd, env=env).stdout
 
         services = [self._extract_service_info(project_name, service,
-                                               docker_compose_path)
+                                               docker_compose_path, env)
                     for service in stdout.splitlines()]
         return services
 
     @should_connect
-    def stack_services(self, stack_name, raw_compose_file):
+    def get_services(self, name, env, **kwargs):
+        compose_file_content = kwargs['compose_file']
         with TemporaryDirectory() as tmp_dir_name:
-            compose_file_path = tmp_dir_name + "/docker-compose.yaml"
+            compose_file_path = f'{tmp_dir_name}/{docker_compose_filename}'
             compose_file = open(compose_file_path, 'w')
-            compose_file.write(raw_compose_file)
+            compose_file.write(compose_file_content)
             compose_file.close()
 
-            return self._stack_services(stack_name, compose_file_path)
+            return self._get_services(name, compose_file_path, env)
 
     @should_connect
     def info(self):
@@ -255,18 +259,6 @@ class DockerCompose(Connector):
         if len(server_errors) > 0:
             raise Exception(server_errors[0])
         return info
-
-    def extract_vm_id(self, vm):
-        pass
-
-    def extract_vm_ip(self, services):
-        return extract_host_from_url(self.endpoint)
-
-    def extract_vm_ports_mapping(self, vm):
-        pass
-
-    def extract_vm_state(self, vm):
-        pass
 
     @staticmethod
     def registry_login(**kwargs):
@@ -292,7 +284,7 @@ class DockerCompose(Connector):
         env = kwargs['env']
 
         with TemporaryDirectory() as tmp_dir_name:
-            compose_file_path = tmp_dir_name + "/docker-compose.yaml"
+            compose_file_path = f'{tmp_dir_name}/{docker_compose_filename}'
             compose_file = open(compose_file_path, 'w')
             compose_file.write(docker_compose)
             compose_file.close()

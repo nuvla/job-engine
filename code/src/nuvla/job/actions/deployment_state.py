@@ -6,8 +6,12 @@ from ...connector import docker_service, docker_stack, \
     docker_compose, kubernetes
 from nuvla.api.resources import Deployment, DeploymentParameter
 from nuvla.api.util.date import utcnow, nuvla_date
-from .utils.deployment_utils import initialize_connector, DeploymentBase, \
-    application_params_update
+from .utils.deployment_utils import (initialize_connector,
+                                     DeploymentBase,
+                                     application_params_update,
+                                     get_connector_name,
+                                     get_connector_class,
+                                     get_env)
 from ..actions import action
 
 action_name = 'deployment_state'
@@ -125,26 +129,18 @@ class DeploymentStateJob(DeploymentBase):
             self.api_dpl.update_port_parameters(self.deployment, ports_mapping)
 
     def get_application_state(self):
-        stack_name = Deployment.uuid(self.deployment)
+        kwargs = {}
+        env  = get_env(self.deployment.data)
+        name = Deployment.uuid(self.deployment)
+        connector_name  = get_connector_name(self.deployment)
+        connector_class = get_connector_class(connector_name)
+        connector = initialize_connector(connector_class, self.job, self.deployment)
 
         if Deployment.is_compatibility_docker_compose(self.deployment):
-            module_content = Deployment.module_content(self.deployment)
-            compose_file = module_content['docker-compose']
-            connector = initialize_connector(docker_compose,
-                                             self.job, self.deployment)
-            services = connector.stack_services(stack_name, compose_file)
-        else:
-            connector = initialize_connector(docker_stack, self.job,
-                                             self.deployment)
-            services = connector.stack_services(stack_name)
+            kwargs['compose_file'] = Deployment.module_content(self.deployment)['docker-compose']
 
-        application_params_update(self.api_dpl, self.deployment, services)
+        services = connector.get_services(name, env, **kwargs)
 
-    def get_application_kubernetes_state(self):
-        connector = initialize_connector(kubernetes, self.job,
-                                         self.deployment)
-        stack_name = Deployment.uuid(self.deployment)
-        services = connector.stack_services(stack_name)
         application_params_update(self.api_dpl, self.deployment, services)
 
     def do_work(self):
@@ -154,10 +150,8 @@ class DeploymentStateJob(DeploymentBase):
         try:
             if Deployment.is_component(self.deployment):
                 self.get_component_state()
-            elif Deployment.is_application(self.deployment):
+            else:
                 self.get_application_state()
-            elif Deployment.is_application_kubernetes(self.deployment):
-                self.get_application_kubernetes_state()
         except Exception as ex:
             log.error('Failed to {0} {1}: {2}'.format(self.job['action'],
                                                       self.deployment_id, ex))

@@ -32,7 +32,7 @@ class TestKubernetesLogs(unittest.TestCase):
         k8s = Kubernetes(ca='ca', cert='cert', key='key', endpoint='endpoint')
         res = k8s.log('a/b', datetime.now(), 0)
         assert isinstance(res, str)
-        ts = datetime.now().strftime(Kubernetes.TIMESTAMP_FMT_UTC)
+        ts = datetime.utcnow().strftime(Kubernetes.TIMESTAMP_FMT_UTC)
         assert res.startswith(ts.split('T')[0])
 
 
