@@ -39,7 +39,7 @@ class NuvlaBox(Connector):
         self.nuvlabox_api.headers = {'Content-Type': 'application/json',
                                      'Accept': 'application/json'}
 
-        self.nuvlabox_id = self.job.nuvlaedge_id
+        self.nuvlabox_id = kwargs.get("nuvlabox_id")
         self.nuvlabox_resource = None
         self.nuvlabox = None
         self.nuvlabox_status = None

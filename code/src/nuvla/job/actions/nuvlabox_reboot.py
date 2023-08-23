@@ -17,7 +17,7 @@ class NBRebootJob(object):
 
     def reboot(self):
 
-        logging.debug('Rebooting NuvlaEdge %s', self.job.nuvlaedge_id)
+        # logging.debug('Rebooting NuvlaEdge %s', self.job.nuvlaedge_id)
 
         if os.getenv('KUBERNETES_SERVICE_HOST'):
             ret = self._reboot_k8s()
