@@ -1,0 +1,9 @@
+.DS_Store
+*.pyo
+*.pyc
+*.egg-info/
+*.iml
+.idea
+venv*
+target
+versions.sh

@@ -96,7 +96,6 @@
               <goal>exec</goal>
             </goals>
             <configuration>
-              <!-- executable>/Users/jwhite/Library/Python/3.9/bin/pytest</executable -->
               <executable>pytest</executable>
               <arguments>
                 <argument>--junitxml=test-report.xml</argument>

@@ -10,14 +10,20 @@ from ...connector.kubernetes import K8sSSHKey
 
 @action('nuvlabox_add_ssh_key', True)
 class NBAddSSHKey(object):
-    '''Doc string'''
+    """
+    Class to add SSH key to nuvlabox
+    """
 
     def __init__(self, _, job):
         self.job = job
         self.api = job.api
 
     def add_ssh_key(self):
-        '''Here'''
+        """
+        Function to handle the adding ssh key to nuvlabox
+        
+        Used for kubernetes or docker
+        """
         nuvlabox_id = self.job['target-resource']['href']
         logging.debug('Adding SSH key to NuvlaBox %s', nuvlabox_id)
         affected_resources = self.job['affected-resources']
@@ -60,10 +66,14 @@ class NBAddSSHKey(object):
         return 0
 
     def _sanitize_ssh_key(self, public_key):
-        '''Doc string''' 
+        """
+        function to check that the ssh key string is valid
+        
+        argument:
+        public_key: the public key as a string
+        """
         logging.debug("Checking ssh public key %s ",public_key)
         return re.match(r'^ssh-\w+\s+\S+(\s+\S+)?$', public_key)
 
     def do_work(self):
-        '''Doc string'''
         return self.add_ssh_key()

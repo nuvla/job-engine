@@ -223,6 +223,7 @@
               <repository>docker.io/${docker-organization}/job-lite</repository>
               <tag>${docker-tag}</tag>
               <executable>${basedir}/container-push.sh</executable>
+              <!-- DOCKER_USERNAME and DOCKER_PASSWORD must be set externally. -->
               <environmentVariables>
                 <DOCKER_ORG>${docker-organization}</DOCKER_ORG>
                 <DOCKER_IMAGE>job-lite</DOCKER_IMAGE>

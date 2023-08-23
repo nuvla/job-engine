@@ -36,7 +36,6 @@ class Kubernetes(Connector):
 
     def __init__(self, **kwargs):
         super(Kubernetes, self).__init__(**kwargs)
-        '''doc string'''
         # Mandatory kwargs
         self.ca = self.kwargs['ca']
         self.cert = self.kwargs['cert']
@@ -69,7 +68,11 @@ class Kubernetes(Connector):
             self.key_file = None
 
     def build_cmd_line(self, list_cmd):
-        '''Doc string'''
+        '''Build the kubectl command line
+
+           arguments:
+           list_cmd: a list containing the kubectl command line and arguments
+        '''
         return ['kubectl', '-s', self.endpoint,
                 '--client-certificate', self.cert_file.name,
                 '--client-key', self.key_file.name,
@@ -510,7 +513,9 @@ class Kubernetes(Connector):
 
 
 class K8sSSHKey(Kubernetes):
-    '''Here'''
+    '''
+    Class to handle SSH keys. Adding and revoking
+    '''
     # def __init__(self, job):
     def __init__(self, **kwargs):
 
@@ -540,11 +545,11 @@ class K8sSSHKey(Kubernetes):
     def k8s_ssh_key(self, action, pubkey, user_home):
         '''Doc string'''
 
-        log.debug('We have CA file %s ', self.ca)
-        log.debug('We have certificate file %s ', self.cert)
-        log.debug('We have key file %s ', self.key)
-        log.debug('We have endpoint %s ', self.endpoint)
-        log.debug('We have user home directory %s ', user_home)
+        log.debug('CA file %s ', self.ca)
+        log.debug('User certificate file %s ', self.cert)
+        log.debug('User key file %s ', self.key)
+        log.debug('Endpoint %s ', self.endpoint)
+        log.debug('User home directory %s ', user_home)
 
         reboot_yaml_manifest = """
         apiVersion: batch/v1
@@ -611,7 +616,15 @@ class K8sSSHKey(Kubernetes):
         return ssh_key_result
 
     def handle_ssh_key(self, action, pubkey, credential_id, nuvlabox_id):
-        '''Doc string'''
+        """
+        General function to either add or revoke an SSH key from a nuvlabox 
+
+        Arguments:
+        action: value can be add or revoke
+        pubkey: the public key string to be added or revoked
+        credential_id: the nuvla ID of the credential
+        nuvlabox_id: the id UID of the nuvlabox
+        """
         nuvlabox_status = self.api.get("nuvlabox-status").data
         nuvlabox_resource = self.api.get(nuvlabox_id)
         nuvlabox = nuvlabox_resource.data
@@ -640,7 +653,14 @@ class K8sSSHKey(Kubernetes):
         return 2
 
     def update_results(self, credential_id, ssh_keys, action, nuvlabox_resource):
-        '''Update the server side nuvla.io list of credentials'''
+        """Update the server side nuvla.io list of credentials
+
+        Arguments:
+        credential_id: the nuvla ID of the credential
+        ssh_keys: the list of ssh keys for the nuvlabox
+        action: either add or revoke the ssh key
+        nuvlabox_resource: the nuvlabox resource ID
+        """
         logging.debug('Adding or deleting credential ID: %s',credential_id)
         if action.startswith('add'):
             update_payload = ssh_keys + [credential_id]
@@ -663,9 +683,12 @@ class K8sSSHKey(Kubernetes):
         return 1
 
     def _get_user_home(self, nuvlabox_status):
-        '''
+        """
         Get the user home directory
-        '''
+
+        Arguments:
+        nuvlabox_status: object containing the status of the nuvlabox
+        """
         user_home = nuvlabox_status.get('host-user-home')
         if not user_home:
             user_home = os.getenv('HOME')

@@ -10,7 +10,12 @@ from ...connector.kubernetes import K8sSSHKey
 
 @action('nuvlabox_revoke_ssh_key', True)
 class NBRevokeSSHKey(object):
-    '''Here'''
+    """
+    Function to handle the revoking an ssh key from a  nuvlabox
+        
+    Used for kubernetes or docker
+    """
+
     def __init__(self, _, job):
         self.job = job
         self.api = job.api
@@ -59,5 +64,4 @@ class NBRevokeSSHKey(object):
         return 0
 
     def do_work(self):
-        '''Doc string'''
         return self.revoke_ssh_key()
