@@ -53,6 +53,13 @@ class Kubernetes(Connector):
         self.cert_file = None
         self.key_file = None
 
+        self.ne_image_registry = os.getenv('NE_IMAGE_REGISTRY', '')
+        self.ne_image_org = os.getenv('NE_IMAGE_ORGANIZATION', 'sixsq')
+        self.ne_image_repo = os.getenv('NE_IMAGE_REPOSITORY', 'nuvlaedge')
+        self.ne_image_tag = os.getenv('NE_IMAGE_TAG', 'latest')
+        self.ne_image_name = os.getenv('NE_IMAGE_NAME', f'{self.ne_image_org}/{self.ne_image_repo}')
+        self.base_image = f'{self.ne_image_registry}{self.ne_image_name}:{self.ne_image_tag}'
+
     @property
     def connector_type(self):
         return 'Kubernetes-cli'
@@ -524,7 +531,7 @@ class K8sEdgeMgmt(Kubernetes):
             raise OperationNotAllowed(
                 'NuvlaEdge management actions are only supported in pull mode.')
 
-        # FIXME: This needs to be parametrised.
+        # FIXME: This needs to be parameterised.
         path = '/srv/nuvlaedge/shared'
         super(K8sEdgeMgmt, self).__init__(
             ca=open(f'{path}/ca.pem', encoding="utf8").read(),
@@ -534,6 +541,7 @@ class K8sEdgeMgmt(Kubernetes):
 
     @should_connect
     def reboot(self):
+        log.info('Using: \n%s\n',self.base_image)
         reboot_yaml_manifest = """
 apiVersion: batch/v1
 kind: Job
