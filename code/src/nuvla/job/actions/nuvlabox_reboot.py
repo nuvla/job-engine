@@ -17,7 +17,7 @@ class NBRebootJob(object):
 
     def reboot(self):
 
-        logging.info('Rebooting NuvlaEdge %s', self['target-resource']['href'])
+        logging.info('Rebooting NuvlaEdge %s', self.job['target-resource']['href'])
 
         if os.getenv('KUBERNETES_SERVICE_HOST'):
             logging.info('Found kubernetes installation.')
