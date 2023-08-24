@@ -17,11 +17,13 @@ class NBRebootJob(object):
 
     def reboot(self):
 
-        logging.debug('Rebooting NuvlaEdge %s', self.job.nuvlaedge_id)
+        # logging.info('Rebooting NuvlaEdge %s', self.job.nuvlaedge_id)
 
         if os.getenv('KUBERNETES_SERVICE_HOST'):
+            logging.info('Found kubernetes installation.')
             ret = self._reboot_k8s()
         else:
+            logging.info('Found docker installation.')
             ret = self._reboot_docker()
 
         logging.info(f'Reboot action called. Output: {ret}')
