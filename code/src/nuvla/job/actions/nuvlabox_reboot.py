@@ -17,7 +17,7 @@ class NBRebootJob(object):
 
     def reboot(self):
 
-        # logging.info('Rebooting NuvlaEdge %s', self.job.nuvlaedge_id)
+        logging.info('Rebooting NuvlaEdge %s', self['target-resource']['href'])
 
         if os.getenv('KUBERNETES_SERVICE_HOST'):
             logging.info('Found kubernetes installation.')
@@ -31,7 +31,8 @@ class NBRebootJob(object):
         return 0
 
     def _reboot_docker(self) -> str:
-        connector = NuvlaBox(api=self.api, job=self.job)
+        connector = NuvlaBox(api=self.api, \
+            nuvlabox_id=self.job['target-resource']['href'], job=self.job)
         return connector.reboot()
 
     def _reboot_k8s(self) -> str:
