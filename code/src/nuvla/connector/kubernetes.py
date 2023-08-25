@@ -541,37 +541,57 @@ class K8sEdgeMgmt(Kubernetes):
 
     @should_connect
     def reboot(self):
+        """
+        Function to generate the kubernetes reboot manifest and execute the job
+        """
         log.info('Using: \n%s\n',self.base_image)
         reboot_yaml_manifest = """
-apiVersion: batch/v1
-kind: Job
-metadata:
-  name: reboot
-spec:
-  ttlSecondsAfterFinished: 0
-  template:
-    spec:
-      containers:
-      - name: reboot
-        image: busybox
-        command: ['sh', '-c', 'sleep 10 && echo b > /sysrq']
-        volumeMounts:
-        - name: reboot-vol
-          mountPath: /sysrq
-      volumes:
-      - name: reboot-vol   
-        hostPath:
-          path: /proc/sysrq-trigger
-      restartPolicy: Never
-  backoffLimit: 0
-"""
+        apiVersion: batch/v1
+        kind: Job
+        metadata:
+          name: reboot
+        spec:
+          ttlSecondsAfterFinished: 0
+          template:
+            spec:
+              containers:
+              - name: {the_job_name}
+                image: {image_name}
+                command: {command}
+                volumeMounts:
+                - name: reboot-vol
+                  mountPath: /sysrq
+              volumes:
+              - name: reboot-vol   
+                hostPath:
+                  path: /proc/sysrq-trigger
+              restartPolicy: Never
+          backoffLimit: 0
+        """
+        image_name = self.base_image
+        the_job_name="reboot-nuvlaedge"
+
+        sleep_value = 10
+        
+        base_command = "['sh', '-c',"
+        cmd = "'sleep %s && echo b > /sysrq'"%(f'{sleep_value}')
+        end_command = " ]"
+        built_command = base_command + cmd + end_command
+        log.debug("The generated command is : %s",built_command)
+
+        formatted_reboot_yaml_manifest = \
+            reboot_yaml_manifest.format(the_job_name = the_job_name, \
+            command = built_command, \
+            image_name = image_name)
+
+        logging.debug("The re-formatted YAML is %s ", formatted_reboot_yaml_manifest)
+
         with TemporaryDirectory() as tmp_dir_name:
-
-            fpath = os.path.join(tmp_dir_name, 'reboot_job_manifest.yaml')
-            with open(fpath, 'w', encoding="utf-8") as fh:
-                fh.write(reboot_yaml_manifest)
-
-            cmd_reboot = self.build_cmd_line(['apply', '-f', fpath])
-            output = join_stderr_stdout(execute_cmd(cmd_reboot))
-
-            log.debug('Output from reboot Job: %s', output)
+            with open(tmp_dir_name + '/reboot_job_manifest.yaml', 'w',encoding="utf-8") \
+                as reboot_manifest_file:
+                reboot_manifest_file.write(formatted_reboot_yaml_manifest)
+            kubectl_cmd_reboot = \
+                self.build_cmd_line(['apply', '-f', tmp_dir_name + '/reboot_job_manifest.yaml'])
+            reboot_result = execute_cmd(reboot_manifest_file)
+            log.debug('The result of the ssh key addition : %s',reboot_result)
+        return reboot_result
