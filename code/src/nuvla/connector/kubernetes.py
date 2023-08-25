@@ -592,6 +592,6 @@ class K8sEdgeMgmt(Kubernetes):
                 reboot_manifest_file.write(formatted_reboot_yaml_manifest)
             kubectl_cmd_reboot = \
                 self.build_cmd_line(['apply', '-f', tmp_dir_name + '/reboot_job_manifest.yaml'])
-            reboot_result = execute_cmd(reboot_manifest_file)
+            reboot_result = execute_cmd(kubectl_cmd_reboot)
             log.debug('The result of the ssh key addition : %s',reboot_result)
         return reboot_result
