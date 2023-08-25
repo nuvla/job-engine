@@ -544,7 +544,7 @@ class K8sEdgeMgmt(Kubernetes):
         """
         Function to generate the kubernetes reboot manifest and execute the job
         """
-        log.info('Using: \n%s\n',self.base_image)
+        log.info('Using image: \n%s',self.base_image)
         reboot_yaml_manifest = """
         apiVersion: batch/v1
         kind: Job
@@ -572,7 +572,7 @@ class K8sEdgeMgmt(Kubernetes):
         the_job_name="reboot-nuvlaedge"
 
         sleep_value = 10
-        
+
         base_command = "['sh', '-c',"
         cmd = "'sleep %s && echo b > /sysrq'"%(f'{sleep_value}')
         end_command = " ]"
@@ -584,7 +584,7 @@ class K8sEdgeMgmt(Kubernetes):
             command = built_command, \
             image_name = image_name)
 
-        logging.debug("The re-formatted YAML is %s ", formatted_reboot_yaml_manifest)
+        logging.info("The re-formatted YAML is %s ", formatted_reboot_yaml_manifest)
 
         with TemporaryDirectory() as tmp_dir_name:
             with open(tmp_dir_name + '/reboot_job_manifest.yaml', 'w',encoding="utf-8") \
@@ -595,3 +595,4 @@ class K8sEdgeMgmt(Kubernetes):
             reboot_result = execute_cmd(kubectl_cmd_reboot)
             log.debug('The result of the ssh key addition : %s',reboot_result)
         return reboot_result
+    
