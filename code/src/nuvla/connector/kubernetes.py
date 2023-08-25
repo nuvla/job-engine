@@ -549,7 +549,7 @@ class K8sEdgeMgmt(Kubernetes):
         apiVersion: batch/v1
         kind: Job
         metadata:
-          name: reboot
+          name: {the_job_name}
         spec:
           ttlSecondsAfterFinished: 0
           template:
