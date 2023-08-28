@@ -581,7 +581,7 @@ class K8sEdgeMgmt(Kubernetes):
               backoffLimit: 0
         """
 
-        log.debug(f"The generated command is: {built_command}")
+        ## log.debug(f"The generated command is: {built_command}")
         log.debug(f"The re-formatted YAML is: \n{reboot_yaml_manifest}")
 
         with TemporaryDirectory() as tmp_dir_name:
@@ -591,7 +591,7 @@ class K8sEdgeMgmt(Kubernetes):
 
             cmd = ['apply', '-f', filename]
             kubectl_cmd_reboot = self.build_cmd_line(cmd)
-          
+
             reboot_result = execute_cmd(kubectl_cmd_reboot)
             log.debug(f'The result of the ssh key addition: {reboot_result}')
         return reboot_result
