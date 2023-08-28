@@ -544,11 +544,11 @@ class K8sEdgeMgmt(Kubernetes):
         """
         Function to generate the kubernetes reboot manifest and execute the job
         """
-        log.info('Using image: {self.base_image}')
+        log.info(f'Using image: {self.base_image}')
       
         sleep_value = 10
         image_name = self.base_image
-        the_job_name="reboot-nuvlaedge"
+        the_job_name = "reboot-nuvlaedge"
       
         cmd = f"sleep {sleep_value} && echo b > /sysrq"
         command = f"['sh', '-c', '{cmd}' ]"
@@ -577,18 +577,18 @@ class K8sEdgeMgmt(Kubernetes):
               backoffLimit: 0
         """
 
-        log.debug("The generated command is: {built_command}")
-        log.debug("The re-formatted YAML is: \n{reboot_yaml_manifest}")
+        log.debug(f"The generated command is: {built_command}")
+        log.debug(f"The re-formatted YAML is: \n{reboot_yaml_manifest}")
 
         with TemporaryDirectory() as tmp_dir_name:
             filename = f'{tmp_dir_name}/reboot_job_manifest.yaml'
             with open(filename, 'w', encoding="utf-8") as reboot_manifest_file:
                 reboot_manifest_file.write(reboot_yaml_manifest)
 
-            cmd = ['apply', '-f', tmp_dir_name + '/reboot_job_manifest.yaml']
+            cmd = ['apply', '-f', filename]
             kubectl_cmd_reboot = self.build_cmd_line(cmd)
           
             reboot_result = execute_cmd(kubectl_cmd_reboot)
-            log.debug('The result of the ssh key addition: {reboot_result}')
+            log.debug(f'The result of the ssh key addition: {reboot_result}')
         return reboot_result
     
