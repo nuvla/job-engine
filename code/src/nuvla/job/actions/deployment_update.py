@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-import os
 import logging
 
 from nuvla.api.resources import Deployment
@@ -45,8 +44,6 @@ class DeploymentUpdateJob(DeploymentBase):
                   'files'          : module_content.get('files'),
                   'name'           : Deployment.uuid(deployment),
                   'docker_compose' : module_content['docker-compose'],
-                  'docker_timeout' : os.getenv('NE_JOB_DOCKER_TIMEOUT'),
-                  'pull_timeout'   : os.getenv('NE_JOB_PULL_TIMEOUT'),
                   'registries_auth': registries_auth}
         return kwargs
 
