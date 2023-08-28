@@ -12,6 +12,7 @@ import requests
 
 from packaging.version import Version, InvalidVersion
 
+from ..job.job import Job
 from .connector import Connector, should_connect
 from .utils import create_tmp_file, timeout, remove_protocol_from_url
 
@@ -29,7 +30,7 @@ class NuvlaBox(Connector):
         super(NuvlaBox, self).__init__(**kwargs)
 
         self.api = kwargs.get("api")
-        self.job = kwargs.get("job")
+        self.job: Job = kwargs.get("job")
         self.ssl_file = None
         self.docker_client = None
         self.docker_api_endpoint = None
@@ -242,15 +243,18 @@ class NuvlaBox(Connector):
             self.job.set_progress(90)
         else:
             if self.job.get('execution-mode', '').lower() in ['mixed', 'push']:
-                err_msg = f'The management-api does not exist, so {action} must run asynchronously (pull mode)'
+                err_msg = f'The management-api does not exist, \
+                    so {action} must run asynchronously (pull mode)'
                 raise OperationNotAllowed(err_msg)
             # running in pull, thus the docker socket is being shared
             user_home = self.nuvlabox_status.get('host-user-home')
             if not user_home:
-                raise ValueError('Cannot manage SSH keys unless the parameter host-user-home is set')
+                raise ValueError \
+                    ('Cannot manage SSH keys unless the parameter host-user-home is set')
 
             if action.startswith('revoke'):
-                cmd = "-c 'grep -v \"${SSH_PUB}\" %s > /tmp/temp && mv /tmp/temp %s && echo Success'" \
+                cmd = "-c 'grep -v \"${SSH_PUB}\" %s > \
+                    /tmp/temp && mv /tmp/temp %s && echo Success'" \
                       % (f'/rootfs/{user_home}/.ssh/authorized_keys',
                          f'/rootfs/{user_home}/.ssh/authorized_keys')
             else:
@@ -258,7 +262,6 @@ class NuvlaBox(Connector):
                       % f'/rootfs/{user_home}/.ssh/authorized_keys'
 
             self.job.set_progress(90)
-
             r = docker.from_env().containers.run(
                 self.base_image,
                 remove=True,
@@ -285,16 +288,17 @@ class NuvlaBox(Connector):
 
     @should_connect
     def reboot(self):
-        self.job.set_progress(10)
-        if self.nb_api_endpoint:
-            action_endpoint = f'{self.nb_api_endpoint}/reboot'
 
-            r = self.mgmt_api_request(action_endpoint, 'POST', {}, None)
-            self.job.set_progress(90)
+        self.job.set_progress(10)
+
+        if self.nb_api_endpoint:
+            r = self.mgmt_api_request(f'{self.nb_api_endpoint}/reboot',
+                                      'POST', {}, None)
         else:
             if self.job.get('execution-mode', '').lower() in ['mixed', 'push']:
-                err_msg = 'The management-api does not exist, so "reboot" must run asynchronously (pull mode)'
-                raise OperationNotAllowed(err_msg)
+                raise OperationNotAllowed(
+                    'The management-api does not exist, so "reboot" must run '
+                    'asynchronously (pull mode)')
             # running in pull, thus the docker socket is being shared
             cmd = "-c 'sleep 10 && echo b > /sysrq'"
             docker.from_env().containers.run(
@@ -311,12 +315,15 @@ class NuvlaBox(Connector):
             )
             r = 'Reboot ongoing'
 
+        self.job.set_progress(90)
+
         return r
 
     @should_connect
     def start(self, **kwargs):
         """
-        This method is being kept as a generic Mgmt API function, for backward compatibility with NB v1
+        This method is being kept as a generic Mgmt API function, for backward
+        compatibility with NB v1.
 
         :param kwargs:
         :return:
