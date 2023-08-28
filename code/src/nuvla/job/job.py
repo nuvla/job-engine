@@ -265,6 +265,15 @@ class Job(dict):
                                 f'{authn_info["active-claim"]} '
                                 f'{" ".join(authn_info["claims"])}')
 
+    @property
+    def target_resource_href(self) -> str:
+        """
+        Returns a href to target-resource
+        
+        target-resource is not mandatory so this can fail with a KeyError
+        """
+        return self['target-resource']['href']
+
     def __setitem(self, key, value):
         dict.__setitem__(self, key, value)
 

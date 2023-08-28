@@ -9,14 +9,19 @@ import yaml
 from datetime import datetime
 from tempfile import TemporaryDirectory
 
+from ..job.job import Job
+from .connector import Connector, should_connect
 from .utils import (create_tmp_file,
                     execute_cmd,
                     generate_registry_config,
                     join_stderr_stdout)
-from .connector import Connector, should_connect
 
 
 log = logging.getLogger('kubernetes')
+
+
+class OperationNotAllowed(Exception):
+    pass
 
 
 def instantiate_from_cimi(api_infrastructure_service, api_credential):
@@ -26,12 +31,15 @@ def instantiate_from_cimi(api_infrastructure_service, api_credential):
         key=api_credential.get('key', '').replace("\\n", "\n"),
         endpoint=api_infrastructure_service.get('endpoint'))
 
+
 def get_kubernetes_local_endpoint():
     kubernetes_host = os.getenv('KUBERNETES_SERVICE_HOST')
     kubernetes_port = os.getenv('KUBERNETES_SERVICE_PORT')
     if kubernetes_host and kubernetes_port:
         return f'https://{kubernetes_host}:{kubernetes_port}'
     return ''
+
+
 class Kubernetes(Connector):
 
     def __init__(self, **kwargs):
@@ -45,6 +53,13 @@ class Kubernetes(Connector):
         self.ca_file = None
         self.cert_file = None
         self.key_file = None
+
+        self.ne_image_registry = os.getenv('NE_IMAGE_REGISTRY', '')
+        self.ne_image_org = os.getenv('NE_IMAGE_ORGANIZATION', 'sixsq')
+        self.ne_image_repo = os.getenv('NE_IMAGE_REPOSITORY', 'nuvlaedge')
+        self.ne_image_tag = os.getenv('NE_IMAGE_TAG', 'latest')
+        self.ne_image_name = os.getenv('NE_IMAGE_NAME', f'{self.ne_image_org}/{self.ne_image_repo}')
+        self.base_image = f'{self.ne_image_registry}{self.ne_image_name}:{self.ne_image_tag}'
 
     @property
     def connector_type(self):
@@ -510,6 +525,76 @@ class Kubernetes(Connector):
         # pass
         if payload:
             self.api.operation(self.nuvlabox_resource, "commission", data=payload)
+
+
+class K8sEdgeMgmt(Kubernetes):
+
+    def __init__(self, job: Job):
+
+        if not job.is_in_pull_mode:
+            raise OperationNotAllowed(
+                'NuvlaEdge management actions are only supported in pull mode.')
+
+        # FIXME: This needs to be parameterised.
+        path = '/srv/nuvlaedge/shared'
+        super(K8sEdgeMgmt, self).__init__(
+            ca=open(f'{path}/ca.pem', encoding="utf8").read(),
+            key=open(f'{path}/key.pem', encoding="utf8").read(),
+            cert=open(f'{path}/cert.pem', encoding="utf8").read(),
+            endpoint=get_kubernetes_local_endpoint())
+
+    @should_connect
+    def reboot(self):
+        """
+        Function to generate the kubernetes reboot manifest and execute the job
+        """
+        log.info(f'Using image: {self.base_image}')
+      
+        sleep_value = 10
+        image_name = self.base_image
+        the_job_name = "reboot-nuvlaedge"
+      
+        cmd = f"sleep {sleep_value} && echo b > /sysrq"
+        command = f"['sh', '-c', '{cmd}' ]"
+        
+        reboot_yaml_manifest = f"""
+            apiVersion: batch/v1
+            kind: Job
+            metadata:
+              name: {the_job_name}
+            spec:
+              ttlSecondsAfterFinished: 0
+              template:
+                spec:
+                  containers:
+                  - name: {the_job_name}
+                    image: {image_name}
+                    command: {command}
+                    volumeMounts:
+                    - name: reboot-vol
+                      mountPath: /sysrq
+                  volumes:
+                  - name: reboot-vol   
+                    hostPath:
+                      path: /proc/sysrq-trigger
+                  restartPolicy: Never
+              backoffLimit: 0
+        """
+
+        ## log.debug(f"The generated command is: {built_command}")
+        log.debug(f"The re-formatted YAML is: \n{reboot_yaml_manifest}")
+
+        with TemporaryDirectory() as tmp_dir_name:
+            filename = f'{tmp_dir_name}/reboot_job_manifest.yaml'
+            with open(filename, 'w', encoding="utf-8") as reboot_manifest_file:
+                reboot_manifest_file.write(reboot_yaml_manifest)
+
+            cmd = ['apply', '-f', filename]
+            kubectl_cmd_reboot = self.build_cmd_line(cmd)
+
+            reboot_result = execute_cmd(kubectl_cmd_reboot)
+            log.debug(f'The result of the ssh key addition: {reboot_result}')
+        return reboot_result
 
 
 class K8sSSHKey(Kubernetes):
