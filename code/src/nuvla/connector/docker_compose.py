@@ -118,7 +118,7 @@ class DockerCompose(Connector):
                     self._execute_clean_command(
                         cmd_pull,
                         env=env,
-                        timeout=int(env['DOCKER_CLIENT_TIMEOUT'])))
+                        timeout=int(pull_timeout)))
             except Exception as e:
                 result += str(e)
 
@@ -128,7 +128,7 @@ class DockerCompose(Connector):
                 self._execute_clean_command(
                     cmd_deploy,
                     env=env,
-                    timeout=int(env['DOCKER_CLIENT_TIMEOUT'])))
+                    timeout=int(docker_timeout)))
 
             services = self._get_services(project_name, compose_file_path, env)
 
