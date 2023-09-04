@@ -6,6 +6,12 @@
 
 ## Released
 
+## [3.6.0] - 2023-09-04
+
+- Update to Docker Compose V2 and timeouts definition via environment variables
+- Add the reboot function to NuvlaEdge Kubernetes
+- ssh key addition for Kubernetes NuvlaEdge
+
 ## [3.5.2] - 2023-08-22
 
 - Deployment set create - Resolve deployment set target
