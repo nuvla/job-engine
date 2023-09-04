@@ -87,8 +87,8 @@ class DockerCompose(Connector):
         env = kwargs['env']
         registries_auth = kwargs['registries_auth']
 
-        pull_timeout = os.getenv('NE_JOB_PULL_TIMEOUT') or DEFAULT_PULL_TIMEOUT
-        docker_timeout = os.getenv('NE_JOB_DOCKER_TIMEOUT') or DEFAULT_DOCKER_TIMEOUT
+        pull_timeout = os.getenv('JOB_PULL_TIMEOUT') or DEFAULT_PULL_TIMEOUT
+        docker_timeout = os.getenv('JOB_DOCKER_TIMEOUT') or DEFAULT_DOCKER_TIMEOUT
 
         with TemporaryDirectory() as tmp_dir_name:
             compose_file_path = f'{tmp_dir_name}/{docker_compose_filename}'
