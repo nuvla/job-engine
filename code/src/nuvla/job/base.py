@@ -2,6 +2,7 @@
 
 import argparse
 import logging
+import os
 import random
 import signal
 import threading
@@ -27,7 +28,10 @@ class Base(object):
         self.name = None
         self.statsd: StatsClient = None
 
-        self._init_logger()
+        arg_log_level = self.args.log_level
+        env_log_level = os.getenv('JOB_LOG_LEVEL')
+        log_level = env_log_level or arg_log_level
+        self._init_logger(log_level)
 
         signal.signal(signal.SIGTERM, Base.on_exit)
         signal.signal(signal.SIGINT, Base.on_exit)
@@ -66,25 +70,39 @@ class Base(object):
         parser.add_argument('--statsd', dest='statsd', metavar='STATSD',
                             default=None, help=f'StatsD server as host[:{STATSD_PORT}].')
 
+        parser.add_argument('-l', '--log-level', dest='log_level',
+                            choices=['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'],
+                            default='INFO', help='Log level')
+
+        parser.add_argument('-d', '--debug', dest='log_level',
+                            action='store_const', const='DEBUG',
+                            help='Set log level to debug')
+
         self._set_command_specific_options(parser)
 
         self.args = parser.parse_args()
 
     def _set_command_specific_options(self, parser):
-        """Optionnal command line arguments to be added by subclasses if needed"""
+        """Optional command line arguments to be added by subclasses if needed"""
         pass
 
     @staticmethod
-    def _init_logger():
+    def _init_logger(log_level=None):
         log_format_str = '%(asctime)s - %(levelname)s - %(filename)s:%(lineno)s - %(message)s'
         format_log = logging.Formatter(log_format_str)
         logger = logging.getLogger()
         logger.handlers[0].setFormatter(format_log)
         logger.setLevel(logging.INFO)
-        logging.getLogger('kazoo').setLevel(logging.WARN)
-        logging.getLogger('elasticsearch').setLevel(logging.WARN)
         logging.getLogger('nuvla').setLevel(logging.INFO)
+        logging.getLogger('kazoo').setLevel(logging.WARN)
         logging.getLogger('urllib3').setLevel(logging.WARN)
+        logging.getLogger('elasticsearch').setLevel(logging.WARN)
+
+        if log_level:
+            try:
+                logger.setLevel(log_level)
+            except Exception as e:
+                logging.error(f'Failed to set log level to "{log_level}": {e}')
 
     def publish_metric(self, name, value):
         if self.statsd:

@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-
 import logging
 
 from nuvla.api.resources import Deployment
@@ -75,7 +74,7 @@ class DeploymentUpdateJob(DeploymentBase):
             'kubernetes'    : self.get_update_params_kubernetes
         }[connector_name](deployment, registries_auth)
 
-        result, services = connector.update(**kwargs)
+        _, services = connector.update(**kwargs)
         self.job.set_progress(80)
 
         if connector_name == 'docker_service':
