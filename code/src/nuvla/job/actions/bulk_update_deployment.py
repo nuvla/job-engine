@@ -16,7 +16,8 @@ class DeploymentBulkUpdateJob(DeploymentBulkJob):
         if module_href:
             self.user_api.operation(deployment, 'fetch-module',
                                     {'module-href': module_href})
-        response = self.user_api.operation(deployment, 'update', {'low-priority': True})
+        response = self.user_api.operation(deployment, 'update', {'low-priority': True,
+                                                                  'parent-job': self.job.id})
         return response.data['location']
 
     def do_work(self):

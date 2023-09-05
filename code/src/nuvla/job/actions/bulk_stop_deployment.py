@@ -12,7 +12,9 @@ class DeploymentBulkStopJob(DeploymentBulkJob):
         super().__init__(_, job)
 
     def action_deployment(self, deployment):
-        response = self.user_api.operation(deployment, 'stop', {'low-priority': True})
+        response = self.user_api.operation(deployment, 'stop',
+                                           {'low-priority': True,
+                                            'parent-job': self.job.id})
         return response.data['location']
 
     def do_work(self):
