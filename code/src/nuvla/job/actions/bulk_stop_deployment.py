@@ -19,6 +19,6 @@ class DeploymentBulkStopJob(DeploymentBulkJob):
 
     def do_work(self):
         logging.info(f'Start bulk deployment stop {self.job.id}')
-        result = self.run('stop')
+        result = self.run()
         logging.info(f'End of bulk deployment stop {self.job.id}')
         return result

@@ -1,7 +1,5 @@
 # -*- coding: utf-8 -*-
 
-import logging
-import time
 import abc
 from .bulk import BulkJob
 
@@ -39,7 +37,7 @@ class DeploymentBulkJob(BulkJob):
                 self.result['bootstrap-exceptions'][deployment.id] = repr(ex)
                 self.result['FAILED'].append(deployment.id)
 
-    def run(self, action):
+    def run(self):
         # Job recovery support
         if self.job.get('progress', 0) > 0:
             self.reload_result()
@@ -49,13 +47,4 @@ class DeploymentBulkJob(BulkJob):
             self._call_sub_actions()
             self._push_result()
             self.job.set_progress(20)
-        self.monitored_jobs = self.job.get('nested-jobs', [])
-        self.progress_increment = len(self.monitored_jobs) / 80
-        while self.monitored_jobs:
-            time.sleep(5)
-            self._check_monitored_jobs()
-            logging.info(f'{self.log_message} {action} {self.job.id}: '
-                         f'{len(self.monitored_jobs)} jobs left')
-            self._push_result()
-            self._update_progress()
-        return 0
+        self.job.queue.consume()

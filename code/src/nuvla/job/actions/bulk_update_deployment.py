@@ -22,6 +22,6 @@ class DeploymentBulkUpdateJob(DeploymentBulkJob):
 
     def do_work(self):
         logging.info(f'Start bulk deployment update {self.job.id}')
-        result = self.run('update')
+        result = self.run()
         logging.info(f'End of bulk deployment update {self.job.id}')
         return result
