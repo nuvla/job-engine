@@ -19,9 +19,10 @@ JOB_SUCCESS = 'SUCCESS'
 JOB_QUEUED = 'QUEUED'
 JOB_RUNNING = 'RUNNING'
 JOB_FAILED = 'FAILED'
-JOB_CANCELED = 'CANCELED'
+JOB_STOPPING = 'STOPPING'
+JOB_STOPPED = 'STOPPED'
 
-STATES = (JOB_QUEUED, JOB_RUNNING, JOB_FAILED, JOB_SUCCESS, JOB_CANCELED)
+STATES = (JOB_QUEUED, JOB_RUNNING, JOB_FAILED, JOB_SUCCESS, JOB_STOPPING, JOB_STOPPED)
 
 
 def version_to_tuple(ver: str) -> tuple:
@@ -82,7 +83,6 @@ class Job(dict):
                     # could happen when updating job and cimi server is down!
                     # let job actions decide what to do with it.
                     log.warning('Newly retrieved {} in running state!'.format(self.id))
-                self.is_bulk = self._is_bulk()
         except NonexistentJobError as e:
             retry_kazoo_queue_op(self.queue, 'consume')
             log.warning('Newly retrieved {} does not exist in cimi; '.format(self.id) +
@@ -141,10 +141,7 @@ class Job(dict):
         raise NonexistentJobError(reason)
 
     def is_in_final_state(self):
-        return self.get('state') in (JOB_SUCCESS, JOB_FAILED, JOB_CANCELED)
-
-    def _is_bulk(self):
-        return self.get('action', '').startswith("bulk")
+        return self.get('state') in (JOB_SUCCESS, JOB_FAILED)
 
     def set_progress(self, progress):
         if not isinstance(progress, int):

@@ -33,11 +33,16 @@ class DeploymentBulkJob(BulkJob):
             self._push_result()
 
         for deployment in deployments.resources:
+            nested_job_id = None
             try:
-                self.action_deployment(deployment)
+                nested_job_id = self.action_deployment(deployment)
             except Exception as ex:
                 self.result['bootstrap-exceptions'][deployment.id] = repr(ex)
                 self.result['FAILED'].append(deployment.id)
+
+            if nested_job_id:
+                self.job.add_affected_resource(deployment.id)
+                self.job.add_nested_job(nested_job_id)
 
     def run(self, action):
         # Job recovery support

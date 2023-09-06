@@ -1,6 +1,5 @@
 import unittest
 from mock import Mock
-from unittest.mock import patch
 
 from nuvla.job import job
 from nuvla.api.models import CimiResource
@@ -96,13 +95,3 @@ class TestJob(unittest.TestCase):
         jb = job.Job(None, queue)
         job.retry_kazoo_queue_op.assert_called_once_with(queue, "release")
         assert jb.nothing_to_do is True
-
-    @patch.object(job.Job, 'get_cimi_job',
-                  side_effect=[CimiResource({'action': 'start'}),
-                               CimiResource({'action': 'bulk_start_deployment'})])
-    @patch.object(job.Job, '_job_version_check')
-    def test_is_bulk(self, _mock_job_version_check, _mock_get_cimi_job):
-        queue = Mock()
-        job.engine_version = '7.6.5'
-        assert job.Job(None, queue).is_bulk is False
-        assert job.Job(None, queue).is_bulk is True
