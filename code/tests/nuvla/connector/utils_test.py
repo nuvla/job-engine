@@ -2,8 +2,9 @@
 
 import unittest
 
-from nuvla.connector.utils import remove_protocol_from_url, \
-    extract_host_from_url
+from nuvla.connector.utils import (remove_protocol_from_url,
+                                   extract_host_from_url,
+                                   LOCAL)
 
 
 class TestConnectorUtils(unittest.TestCase):
@@ -20,6 +21,8 @@ class TestConnectorUtils(unittest.TestCase):
                              'https://localhost:786/a?param=a'))
         self.assertEqual('localhost',
                          remove_protocol_from_url('localhost'))
+        self.assertEqual(LOCAL,
+                         remove_protocol_from_url(LOCAL))
 
     def test_extract_host_from_url(self):
         self.assertEqual('localhost',

@@ -1,16 +1,27 @@
 # -*- coding: utf-8 -*-
 import json
-import yaml
 import logging
+import os
+import yaml
+
 from datetime import datetime
 from tempfile import TemporaryDirectory
-from .utils import execute_cmd, create_tmp_file, generate_registry_config, \
-    join_stderr_stdout, remove_protocol_from_url, extract_host_from_url, LOCAL
+
 from .connector import Connector, should_connect
+from .utils import (create_tmp_file,
+                    execute_cmd,
+                    generate_registry_config,
+                    join_stderr_stdout,
+                    LOCAL,
+                    remove_protocol_from_url)
 
 log = logging.getLogger('docker_compose')
 
 docker_compose_filename = 'docker-compose.yaml'
+
+DEFAULT_PULL_TIMEOUT = "1200"  # Default timeout for docker compose pull commands
+DEFAULT_DOCKER_TIMEOUT = "300"  # Default timeout for docker commands
+
 
 def instantiate_from_cimi(api_infrastructure_service, api_credential):
     return DockerCompose(
@@ -26,9 +37,11 @@ class DockerCompose(Connector):
 
         self.cert = kwargs.get('cert')
         self.key = kwargs.get('key')
-        self.endpoint = kwargs.get('endpoint', '') or LOCAL
         self.cert_file = None
         self.key_file = None
+
+        endpoint = kwargs.get('endpoint', '') or LOCAL
+        self.endpoint = remove_protocol_from_url(endpoint)
 
     @property
     def connector_type(self):
@@ -48,18 +61,16 @@ class DockerCompose(Connector):
             self.key_file.close()
             self.key_file = None
 
-    def build_cmd_line(self, list_cmd, local=False, binary='docker-compose'):
-        endpoint = remove_protocol_from_url(self.endpoint) if binary == 'docker' else self.endpoint
-
-        if local or endpoint == LOCAL:
+    def build_cmd_line(self, list_cmd, local=False, docker_command='compose'):
+        if local or self.endpoint == LOCAL:
             remote_tls = []
         else:
-            remote_tls = ['-H', endpoint, '--tls',
+            remote_tls = ['-H', self.endpoint, '--tls',
                           '--tlscert', self.cert_file.name,
                           '--tlskey', self.key_file.name,
                           '--tlscacert', self.cert_file.name]
 
-        return [binary] + remote_tls + list_cmd
+        return ['docker'] + remote_tls + [docker_command] + list_cmd
 
     def _execute_clean_command(self, cmd, **kwargs):
         try:
@@ -76,6 +87,9 @@ class DockerCompose(Connector):
         env = kwargs['env']
         registries_auth = kwargs['registries_auth']
 
+        pull_timeout = os.getenv('JOB_PULL_TIMEOUT') or DEFAULT_PULL_TIMEOUT
+        docker_timeout = os.getenv('JOB_DOCKER_TIMEOUT') or DEFAULT_DOCKER_TIMEOUT
+
         with TemporaryDirectory() as tmp_dir_name:
             compose_file_path = f'{tmp_dir_name}/{docker_compose_filename}'
             compose_file = open(compose_file_path, 'w')
@@ -89,30 +103,32 @@ class DockerCompose(Connector):
                 config.close()
                 env['DOCKER_CONFIG'] = tmp_dir_name
 
-            env['DOCKER_CLIENT_TIMEOUT'] = "300"
-            env['COMPOSE_HTTP_TIMEOUT'] = "300"
-
             cmd_pull = self.build_cmd_line(
                 ['-p', project_name, '-f', compose_file_path, 'pull'])
 
             cmd_deploy = self.build_cmd_line(
                 ['-p', project_name, '-f', compose_file_path, 'up', '-d',
                  '--remove-orphans'])
+
+            env['DOCKER_CLIENT_TIMEOUT'] = pull_timeout
+            env['COMPOSE_HTTP_TIMEOUT'] = pull_timeout
             result = ''
             try:
                 result += join_stderr_stdout(
                     self._execute_clean_command(
                         cmd_pull,
                         env=env,
-                        timeout=int(env['DOCKER_CLIENT_TIMEOUT'])))
+                        timeout=int(pull_timeout)))
             except Exception as e:
                 result += str(e)
 
+            env['DOCKER_CLIENT_TIMEOUT'] = docker_timeout
+            env['COMPOSE_HTTP_TIMEOUT'] = docker_timeout
             result += join_stderr_stdout(
                 self._execute_clean_command(
                     cmd_deploy,
                     env=env,
-                    timeout=int(env['DOCKER_CLIENT_TIMEOUT'])))
+                    timeout=int(docker_timeout)))
 
             services = self._get_services(project_name, compose_file_path, env)
 
@@ -157,7 +173,7 @@ class DockerCompose(Connector):
         if service_id:
             since_opt = ['--since', since.isoformat()] if since else []
             list_opts = ['-t', '--tail', str(lines)] + since_opt + [service_id]
-            cmd = self.build_cmd_line(['logs'] + list_opts, binary='docker')
+            cmd = self.build_cmd_line(list_opts, docker_command='logs')
             return execute_cmd(cmd).stdout
         else:
             return ''
@@ -170,9 +186,9 @@ class DockerCompose(Connector):
             return ''
 
     def _get_service_id(self, project_name, service, docker_compose_path, env):
-        cmd = self.build_cmd_line(
-            ['-p', project_name, '-f', docker_compose_path,
-             'ps', '-q', service])
+        cmd = self.build_cmd_line(['-p', project_name,
+                                   '-f', docker_compose_path,
+                                   'ps', '-q', service])
         stdout = self._execute_clean_command(cmd, env=env).stdout
 
         return yaml.load(stdout, Loader=yaml.FullLoader)
@@ -185,7 +201,7 @@ class DockerCompose(Connector):
             return {}
 
     def _get_container_inspect(self, service_id, env):
-        cmd = self.build_cmd_line(['inspect', service_id], binary='docker')
+        cmd = self.build_cmd_line([service_id], docker_command='inspect')
 
         return json.loads(self._execute_clean_command(cmd, env=env).stdout)
 
@@ -247,8 +263,7 @@ class DockerCompose(Connector):
 
     @should_connect
     def info(self):
-        cmd = self.build_cmd_line(['info', '--format', '{{ json . }}'],
-                                  binary='docker')
+        cmd = self.build_cmd_line(['--format', '{{ json . }}'], docker_command='info')
 
         info = json.loads(execute_cmd(cmd, timeout=5).stdout)
         server_errors = info.get('ServerErrors', [])
@@ -285,7 +300,7 @@ class DockerCompose(Connector):
             compose_file.write(docker_compose)
             compose_file.close()
 
-            cmd = ["docker-compose", "-f", compose_file_path, "config", "-q"]
+            cmd = ["docker compose", "-f", compose_file_path, "config", "-q"]
             result = execute_cmd(cmd, env=env).stdout
 
         return result

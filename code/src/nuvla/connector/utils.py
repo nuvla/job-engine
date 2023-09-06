@@ -63,7 +63,8 @@ def execute_cmd(cmd, **kwargs) -> CompletedProcess:
     opt_input = kwargs.get('input')
     timeout = kwargs.get('timeout', 120)
     stderr = STDOUT if kwargs.get('sterr_in_stdout', False) else PIPE
-    log.debug('Run command: %s', cmd)
+    log.debug('Run command (timeout: %s): %s \nwith environment: %s \nwith input: %s',
+              timeout, cmd, opt_env, opt_input)
     try:
         result = run(cmd, stdout=PIPE, stderr=stderr, env=opt_env, input=opt_input,
                      timeout=timeout, encoding='UTF-8')

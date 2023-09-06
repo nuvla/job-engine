@@ -20,8 +20,6 @@ LABEL git.build.time=${GIT_BUILD_TIME}
 LABEL ci.build.number=${TRAVIS_BUILD_NUMBER}
 LABEL ci.build.web.url=${TRAVIS_BUILD_WEB_URL}
 
-COPY --from=docker/compose:alpine-1.29.2 /usr/local/bin/docker-compose /usr/local/bin/
-
 # Need scp (openssh) for docker-machine to transfer files to machines.
 RUN apk --no-cache add gettext bash openssl openssh \
     "helm~${HELM_VERSION}" \
@@ -56,6 +54,7 @@ RUN curl --proto "=https" -s -L https://github.com/docker/machine/releases/downl
 RUN ln -s $(which python3) /usr/bin/python3
 RUN curl --proto "=https" -fsSL -o /app/my_init https://raw.githubusercontent.com/phusion/baseimage-docker/rel-0.9.19/image/bin/my_init && \
     chmod 700 /app/my_init
+RUN ln -s /app/my_init /usr/bin/my_init
 
 # Start your app by "-- /my/app --foo bar --baz"
-ENTRYPOINT ["/app/my_init"]
+ENTRYPOINT ["my_init"]

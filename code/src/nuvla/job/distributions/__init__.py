@@ -31,7 +31,7 @@ class Distributions(object):
 
     @classmethod
     def register_distribution(cls, distribution_name, distribution):
-        logging.getLogger().setLevel(logging.INFO)
+        # logging.getLogger().setLevel(logging.INFO)
         logging.info('Distribution "{}" registered'.format(distribution_name))
         cls.distributions[distribution_name] = distribution
 
