@@ -28,8 +28,7 @@ class MonitorBulkJob(object):
 
     def is_expired(self):
         created = parse_nuvla_date(self.bulk_job['created'])
-        #expiry_date = created + timedelta(days=1)
-        expiry_date = created + timedelta(minutes=1)
+        expiry_date = created + timedelta(days=1)
         return datetime.now(timezone.utc) > expiry_date
 
     def reload_result(self):
