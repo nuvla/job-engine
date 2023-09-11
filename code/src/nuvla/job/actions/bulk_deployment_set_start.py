@@ -91,11 +91,11 @@ class BulkDeploymentSetStartJob(object):
 
     def _update_deployment(self, deployment_to_update):
         try:
-            deployment_id = deployment_to_update['id']
+            deployment_id =  deployment_to_update[0]['id']
             deployment = self.user_api.get(deployment_id)
             deployment_data = deployment.data
             self._fix_transition_state(deployment_data)
-            application = deployment_to_update["application"]
+            application = deployment_to_update[1]["application"]
             application_href = f'{application["id"]}_{application["version"]}'
             self._update_env_deployment(deployment_data, application)
             self._update_regs_creds_deployment(deployment_data, application)
@@ -125,19 +125,32 @@ class BulkDeploymentSetStartJob(object):
     def _apply(operational_status, k, f):
         list(map(f, operational_status.get(k, [])))
 
-    def do_work(self):
-        logging.info(f'Start bulk deployment set start {self.job.id}')
-        self.dep_set_id = self.job['target-resource']['href']
+    def _on_operational_status(self, ok_fn, nok_fn):
         deployment_set = self.user_api.get(self.dep_set_id)
         op_status = self.user_api.operation(deployment_set, 'operational-status').data
         if op_status['status'] == 'OK':
-            self.user_api.operation(deployment_set, 'ok')
-            self.job.set_state(JOB_SUCCESS)
-            logging.info(f'End of bulk deployment set start {self.job.id}')
-            return 0
+            ok_fn(deployment_set, op_status)
         else:
-            self._apply(op_status, 'deployments-to-add', self._add_deployment)
-            self._apply(op_status, 'deployments-to-remove', self._remove_deployment)
-            self._apply(op_status, 'deployments-to-update', self._update_deployment)
-        logging.info(f'End of bulk deployment set start {self.job.id}')
+            nok_fn(deployment_set, op_status)
 
+    def on_op_ok(self, deployment_set, _op_status):
+        self.user_api.operation(deployment_set, 'ok')
+        self.job.set_state(JOB_SUCCESS)
+        logging.info(f'End of bulk deployment set start with ok {self.job.id}')
+        return 0
+
+    def on_op_nok(self, deployment_set, _op_status):
+        self.user_api.operation(deployment_set, 'nok')
+        logging.info(f'End of bulk deployment set start with nok {self.job.id}')
+        return 0
+
+    def on_op_nok_apply(self, _deployment_set, op_status):
+        self._apply(op_status, 'deployments-to-add', self._add_deployment)
+        self._apply(op_status, 'deployments-to-remove', self._remove_deployment)
+        self._apply(op_status, 'deployments-to-update', self._update_deployment)
+        self._on_operational_status(self.on_op_ok, self.on_op_nok)
+
+    def do_work(self):
+        logging.info(f'Start bulk deployment set start {self.job.id}')
+        self.dep_set_id = self.job['target-resource']['href']
+        self._on_operational_status(self.on_op_ok, self.on_op_nok_apply)
