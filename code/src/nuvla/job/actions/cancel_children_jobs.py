@@ -8,8 +8,8 @@ from nuvla.api.util.filter import filter_or, filter_and
 import logging
 
 
-@action('cancel_children_job')
-class CancelChildrenJob(object):
+@action('cancel_children_jobs')
+class CancelChildrenJobsJob(object):
 
     def __init__(self, _, job):
         self.job = job

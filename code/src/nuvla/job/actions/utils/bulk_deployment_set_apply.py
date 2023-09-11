@@ -9,7 +9,7 @@ class BulkDeploymentSetApply(object):
         self.job = job
         self.api = job.api
         self.user_api = job.get_user_api()
-        self.dep_set_id = None
+        self.dep_set_id = self.job['target-resource']['href']
         self.action = None
 
     def _create_deployment(self, credential, application, app_set):
@@ -89,7 +89,7 @@ class BulkDeploymentSetApply(object):
 
     def _update_deployment(self, deployment_to_update):
         try:
-            deployment_id =  deployment_to_update[0]['id']
+            deployment_id = deployment_to_update[0]['id']
             deployment = self.user_api.get(deployment_id)
             deployment_data = deployment.data
             self._fix_transition_state(deployment_data)
@@ -107,29 +107,36 @@ class BulkDeploymentSetApply(object):
         except Exception as ex:
             logging.error(f'Failed to update deployment {deployment_to_update}: {repr(ex)}')
 
-    def _remove_deployment(self, deployment_to_remove):
+    def _remove_deployment(self, deployment_id):
         try:
-            self.user_api.delete(deployment_to_remove)
-            #deployment = self.user_api.get(deployment_to_remove)
-            # deployment_data = deployment.data
-            # self._fix_transition_state(deployment_data)
-            # self.user_api.edit(deployment_to_remove, deployment_data)
-            # self.user_api.operation(deployment, 'stop')
-            logging.info(f'Deployment removed: {deployment_to_remove}')
+            deployment = self.user_api.get(deployment_id)
+            self.user_api.operation(deployment, 'force-delete')
+            logging.info(f'Deployment removed: {deployment_id}')
         except Exception as ex:
-            logging.error(f'Failed to remove {deployment_to_remove}: {repr(ex)}')
+            logging.error(f'Failed to remove {deployment_id}: {repr(ex)}')
+
+    def _stop_deployment(self, deployment_id):
+        try:
+            deployment = self.user_api.get(deployment_id)
+            self.user_api.operation(deployment, 'stop')
+            logging.info(f'Deployment stopped: {deployment_id}')
+        except Exception as ex:
+            logging.error(f'Failed to stop {deployment_id}: {repr(ex)}')
 
     @staticmethod
-    def _apply(operational_status, k, f):
-        list(map(f, operational_status.get(k, [])))
+    def _map(func, iter1):
+        list(map(func, iter1))
+
+    @staticmethod
+    def _apply_op_status(func, operational_status, k):
+        BulkDeploymentSetApply._map(func, operational_status.get(k, []))
 
     def do_work(self):
         logging.info(f'Start bulk deployment set apply {self.action} {self.job.id}')
-        self.dep_set_id = self.job['target-resource']['href']
         deployment_set = self.user_api.get(self.dep_set_id)
         op_status = self.user_api.operation(deployment_set, 'operational-status').data
         if op_status['status'] == 'NOK':
-            self._apply(op_status, 'deployments-to-add', self._add_deployment)
-            self._apply(op_status, 'deployments-to-remove', self._remove_deployment)
-            self._apply(op_status, 'deployments-to-update', self._update_deployment)
+            self._apply_op_status(self._add_deployment, op_status, 'deployments-to-add')
+            self._apply_op_status(self._remove_deployment, op_status, 'deployments-to-remove')
+            self._apply_op_status(self._update_deployment, op_status, 'deployments-to-update')
         logging.info(f'End of bulk deployment set apply {self.action} {self.job.id}')
