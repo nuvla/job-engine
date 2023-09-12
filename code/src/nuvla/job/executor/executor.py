@@ -91,7 +91,10 @@ class Executor(Base):
                     job.update_job(state=JOB_FAILED, status_message=status_message, return_code=1)
                 logging.error(f'Failed to process {job.id}, with error: {status_message}')
             else:
-                if not job.is_bulk:
+                if job.is_bulk:
+                    retry_kazoo_queue_op(job.queue, 'consume')
+                    logging.info(f'Bulk job removed from queue {job.id}.')
+                else:
                     state = JOB_SUCCESS if return_code == 0 else JOB_FAILED
                     job.update_job(state=state, return_code=return_code)
                     logging.info('Finished {} with return_code {}.'.format(job.id, return_code))
