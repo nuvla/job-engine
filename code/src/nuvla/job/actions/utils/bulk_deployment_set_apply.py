@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import logging
+from ...util import mapv
 
 
 class BulkDeploymentSetApply(object):
@@ -107,7 +108,7 @@ class BulkDeploymentSetApply(object):
         except Exception as ex:
             logging.error(f'Failed to update deployment {deployment_to_update}: {repr(ex)}')
 
-    def _remove_deployment(self, deployment_id):
+    def _force_remove_deployment(self, deployment_id):
         try:
             deployment = self.user_api.get(deployment_id)
             self.user_api.operation(deployment, 'force-delete')
@@ -115,21 +116,16 @@ class BulkDeploymentSetApply(object):
         except Exception as ex:
             logging.error(f'Failed to remove {deployment_id}: {repr(ex)}')
 
-    def _stop_deployment(self, deployment_id):
+    def _remove_deployment(self, deployment_id):
         try:
-            deployment = self.user_api.get(deployment_id)
-            self.user_api.operation(deployment, 'stop')
-            logging.info(f'Deployment stopped: {deployment_id}')
+            self.user_api.delete(deployment_id)
+            logging.info(f'Deployment removed: {deployment_id}')
         except Exception as ex:
-            logging.error(f'Failed to stop {deployment_id}: {repr(ex)}')
-
-    @staticmethod
-    def _map(func, iter1):
-        list(map(func, iter1))
+            logging.error(f'Failed to remove {deployment_id}: {repr(ex)}')
 
     @staticmethod
     def _apply_op_status(func, operational_status, k):
-        BulkDeploymentSetApply._map(func, operational_status.get(k, []))
+        mapv(func, operational_status.get(k, []))
 
     def do_work(self):
         logging.info(f'Start bulk deployment set apply {self.action} {self.job.id}')
@@ -137,6 +133,7 @@ class BulkDeploymentSetApply(object):
         op_status = self.user_api.operation(deployment_set, 'operational-status').data
         if op_status['status'] == 'NOK':
             self._apply_op_status(self._add_deployment, op_status, 'deployments-to-add')
-            self._apply_op_status(self._remove_deployment, op_status, 'deployments-to-remove')
+            # FIXME : find a cleaner better way to avoid orphan containers
+            self._apply_op_status(self._force_remove_deployment, op_status, 'deployments-to-remove')
             self._apply_op_status(self._update_deployment, op_status, 'deployments-to-update')
         logging.info(f'End of bulk deployment set apply {self.action} {self.job.id}')
