@@ -9,4 +9,4 @@ class BulkDeploymentSetUpdateJob(BulkDeploymentSetApply):
 
     def __init__(self, _, job):
         super().__init__(_, job)
-        self.action('update')
+        self.action = 'update'
