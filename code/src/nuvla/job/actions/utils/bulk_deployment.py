@@ -1,50 +1,18 @@
 # -*- coding: utf-8 -*-
 
-import abc
-from .bulk import BulkJob
+from abc import ABC
+
+from .bulk_action import BulkAction
 
 
-class DeploymentBulkJob(BulkJob):
+class DeploymentBulkJob(BulkAction, ABC):
 
     def __init__(self, _, job):
         super().__init__(_, job)
-        self.log_message = 'Bulk deployment'
 
-    def search_deployment(self, filter_str):
-        return self.user_api.search('deployment',
-                                    filter=filter_str,
-                                    orderby='updated:desc',
-                                    select='id, state')
-
-    @abc.abstractmethod
-    def action_deployment(self, deployment):
-        return
-
-    def _call_sub_actions(self):
-        dep_to_process = self.resource_left()
-        if dep_to_process:
-            filter_dep_to_process = ' or '.join(map(lambda job: f'id="{id}"', dep_to_process))
-            deployments = self.search_deployment(filter_dep_to_process)
-        else:
-            deployments = self.search_deployment(self.job.payload['filter'])
-            self.result['ALL'] = [deployment.id for deployment in deployments.resources]
-            self._push_result()
-
-        for deployment in deployments.resources:
-            try:
-                self.action_deployment(deployment)
-            except Exception as ex:
-                self.result['bootstrap-exceptions'][deployment.id] = repr(ex)
-                self.result['FAILED'].append(deployment.id)
-
-    def run(self):
-        # Job recovery support
-        if self.job.get('progress', 0) > 0:
-            self.reload_result()
-        if self.job.get('progress', 0) < 10:
-            self.job.set_progress(10)
-        if self.job.get('progress', 0) < 20:
-            self._call_sub_actions()
-            self._push_result()
-            self.job.set_progress(20)
-        self.job.queue.consume()
+    def get_resources_ids(self):
+        return [deployment.id
+                for deployment in
+                self.user_api.search('deployment',
+                                     filter=self.job.payload['filter'],
+                                     select='id').resources]

@@ -2,16 +2,15 @@
 
 import logging
 from ...util import mapv
+from ..utils.bulk_action import BulkAction
 
 
-class BulkDeploymentSetApply(object):
+class BulkDeploymentSetApply(BulkAction):
 
     def __init__(self, _, job):
-        self.job = job
-        self.api = job.api
-        self.user_api = job.get_user_api()
+        super().__init__(_, job)
         self.dep_set_id = self.job['target-resource']['href']
-        self.action = None
+        self.action_name = None
 
     def _create_deployment(self, credential, application, app_set):
         return self.user_api.add('deployment',
@@ -127,8 +126,7 @@ class BulkDeploymentSetApply(object):
     def _apply_op_status(func, operational_status, k):
         mapv(func, operational_status.get(k, []))
 
-    def do_work(self):
-        logging.info(f'Start bulk deployment set apply {self.action} {self.job.id}')
+    def bulk_operation(self):
         deployment_set = self.user_api.get(self.dep_set_id)
         op_status = self.user_api.operation(deployment_set, 'operational-status').data
         if op_status['status'] == 'NOK':
@@ -136,4 +134,8 @@ class BulkDeploymentSetApply(object):
             # FIXME : find a cleaner better way to avoid orphan containers
             self._apply_op_status(self._force_remove_deployment, op_status, 'deployments-to-remove')
             self._apply_op_status(self._update_deployment, op_status, 'deployments-to-update')
-        logging.info(f'End of bulk deployment set apply {self.action} {self.job.id}')
+
+    def do_work(self):
+        logging.info(f'Start bulk deployment set apply {self.action_name} {self.job.id}')
+        self.run()
+        logging.info(f'End of bulk deployment set apply {self.action_name} {self.job.id}')

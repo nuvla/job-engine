@@ -6,6 +6,7 @@ import logging
 from requests.adapters import HTTPAdapter
 
 from ..actions import get_action, ActionNotImplemented
+from ..actions.utils.bulk_action import BulkAction
 from ..base import Base
 from ..job import Job, JobUpdateError, \
     JOB_FAILED, JOB_SUCCESS, JOB_QUEUED, JOB_RUNNING
@@ -91,7 +92,7 @@ class Executor(Base):
                     job.update_job(state=JOB_FAILED, status_message=status_message, return_code=1)
                 logging.error(f'Failed to process {job.id}, with error: {status_message}')
             else:
-                if job.is_bulk:
+                if isinstance(action_instance, BulkAction):
                     retry_kazoo_queue_op(job.queue, 'consume')
                     logging.info(f'Bulk job removed from queue {job.id}.')
                 else:
