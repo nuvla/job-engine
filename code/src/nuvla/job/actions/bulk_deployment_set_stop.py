@@ -14,7 +14,7 @@ class BulkDeploymentSetStopJob(BulkAction):
         self.dep_set_id = self.job['target-resource']['href']
 
     def get_todo(self):
-        filter_deployment_set = f'deployment-set={self.dep_set_id}'
+        filter_deployment_set = f'deployment-set="{self.dep_set_id}"'
         filter_state = filter_or(["state='PENDING'",
                                   "state='STARTING'",
                                   "state='UPDATING'",
@@ -36,7 +36,8 @@ class BulkDeploymentSetStopJob(BulkAction):
 
     def bulk_operation(self):
         todo = self.result['TODO']
-        for deployment_id in todo:
+        todo_copy = todo[:]
+        for deployment_id in todo_copy:
             self._stop_deployment(deployment_id)
             todo.remove(deployment_id)
             self._push_result()

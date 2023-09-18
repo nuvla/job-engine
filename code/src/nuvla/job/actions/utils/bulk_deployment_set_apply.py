@@ -67,7 +67,7 @@ class BulkDeploymentSetApply(BulkAction):
 
     @staticmethod
     def _fix_transition_state(deployment_data):
-        if deployment_data['state'].endswith('ING'):
+        if not deployment_data['state'].endswith('ING'):
             deployment_data['state'] = 'ERROR'
 
     def _add_deployment(self, deployment_to_add):
@@ -82,6 +82,10 @@ class BulkDeploymentSetApply(BulkAction):
             deployment_data = deployment.data
             self._update_env_deployment(deployment_data, application)
             self._update_regs_creds_deployment(deployment_data, application)
+
+            # fixme force pull mode
+            deployment_data['execution-mode'] = 'pull'
+
             deployment = self.user_api.edit(deployment_id, deployment_data)
             self.user_api.operation(deployment, 'start',
                                     {'low-priority': True,
@@ -100,7 +104,11 @@ class BulkDeploymentSetApply(BulkAction):
             application_href = f'{application["id"]}_{application["version"]}'
             self._update_env_deployment(deployment_data, application)
             self._update_regs_creds_deployment(deployment_data, application)
-            self.user_api.edit(deployment_id, deployment_data)
+
+            # fixme force pull mode
+            deployment_data['execution-mode'] = 'pull'
+
+            deployment = self.user_api.edit(deployment_id, deployment_data)
             self.user_api.operation(deployment, 'fetch-module',
                                     {'module-href': application_href})
             self.user_api.operation(deployment, 'update',
@@ -127,7 +135,8 @@ class BulkDeploymentSetApply(BulkAction):
 
     def _apply_op_status(self, func, operational_status, k):
         elements = operational_status.get(k, [])
-        for el in elements:
+        copy_elements = elements[:]
+        for el in copy_elements:
             func(el)
             elements.remove(el)
             self._push_result()
