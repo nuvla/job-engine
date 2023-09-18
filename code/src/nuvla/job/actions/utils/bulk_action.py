@@ -12,7 +12,7 @@ class BulkAction(object):
             'bootstrap-exceptions': {},
             'FAILED': [],
             'SUCCESS': [],
-            'TO_DO': []}
+            'TODO': []}
 
     def _push_result(self):
         self.job.set_status_message(json.dumps(self.result))
@@ -24,29 +24,19 @@ class BulkAction(object):
             pass
 
     @abc.abstractmethod
-    def get_resources_ids(self):
+    def get_todo(self):
         pass
 
     @abc.abstractmethod
-    def action(self, resource):
-        pass
-
     def bulk_operation(self):
-        for resource_id in self.result['TO_DO']:
-            try:
-                self.action(self.user_api.get(resource_id))
-                self.result['TO_DO'].remove(resource_id)
-            except Exception as ex:
-                self.result['bootstrap-exceptions'][resource_id] = repr(ex)
-                self.result['FAILED'].append(resource_id)
-            self._push_result()
+        pass
 
     def run(self):
         # Job recovery support
         if self.job.get('progress', 0) > 0:
             self.reload_result()
         if self.job.get('progress', 0) < 10:
-            self.result['TO_DO'] = self.get_resources_ids()
+            self.result['TODO'] = self.get_todo()
             self._push_result()
             self.job.set_progress(10)
         if self.job.get('progress', 0) < 20:

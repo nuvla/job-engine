@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 
 import logging
-from ...util import mapv
 from ..utils.bulk_action import BulkAction
 
 
@@ -11,6 +10,10 @@ class BulkDeploymentSetApply(BulkAction):
         super().__init__(_, job)
         self.dep_set_id = self.job['target-resource']['href']
         self.action_name = None
+
+    def get_todo(self):
+        deployment_set = self.user_api.get(self.dep_set_id)
+        return self.user_api.operation(deployment_set, 'operational-status').data
 
     def _create_deployment(self, credential, application, app_set):
         return self.user_api.add('deployment',
@@ -122,13 +125,15 @@ class BulkDeploymentSetApply(BulkAction):
         except Exception as ex:
             logging.error(f'Failed to remove {deployment_id}: {repr(ex)}')
 
-    @staticmethod
-    def _apply_op_status(func, operational_status, k):
-        mapv(func, operational_status.get(k, []))
+    def _apply_op_status(self, func, operational_status, k):
+        elements = operational_status.get(k, [])
+        for el in elements:
+            func(el)
+            elements.remove(el)
+            self._push_result()
 
     def bulk_operation(self):
-        deployment_set = self.user_api.get(self.dep_set_id)
-        op_status = self.user_api.operation(deployment_set, 'operational-status').data
+        op_status = self.result['TODO']
         if op_status['status'] == 'NOK':
             self._apply_op_status(self._add_deployment, op_status, 'deployments-to-add')
             # FIXME : find a cleaner better way to avoid orphan containers
