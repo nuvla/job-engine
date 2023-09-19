@@ -21,7 +21,8 @@ class DeploymentBulkJob(BulkAction, abc.ABC):
 
     def bulk_operation(self):
         todo = self.result['TODO']
-        for resource_id in todo:
+        todo_copy = todo[:]
+        for resource_id in todo_copy:
             try:
                 self.action(self.user_api.get(resource_id))
                 todo.remove(resource_id)
