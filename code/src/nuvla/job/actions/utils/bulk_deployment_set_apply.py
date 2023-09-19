@@ -105,7 +105,7 @@ class BulkDeploymentSetApply(BulkAction):
             deployment = self.user_api.edit(deployment_id, deployment_data)
             self.user_api.operation(deployment, 'fetch-module',
                                     {'module-href': application_href})
-            action = deployment.operations.get('update', 'start')
+            action = 'update' if deployment.operations.get('update') else 'start'
             self.user_api.operation(deployment, action,
                                     {'low-priority': True,
                                      'parent-job': self.job.id})
