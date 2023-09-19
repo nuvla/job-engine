@@ -65,11 +65,6 @@ class BulkDeploymentSetApply(BulkAction):
             elif target.startswith('nuvlabox/'):
                 return self._get_cred(target)
 
-    @staticmethod
-    def _fix_transition_state(deployment_data):
-        if not deployment_data['state'].endswith('ING'):
-            deployment_data['state'] = 'ERROR'
-
     def _add_deployment(self, deployment_to_add):
         try:
             target = deployment_to_add['target']
@@ -99,7 +94,6 @@ class BulkDeploymentSetApply(BulkAction):
             deployment_id = deployment_to_update[0]['id']
             deployment = self.user_api.get(deployment_id)
             deployment_data = deployment.data
-            self._fix_transition_state(deployment_data)
             application = deployment_to_update[1]["application"]
             application_href = f'{application["id"]}_{application["version"]}'
             self._update_env_deployment(deployment_data, application)
@@ -111,7 +105,8 @@ class BulkDeploymentSetApply(BulkAction):
             deployment = self.user_api.edit(deployment_id, deployment_data)
             self.user_api.operation(deployment, 'fetch-module',
                                     {'module-href': application_href})
-            self.user_api.operation(deployment, 'update',
+            action = deployment.operations.get('update', 'start')
+            self.user_api.operation(deployment, action,
                                     {'low-priority': True,
                                      'parent-job': self.job.id})
             logging.info(f'Deployment updated: {deployment_id}')

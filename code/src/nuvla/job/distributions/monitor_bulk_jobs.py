@@ -15,7 +15,7 @@ class MonitorBulkJobsDistributor(DistributionBase):
     def __init__(self, distributor):
         super(MonitorBulkJobsDistributor, self).__init__(self.DISTRIBUTION_NAME, distributor)
         # fixme should be 1min
-        self.collect_interval = 30  # 1 min
+        self.collect_interval = 10  # 1 min
         self._start_distribution()
 
     def job_exists(self, job):
