@@ -69,3 +69,7 @@ def status_message_from_exception():
     else:
         ex = traceback.format_exception(etype=ex_type, value=ex_msg, tb=ex_tb)
     return ex_type.__name__ + '-' + ''.join(ex)
+
+
+def mapv(func, iter1):
+    list(map(func, iter1))

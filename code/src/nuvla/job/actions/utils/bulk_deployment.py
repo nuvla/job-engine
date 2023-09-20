@@ -1,66 +1,32 @@
 # -*- coding: utf-8 -*-
-
-import logging
-import time
 import abc
-from .bulk import BulkJob
+from .bulk_action import BulkAction
 
 
-class DeploymentBulkJob(BulkJob):
+class DeploymentBulkJob(BulkAction, abc.ABC):
 
     def __init__(self, _, job):
         super().__init__(_, job)
-        self.log_message = 'Bulk deployment'
 
-    def search_deployment(self, filter_str):
-        return self.user_api.search('deployment',
-                                    filter=filter_str,
-                                    orderby='updated:desc',
-                                    select='id, state')
+    def get_todo(self):
+        return [deployment.id
+                for deployment in
+                self.user_api.search('deployment',
+                                     filter=self.job.payload['filter'],
+                                     select='id').resources]
 
     @abc.abstractmethod
-    def action_deployment(self, deployment):
-        return
+    def action(self, resource):
+        pass
 
-    def _call_sub_actions(self):
-        dep_to_process = self.resource_left()
-        if dep_to_process:
-            filter_dep_to_process = ' or '.join(map(lambda job: f'id="{id}"', dep_to_process))
-            deployments = self.search_deployment(filter_dep_to_process)
-        else:
-            deployments = self.search_deployment(self.job.payload['filter'])
-            self.result['ALL'] = [deployment.id for deployment in deployments.resources]
-            self._push_result()
-
-        for deployment in deployments.resources:
-            nested_job_id = None
+    def bulk_operation(self):
+        todo = self.result['TODO']
+        todo_copy = todo[:]
+        for resource_id in todo_copy:
             try:
-                nested_job_id = self.action_deployment(deployment)
+                self.action(self.user_api.get(resource_id))
+                todo.remove(resource_id)
             except Exception as ex:
-                self.result['bootstrap-exceptions'][deployment.id] = repr(ex)
-                self.result['FAILED'].append(deployment.id)
-
-            if nested_job_id:
-                self.job.add_affected_resource(deployment.id)
-                self.job.add_nested_job(nested_job_id)
-
-    def run(self, action):
-        # Job recovery support
-        if self.job.get('progress', 0) > 0:
-            self.reload_result()
-        if self.job.get('progress', 0) < 10:
-            self.job.set_progress(10)
-        if self.job.get('progress', 0) < 20:
-            self._call_sub_actions()
+                self.result['bootstrap-exceptions'][resource_id] = repr(ex)
+                self.result['FAILED'].append(resource_id)
             self._push_result()
-            self.job.set_progress(20)
-        self.monitored_jobs = self.job.get('nested-jobs', [])
-        self.progress_increment = len(self.monitored_jobs) / 80
-        while self.monitored_jobs:
-            time.sleep(5)
-            self._check_monitored_jobs()
-            logging.info(f'{self.log_message} {action} {self.job.id}: '
-                         f'{len(self.monitored_jobs)} jobs left')
-            self._push_result()
-            self._update_progress()
-        return 0
