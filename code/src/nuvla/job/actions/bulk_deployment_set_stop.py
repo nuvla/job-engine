@@ -3,20 +3,18 @@
 import logging
 from nuvla.api.util.filter import filter_or, filter_and
 from ..actions import action
-from ..util import mapv
+from .utils.bulk_action import BulkAction
 
 
 @action('bulk_deployment_set_stop')
-class BulkDeploymentSetStopJob(object):
+class BulkDeploymentSetStopJob(BulkAction):
 
     def __init__(self, _, job):
-        self.job = job
-        self.api = job.api
-        self.user_api = job.get_user_api()
+        super().__init__(_, job)
         self.dep_set_id = self.job['target-resource']['href']
 
-    def _deployments_to_stop(self):
-        filter_deployment_set = f'deployment-set={self.dep_set_id}'
+    def get_todo(self):
+        filter_deployment_set = f'deployment-set="{self.dep_set_id}"'
         filter_state = filter_or(["state='PENDING'",
                                   "state='STARTING'",
                                   "state='UPDATING'",
@@ -29,12 +27,24 @@ class BulkDeploymentSetStopJob(object):
     def _stop_deployment(self, deployment_id):
         try:
             deployment = self.user_api.get(deployment_id)
-            self.user_api.operation(deployment, 'stop')
+            self.user_api.operation(deployment, 'stop',
+                                    {'low-priority': True,
+                                     'parent-job': self.job.id})
             logging.info(f'Deployment stopped: {deployment_id}')
         except Exception as ex:
             logging.error(f'Failed to stop {deployment_id}: {repr(ex)}')
+            self.result['bootstrap-exceptions'][deployment_id] = repr(ex)
+            self.result['FAILED'].append(deployment_id)
+
+    def bulk_operation(self):
+        todo = self.result['TODO']
+        todo_copy = todo[:]
+        for deployment_id in todo_copy:
+            self._stop_deployment(deployment_id)
+            todo.remove(deployment_id)
+            self._push_result()
 
     def do_work(self):
         logging.info(f'Start bulk deployment set stop {self.job.id}')
-        mapv(self._stop_deployment, self._deployments_to_stop())
+        self.run()
         logging.info(f'End of bulk deployment set apply stop {self.job.id}')

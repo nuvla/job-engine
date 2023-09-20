@@ -13,7 +13,7 @@ class DeploymentSetRemove(object):
         self.dep_set_id = self.job['target-resource']['href']
 
     def _deployments_to_remove(self):
-        filter_deployment_set = f'deployment-set={self.dep_set_id}'
+        filter_deployment_set = f'deployment-set="{self.dep_set_id}"'
         deployments = self.api.search('deployment', filter=filter_deployment_set, select='id').resources
         return [deployment.id for deployment in deployments]
 
@@ -30,5 +30,6 @@ class DeploymentSetRemove(object):
 
     def do_work(self):
         logging.info(f'Start bulk deployment set remove {self.job.id}')
-        mapv(self._remove_deployment, self._remove_deployment)
+        mapv(self._remove_deployment, self._deployments_to_remove())
         logging.info(f'End of bulk deployment set apply remove {self.job.id}')
+        return 0

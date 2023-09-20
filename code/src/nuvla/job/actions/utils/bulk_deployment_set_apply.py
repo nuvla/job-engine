@@ -1,17 +1,19 @@
 # -*- coding: utf-8 -*-
 
 import logging
-from ...util import mapv
+from ..utils.bulk_action import BulkAction
 
 
-class BulkDeploymentSetApply(object):
+class BulkDeploymentSetApply(BulkAction):
 
     def __init__(self, _, job):
-        self.job = job
-        self.api = job.api
-        self.user_api = job.get_user_api()
+        super().__init__(_, job)
         self.dep_set_id = self.job['target-resource']['href']
-        self.action = None
+        self.action_name = None
+
+    def get_todo(self):
+        deployment_set = self.user_api.get(self.dep_set_id)
+        return self.user_api.operation(deployment_set, 'operational-status').data
 
     def _create_deployment(self, credential, application, app_set):
         return self.user_api.add('deployment',
@@ -63,11 +65,6 @@ class BulkDeploymentSetApply(object):
             elif target.startswith('nuvlabox/'):
                 return self._get_cred(target)
 
-    @staticmethod
-    def _fix_transition_state(deployment_data):
-        if deployment_data['state'].endswith('ING'):
-            deployment_data['state'] = 'ERROR'
-
     def _add_deployment(self, deployment_to_add):
         try:
             target = deployment_to_add['target']
@@ -80,6 +77,10 @@ class BulkDeploymentSetApply(object):
             deployment_data = deployment.data
             self._update_env_deployment(deployment_data, application)
             self._update_regs_creds_deployment(deployment_data, application)
+
+            # fixme force pull mode
+            deployment_data['execution-mode'] = 'pull'
+
             deployment = self.user_api.edit(deployment_id, deployment_data)
             self.user_api.operation(deployment, 'start',
                                     {'low-priority': True,
@@ -93,15 +94,19 @@ class BulkDeploymentSetApply(object):
             deployment_id = deployment_to_update[0]['id']
             deployment = self.user_api.get(deployment_id)
             deployment_data = deployment.data
-            self._fix_transition_state(deployment_data)
             application = deployment_to_update[1]["application"]
             application_href = f'{application["id"]}_{application["version"]}'
             self._update_env_deployment(deployment_data, application)
             self._update_regs_creds_deployment(deployment_data, application)
-            self.user_api.edit(deployment_id, deployment_data)
+
+            # fixme force pull mode
+            deployment_data['execution-mode'] = 'pull'
+
+            deployment = self.user_api.edit(deployment_id, deployment_data)
             self.user_api.operation(deployment, 'fetch-module',
                                     {'module-href': application_href})
-            self.user_api.operation(deployment, 'update',
+            action = 'update' if deployment.operations.get('update') else 'start'
+            self.user_api.operation(deployment, action,
                                     {'low-priority': True,
                                      'parent-job': self.job.id})
             logging.info(f'Deployment updated: {deployment_id}')
@@ -123,17 +128,23 @@ class BulkDeploymentSetApply(object):
         except Exception as ex:
             logging.error(f'Failed to remove {deployment_id}: {repr(ex)}')
 
-    @staticmethod
-    def _apply_op_status(func, operational_status, k):
-        mapv(func, operational_status.get(k, []))
+    def _apply_op_status(self, func, operational_status, k):
+        elements = operational_status.get(k, [])
+        copy_elements = elements[:]
+        for el in copy_elements:
+            func(el)
+            elements.remove(el)
+            self._push_result()
 
-    def do_work(self):
-        logging.info(f'Start bulk deployment set apply {self.action} {self.job.id}')
-        deployment_set = self.user_api.get(self.dep_set_id)
-        op_status = self.user_api.operation(deployment_set, 'operational-status').data
+    def bulk_operation(self):
+        op_status = self.result['TODO']
         if op_status['status'] == 'NOK':
             self._apply_op_status(self._add_deployment, op_status, 'deployments-to-add')
             # FIXME : find a cleaner better way to avoid orphan containers
             self._apply_op_status(self._force_remove_deployment, op_status, 'deployments-to-remove')
             self._apply_op_status(self._update_deployment, op_status, 'deployments-to-update')
-        logging.info(f'End of bulk deployment set apply {self.action} {self.job.id}')
+
+    def do_work(self):
+        logging.info(f'Start bulk deployment set apply {self.action_name} {self.job.id}')
+        self.run()
+        logging.info(f'End of bulk deployment set apply {self.action_name} {self.job.id}')

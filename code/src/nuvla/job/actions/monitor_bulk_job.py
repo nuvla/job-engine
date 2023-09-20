@@ -27,13 +27,13 @@ class MonitorBulkJob(object):
         self.result = None
 
     def is_expired(self):
-        created = parse_nuvla_date(self.bulk_job['created'])
+        created = parse_nuvla_date(self.bulk_job.data['created'])
         expiry_date = created + timedelta(days=1)
         return datetime.now(timezone.utc) > expiry_date
 
     def reload_result(self):
         try:
-            return json.loads(self.bulk_job.get('status-message'))
+            return json.loads(self.bulk_job.data.get('status-message'))
         except Exception:
             return {'bootstrap-exceptions': {},
                     'FAILED': [],
@@ -89,9 +89,9 @@ class MonitorBulkJob(object):
         log.info(f'Job started for {action_name} for job id {self.job.id}.')
         self.job.set_progress(10)
         self.bulk_job_id = self.job['target-resource']['href']
-        self.bulk_job = self.api.get(self.bulk_job_id).data
+        self.bulk_job = self.api.get(self.bulk_job_id)
         if self.is_expired():
-            self.api.operation(self.bulk_job_id, 'cancel')
+            self.api.operation(self.bulk_job, 'cancel')
         else:
             self.monitor()
         return 0
