@@ -13,7 +13,7 @@ class BulkDeploymentSetApply(BulkAction):
 
     def get_todo(self):
         deployment_set = self.user_api.get(self.dep_set_id)
-        return self.user_api.operation(deployment_set, 'operational-status').data
+        return deployment_set.data['operational-status']
 
     def _create_deployment(self, credential, application, app_set):
         return self.user_api.add('deployment',
