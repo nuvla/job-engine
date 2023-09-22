@@ -1,23 +1,33 @@
 # -*- coding: utf-8 -*-
 
+import os
 import logging
 
 from ..actions import action
 from ...connector import nuvlabox as NB
-
+from ...connector.kubernetes import K8sEdgeMgmt
+from ...job.job import Job
 
 @action('nuvlabox_update', True)
 class NBUpdateJob(object):
 
-    def __init__(self, _, job):
+    def __init__(self, _, job: Job):
         self.job = job
         self.api = job.api
 
     def nuvlabox_update(self):
         nuvlabox_id = self.job['target-resource']['href']
 
-        logging.info('Updating NuvlaBox {}.'.format(nuvlabox_id))
-        connector = NB.NuvlaBox(api=self.api, nuvlabox_id=nuvlabox_id, job=self.job)
+        logging.info('Updating NuvlaBox {}'.format(nuvlabox_id))
+        if os.getenv('KUBERNETES_SERVICE_HOST'):
+            logging.debug('Found kubernetes installation.')
+            # connector = K8sEdgeMgmt(self.job)
+            connector = K8sEdgeMgmt(job=self.job, api=self.api, nuvlabox_id=nuvlabox_id)
+        else:
+            logging.info('Found docker installation.')
+            connector = NB.NuvlaBox(api=self.api, nuvlabox_id=nuvlabox_id, job=self.job)
+
+        # connector = NB.NuvlaBox(api=self.api, nuvlabox_id=nuvlabox_id, job=self.job)
 
         # IMPORTANT BIT THAT MUST CHANGE FOR EVERY NUVLABOX API ACTION
         # in this case, we need to fetch the target NB release
@@ -37,6 +47,6 @@ class NBUpdateJob(object):
         self.job.update_job(status_message=r)
 
         return e_code
-
+    
     def do_work(self):
         return self.nuvlabox_update()
