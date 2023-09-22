@@ -188,7 +188,7 @@ class DockerStack(Connector):
         return services
 
     @should_connect
-    def get_services(self, name, **kwargs):
+    def get_services(self, name, env, **kwargs):
         return self._stack_services(name)
 
     @should_connect
