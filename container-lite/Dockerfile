@@ -24,6 +24,7 @@ LABEL git.build.time=${GIT_BUILD_TIME}
 LABEL ci.build.number=${GITHUB_RUN_ID}
 
 RUN apk --no-cache add gettext \
+    "helm~${HELM_VERSION}" \
     "docker-cli~${DOCKER_CLIENT_VERSION}" \
     "docker-cli-compose~${DOCKER_COMPOSE_VERSION}"
 RUN apk --no-cache add --repository https://dl-cdn.alpinelinux.org/alpine/edge/community \
