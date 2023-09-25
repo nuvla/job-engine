@@ -6,6 +6,22 @@
 
 ## Released
 
+## [3.7.0] - 2023-09-25
+
+- docker_stack.py - fix bug introduced in commit f757d27
+- Feature - Passive monitoring of bulk jobs
+- executor - Bulk job consumed and left in running state
+- distributor - monitor bulk jobs
+- action - Bulk deployment refactor
+- action - Bulk base class refactor
+- action - Cancel children jobs
+- action - Deployment set force delete
+- action - Deployment set delete
+- action - Deployment set stop
+- action - Deployemnt set update
+- action - Deployemnt set start
+- action - Deployemnt set apply class
+
 ## [3.6.0] - 2023-09-04
 
 - Update to Docker Compose V2 and timeouts definition via environment variables
