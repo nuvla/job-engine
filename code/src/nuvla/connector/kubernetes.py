@@ -551,6 +551,9 @@ class K8sEdgeMgmt(Kubernetes):
             cert=open(f'{path}/cert.pem', encoding="utf8").read(),
             endpoint=get_kubernetes_local_endpoint()
         )
+    
+    def KUB_JOB(self):
+        return 'job.batch/'
 
     @should_connect
     def reboot(self):
@@ -624,7 +627,7 @@ class K8sEdgeMgmt(Kubernetes):
             result = self.check_target_release(helm_log_result, target_release, current_version) # no bother
             if not self.check_project_name(helm_log_result, project_name):
                 return \
-                    "Project namespace does not match between helm and nuvla %s"\
+                    "Project name does not match between helm on NulvaEdge and nuvla.io %s"\
                         %(f'{project_name}'), 99
             helm_update_job_name = self.create_job_name("helm-update")
             helm_update_cmd = self.helm_generate_update_command(target_release)
@@ -699,7 +702,7 @@ class K8sEdgeMgmt(Kubernetes):
         """
 
         new_vars_string = ''
-        env_pair_pattern = r"^\w+[=]\w+$"
+        env_pair_pattern = r"^\w+=\w+$"
 
         envs = install_params_from_payload['environment']
         for env_pair in envs:
@@ -773,7 +776,7 @@ class K8sEdgeMgmt(Kubernetes):
         the_job_name: self explanatory... the name of the job
         """
 
-        read_log_cmd = self.build_cmd_line(['logs', 'job.batch/' + the_job_name])
+        read_log_cmd = self.build_cmd_line(['logs', self.KUB_JOB() + the_job_name])
         log_result = execute_cmd(read_log_cmd)
         log.info('The log result is:\n%s',log_result.stdout)
 
@@ -895,7 +898,7 @@ class K8sEdgeMgmt(Kubernetes):
         """
         while True:
             check_cmd = \
-                self.build_cmd_line(['get', 'job.batch/' + the_job_name])
+                self.build_cmd_line(['get', self.KUB_JOB() + the_job_name])
             check_result = execute_cmd(check_cmd)
             log.debug("The check result is:\n%s",check_result.stdout)
 
@@ -918,7 +921,7 @@ class K8sEdgeMgmt(Kubernetes):
 
         while time.time() < t_end:
             check_cmd = \
-                self.build_cmd_line(['get', 'job.batch/' + the_job_name])
+                self.build_cmd_line(['get', self.KUB_JOB() + the_job_name])
             check_result = execute_cmd(check_cmd)
             log.debug("The check result is:\n%s",check_result.stdout)
 
