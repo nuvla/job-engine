@@ -6,6 +6,10 @@ import os
 import tempfile
 import time
 import yaml
+import random
+import string
+import uuid
+import re
 
 from datetime import datetime
 from tempfile import TemporaryDirectory
@@ -608,43 +612,144 @@ class K8sEdgeMgmt(Kubernetes):
 
         target_release = kwargs.get('target_release')
         log.debug(f'Target release: {target_release}')
+
+        the_job_name = self.create_job_name("helm-ver-check")
+        helm_command = "'helm list -n default --no-headers'"
+        helm_version_result = self.run_helm_container(the_job_name, helm_command)
+
+        if helm_version_result.returncode == 0 and not helm_version_result.stderr:
+            helm_log_result = self.read_a_log_file(the_job_name)
+            current_version = json.loads(self.job.get('payload', '{}'))['current-version']
+            project_name = json.loads(self.job.get('payload', '{}'))['project-name']
+            result = self.check_target_release(helm_log_result, target_release, current_version) # no bother
+            if not self.check_project_name(helm_log_result, project_name):
+                return \
+                    "Project namespace does not match between helm and nuvla %s"\
+                        %(f'{project_name}'), 99
+            helm_update_job_name = self.create_job_name("helm-update")
+            helm_update_cmd = self.helm_generate_update_command(target_release)
+            helm_update_result = self.run_helm_container(helm_update_job_name, helm_update_cmd)
+            log.info(f"Helm update result:\n {helm_update_result}")
+            result = result + "\n" + helm_update_result.stdout
+        else:
+            result = "The helm version command gave error \n %s"%(f'{helm_version_result.stderr}')
+
+        return result, helm_update_result.returncode
+
+    def helm_generate_update_command(self, target_release):
+        """
+        Generate the helm command that will run the update
+        target_release: the new chart version
+        """
+
         install_params_from_payload = json.loads(self.job.get('payload', '{}'))
         log.info(json.dumps(install_params_from_payload, indent=2))
 
         modules = install_params_from_payload['config-files']
         for module in modules:
-            log.info("Found module: %s",module)
-        peripherals = self.get_helm_peripherals(modules)
-        log.info("Found module list: %s",peripherals)
+            log.debug("Found module: %s",module)
 
         project_name = install_params_from_payload['project-name']
-        current_version = install_params_from_payload['current-version']
+        if "nuvlaedge-" in project_name:
+            log.debug(f"project name index : {len('nuvlaedge-')}")
+            project_uuid = project_name[len("nuvlaedge-"):]
+            log.debug(f"Found UUID : {project_uuid}")
         helm_repository = "nuvlaedge/nuvlaedge"
+        peripherals = self.get_helm_peripherals(modules)
+        env_vars = self.get_env_vars_string(install_params_from_payload)
+        working_dir = self.get_working_dir(install_params_from_payload)
+        mandatory_args = \
+            " --set HOME=%s --set NUVLAEDGE_UUID=nuvlabox/%s --set kubernetesNode=$THE_HOST_NODE_NAME \
+            --set NUVLAEDGE_JOB_ENGINE_LITE_IMAGE=nuvladev/job-lite:issue-112-update-ne \
+            --set vpnClient=true"%(f'{working_dir}',f'{project_uuid}',)
+        ## temporary to allow testing... FIXME
+        helm_dep_test_pre_cmd = "'cd /root/deployment; "
+        helm_dep_test_post_cmd = " ./helm'"
+        helm_repository = ""
+        helm_namespace = " -n default"
+        helm_update_cmd = helm_dep_test_pre_cmd + \
+                "helm upgrade %s %s %s --version %s %s %s %s"\
+                    %(f'{project_name}',f'{helm_repository}', \
+                      f'{helm_namespace}', \
+                      f'{target_release}', \
+                      f'{mandatory_args}', \
+                      f'{peripherals}', \
+                      f'{env_vars}',) \
+                   + helm_dep_test_post_cmd
 
-        the_job_name = "helm-generic"
-        sleep_value = "0"
-        helm_command = "'helm list -n default && sleep %s'"%(f'{sleep_value}')
-        helm_result = self.run_helm_container(the_job_name, helm_command)
+        log.info(f"Helm upgrade command: \n {helm_update_cmd}")
 
-        if helm_result.returncode == 0 and not helm_result.stderr:
-            helm_log_result = self.read_a_log_file(the_job_name)
-            if target_release not in helm_log_result.stdout:
-                ret_xxx = "Good to upgrade from %s to %s"%(f'{current_version}',f'{target_release}')
-                log.info(ret_xxx)
-                # now we have to determine the modules to be included in the update command
-                peripherals = self.get_helm_peripherals(modules)
-                log.debug("Found module list: %s",peripherals)
-                helm_update_cmd = "'helm upgrade %s %s --version %s %s'"\
-                    %(f'{project_name}',f'{helm_repository}',f'{target_release}',f'{peripherals}')
-                log.info(f"Helm upgrade command: \n {helm_update_cmd}")
-            else:
-                ret_xxx = "The versions are the same %s to %s"%(f'{target_release}',f'{target_release}')
-                log.info(ret_xxx)
-                
-        # helm ${ACTION} nuvlaedge-${UUID} nuvlaedge/nuvlaedge --version ${VERSION} --set NUVLAEDGE_UUID=nuvlabox/${UUID} --set kubernetesNode=${HOSTNAME}
+        return helm_update_cmd
+    
+    def get_working_dir(self, install_params_from_payload):
+        """
+        Parse the payload and return a formatted string of helm environment variables
+        """
+        working_dir="/root"
 
-        return ret_xxx, helm_log_result.returncode
+        if install_params_from_payload['working-dir']:
+            return install_params_from_payload['working-dir']
+        # do we test that the working dir exists?
 
+        return working_dir
+
+    def get_env_vars_string(self, install_params_from_payload):
+        """
+        Parse the payload and return a formatted string of helm environment variables
+        """
+
+        new_vars_string = ''
+        env_pair_pattern = r"^\w+[=]\w+$"
+
+        envs = install_params_from_payload['environment']
+        for env_pair in envs:
+            log.debug(f"Environment pair: {env_pair}")
+            env_pair_mod = "".join(env_pair.split())
+            re_result = re.match(env_pair_pattern,env_pair_mod)
+            log.debug(f"Matching result: {re_result}")
+            if re_result:
+                new_vars_string = new_vars_string + " --set " + env_pair_mod
+                log.debug(f"Current env var string: \n{new_vars_string}")
+
+        log.info(f"Environment list arguments: \n {new_vars_string}")
+
+        return new_vars_string
+
+    def create_job_name(self, the_job_name, k=5):
+        """
+        Create the job name with random string attached
+        """
+        # new_job_name = the_job_name + "-" + ''.join(random.choices(string.ascii_lowercase, k))
+        new_job_name = the_job_name + "-" + ''.join(random.choices(string.digits, k=k))
+        # new_job_name = the_job_name + "-" + + str(uuid.uuid4()).split("-", maxsplit=1)[0]
+
+        return new_job_name
+
+    def check_target_release(self, helm_log_result, target_release, current_version):
+        """
+        Check the status of the target release
+        """
+        if target_release not in helm_log_result.stdout:
+            result = "Updating chart version change from %s to %s"%(f'{current_version}',f'{target_release}')
+            log.info(result)
+        else:
+            result = "There is no chart version change from %s to %s"\
+                %(f'{current_version}',f'{target_release}')
+            log.info(result)
+        return result
+
+    def check_project_name(self, helm_log_result, project_name):
+        """
+        Check the status of the project name (namespace)
+        """
+        if project_name not in helm_log_result.stdout:
+            result = \
+            "Project namespace does not match between helm and nuvla %s"%(f'{project_name}')
+            log.info(result)
+            return False
+
+        return True
+    
     def get_helm_peripherals(self, modules: []):
         """
         Generate the correct helm-specific string for update command
@@ -656,11 +761,17 @@ class K8sEdgeMgmt(Kubernetes):
             for module_test in possible_modules:
                 if module_test.lower() in module.lower():
                     peripherals = peripherals + " --set peripheralManager" + module_test + "=true "
+        log.info("Found peripherals list: %s",peripherals)
         return peripherals
 
     @should_connect
     def read_a_log_file(self, the_job_name):
-        """Some text"""   
+        """
+        Read the log of a kubernetes batch job
+
+        vars:
+        the_job_name: self explanatory... the name of the job
+        """
 
         read_log_cmd = self.build_cmd_line(['logs', 'job.batch/' + the_job_name])
         log_result = execute_cmd(read_log_cmd)
@@ -688,6 +799,10 @@ class K8sEdgeMgmt(Kubernetes):
                 image: {helm_image}
                 ports:
                 env:
+                - name: THE_HOST_NODE_NAME
+                  valueFrom:
+                    fieldRef:
+                      fieldPath: spec.nodeName
                 - name: KUBECONFIG
                   value: {kube_config}
                 command: {helm_command}
@@ -698,6 +813,8 @@ class K8sEdgeMgmt(Kubernetes):
                   mountPath: /root/.config/helm
                 - name: helm-cache
                   mountPath: /root/.cache/helm
+                - name: deployment-path
+                  mountPath: /root/deployment
               volumes:
               - name: kube-config
                 hostPath:
@@ -708,15 +825,19 @@ class K8sEdgeMgmt(Kubernetes):
               - name: helm-cache
                 hostPath:
                   path: {host_helm_cache}
+              - name: deployment-path
+                hostPath:
+                  path: {host_deployment_path}
               restartPolicy: Never
         """
 
-        the_helm_image = "nuvladev/nuvlaedge:issue-112-update"
+        the_helm_image = "nuvladev/nuvlaedge:issue-112-update" # changed for production
         the_kube_config = "/root/.kube/config"
         the_host_kube_config = "/root/.kube"
         the_host_helm_config = "/root/.config/helm"
         the_host_helm_cache = "/root/.cache/helm"
-        time_to_live = "120"
+        time_to_live = "60" # for production, once thoroughly tested this should be set to 1 or so
+        the_host_deployment_path = "/root/deployment"
 
         base_command = "['sh', '-c',"
         cmd = the_helm_command
@@ -734,13 +855,14 @@ class K8sEdgeMgmt(Kubernetes):
             host_helm_cache = the_host_helm_cache, \
             ttl_sec = time_to_live, \
             helm_command = built_command, \
+            host_deployment_path = the_host_deployment_path \
             )
 
         logging.debug("The re-formatted YAML is %s ", formatted_helm_yaml_manifest)
 
         helm_result = self.apply_a_manifest(formatted_helm_yaml_manifest)
 
-        self.check_job_success(the_job_name)
+        self.check_job_success(the_job_name) # does this make sense?
 
         return helm_result
 
@@ -762,7 +884,7 @@ class K8sEdgeMgmt(Kubernetes):
 
         return helm_result
 
-    def check_job_success(self, the_job_name, success = "1/1"):
+    def check_job_success_old(self, the_job_name, success = "1/1"):
         """
         Check that a job has completed
         Runs until the success criteria is met
@@ -779,6 +901,30 @@ class K8sEdgeMgmt(Kubernetes):
 
             if success in check_result.stdout:
                 return
+            
+    def check_job_success(self, the_job_name, success = "1/1"):
+        """
+        Check that a job has completed
+        Runs until the success criteria is met
+
+        job_name: the name of the Job in kubernetes
+        success: the string that is present when a Job has completed
+
+        """
+
+        timeout = 5 # give ourselves 5 minutes for job to complete?
+
+        t_end = time.time() + 60 * timeout
+
+        while time.time() < t_end:
+            check_cmd = \
+                self.build_cmd_line(['get', 'job.batch/' + the_job_name])
+            check_result = execute_cmd(check_cmd)
+            log.debug("The check result is:\n%s",check_result.stdout)
+
+            if success in check_result.stdout:
+                return
+            
 
 class K8sSSHKey(Kubernetes):
     '''
