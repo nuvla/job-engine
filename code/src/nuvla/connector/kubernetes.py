@@ -539,6 +539,12 @@ class K8sEdgeMgmt(Kubernetes):
         self.job = job
         self.api = job.api
 
+        self.nuvlabox_id = kwargs.get("nuvlabox_id")
+        self.nuvlabox_resource = self.api.get(self.nuvlabox_id)
+        self.nuvlabox = self.nuvlabox_resource.data
+        self.nuvlabox_status = self.api.get( \
+            self.nuvlabox.get("nuvlabox-status")).data
+        
         if not job.is_in_pull_mode:
             raise OperationNotAllowed(
                 'NuvlaEdge management actions are only supported in pull mode.')
@@ -615,6 +621,9 @@ class K8sEdgeMgmt(Kubernetes):
 
         target_release = kwargs.get('target_release')
         log.debug(f'Target release: {target_release}')
+
+        install_params_from_nb_status = self.nuvlabox_status.get('installation-parameters', {})
+        log.info(f"The installation parameters from nuvlabox_status:\n{install_params_from_nb_status}")
 
         the_job_name = self.create_job_name("helm-ver-check")
         helm_command = "'helm list -n default --no-headers'"
