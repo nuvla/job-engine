@@ -722,9 +722,7 @@ class K8sEdgeMgmt(Kubernetes):
         """
         Create the job name with random string attached
         """
-        # new_job_name = the_job_name + "-" + ''.join(random.choices(string.ascii_lowercase, k))
         new_job_name = the_job_name + "-" + ''.join(random.choices(string.digits, k=k))
-        # new_job_name = the_job_name + "-" + + str(uuid.uuid4()).split("-", maxsplit=1)[0]
 
         return new_job_name
 
