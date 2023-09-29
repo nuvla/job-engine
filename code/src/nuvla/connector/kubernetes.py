@@ -652,7 +652,7 @@ class K8sEdgeMgmt(Kubernetes):
         """
         Generate the helm command that will run the update
         target_release: the new chart version
-        
+
         This version generates a command based on the deployment repository
         can be removed once the repository version is in production
         """
@@ -669,7 +669,6 @@ class K8sEdgeMgmt(Kubernetes):
             log.debug(f"project name index : {len('nuvlaedge-')}")
             project_uuid = project_name[len("nuvlaedge-"):]
             log.debug(f"Found UUID : {project_uuid}")
-        helm_repository = "nuvlaedge/nuvlaedge"
         peripherals = self.get_helm_peripherals(modules)
         env_vars = self.get_env_vars_string(install_params_from_payload)
         working_dir = self.get_working_dir(install_params_from_payload)
