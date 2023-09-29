@@ -544,7 +544,7 @@ class K8sEdgeMgmt(Kubernetes):
         self.nuvlabox = self.nuvlabox_resource.data
         self.nuvlabox_status = self.api.get( \
             self.nuvlabox.get("nuvlabox-status")).data
-        
+
         if not job.is_in_pull_mode:
             raise OperationNotAllowed(
                 'NuvlaEdge management actions are only supported in pull mode.')
@@ -557,7 +557,7 @@ class K8sEdgeMgmt(Kubernetes):
             cert=open(f'{path}/cert.pem', encoding="utf8").read(),
             endpoint=get_kubernetes_local_endpoint()
         )
-    
+
     def KUB_JOB(self):
         return 'job.batch/'
 
@@ -621,6 +621,11 @@ class K8sEdgeMgmt(Kubernetes):
 
         target_release = kwargs.get('target_release')
         log.debug(f'Target release: {target_release}')
+
+        if not self.nuvlabox_status:
+            result = "The nulvabox status could not be retrieved. Cannot proceed."
+            log.info(result)
+            return result, 99
 
         install_params_from_nb_status = self.nuvlabox_status.get('installation-parameters', {})
         log.info\
@@ -723,15 +728,16 @@ class K8sEdgeMgmt(Kubernetes):
         peripherals = self.get_helm_peripherals(modules)
         env_vars = self.get_env_vars_string(install_params_from_payload)
         working_dir = self.get_working_dir(install_params_from_payload)
-        job_lite_tag="issue-112-update-ne"
-        mandatory_args = \
-            " --set HOME=%s --set NUVLAEDGE_UUID=nuvlabox/%s \
+        nuvlaedge_job_lite = \
+            "--set NUVLAEDGE_JOB_ENGINE_LITE_IMAGE=nuvladev/job-lite:issue-112-update-ne "
+        mandatory_args = f" --set HOME={working_dir} \
+            --set NUVLAEDGE_UUID=nuvlabox/{project_uuid} \
             --set kubernetesNode=$THE_HOST_NODE_NAME \
-            --set NUVLAEDGE_JOB_ENGINE_LITE_IMAGE=nuvladev/job-lite:%s \
-            --set vpnClient=true"\
-            %(f'{working_dir}',f'{project_uuid}',f'{job_lite_tag}',)
+            {nuvlaedge_job_lite} \
+            --set vpnClient=true"
+
         helm_namespace = " -n default"
-        helm_update_cmd = \
+        helm_update_cmd_old = \
             "helm upgrade %s %s %s --version %s %s %s %s"\
                 %(f'{project_name}',f'{helm_repository}', \
                 f'{helm_namespace}', \
@@ -739,6 +745,14 @@ class K8sEdgeMgmt(Kubernetes):
                 f'{mandatory_args}', \
                 f'{peripherals}', \
                 f'{env_vars}',)
+
+        helm_update_cmd = f"helm upgrade {project_name} \
+            {helm_repository} \
+            {helm_namespace} \
+            --version {target_release} \
+            {mandatory_args} \
+            {peripherals} \
+            {env_vars}"
 
         log.info(f"Helm upgrade command: \n {helm_update_cmd}")
 
@@ -969,7 +983,7 @@ class K8sEdgeMgmt(Kubernetes):
 
             if success in check_result.stdout:
                 return
-            
+ 
     def check_job_success(self, the_job_name, success = "1/1"):
         """
         Check that a job has completed
@@ -992,7 +1006,6 @@ class K8sEdgeMgmt(Kubernetes):
 
             if success in check_result.stdout:
                 return
-            
 
 class K8sSSHKey(Kubernetes):
     '''
