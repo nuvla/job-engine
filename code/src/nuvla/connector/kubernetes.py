@@ -639,7 +639,7 @@ class K8sEdgeMgmt(Kubernetes):
                     "Project name does not match between helm on NulvaEdge and nuvla.io %s"\
                         %(f'{project_name}'), 99
             helm_update_job_name = self.create_job_name("helm-update")
-            helm_update_cmd = self.helm_generate_update_command(target_release)
+            helm_update_cmd = self.helm_gen_update_cmd_repo(target_release)
             helm_update_result = self.run_helm_container(helm_update_job_name, helm_update_cmd)
             log.info(f"Helm update result:\n {helm_update_result}")
             result = result + "\n" + helm_update_result.stdout
@@ -648,10 +648,13 @@ class K8sEdgeMgmt(Kubernetes):
 
         return result, helm_update_result.returncode
 
-    def helm_generate_update_command(self, target_release):
+    def helm_gen_update_cmd_deployment(self, target_release):
         """
         Generate the helm command that will run the update
         target_release: the new chart version
+        
+        This version generates a command based on the deployment repository
+        can be removed once the repository version is in production
         """
 
         install_params_from_payload = json.loads(self.job.get('payload', '{}'))
@@ -693,6 +696,51 @@ class K8sEdgeMgmt(Kubernetes):
 
         return helm_update_cmd
     
+    def helm_gen_update_cmd_repo(self, target_release):
+        """
+        Generate the helm command that will run the update
+        target_release: the new chart version
+
+        This version generates the command based on the nuvlaedge/nuvlaedge repository
+        """
+
+        install_params_from_payload = json.loads(self.job.get('payload', '{}'))
+        log.info(json.dumps(install_params_from_payload, indent=2))
+
+        modules = install_params_from_payload['config-files']
+        for module in modules:
+            log.debug("Found module: %s",module)
+
+        project_name = install_params_from_payload['project-name']
+        if "nuvlaedge-" in project_name:
+            log.debug(f"project name index : {len('nuvlaedge-')}")
+            project_uuid = project_name[len("nuvlaedge-"):]
+            log.debug(f"Found UUID : {project_uuid}")
+        helm_repository = "nuvlaedge/nuvlaedge"
+        peripherals = self.get_helm_peripherals(modules)
+        env_vars = self.get_env_vars_string(install_params_from_payload)
+        working_dir = self.get_working_dir(install_params_from_payload)
+        job_lite_tag="issue-112-update-ne"
+        mandatory_args = \
+            " --set HOME=%s --set NUVLAEDGE_UUID=nuvlabox/%s \
+            --set kubernetesNode=$THE_HOST_NODE_NAME \
+            --set NUVLAEDGE_JOB_ENGINE_LITE_IMAGE=nuvladev/job-lite:%s \
+            --set vpnClient=true"\
+            %(f'{working_dir}',f'{project_uuid}',f'{job_lite_tag}',)
+        helm_namespace = " -n default"
+        helm_update_cmd = \
+            "helm upgrade %s %s %s --version %s %s %s %s"\
+                %(f'{project_name}',f'{helm_repository}', \
+                f'{helm_namespace}', \
+                f'{target_release}', \
+                f'{mandatory_args}', \
+                f'{peripherals}', \
+                f'{env_vars}',)
+
+        log.info(f"Helm upgrade command: \n {helm_update_cmd}")
+
+        return helm_update_cmd
+
     def get_working_dir(self, install_params_from_payload):
         """
         Parse the payload and return a formatted string of helm environment variables
@@ -762,7 +810,7 @@ class K8sEdgeMgmt(Kubernetes):
     
     def get_helm_peripherals(self, modules: []):
         """
-        Generate the correct helm-specific string for update command
+        Generate the correct helm-specific strings for the update command
         """
         peripherals = ""
 
@@ -770,7 +818,11 @@ class K8sEdgeMgmt(Kubernetes):
         for module in modules:
             for module_test in possible_modules:
                 if module_test.lower() in module.lower():
-                    peripherals = peripherals + " --set peripheralManager" + module_test + "=true "
+                    if "security" not in module_test.lower():
+                        peripherals = peripherals + " --set peripheralManager" + module_test + "=true "
+                    else:
+                        peripherals = peripherals + " --set " + module_test.lower() + "=true "
+
         log.info("Found peripherals list: %s",peripherals)
         return peripherals
 
