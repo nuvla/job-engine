@@ -643,66 +643,18 @@ class K8sEdgeMgmt(Kubernetes):
                 (helm_log_result, target_release, current_version) # no bother
             if not self.check_project_name(helm_log_result, project_name):
                 return \
-                    "Project name does not match between helm on NulvaEdge and nuvla.io %s"\
-                        %(f'{project_name}'), 99
+                    f"Project name {project_name} does not match \
+                    between helm on NulvaEdge and nuvla.io"\
+                    , 99
             helm_update_job_name = self.create_job_name("helm-update")
             helm_update_cmd = self.helm_gen_update_cmd_repo(target_release)
             helm_update_result = self.run_helm_container(helm_update_job_name, helm_update_cmd)
             log.info(f"Helm update result:\n {helm_update_result}")
             result = result + "\n" + helm_update_result.stdout
         else:
-            result = "The helm version command gave error \n %s"%(f'{helm_version_result.stderr}')
+            result = f"The helm version command gave error \n {helm_version_result.stderr}"
 
         return result, helm_update_result.returncode
-
-    def helm_gen_update_cmd_deployment(self, target_release):
-        """
-        Generate the helm command that will run the update
-        target_release: the new chart version
-
-        This version generates a command based on the deployment repository
-        can be removed once the repository version is in production
-        """
-
-        install_params_from_payload = json.loads(self.job.get('payload', '{}'))
-        log.info(json.dumps(install_params_from_payload, indent=2))
-
-        modules = install_params_from_payload['config-files']
-        for module in modules:
-            log.debug("Found module: %s",module)
-
-        project_name = install_params_from_payload['project-name']
-        if "nuvlaedge-" in project_name:
-            log.debug(f"project name index : {len('nuvlaedge-')}")
-            project_uuid = project_name[len("nuvlaedge-"):]
-            log.debug(f"Found UUID : {project_uuid}")
-        peripherals = self.get_helm_peripherals(modules)
-        env_vars = self.get_env_vars_string(install_params_from_payload)
-        working_dir = self.get_working_dir(install_params_from_payload)
-        mandatory_args = \
-            " --set HOME=%s \
-            --set NUVLAEDGE_UUID=nuvlabox/%s \
-            --set kubernetesNode=$THE_HOST_NODE_NAME \
-            --set NUVLAEDGE_JOB_ENGINE_LITE_IMAGE=nuvladev/job-lite:issue-112-update-ne \
-            --set vpnClient=true"%(f'{working_dir}',f'{project_uuid}',)
-        ## temporary to allow testing... FIXME
-        helm_dep_test_pre_cmd = "'cd /root/deployment; "
-        helm_dep_test_post_cmd = " ./helm'"
-        helm_repository = ""
-        helm_namespace = " -n default"
-        helm_update_cmd = helm_dep_test_pre_cmd + \
-                "helm upgrade %s %s %s --version %s %s %s %s"\
-                    %(f'{project_name}',f'{helm_repository}', \
-                      f'{helm_namespace}', \
-                      f'{target_release}', \
-                      f'{mandatory_args}', \
-                      f'{peripherals}', \
-                      f'{env_vars}',) \
-                   + helm_dep_test_post_cmd
-
-        log.info(f"Helm upgrade command: \n {helm_update_cmd}")
-
-        return helm_update_cmd
 
     def helm_gen_update_cmd_repo(self, target_release):
         """
@@ -737,14 +689,6 @@ class K8sEdgeMgmt(Kubernetes):
             --set vpnClient=true"
 
         helm_namespace = " -n default"
-        helm_update_cmd_old = \
-            "helm upgrade %s %s %s --version %s %s %s %s"\
-                %(f'{project_name}',f'{helm_repository}', \
-                f'{helm_namespace}', \
-                f'{target_release}', \
-                f'{mandatory_args}', \
-                f'{peripherals}', \
-                f'{env_vars}',)
 
         helm_update_cmd = f"helm upgrade {project_name} \
             {helm_repository} \
@@ -806,12 +750,11 @@ class K8sEdgeMgmt(Kubernetes):
         """
         if target_release not in helm_log_result.stdout:
             result = \
-            "Updating chart version change from %s to %s"\
-            %(f'{current_version}',f'{target_release}')
+            f"Updating chart version change from {current_version} to {target_release}"
             log.info(result)
         else:
-            result = "There is no chart version change from %s to %s"\
-                %(f'{current_version}',f'{target_release}')
+            result = \
+                f"There is no chart version change from {current_version} to {target_release}"
             log.info(result)
         return result
 
@@ -821,7 +764,7 @@ class K8sEdgeMgmt(Kubernetes):
         """
         if project_name not in helm_log_result.stdout:
             result = \
-            "Project namespace does not match between helm and nuvla %s"%(f'{project_name}')
+            f"Project namespace does not match between helm and nuvla {project_name}"
             log.info(result)
             return False
 
