@@ -687,12 +687,10 @@ class K8sEdgeMgmt(Kubernetes):
         peripherals = self.get_helm_peripherals(modules)
         env_vars = self.get_env_vars_string(install_params_from_payload)
         working_dir = self.get_working_dir(install_params_from_payload)
-        nuvlaedge_job_lite = \
-            "--set NUVLAEDGE_JOB_ENGINE_LITE_IMAGE=nuvladev/job-lite:issue-112-update-ne "
+
         mandatory_args = f" --set HOME={working_dir} \
             --set NUVLAEDGE_UUID=nuvlabox/{project_uuid} \
             --set kubernetesNode=$THE_HOST_NODE_NAME \
-            {nuvlaedge_job_lite} \
             --set vpnClient=true"
 
         helm_namespace = " -n default"
