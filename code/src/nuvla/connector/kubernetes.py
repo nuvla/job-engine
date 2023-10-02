@@ -558,6 +558,13 @@ class K8sEdgeMgmt(Kubernetes):
             endpoint=get_kubernetes_local_endpoint()
         )
 
+        self.ne_image_registry = os.getenv('NE_IMAGE_REGISTRY', '')
+        self.ne_image_org = os.getenv('NE_IMAGE_ORGANIZATION', 'sixsq')
+        self.ne_image_repo = os.getenv('NE_IMAGE_REPOSITORY', 'nuvlaedge')
+        self.ne_image_tag = os.getenv('NE_IMAGE_TAG', 'latest')
+        self.ne_image_name = os.getenv('NE_IMAGE_NAME', f'{self.ne_image_org}/{self.ne_image_repo}')
+        self.base_image = f'{self.ne_image_registry}{self.ne_image_name}:{self.ne_image_tag}'
+
     def KUB_JOB(self):
         return 'job.batch/'
 
@@ -856,7 +863,9 @@ class K8sEdgeMgmt(Kubernetes):
               restartPolicy: Never
         """
 
-        the_helm_image = "nuvladev/nuvlaedge:issue-112-update" # changed for production
+        log.debug(f"The helm image is set to: {self.base_image}")
+        # the_helm_image = "nuvladev/nuvlaedge:issue-112-update" # changed for production. keep this for testing
+        the_helm_image = self.base_image
         the_kube_config = "/root/.kube/config"
         the_host_kube_config = "/root/.kube"
         the_host_helm_config = "/root/.config/helm"
