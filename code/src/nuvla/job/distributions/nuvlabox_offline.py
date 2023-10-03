@@ -18,22 +18,22 @@ class NuvlaBoxOfflineDistribution(DistributionBase):
 
     def collect_offline(self):
         filters = "online = true and next-heartbeat < 'now'"
-        select = 'id'
+        select = 'id, state'
         last = 10000
         offline = self.distributor.api.search('nuvlabox', filter=filters,
                                               select=select, last=last)
         logging.info(f'Nuvlabox offline: {offline.count}')
         return offline.resources
 
-    def set_offline(self, nb_id):
+    def set_offline(self, nuvlabox):
         try:
-            self.distributor.api.edit(nb_id, {'online': False})
+            self.distributor.api.operation(nuvlabox, 'set-offline')
         except Exception as ex:
-            logging.error(f'Failed edit {nb_id} to set offline : {ex}')
+            logging.error(f'Failed edit {nuvlabox.id} to set offline : {ex}')
 
     @override
     def job_generator(self):
         # we don't generate a job because it's a simple edit of nuvlabox status
         for nuvlabox in self.collect_offline():
-            self.set_offline(nuvlabox.id)
+            self.set_offline(nuvlabox)
         return []
