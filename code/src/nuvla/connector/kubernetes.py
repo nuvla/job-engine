@@ -561,8 +561,6 @@ class K8sEdgeMgmt(Kubernetes):
             raise OperationNotAllowed(
                 'NuvlaEdge management actions are only supported in pull mode.')
 
-        log.info(f'Running the new job-lite image.... JSW')
-
         # FIXME: This needs to be parameterised.
         path = '/srv/nuvlaedge/shared'
         super(K8sEdgeMgmt, self).__init__(
@@ -620,8 +618,7 @@ class K8sEdgeMgmt(Kubernetes):
               backoffLimit: 0
         """
 
-        ## log.debug(f"The generated command is: {built_command}")
-        log.debug(f"The re-formatted YAML is: \n{reboot_yaml_manifest}")
+        log.info(f"The re-formatted YAML is: \n{reboot_yaml_manifest}")
 
         with TemporaryDirectory() as tmp_dir_name:
             filename = f'{tmp_dir_name}/reboot_job_manifest.yaml'
