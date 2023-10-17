@@ -534,16 +534,28 @@ class Kubernetes(Connector):
 
 class K8sEdgeMgmt(Kubernetes):
 
+    @property
+    def nuvlabox(self):
+        if not self._nuvlabox:
+            self._nuvlabox = self.api.get(self.nuvlabox_id).data
+        return self._nuvlabox
+
+    @property
+    def nuvlabox_status(self):
+        if not self._nuvlabox:
+            self._nuvlabox_status = self.api.get( \
+            self.nuvlabox.get("nuvlabox-status")).data
+        return self._nuvlabox_status
+
     def __init__(self, job: Job, **kwargs):
 
         self.job = job
         self.api = job.api
 
+        self._nuvlabox = None
+        self._nuvlabox_status = None
+
         self.nuvlabox_id=self.job['target-resource']['href']
-        self.nuvlabox_resource = self.api.get(self.nuvlabox_id)
-        self.nuvlabox = self.nuvlabox_resource.data
-        self.nuvlabox_status = self.api.get( \
-            self.nuvlabox.get("nuvlabox-status")).data
 
         if not job.is_in_pull_mode:
             raise OperationNotAllowed(
