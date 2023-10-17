@@ -540,7 +540,6 @@ class K8sEdgeMgmt(Kubernetes):
         self.api = job.api
 
         self.nuvlabox_id=self.job['target-resource']['href']
-        # self.nuvlabox_id = kwargs.get("nuvlabox_id")
         self.nuvlabox_resource = self.api.get(self.nuvlabox_id)
         self.nuvlabox = self.nuvlabox_resource.data
         self.nuvlabox_status = self.api.get( \
