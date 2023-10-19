@@ -560,6 +560,8 @@ class K8sEdgeMgmt(Kubernetes):
         if not job.is_in_pull_mode:
             raise OperationNotAllowed(
                 'NuvlaEdge management actions are only supported in pull mode.')
+        
+        log.info(f'JSW another test 2023/10/17')
 
         # FIXME: This needs to be parameterised.
         path = '/srv/nuvlaedge/shared'
@@ -629,6 +631,7 @@ class K8sEdgeMgmt(Kubernetes):
             kubectl_cmd_reboot = self.build_cmd_line(cmd)
 
             reboot_result = execute_cmd(kubectl_cmd_reboot)
+            # reboot_result = None
             log.debug(f'The result of the ssh key addition: {reboot_result}')
         return reboot_result
 
