@@ -1016,7 +1016,7 @@ class K8sSSHKey(Kubernetes):
         metadata:
           name: {job_name}
         spec:
-          ttlSecondsAfterFinished: 5
+          ttlSecondsAfterFinished: 120
           template:
             spec:
               containers:
@@ -1062,7 +1062,7 @@ class K8sSSHKey(Kubernetes):
             command = built_command, pubkey_string = pubkey, \
             mount_path = mount_path, image_name = image_name)
 
-        logging.debug("The re-formatted YAML is %s ", formatted_reboot_yaml_manifest)
+        logging.info("The re-formatted YAML is %s ", formatted_reboot_yaml_manifest) # FIXME
 
         with TemporaryDirectory() as tmp_dir_name:
             with open(tmp_dir_name + '/reboot_job_manifest.yaml', 'w',encoding="utf-8") \
@@ -1071,7 +1071,10 @@ class K8sSSHKey(Kubernetes):
             cmd_ssh_key = \
                 self.build_cmd_line(['apply', '-f', tmp_dir_name + '/reboot_job_manifest.yaml'])
             ssh_key_result = execute_cmd(cmd_ssh_key)
-            log.debug('The result of the ssh key addition : %s',ssh_key_result)
+            log.info('The result of the ssh key addition : %s',ssh_key_result) # FIXME
+
+        logging.info('JSW YYY we should see this output 003a! %s',ssh_key_result) # FIXME
+
         return ssh_key_result
 
     def handle_ssh_key(self, action, pubkey, credential_id, nuvlabox_id):
