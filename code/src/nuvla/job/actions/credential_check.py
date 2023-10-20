@@ -11,15 +11,22 @@ log = logging.getLogger(action_name)
 
 
 def is_swarm_enabled_and_manager(info):
+    swarm_enabled = None
+    is_manager = None
+    
     try:
-        node_id = info['Swarm']['NodeID']
-        managers = list(map(lambda x: x['NodeID'], info['Swarm']['RemoteManagers']))
-        return bool(node_id), node_id in managers
-    except (KeyError, TypeError):
-        return False, False
-    except:
-        # it's ok if we cannot infer the Swarm mode...so just move on
-        pass
+        swarm = info.get('Swarm', {})
+        node_id = swarm.get('NodeID')
+        swarm_enabled = bool(node_id)
+        remote_managers = swarm.get('RemoteManagers')
+        
+        if swarm_enabled and remote_managers:
+            managers = [m.get('NodeID') for m in remote_managers]
+            is_manager = node_id in managers
+    except (AttributeError, KeyError, TypeError):
+        log.exception(f'Failed to fully determine swarm status ({swarm_enabled}, {is_manager}) with: {info}')
+    
+    return swarm_enabled, (swarm_enabled and is_manager)
 
 
 def docker_info_error_msg_infer(error_msg):
@@ -40,7 +47,7 @@ def docker_info_error_msg_infer(error_msg):
 
         # dial tcp: lookup swarm.nuvdla.io on ...: no such host
         # it means the endpoint is unreachable and thus not usable -> offline
-        return False, False, 'UNKNOWN'
+        return False, 'UNKNOWN'
     elif any(error_substr in error_msg_lowercase
              for error_substr in ['remote error: tls',
                                   'seems invalid']):
@@ -48,7 +55,7 @@ def docker_info_error_msg_infer(error_msg):
         # remote error: tls: unknown certificate authority"
         # in this case the infra is running, reachable, and Docker has replied.
         # Simply the creds are not good
-        return True, False, 'INVALID'
+        return True, 'INVALID'
     else:
         # other errors can simply mean that the server could not run the command,
         # thus not being Docker related
@@ -64,7 +71,7 @@ def docker_info_error_msg_infer(error_msg):
 
         # if we got here, is because the error is most likely not related
         # with the infra, so just raise
-        return None, None, 'UNKNOWN'
+        return None, 'UNKNOWN'
 
 
 def k8s_info_error_msg_infer(error_msg):
@@ -129,7 +136,7 @@ class CredentialCheck(object):
             swarm_enabled, swarm_manager = is_swarm_enabled_and_manager(info)
         except Exception as ex:
             error_msg = ex.args[0]
-            infra_online, swarm_enabled, cred_validity = docker_info_error_msg_infer(error_msg)
+            infra_online, cred_validity = docker_info_error_msg_infer(error_msg)
             self.update_credential_last_check(credential["id"], cred_validity)
             raise Exception(error_msg)
         finally:
