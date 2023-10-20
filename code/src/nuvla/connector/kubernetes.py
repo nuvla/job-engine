@@ -1002,7 +1002,7 @@ class K8sSSHKey(Kubernetes):
         metadata:
           name: {job_name}
         spec:
-          ttlSecondsAfterFinished: 5
+          ttlSecondsAfterFinished: {job_ttl}
           template:
             spec:
               containers:
@@ -1026,6 +1026,7 @@ class K8sSSHKey(Kubernetes):
         image_name = self.base_image
         mount_path = tempfile.gettempdir()
         sleep_value = 2
+        the_job_ttl = 60
         base_command = "['sh', '-c',"
         if action.startswith('revoke'):
             cmd = "'grep -v \"${SSH_PUB}\" %s > \
@@ -1034,7 +1035,7 @@ class K8sSSHKey(Kubernetes):
                          f'{mount_path}/.ssh/authorized_keys')
             the_job_name="revoke-ssh-key"
         else:
-            cmd = "'sleep %s && echo -e \"${SSH_PUB}\" >> %s && echo Success adding public key'" \
+            cmd = "'sleep %s && echo -e \"${SSH_PUB}\n\" >> %s && echo Success adding public key'" \
                 % (f'{sleep_value}', f'{mount_path}/.ssh/authorized_keys')
             the_job_name="add-ssh-key"
         end_command = "]"
@@ -1045,6 +1046,7 @@ class K8sSSHKey(Kubernetes):
         formatted_reboot_yaml_manifest = \
             reboot_yaml_manifest.format(job_name = the_job_name, \
             host_path_ssh = user_home, \
+            job_ttl = the_job_ttl, \
             command = built_command, pubkey_string = pubkey, \
             mount_path = mount_path, image_name = image_name)
 
