@@ -560,8 +560,6 @@ class K8sEdgeMgmt(Kubernetes):
         if not job.is_in_pull_mode:
             raise OperationNotAllowed(
                 'NuvlaEdge management actions are only supported in pull mode.')
-        
-        log.info(f'JSW another test 2023/10/17')
 
         # FIXME: This needs to be parameterised.
         path = '/srv/nuvlaedge/shared'
@@ -620,7 +618,7 @@ class K8sEdgeMgmt(Kubernetes):
               backoffLimit: 0
         """
 
-        log.info(f"The re-formatted YAML is: \n{reboot_yaml_manifest}")
+        log.debug(f"The re-formatted YAML is: \n{reboot_yaml_manifest}")
 
         with TemporaryDirectory() as tmp_dir_name:
             filename = f'{tmp_dir_name}/reboot_job_manifest.yaml'
@@ -1016,7 +1014,7 @@ class K8sSSHKey(Kubernetes):
         metadata:
           name: {job_name}
         spec:
-          ttlSecondsAfterFinished: 120
+          ttlSecondsAfterFinished: 5
           template:
             spec:
               containers:
@@ -1062,7 +1060,7 @@ class K8sSSHKey(Kubernetes):
             command = built_command, pubkey_string = pubkey, \
             mount_path = mount_path, image_name = image_name)
 
-        logging.info("The re-formatted YAML is %s ", formatted_reboot_yaml_manifest) # FIXME
+        logging.debug("The re-formatted YAML is %s ", formatted_reboot_yaml_manifest)
 
         with TemporaryDirectory() as tmp_dir_name:
             with open(tmp_dir_name + '/reboot_job_manifest.yaml', 'w',encoding="utf-8") \
@@ -1071,9 +1069,7 @@ class K8sSSHKey(Kubernetes):
             cmd_ssh_key = \
                 self.build_cmd_line(['apply', '-f', tmp_dir_name + '/reboot_job_manifest.yaml'])
             ssh_key_result = execute_cmd(cmd_ssh_key)
-            log.info('The result of the ssh key addition : %s',ssh_key_result) # FIXME
-
-        logging.info('JSW YYY we should see this output 003a! %s',ssh_key_result) # FIXME
+            log.debug('The result of the ssh key addition : %s',ssh_key_result)
 
         return ssh_key_result
 
