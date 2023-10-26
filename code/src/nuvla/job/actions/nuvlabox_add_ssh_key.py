@@ -36,7 +36,7 @@ class NBAddSSHKey(object):
         if credential_id:
             public_key = self.job.context[credential_id]['public-key']
             if not self._sanitize_ssh_key(public_key):
-                r = "ssh public key not valid: " + public_key
+                r = "The ssh public key format is not valid: " + public_key
                 self.job.update_job(status_message=json.dumps(r))
                 return 1
             self.job.set_progress(10)

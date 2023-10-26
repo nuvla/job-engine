@@ -531,6 +531,14 @@ class Kubernetes(Connector):
         if payload:
             self.api.operation(self.nuvlabox_resource, "commission", data=payload)
 
+    def create_job_name(self, the_job_name, k=5):
+        """
+        Create the job name with random string attached
+        """
+        new_job_name = the_job_name + "-" + ''.join(random.choices(string.digits, k=k))
+
+        return new_job_name
+
 
 class K8sEdgeMgmt(Kubernetes):
 
@@ -577,7 +585,7 @@ class K8sEdgeMgmt(Kubernetes):
 
         sleep_value = 10
         image_name = self.base_image
-        the_job_name = "reboot-nuvlaedge"
+        the_job_name = self.create_job_name("reboot-nuvlaedge")
 
         cmd = f"sleep {sleep_value} && echo b > /sysrq"
         command = f"['sh', '-c', '{cmd}' ]"
@@ -740,14 +748,6 @@ class K8sEdgeMgmt(Kubernetes):
         log.info(f"Environment list arguments: \n {new_vars_string}")
 
         return new_vars_string
-
-    def create_job_name(self, the_job_name, k=5):
-        """
-        Create the job name with random string attached
-        """
-        new_job_name = the_job_name + "-" + ''.join(random.choices(string.digits, k=k))
-
-        return new_job_name
 
     def check_target_release(self, helm_log_result, target_release, current_version):
         """
@@ -1033,11 +1033,11 @@ class K8sSSHKey(Kubernetes):
                     /tmp/temp && mv /tmp/temp %s && echo Success deleting public key'" \
                       % (f'{mount_path}/.ssh/authorized_keys',
                          f'{mount_path}/.ssh/authorized_keys')
-            the_job_name="revoke-ssh-key"
+            the_job_name = self.create_job_name("revoke-ssh-key")
         else:
             cmd = "'sleep %s && echo -e \"${SSH_PUB}\n\" >> %s && echo Success adding public key'" \
                 % (f'{sleep_value}', f'{mount_path}/.ssh/authorized_keys')
-            the_job_name="add-ssh-key"
+            the_job_name = self.create_job_name("add-ssh-key")
         end_command = "]"
 
         built_command = base_command + cmd + end_command
