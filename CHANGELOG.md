@@ -6,6 +6,19 @@
 
 ## Released
 
+## [3.8.0] - 2023-10-27
+
+- Kubernetes: fix reboot and update actions (#295)
+- credential_check action - refactor swarm mode detection (#293)
+- nuvlabox offline distributor - Replace nuvlabox status offline distributor (#288)
+
+## [3.7.1] - 2023-10-02
+
+- Update nuvlaedge on kubernetes via helm job (#292)
+- Expose the original deployment parameters
+- Re-write the helm command to use the nuvlaedge/nuvlaedge repo
+- Add helm to container-lite
+
 ## [3.7.0] - 2023-09-25
 
 - docker_stack.py - fix bug introduced in commit f757d27
