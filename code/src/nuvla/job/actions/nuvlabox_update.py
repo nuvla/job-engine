@@ -21,11 +21,10 @@ class NBUpdateJob(object):
         logging.info('Updating NuvlaBox {}'.format(nuvlabox_id))
         if os.getenv('KUBERNETES_SERVICE_HOST'):
             logging.debug('Found kubernetes installation.')
-            connector = K8sEdgeMgmt(job=self.job, api=self.api, nuvlabox_id=nuvlabox_id)
+            connector = K8sEdgeMgmt(job=self.job)
         else:
             logging.info('Found docker installation.')
             connector = NB.NuvlaBox(api=self.api, nuvlabox_id=nuvlabox_id, job=self.job)
-
         # IMPORTANT BIT THAT MUST CHANGE FOR EVERY NUVLABOX API ACTION
         # in this case, we need to fetch the target NB release
         affected_resources = self.job['affected-resources']

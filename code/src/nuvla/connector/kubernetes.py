@@ -534,16 +534,17 @@ class Kubernetes(Connector):
 
 class K8sEdgeMgmt(Kubernetes):
 
+    KUB_JOB = 'job.batch/'
+
     def __init__(self, job: Job, **kwargs):
 
         self.job = job
         self.api = job.api
 
-        self.nuvlabox_id = kwargs.get("nuvlabox_id")
-        self.nuvlabox_resource = self.api.get(self.nuvlabox_id)
-        self.nuvlabox = self.nuvlabox_resource.data
-        self.nuvlabox_status = self.api.get( \
-            self.nuvlabox.get("nuvlabox-status")).data
+        self._nuvlabox = None
+        self._nuvlabox_status = None
+
+        self.nuvlabox_id=self.job['target-resource']['href']
 
         if not job.is_in_pull_mode:
             raise OperationNotAllowed(
@@ -565,8 +566,18 @@ class K8sEdgeMgmt(Kubernetes):
         self.ne_image_name = os.getenv('NE_IMAGE_NAME', f'{self.ne_image_org}/{self.ne_image_repo}')
         self.base_image = f'{self.ne_image_registry}{self.ne_image_name}:{self.ne_image_tag}'
 
-    def KUB_JOB(self):
-        return 'job.batch/'
+    @property
+    def nuvlabox(self):
+        if not self._nuvlabox:
+            self._nuvlabox = self.api.get(self.nuvlabox_id).data
+        return self._nuvlabox
+
+    @property
+    def nuvlabox_status(self):
+        if not self._nuvlabox_status:
+            nuvlabox_status_id = self.nuvlabox.get('nuvlabox-status')
+            self._nuvlabox_status = self.api.get(nuvlabox_status_id).data
+        return self._nuvlabox_status
 
     @should_connect
     def reboot(self):
@@ -606,7 +617,6 @@ class K8sEdgeMgmt(Kubernetes):
               backoffLimit: 0
         """
 
-        ## log.debug(f"The generated command is: {built_command}")
         log.debug(f"The re-formatted YAML is: \n{reboot_yaml_manifest}")
 
         with TemporaryDirectory() as tmp_dir_name:
@@ -803,7 +813,7 @@ class K8sEdgeMgmt(Kubernetes):
         the_job_name: self explanatory... the name of the job
         """
 
-        read_log_cmd = self.build_cmd_line(['logs', self.KUB_JOB() + the_job_name])
+        read_log_cmd = self.build_cmd_line(['logs', self.KUB_JOB + the_job_name])
         log_result = execute_cmd(read_log_cmd)
         log.info('The log result is:\n%s',log_result.stdout)
 
@@ -927,7 +937,7 @@ class K8sEdgeMgmt(Kubernetes):
         """
         while True:
             check_cmd = \
-                self.build_cmd_line(['get', self.KUB_JOB() + the_job_name])
+                self.build_cmd_line(['get', self.KUB_JOB + the_job_name])
             check_result = execute_cmd(check_cmd)
             log.debug("The check result is:\n%s",check_result.stdout)
 
@@ -950,7 +960,7 @@ class K8sEdgeMgmt(Kubernetes):
 
         while time.time() < t_end:
             check_cmd = \
-                self.build_cmd_line(['get', self.KUB_JOB() + the_job_name])
+                self.build_cmd_line(['get', self.KUB_JOB + the_job_name])
             check_result = execute_cmd(check_cmd)
             log.debug("The check result is:\n%s",check_result.stdout)
 
@@ -1058,6 +1068,7 @@ class K8sSSHKey(Kubernetes):
                 self.build_cmd_line(['apply', '-f', tmp_dir_name + '/reboot_job_manifest.yaml'])
             ssh_key_result = execute_cmd(cmd_ssh_key)
             log.debug('The result of the ssh key addition : %s',ssh_key_result)
+
         return ssh_key_result
 
     def handle_ssh_key(self, action, pubkey, credential_id, nuvlabox_id):
