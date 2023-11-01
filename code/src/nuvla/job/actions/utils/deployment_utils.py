@@ -209,7 +209,7 @@ class DeploymentBase(object):
                 f"Failed to {self.job['action']} {self.deployment_id}: {ex}")
             try:
                 self.job.set_status_message(repr(ex))
-                if self.job.get('execution-mode', '').lower() != 'pull':
+                if self.job.get('execution-mode', '').lower() != 'mixed':
                     self.api_dpl.set_state_error(self.deployment_id)
             except Exception as ex_state:
                 log.error(
