@@ -6,6 +6,10 @@
 
 ## Released
 
+## [3.8.1] - 2023-11-01
+
+- Deployment state distributor - Optimize checking existing jobs and if existing parents
+
 ## [3.8.0] - 2023-10-27
 
 - Kubernetes: fix reboot and update actions (#295)
