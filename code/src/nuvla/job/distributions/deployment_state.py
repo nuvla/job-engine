@@ -2,8 +2,7 @@
 
 import logging
 from abc import abstractmethod
-
-from nuvla.api.models import CimiResource
+from nuvla.api.util.filter import filter_or, filter_and
 
 from ..util import override
 from ..distribution import DistributionBase
@@ -22,36 +21,44 @@ class DeploymentStateJobsDistribution(DistributionBase):
     def get_deployments(self):
         return []
 
-    def job_exists(self, job):
-        filters = "(state='QUEUED' or state='RUNNING')" \
-                  " and action='{0}'" \
-                  " and target-resource/href='{1}'"\
-            .format(job['action'], job['target-resource']['href'])
-        jobs = self.distributor.api.search('job', filter=filters, select='', last=0)
-        return jobs.count > 0
+    def _get_exiting_jobs(self, deployments):
+        filter_states = filter_or(['state="QUEUED"', 'state="RUNNING"'])
+        filter_action = f'action="{self.ACTION_NAME}"'
+        filter_targets = filter_or([f'target-resource/href="{deployment.id}"'
+                                    for deployment in deployments])
+        filter_jobs = filter_and([filter_states, filter_action, filter_targets])
+        jobs = self.distributor.api.search(
+            'job', filter=filter_jobs, select='target-resource', last=10000)
+        return {job.data.get('target-resource', {}).get('href')
+                for job in jobs.resources}
+
+    def _build_job(self, deployment):
+        job = {'action': self.ACTION_NAME,
+               'target-resource': {'href': deployment.id}}
+
+        nuvlabox = deployment.data.get('nuvlabox')
+        if nuvlabox:
+            job['acl'] = {'edit-data': [nuvlabox],
+                          'manage': [nuvlabox],
+                          'owners': ['group/nuvla-admin']}
+
+        exec_mode = deployment.data.get('execution-mode')
+        if exec_mode in ['mixed', 'pull']:
+            job['execution-mode'] = 'pull'
+        else:
+            job['execution-mode'] = 'push'
+        return job
 
     @override
     def job_generator(self):
         skipped = 0
-        for deployment in self.get_deployments():
-            job = {'action': self.ACTION_NAME,
-                   'target-resource': {'href': deployment.id}}
-
-            nuvlabox = deployment.data.get('nuvlabox')
-            if nuvlabox:
-                job['acl'] = {'edit-data': [nuvlabox],
-                              'manage': [nuvlabox],
-                              'owners': ['group/nuvla-admin']}
-
-            exec_mode = deployment.data.get('execution-mode')
-            if exec_mode in ['mixed', 'pull']:
-                job['execution-mode'] = 'pull'
-            else:
-                job['execution-mode'] = 'push'
-
-            if self.job_exists(job):
-                skipped += 1
-                continue
-            yield job
-        self._publish_metric('skipped_exist', skipped)
-        logging.info(f'Deployments skipped (jobs already exist): {skipped}')
+        deployments = self.get_deployments()
+        if len(deployments) > 0:
+            existing_jobs = self._get_exiting_jobs(deployments)
+            for deployment in deployments:
+                if deployment.id in existing_jobs:
+                    skipped += 1
+                else:
+                    yield self._build_job(deployment)
+            self._publish_metric('skipped_exist', skipped)
+            logging.info(f'Deployments skipped (jobs already exist): {skipped}')

@@ -26,8 +26,7 @@ class DeploymentStateNewJobsDistribution(DeploymentStateJobsDistribution):
     def get_deployments(self):
         filters = f"state='STARTED' and updated>='now-{self.COLLECT_PAST_SEC}s'"
         select = 'id,execution-mode,nuvlabox'
-        logging.info(f'Filter: {filters}. Select: {select}')
-        active = self.distributor.api.search('deployment', filter=filters, select=select)
-        self._publish_metric('in_started', active.count)
-        logging.info(f'Deployments in STARTED: {active.count}')
-        return active.resources
+        deployments_resp = self.distributor.api.search('deployment', filter=filters, select=select)
+        self._publish_metric('in_started', deployments_resp.count)
+        logging.info(f'Deployments in STARTED: {deployments_resp.count}')
+        return deployments_resp.resources
