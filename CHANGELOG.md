@@ -6,6 +6,10 @@
 
 ## Released
 
+## [3.8.2] - 2023-11-01
+
+- Deployment utils - Start, stop, update deployment actions will set deployment state to error when execution-mode is not mixed
+
 ## [3.8.1] - 2023-11-01
 
 - Deployment state distributor - Optimize checking existing jobs and if existing parents
