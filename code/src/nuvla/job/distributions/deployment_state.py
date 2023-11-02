@@ -2,8 +2,9 @@
 
 import logging
 from abc import abstractmethod
-from nuvla.api.util.filter import filter_or, filter_and
+from nuvla.api.util.filter import filter_and
 
+from ..job import JOB_QUEUED, JOB_RUNNING
 from ..util import override
 from ..distribution import DistributionBase
 
@@ -22,10 +23,10 @@ class DeploymentStateJobsDistribution(DistributionBase):
         return []
 
     def _get_exiting_jobs(self, deployments):
-        filter_states = filter_or(['state="QUEUED"', 'state="RUNNING"'])
+        filter_states = f'state={str([JOB_QUEUED, JOB_RUNNING])}'
         filter_action = f'action="{self.ACTION_NAME}"'
-        filter_targets = filter_or([f'target-resource/href="{deployment.id}"'
-                                    for deployment in deployments])
+        deployment_ids = [deployment.id for deployment in deployments]
+        filter_targets = f'target-resource/href={str(deployment_ids)}'
         filter_jobs = filter_and([filter_states, filter_action, filter_targets])
         jobs = self.distributor.api.search(
             'job', filter=filter_jobs, select='target-resource', last=10000)

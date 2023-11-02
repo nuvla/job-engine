@@ -2,7 +2,8 @@
 
 import logging
 
-from nuvla.api.util.filter import filter_or, filter_and
+from nuvla.api.util.filter import filter_and
+from ..job import JOB_RUNNING, JOB_QUEUED
 from ..util import override
 from ..distributions import distribution
 from ..distribution import DistributionBase
@@ -23,7 +24,7 @@ class RegisterUsageRecordNewDeploymentJobsDistribution(DistributionBase):
         jobs = self.distributor.api.search(
             'job',
             filter=filter_and(
-                [filter_or(["state='QUEUED'", "state='RUNNING'"]),
+                [f'state={str([JOB_QUEUED, JOB_RUNNING])}'
                  f"action='{job['action']}'",
                  f"target-resource/href='{job['target-resource']['href']}'"]),
             last=0)

@@ -2,7 +2,6 @@
 
 import logging
 
-from nuvla.api.util.filter import filter_or
 from ..util import override
 from ..distributions import distribution
 from .deployment_state import DeploymentStateJobsDistribution
@@ -23,8 +22,8 @@ class DeploymentStateOldJobsDistribution(DeploymentStateJobsDistribution):
 
     def _get_existing_parents(self, deployments):
         if len(deployments) > 0:
-            filter_parents = filter_or([f'id="{deployment.data.get("parent")}"'
-                                        for deployment in deployments])
+            deployment_parents = [deployment.data.get("parent") for deployment in deployments]
+            filter_parents = f'id={str(deployment_parents)}'
             parents_resp = self.distributor.api.search(
                 'credential', filter=filter_parents, select='id', last=10000)
             return {parent.id for parent in parents_resp.resources}
