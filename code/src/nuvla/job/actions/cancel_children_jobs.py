@@ -3,7 +3,7 @@
 from ..job import JOB_RUNNING, JOB_QUEUED
 from ..actions import action
 from nuvla.api.api import Api as Nuvla
-from nuvla.api.util.filter import filter_or, filter_and
+from nuvla.api.util.filter import filter_and
 
 import logging
 
@@ -18,8 +18,7 @@ class CancelChildrenJobsJob(object):
     def _children_jobs(self, parent_job):
         if parent_job:
             filter_children = f'parent-job="{parent_job}"'
-            filter_state = filter_or([f"state='{JOB_RUNNING}'",
-                                      f"state='{JOB_QUEUED}'"])
+            filter_state = f'state={str([JOB_RUNNING, JOB_QUEUED])}'
             filter_str = filter_and([filter_children, filter_state])
             return self.nuvla.search('job', filter=filter_str,
                                      select='id, state')
