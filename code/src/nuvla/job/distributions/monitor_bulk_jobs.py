@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import logging
-from nuvla.api.util.filter import filter_or, filter_and
+from nuvla.api.util.filter import filter_and
 from ..distributions import distribution
 from ..distribution import DistributionBase
 from ..util import override
@@ -14,16 +14,14 @@ class MonitorBulkJobsDistributor(DistributionBase):
 
     def __init__(self, distributor):
         super(MonitorBulkJobsDistributor, self).__init__(self.DISTRIBUTION_NAME, distributor)
-        # fixme should be 1min
-        self.collect_interval = 10  # 1 min
+        self.collect_interval = 60
         self._start_distribution()
 
     def job_exists(self, job):
         jobs = self.distributor.api.search(
             'job',
             filter=filter_and(
-                [filter_or([f"state='{JOB_QUEUED}'",
-                            f"state='{JOB_RUNNING}'"]),
+                [f'state={str([JOB_RUNNING, JOB_QUEUED])}',
                  f"action='{job['action']}'",
                  f"target-resource/href='{job['target-resource']['href']}'"]),
             last=0)

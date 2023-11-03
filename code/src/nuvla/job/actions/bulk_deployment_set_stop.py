@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import logging
-from nuvla.api.util.filter import filter_or, filter_and
+from nuvla.api.util.filter import filter_and
 from ..actions import action
 from .utils.bulk_action import BulkAction
 
@@ -15,11 +15,7 @@ class BulkDeploymentSetStopJob(BulkAction):
 
     def get_todo(self):
         filter_deployment_set = f'deployment-set="{self.dep_set_id}"'
-        filter_state = filter_or(["state='PENDING'",
-                                  "state='STARTING'",
-                                  "state='UPDATING'",
-                                  "state='STARTED'",
-                                  "state='ERROR'"])
+        filter_state = f'state={str(["PENDING", "STARTING", "UPDATING", "STARTED", "ERROR"])}'
         filter_str = filter_and([filter_deployment_set, filter_state])
         deployments = self.user_api.search('deployment', filter=filter_str, select='id').resources
         return [deployment.id for deployment in deployments]

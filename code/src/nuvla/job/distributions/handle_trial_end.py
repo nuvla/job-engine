@@ -4,7 +4,7 @@ import json
 import logging
 from typing import List
 from nuvla.api.util.date import nuvla_date, today_start_time, today_end_time
-from nuvla.api.util.filter import filter_or, filter_and
+from nuvla.api.util.filter import filter_and
 from ..job import JOB_QUEUED, JOB_RUNNING, JOB_SUCCESS
 from ..util import override
 from ..distributions import distribution
@@ -12,7 +12,7 @@ from ..distribution import DistributionBase
 
 
 def build_filter_customers(customer_ids: List[str]) -> str:
-    return filter_or([f'customer-id="{cid}"' for cid in customer_ids])
+    return f'customer-id={str(customer_ids)}'
 
 
 @distribution('handle_trial_end')
@@ -29,8 +29,7 @@ class HandleTrialEndJobsDistribution(DistributionBase):
         self._start_distribution()
 
     def list_ignored_customer_ids(self):
-        state_filter = filter_or([f'state="{state}"' for state in
-                                  [JOB_QUEUED, JOB_SUCCESS, JOB_RUNNING]])
+        state_filter = f'state={str([JOB_QUEUED, JOB_SUCCESS, JOB_RUNNING])}'
         action_filter = 'action="handle_trial_end"'
         created_filter = f'created>="{nuvla_date(today_start_time())}"' \
                          f' and created<="{nuvla_date(today_end_time())}"'

@@ -5,7 +5,7 @@ import logging
 from ..actions import action
 from ..job import JOB_QUEUED, JOB_RUNNING, JOB_SUCCESS, JOB_FAILED
 from nuvla.api.util.date import parse_nuvla_date
-from nuvla.api.util.filter import filter_or, filter_and
+from nuvla.api.util.filter import filter_and
 from datetime import datetime, timezone, timedelta
 
 action_name = 'monitor_bulk_job'
@@ -42,7 +42,7 @@ class MonitorBulkJob(object):
 
     def query_jobs(self, states):
         filter_parent = f'parent-job="{self.bulk_job_id}"'
-        filter_states = filter_or([f'state="{state}"' for state in states])
+        filter_states = f'state={str(states)}'
         filter_str = filter_and([filter_parent, filter_states])
         return self.api.search('job', filter=filter_str,
                                select='id, target-resource, state').resources

@@ -40,7 +40,7 @@ class BulkDeploymentSetApply(BulkAction):
 
     def _get_infra(self, target):
         nuvlabox = self.user_api.get(target).data
-        filter_subtype_infra = '(subtype="swarm" or subtype="kubernetes")'
+        filter_subtype_infra = f'subtype={str(["swarm", "kubernetes"])}'
         filter_infra = f'parent="{nuvlabox["infrastructure-service-group"]}" ' \
                        f'and {filter_subtype_infra}'
         infras = self.user_api.search('infrastructure-service',
@@ -51,8 +51,7 @@ class BulkDeploymentSetApply(BulkAction):
     def _get_cred(self, target):
         infra_id = self._get_infra(target)
         if infra_id:
-            filter_cred_subtype = '(subtype="infrastructure-service-swarm" or ' \
-                                  'subtype="infrastructure-service-kubernetes")'
+            filter_cred_subtype = f'subtype={str(["infrastructure-service-swarm", "infrastructure-service-kubernetes"])}'
             filter_cred = f'parent="{infra_id}" and {filter_cred_subtype}'
             creds = self.user_api.search('credential', filter=filter_cred, select='id').resources
             if len(creds) > 0:
@@ -77,10 +76,6 @@ class BulkDeploymentSetApply(BulkAction):
             deployment_data = deployment.data
             self._update_env_deployment(deployment_data, application)
             self._update_regs_creds_deployment(deployment_data, application)
-
-            # fixme force pull mode
-            deployment_data['execution-mode'] = 'pull'
-
             deployment = self.user_api.edit(deployment_id, deployment_data)
             self.user_api.operation(deployment, 'start',
                                     {'low-priority': True,
@@ -98,10 +93,6 @@ class BulkDeploymentSetApply(BulkAction):
             application_href = f'{application["id"]}_{application["version"]}'
             self._update_env_deployment(deployment_data, application)
             self._update_regs_creds_deployment(deployment_data, application)
-
-            # fixme force pull mode
-            deployment_data['execution-mode'] = 'pull'
-
             deployment = self.user_api.edit(deployment_id, deployment_data)
             self.user_api.operation(deployment, 'fetch-module',
                                     {'module-href': application_href})

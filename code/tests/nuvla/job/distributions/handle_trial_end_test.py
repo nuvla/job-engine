@@ -39,7 +39,7 @@ class TestHandleTrialEndJobsDistribution(unittest.TestCase):
 
     def test_build_filter_customers(self):
         self.assertEqual(
-            '(customer-id="1" or customer-id="2" or customer-id="3")',
+            "customer-id=['1', '2', '3']",
             build_filter_customers(['1', '2', '3']))
 
     @patch.object(HandleTrialEndJobsDistribution, 'search_customers')
