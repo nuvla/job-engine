@@ -21,7 +21,7 @@ class CancelChildrenJobsJob(object):
             filter_state = f'state={str([JOB_RUNNING, JOB_QUEUED])}'
             filter_str = filter_and([filter_children, filter_state])
             return self.nuvla.search('job', filter=filter_str,
-                                     select='id, state')
+                                     select='id, operations')
         else:
             return []
 

@@ -22,7 +22,7 @@ class RefreshCustomerSubscriptionCache(DistributionBase):
             return self.distributor.api.search(
                 'customer',
                 filter='subscription-id!=null',
-                select='id',
+                select='id,operations',
                 last=10000).resources
         except Exception as ex:
             logging.error(f'Failed to search for customers: {ex}')

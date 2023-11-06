@@ -59,8 +59,7 @@ class ResourceLogFetchJob(ABC):
         return self.connector.log(component, since, lines)
 
     def get_resource_log(self, log_id: str) -> dict:
-        return self.api.get(log_id, select='id, parent, components, since, line'
-                                           ', last-timestamp').data
+        return self.api.get(log_id).data
 
     def update_resource_log(self, log_id: str, resource_log: dict) -> None:
         self.api.edit(log_id, resource_log)

@@ -34,8 +34,7 @@ class NotifyCouponEndJobsDistribution(DistributionBase):
                   " and action='{0}'" \
                   " and payload='{1}'" \
             .format(job['action'], job['payload'])
-        jobs = self.distributor.api.search('job', filter=filters, select='',
-                                           last=0)
+        jobs = self.distributor.api.search('job', filter=filters, last=0)
         return jobs.count > 0
 
     @override
