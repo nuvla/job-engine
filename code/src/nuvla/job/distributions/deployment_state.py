@@ -23,10 +23,10 @@ class DeploymentStateJobsDistribution(DistributionBase):
         return []
 
     def _get_exiting_jobs(self, deployments):
-        filter_states = f'state={str([JOB_QUEUED, JOB_RUNNING])}'
+        filter_states = f'state={[JOB_QUEUED, JOB_RUNNING]}'
         filter_action = f'action="{self.ACTION_NAME}"'
         deployment_ids = [deployment.id for deployment in deployments]
-        filter_targets = f'target-resource/href={str(deployment_ids)}'
+        filter_targets = f'target-resource/href={deployment_ids}'
         filter_jobs = filter_and([filter_states, filter_action, filter_targets])
         jobs = self.distributor.api.search(
             'job', filter=filter_jobs, select='target-resource', last=10000)

@@ -21,7 +21,7 @@ class MonitorBulkJobsDistributor(DistributionBase):
         jobs = self.distributor.api.search(
             'job',
             filter=filter_and(
-                [f'state={str([JOB_RUNNING, JOB_QUEUED])}',
+                [f'state={[JOB_RUNNING, JOB_QUEUED]}',
                  f"action='{job['action']}'",
                  f"target-resource/href='{job['target-resource']['href']}'"]),
             last=0)

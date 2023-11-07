@@ -12,7 +12,7 @@ from ..distribution import DistributionBase
 
 
 def build_filter_customers(customer_ids: List[str]) -> str:
-    return f'customer-id={str(customer_ids)}'
+    return f'customer-id={customer_ids}'
 
 
 @distribution('handle_trial_end')
@@ -29,7 +29,7 @@ class HandleTrialEndJobsDistribution(DistributionBase):
         self._start_distribution()
 
     def list_ignored_customer_ids(self):
-        state_filter = f'state={str([JOB_QUEUED, JOB_SUCCESS, JOB_RUNNING])}'
+        state_filter = f'state={[JOB_QUEUED, JOB_SUCCESS, JOB_RUNNING]}'
         action_filter = 'action="handle_trial_end"'
         created_filter = f'created>="{nuvla_date(today_start_time())}"' \
                          f' and created<="{nuvla_date(today_end_time())}"'

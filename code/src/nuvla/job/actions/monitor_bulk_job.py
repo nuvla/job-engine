@@ -42,7 +42,7 @@ class MonitorBulkJob(object):
 
     def query_jobs(self, states):
         filter_parent = f'parent-job="{self.bulk_job_id}"'
-        filter_states = f'state={str(states)}'
+        filter_states = f'state={states}'
         filter_str = filter_and([filter_parent, filter_states])
         return self.api.search('job', filter=filter_str,
                                select='id, target-resource, state').resources

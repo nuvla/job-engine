@@ -24,7 +24,7 @@ class RegisterUsageRecordNewDeploymentJobsDistribution(DistributionBase):
         jobs = self.distributor.api.search(
             'job',
             filter=filter_and(
-                [f'state={str([JOB_QUEUED, JOB_RUNNING])}'
+                [f'state={[JOB_QUEUED, JOB_RUNNING]}'
                  f"action='{job['action']}'",
                  f"target-resource/href='{job['target-resource']['href']}'"]),
             last=0)

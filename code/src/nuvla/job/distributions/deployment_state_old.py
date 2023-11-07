@@ -25,7 +25,7 @@ class DeploymentStateOldJobsDistribution(DeploymentStateJobsDistribution):
             deployment_parents = [deployment.data.get('parent')
                                   for deployment in deployments
                                   if deployment.data.get('parent')]
-            filter_parents = f'id={str(deployment_parents)}'
+            filter_parents = f'id={deployment_parents}'
             parents_resp = self.distributor.api.search(
                 'credential', filter=filter_parents, select='id', last=10000)
             return {parent.id for parent in parents_resp.resources}
