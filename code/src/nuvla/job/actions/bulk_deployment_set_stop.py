@@ -33,11 +33,9 @@ class BulkDeploymentSetStopJob(BulkAction):
             self.result['FAILED'].append(deployment_id)
 
     def bulk_operation(self):
-        todo = self.result['TODO']
-        todo_copy = todo[:]
-        for deployment_id in todo_copy:
+        for deployment_id in self.todo[:]:
             self._stop_deployment(deployment_id)
-            todo.remove(deployment_id)
+            self.todo.remove(deployment_id)
             self._push_result()
 
     def do_work(self):
