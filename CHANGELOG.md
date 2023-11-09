@@ -6,6 +6,13 @@
 
 ## Released
 
+## [3.9.0] - 2023-11-09
+
+- Global - Use values new type of query (#299)
+- Global - Review existing selects to avoid break with api-server changes
+- Bulk deployment set action - Do not store todo (#301)
+- bulk deployment action - Do not store todo
+
 ## [3.8.2] - 2023-11-01
 
 - Deployment utils - Start, stop, update deployment actions will set deployment state to error when execution-mode is not mixed

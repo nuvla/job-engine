@@ -5,7 +5,7 @@
 
   <groupId>sixsq.nuvla.job-engine</groupId>
   <artifactId>job-engine</artifactId>
-  <version>3.8.3.dev</version>
+  <version>3.9.0.dev</version>
   <packaging>pom</packaging>
   <name>job-engine</name>
   <url>http://sixsq.com</url>
