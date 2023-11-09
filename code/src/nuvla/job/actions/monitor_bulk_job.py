@@ -4,9 +4,7 @@ import json
 import logging
 from ..actions import action
 from ..job import JOB_QUEUED, JOB_RUNNING, JOB_SUCCESS, JOB_FAILED
-from nuvla.api.util.date import parse_nuvla_date
 from nuvla.api.util.filter import filter_and
-from datetime import datetime, timezone, timedelta
 
 action_name = 'monitor_bulk_job'
 
@@ -27,9 +25,10 @@ class MonitorBulkJob(object):
         self.result = None
 
     def is_expired(self):
-        created = parse_nuvla_date(self.bulk_job.data['created'])
-        expiry_date = created + timedelta(days=1)
-        return datetime.now(timezone.utc) > expiry_date
+        filter_1d_old = 'created>"now-1d"'
+        filter_job_id = f'id="{self.bulk_job_id}"'
+        filter_str = filter_and([filter_job_id, filter_1d_old])
+        return self.api.search('job', filter=filter_str, last=0).count == 0
 
     def reload_result(self):
         try:
@@ -37,8 +36,7 @@ class MonitorBulkJob(object):
         except Exception:
             return {'bootstrap-exceptions': {},
                     'FAILED': [],
-                    'SUCCESS': [],
-                    'ALL': []}
+                    'SUCCESS': []}
 
     def query_jobs(self, states):
         filter_parent = f'parent-job="{self.bulk_job_id}"'

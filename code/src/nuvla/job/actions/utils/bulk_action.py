@@ -11,8 +11,8 @@ class BulkAction(object):
         self.result = {
             'bootstrap-exceptions': {},
             'FAILED': [],
-            'SUCCESS': [],
-            'TODO': []}
+            'SUCCESS': []}
+        self.todo = None
 
     def _push_result(self):
         self.job.set_status_message(json.dumps(self.result))
@@ -35,10 +35,8 @@ class BulkAction(object):
         # Job recovery support
         if self.job.get('progress', 0) > 0:
             self.reload_result()
-        if self.job.get('progress', 0) < 10:
-            self.result['TODO'] = self.get_todo()
-            self._push_result()
-            self.job.set_progress(10)
         if self.job.get('progress', 0) < 20:
+            self.todo = self.get_todo()
+            self._push_result()
             self.bulk_operation()
             self.job.set_progress(20)

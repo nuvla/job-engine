@@ -119,16 +119,12 @@ class BulkDeploymentSetApply(BulkAction):
         except Exception as ex:
             logging.error(f'Failed to remove {deployment_id}: {repr(ex)}')
 
-    def _apply_op_status(self, func, operational_status, k):
-        elements = operational_status.get(k, [])
-        copy_elements = elements[:]
-        for el in copy_elements:
-            func(el)
-            elements.remove(el)
-            self._push_result()
+    @staticmethod
+    def _apply_op_status(func, operational_status, k):
+        return list(map(func, operational_status.get(k, [])))
 
     def bulk_operation(self):
-        op_status = self.result['TODO']
+        op_status = self.todo
         if op_status['status'] == 'NOK':
             self._apply_op_status(self._add_deployment, op_status, 'deployments-to-add')
             # FIXME : find a cleaner better way to avoid orphan containers
