@@ -177,7 +177,6 @@ class NuvlaBox(Connector):
 
     def connect(self):
 
-        logging.info('Extra chars... JSW Connecting to NuvlaEdge {}'.format(self.nuvlabox_id))
         self.nuvlabox_resource = self.api.get(self.nuvlabox_id)
         self.nuvlabox = self.nuvlabox_resource.data
         self.acl = self.nuvlabox.get('acl')
