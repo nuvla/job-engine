@@ -4,6 +4,8 @@ from abc import ABC, abstractmethod
 from typing import Optional, List
 from datetime import datetime
 from nuvla.api.util.date import parse_nuvla_date
+from nuvla.api.resources import Deployment
+import os
 
 
 def get_last_line_timestamp(lines: Optional[List[str]]) -> Optional[str]:
@@ -40,6 +42,8 @@ class ResourceLogFetchJob(ABC):
         self.resource_log_id = self.job['target-resource']['href']
         self.resource_log = self.get_resource_log(self.resource_log_id)
         self.resource_log_parent = self.resource_log['parent']
+        self.api_dpl = Deployment(self.api)
+        self.deployment = self.api_dpl.get(self.resource_log_parent)
 
     @property
     @abstractmethod
@@ -56,7 +60,12 @@ class ResourceLogFetchJob(ABC):
 
     def get_component_logs(self, component: str, since: datetime,
                            lines: int) -> str:
-        return self.connector.log(component, since, lines)
+
+        self.log.info(f"Calling get_component_logs...\n\
+            Connector is set to: {self.connector.__class__.__name__}")
+
+        return self.connector.log(component, since, lines, \
+            namespace=Deployment.uuid(self.deployment))
 
     def get_resource_log(self, log_id: str) -> dict:
         return self.api.get(log_id).data
@@ -71,10 +80,12 @@ class ResourceLogFetchJob(ABC):
     def get_components_logs(self) -> dict:
         since = self.get_since()
         components = self.get_list_components()
+        self.log.debug(f"components {components}")
         lines = self.resource_log.get('lines', 200)
         log = {}
         for component in components:
             try:
+                self.log.debug(f"component {component} since {since} and lines {lines}")
                 component_logs = self.get_component_logs(
                     component, since, lines).strip().splitlines()
             except Exception as e:

@@ -8,7 +8,6 @@ import time
 import yaml
 import random
 import string
-import uuid
 import re
 
 from datetime import datetime
@@ -314,9 +313,12 @@ class Kubernetes(Connector):
         :param owner_name: str
         :return: list
         """
+        log.debug(f"Filtering for Kind: {kind} owner_kind: \
+                  {owner_kind} owner_name: {owner_name}")
         component_pods = []
         for obj in objects:
-            if obj['kind'] == kind and 'ownerReferences' in obj['metadata']:
+            log.debug(f"Current object: {obj} and obj kind: {obj['kind']}")
+            if obj['kind'] == kind and 'ownerReferences' in obj['metadata']: #  and self.valid_replica_set(obj):
                 owner = obj['metadata']['ownerReferences'][0]
                 if owner_kind == owner['kind'] and owner_name == owner['name']:
                     component_pods.append(obj)
@@ -324,8 +326,12 @@ class Kubernetes(Connector):
 
     def _exec_stdout_json(self, cmd_params) -> {}:
         cmd = self.build_cmd_line(cmd_params)
-        cmd_stdout = execute_cmd(cmd).stdout
-        return json.loads(cmd_stdout)
+        log.debug(f"created JSON command:\n{cmd}")
+        cmd_out = execute_cmd(cmd)
+        if cmd_out.stderr:
+            log.warning(f"JSON command stderr gives:\n{cmd_out.stderr}")
+
+        return json.loads(cmd_out.stdout)
 
     @should_connect
     def _get_pods_cronjob(self, namespace, obj_name) -> list:
@@ -357,29 +363,55 @@ class Kubernetes(Connector):
             pods.extend(res)
         return pods
 
+    def valid_replica_set(self, replica_list: list):
+        '''
+        # Check that the current replica set is valid
+        # i.e. the required values are 1 and not 0!!
+        # in general we want the observedGeneration to be one
+        # and replicas to be not equal to zero
+        '''
+        valid_replica_sets = []
+        for replica in replica_list:
+            test1 = replica['status']['replicas']
+            if test1 != 0:
+                log.debug(f"found valid_replica_set: my variable: {replica}")
+                valid_replica_sets.append(replica)
+
+        return valid_replica_sets
+
     @should_connect
     def _get_pods_deployment(self, namespace, obj_name) -> list:
-        # Find ReplicaSet associated with the Deployment and get its name.
+        '''
+        Find the valid ReplicaSet associated with the Deployment and get its name.
+        '''
         kind_top_level = 'Deployment'
         pods_owner_kind = 'ReplicaSet'
-        replicasets = self._exec_stdout_json(['get', pods_owner_kind,
+        replica_sets = []
+        owned_rep_sets = []
+        valid_replica_set = []
+
+        replica_sets = self._exec_stdout_json(['get', pods_owner_kind,
                                               '-o', 'json',
                                               '--namespace', namespace])
-        kinds_second_level = self._filter_objects_owned(
-            replicasets.get('items', []),
+
+        owned_rep_sets = self._filter_objects_owned(
+            replica_sets.get('items', []),
             pods_owner_kind,
             kind_top_level,
             obj_name)
-        if len(kinds_second_level) < 1:
+
+        valid_replica_set = self.valid_replica_set(owned_rep_sets)
+
+        if len(valid_replica_set) < 1:
             log.error(f'Failed to find {pods_owner_kind} owned by '
                       f'{kind_top_level}/{obj_name}.')
             return []
-        if len(kinds_second_level) > 1:
+        if len(valid_replica_set) > 1:
             msg = f'There can only be single {pods_owner_kind}. ' \
-                  f'Found: {kinds_second_level}'
+                  f'Found: {json.dumps(valid_replica_set)}'
             log.error(msg)
             raise Exception(msg)
-        pods_owner_name = kinds_second_level[0]['metadata']['name']
+        pods_owner_name = valid_replica_set[0]['metadata']['name']
         # Find Pods owned by the ReplicaSet.
         all_pods = self._exec_stdout_json(['get', 'pods',
                                            '-o', 'json',
@@ -441,6 +473,30 @@ class Kubernetes(Connector):
          'StatefulSet',
          'DaemonSet']
 
+    def sanity_namespace(self, namespace):
+        '''
+        Check that the namespaces makes sense
+        A kubernetes NE will run in a namespace of type nuvla{edge|box}-UUID
+        whereas a deployment will run in a namespace type UUID only
+        '''
+
+        output = self._exec_stdout_json(['get', 'namespaces',
+                                       '-o', 'json'])
+        namespaces = output.get('items',[])
+        for nns in namespaces:
+            ns = nns['metadata']['name']
+            log.debug(f"checking namespace: {ns}")
+            if namespace == ns:
+                return namespace
+            if namespace in ns:
+                log.info(f"The namespace: {namespace} has been corrected to: {ns}")
+                return ns
+
+        # we should throw an exception here? FIXME
+
+        return 0
+
+
     @should_connect
     def log(self, component: str, since: datetime, num_lines: int, **kwargs) -> str:
         """
@@ -458,15 +514,27 @@ class Kubernetes(Connector):
         :return: str - logs as string
         """
 
-        obj_kind, obj_name = component.split('/')
-        if obj_kind not in self.WORKLOAD_OBJECT_KINDS:
-            msg = f"There are no meaningful logs for '{obj_kind}'."
-            log.warning(msg)
-            return f'{self._timestamp_now_utc()} {msg}\n'
+        if "/" in component:
+            obj_kind, obj_name = component.split('/')
+            if obj_kind not in self.WORKLOAD_OBJECT_KINDS:
+                msg = f"There are no meaningful logs for '{obj_kind}'."
+                log.warning(msg)
+                return f'{self._timestamp_now_utc()} {msg}\n'
+        else:
+            obj_kind = "Deployment"
+            obj_name = component
+
+        if kwargs.get('namespace'):
+            namespace = kwargs.get('namespace')
+
+        namespace =  self.sanity_namespace(namespace)
+
+        log.info(f"Calling the kubernetes get log function... \n object kind \
+            {obj_kind} and object name {obj_name} and namespace {namespace}")
 
         try:
             log.info('Getting logs for: %s', component)
-            return self._get_component_logs(kwargs['namespace'], obj_kind,
+            return self._get_component_logs(namespace, obj_kind,
                                             obj_name, since, num_lines)
         except Exception as ex:
             msg = f'There was an error getting logs for: {component}'
@@ -530,7 +598,6 @@ class Kubernetes(Connector):
         # pass
         if payload:
             self.api.operation(self.nuvlabox_resource, "commission", data=payload)
-
 
 class K8sEdgeMgmt(Kubernetes):
 
