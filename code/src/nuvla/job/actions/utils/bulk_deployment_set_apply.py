@@ -80,7 +80,7 @@ class BulkDeploymentSetApply(BulkAction):
             self.user_api.operation(deployment, 'start',
                                     {'low-priority': True,
                                      'parent-job': self.job.id})
-            logging.info(f'Deployment added: {deployment_id}')
+            logging.info(f'Starting: {deployment_id}')
         except Exception as ex:
             logging.error(f'Failed to add deployment {deployment_to_add}: {repr(ex)}')
 
@@ -100,22 +100,19 @@ class BulkDeploymentSetApply(BulkAction):
             self.user_api.operation(deployment, action,
                                     {'low-priority': True,
                                      'parent-job': self.job.id})
-            logging.info(f'Deployment updated: {deployment_id}')
+            logging.info(f'Updating: {deployment_id}')
         except Exception as ex:
             logging.error(f'Failed to update deployment {deployment_to_update}: {repr(ex)}')
 
-    def _force_remove_deployment(self, deployment_id):
-        try:
-            deployment = self.user_api.get(deployment_id)
-            self.user_api.operation(deployment, 'force-delete')
-            logging.info(f'Deployment removed: {deployment_id}')
-        except Exception as ex:
-            logging.error(f'Failed to remove {deployment_id}: {repr(ex)}')
-
     def _remove_deployment(self, deployment_id):
         try:
-            self.user_api.delete(deployment_id)
-            logging.info(f'Deployment removed: {deployment_id}')
+            deployment = self.user_api.get(deployment_id)
+            if deployment.operations.get('delete'):
+                self.user_api.delete(deployment_id)
+                logging.info(f'Removed: {deployment_id}')
+            else:
+                self.user_api.operation(deployment, 'terminate')
+                logging.info(f'Terminating: {deployment_id}')
         except Exception as ex:
             logging.error(f'Failed to remove {deployment_id}: {repr(ex)}')
 
@@ -127,8 +124,7 @@ class BulkDeploymentSetApply(BulkAction):
         op_status = self.todo
         if op_status['status'] == 'NOK':
             self._apply_op_status(self._add_deployment, op_status, 'deployments-to-add')
-            # FIXME : find a cleaner better way to avoid orphan containers
-            self._apply_op_status(self._force_remove_deployment, op_status, 'deployments-to-remove')
+            self._apply_op_status(self._remove_deployment, op_status, 'deployments-to-remove')
             self._apply_op_status(self._update_deployment, op_status, 'deployments-to-update')
 
     def do_work(self):
