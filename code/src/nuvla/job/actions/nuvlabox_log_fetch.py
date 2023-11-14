@@ -3,7 +3,6 @@
 import os
 import logging
 
-from nuvla.api.resources import Deployment
 from ...connector import nuvlabox as nb
 from ...connector import kubernetes as k8
 from ..actions import action
@@ -16,8 +15,6 @@ class NuvlaBoxLogFetchJob(ResourceLogFetchJob):
 
     def __init__(self, executor, job):
         super().__init__(executor, job)
-        self.api_dpl = Deployment(self.api)
-        self.deployment = self.api_dpl.get(self.resource_log_parent)
 
     def all_components(self):
         return [container.name for container in self.connector.list()]
@@ -37,8 +34,7 @@ class NuvlaBoxLogFetchJob(ResourceLogFetchJob):
                     endpoint=f'https://{kubernetes_host}:{kubernetes_port}'
                 try:
                     self._connector = k8.Kubernetes(ca=ca,cert=cert,\
-                        key=key,endpoint=endpoint,\
-                        namespace=Deployment.uuid(self.deployment))
+                        key=key,endpoint=endpoint,)
                 except Exception as e:
                     logging.error(f'Kubernetes error:\n{str(e)}')   
             else:

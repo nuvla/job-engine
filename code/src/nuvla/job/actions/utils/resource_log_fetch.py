@@ -5,8 +5,6 @@ from typing import Optional, List
 from datetime import datetime
 from nuvla.api.util.date import parse_nuvla_date
 from nuvla.api.resources import Deployment
-import os
-
 
 def get_last_line_timestamp(lines: Optional[List[str]]) -> Optional[str]:
     return lines[-1].strip().split(' ')[0] if lines else None
