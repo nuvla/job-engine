@@ -112,7 +112,9 @@ class BulkDeploymentSetApply(BulkAction):
                 logging.info(f'Removed: {deployment_id}')
             else:
                 self.user_api.operation(deployment, 'stop',
-                                        data={'delete': True})
+                                        data={'low-priority': True,
+                                              'parent-job': self.job.id,
+                                              'delete': True})
                 logging.info(f'Stopping: {deployment_id}')
         except Exception as ex:
             logging.error(f'Failed to remove {deployment_id}: {repr(ex)}')
