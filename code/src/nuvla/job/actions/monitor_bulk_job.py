@@ -3,7 +3,7 @@
 import json
 import logging
 from ..actions import action
-from ..job import JOB_QUEUED, JOB_RUNNING, JOB_SUCCESS, JOB_FAILED
+from ..job import JOB_QUEUED, JOB_RUNNING, JOB_SUCCESS, JOB_FAILED, JOB_CANCELED
 from nuvla.api.util.filter import filter_and
 
 action_name = 'monitor_bulk_job'
@@ -77,7 +77,7 @@ class MonitorBulkJob(object):
 
     def monitor(self):
         self.result = self.reload_result()
-        self.jobs_done = self.query_jobs([JOB_FAILED, JOB_SUCCESS])
+        self.jobs_done = self.query_jobs([JOB_FAILED, JOB_SUCCESS, JOB_CANCELED])
         self.jobs_in_progress = self.query_jobs([JOB_QUEUED, JOB_RUNNING])
         self.update_progress()
         self.update_result()
