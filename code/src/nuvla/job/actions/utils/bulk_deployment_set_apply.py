@@ -107,7 +107,7 @@ class BulkDeploymentSetApply(BulkAction):
     def _remove_deployment(self, deployment_id):
         try:
             deployment = self.user_api.get(deployment_id)
-            if deployment.operations.get('delete'):
+            if deployment.data['state'] == 'STOPPED':
                 self.user_api.delete(deployment_id)
                 logging.info(f'Removed: {deployment_id}')
             else:
