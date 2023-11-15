@@ -111,8 +111,9 @@ class BulkDeploymentSetApply(BulkAction):
                 self.user_api.delete(deployment_id)
                 logging.info(f'Removed: {deployment_id}')
             else:
-                self.user_api.operation(deployment, 'terminate')
-                logging.info(f'Terminating: {deployment_id}')
+                self.user_api.operation(deployment, 'stop',
+                                        data={'delete': True})
+                logging.info(f'Stopping: {deployment_id}')
         except Exception as ex:
             logging.error(f'Failed to remove {deployment_id}: {repr(ex)}')
 
