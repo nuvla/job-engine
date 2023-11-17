@@ -523,15 +523,13 @@ class Kubernetes(Connector):
             obj_kind = "Deployment"
             obj_name = component
 
-        _namespace = kwargs.get('namespace', '') # JSW this needs to go
-        _namespace = self.namespace
-        namespace =  self.sanity_namespace(_namespace)
+        namespace = self.namespace
 
         log.debug(f"Calling the kubernetes get log function... \n object kind \
             {obj_kind} and object name {obj_name} and namespace {namespace}")
 
         try:
-            log.info('Getting logs for: %s', component)
+            log.info(f"Getting logs for: {component} in namespace {namespace}")
             return self._get_component_logs(namespace, obj_kind,
                                             obj_name, since, num_lines)
         except Exception as ex:
