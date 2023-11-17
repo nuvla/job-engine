@@ -480,8 +480,7 @@ class Kubernetes(Connector):
         whereas a deployment will run in a namespace type UUID only
         '''
 
-        output = self._exec_stdout_json(['get', 'namespaces',
-                                       '-o', 'json'])
+        output = self._exec_stdout_json(['get', 'namespaces', '-o', 'json'])
         namespaces = output.get('items',[])
         for nns in namespaces:
             ns = nns['metadata']['name']
@@ -515,7 +514,7 @@ class Kubernetes(Connector):
         """
 
         if "/" in component:
-            obj_kind, obj_name = component.split('/')
+            obj_kind, obj_name = component.split('/', 1)
             if obj_kind not in self.WORKLOAD_OBJECT_KINDS:
                 msg = f"There are no meaningful logs for '{obj_kind}'."
                 log.warning(msg)
@@ -524,12 +523,11 @@ class Kubernetes(Connector):
             obj_kind = "Deployment"
             obj_name = component
 
-        if kwargs.get('namespace'):
-            namespace = kwargs.get('namespace')
+        _namespace = kwargs.get('namespace', '') # JSW this needs to go
+        _namespace = self.namespace
+        namespace =  self.sanity_namespace(_namespace)
 
-        namespace =  self.sanity_namespace(namespace)
-
-        log.info(f"Calling the kubernetes get log function... \n object kind \
+        log.debug(f"Calling the kubernetes get log function... \n object kind \
             {obj_kind} and object name {obj_name} and namespace {namespace}")
 
         try:
@@ -599,6 +597,35 @@ class Kubernetes(Connector):
         if payload:
             self.api.operation(self.nuvlabox_resource, "commission", data=payload)
 
+class K8sLogging(Kubernetes):
+
+    def __init__(self, job: Job, **kwargs):
+
+        self.job = job
+        self.api = job.api
+
+        self._namespace = None
+
+        if not job.is_in_pull_mode:
+            raise OperationNotAllowed(
+                'NuvlaEdge management actions are only supported in pull mode.')
+
+        # FIXME: This needs to be parameterised.
+        path = '/srv/nuvlaedge/shared'
+        super(K8sLogging, self).__init__(
+            ca=open(f'{path}/ca.pem', encoding="utf8").read(),
+            key=open(f'{path}/key.pem', encoding="utf8").read(),
+            cert=open(f'{path}/cert.pem', encoding="utf8").read(),
+            endpoint=get_kubernetes_local_endpoint()
+        )
+
+    @property
+    def namespace(self):
+        if not self._namespace:
+            nuvlabox_status = self.api.get('nuvlabox-status').data
+            self._namespace = \
+                nuvlabox_status['resources'][0]['installation-parameters']['project-name']
+        return self._namespace
 class K8sEdgeMgmt(Kubernetes):
 
     KUB_JOB = 'job.batch/'

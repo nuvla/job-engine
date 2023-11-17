@@ -62,8 +62,7 @@ class ResourceLogFetchJob(ABC):
         self.log.info(f"Calling get_component_logs...\n\
             Connector is set to: {self.connector.__class__.__name__}")
 
-        return self.connector.log(component, since, lines, \
-            namespace=Deployment.uuid(self.deployment))
+        return self.connector.log(component, since, lines,)
 
     def get_resource_log(self, log_id: str) -> dict:
         return self.api.get(log_id).data
