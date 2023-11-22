@@ -4,7 +4,6 @@ from abc import ABC, abstractmethod
 from typing import Optional, List
 from datetime import datetime
 from nuvla.api.util.date import parse_nuvla_date
-from nuvla.api.resources import Deployment
 
 def get_last_line_timestamp(lines: Optional[List[str]]) -> Optional[str]:
     return lines[-1].strip().split(' ')[0] if lines else None
@@ -40,8 +39,6 @@ class ResourceLogFetchJob(ABC):
         self.resource_log_id = self.job['target-resource']['href']
         self.resource_log = self.get_resource_log(self.resource_log_id)
         self.resource_log_parent = self.resource_log['parent']
-        self.api_dpl = Deployment(self.api)
-        self.deployment = self.api_dpl.get(self.resource_log_parent)
 
     @property
     @abstractmethod
@@ -59,7 +56,7 @@ class ResourceLogFetchJob(ABC):
     def get_component_logs(self, component: str, since: datetime,
                            lines: int) -> str:
 
-        self.log.info(f"Calling get_component_logs...\n\
+        self.log.debug(f"Calling get_component_logs...\n\
             Connector is set to: {self.connector.__class__.__name__}")
 
         return self.connector.log(component, since, lines,)

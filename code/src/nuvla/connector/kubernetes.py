@@ -491,8 +491,6 @@ class Kubernetes(Connector):
                 log.info(f"The namespace: {namespace} has been corrected to: {ns}")
                 return ns
 
-        # we should throw an exception here? FIXME
-
         return 0
 
 
