@@ -9,8 +9,7 @@ from .utils.deployment_utils import (DeploymentBase,
                                      get_connector_name,
                                      get_connector_class,
                                      initialize_connector,
-                                     get_env,
-                                     application_params_update)
+                                     get_env)
 
 from nuvla.api.resources import Deployment, DeploymentParameter
 
@@ -21,6 +20,9 @@ log = logging.getLogger(action_name)
 
 @action(action_name, True)
 class DeploymentStartJob(DeploymentBase):
+
+    def __init__(self, _, job):
+        super().__init__(_, job, log)
 
     def start_component(self, deployment: dict):
         connector = initialize_connector(docker_service, self.job, deployment)
@@ -46,7 +48,7 @@ class DeploymentStartJob(DeploymentBase):
                                                                       str(target_port)),
                     node_id=node_instance_name)
 
-        registries_auth = self.private_registries_auth(deployment)
+        registries_auth = self.private_registries_auth()
 
         _, service = connector.start(
             service_name=node_instance_name,
@@ -97,7 +99,7 @@ class DeploymentStartJob(DeploymentBase):
         connector_class  = get_connector_class(connector_name)
         connector        = initialize_connector(connector_class, self.job, deployment)
         module_content   = Deployment.module_content(deployment)
-        registries_auth  = self.private_registries_auth(deployment)
+        registries_auth  = self.private_registries_auth()
 
         result, services = connector.start(
             name=Deployment.uuid(deployment),
@@ -108,13 +110,13 @@ class DeploymentStartJob(DeploymentBase):
 
         self.job.set_status_message(result)
 
-        application_params_update(self.api_dpl, deployment, services)
+        self.application_params_update(services)
 
     @override
     def handle_deployment(self):
         deployment = self.deployment.data
 
-        self.create_user_output_params(deployment, log)
+        self.create_user_output_params()
 
         if Deployment.is_component(self.deployment):
             self.start_component(deployment)
@@ -127,7 +129,7 @@ class DeploymentStartJob(DeploymentBase):
 
         self.job.set_progress(10)
 
-        self.try_handle_raise_exception(log)
+        self.try_handle_raise_exception()
 
         self.api_dpl.set_state_started(self.deployment_id)
 

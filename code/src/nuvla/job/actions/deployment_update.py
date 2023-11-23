@@ -3,8 +3,7 @@ import logging
 
 from nuvla.api.resources import Deployment
 from ..actions import action
-from .utils.deployment_utils import (application_params_update,
-                                     DeploymentBase,
+from .utils.deployment_utils import (DeploymentBase,
                                      get_env,
                                      get_connector_class,
                                      get_connector_name,
@@ -17,6 +16,9 @@ log = logging.getLogger(action_name)
 
 @action(action_name, True)
 class DeploymentUpdateJob(DeploymentBase):
+
+    def __init__(self, _, job):
+        super().__init__(_, job, log)
 
     @staticmethod
     def get_update_params_docker_service(deployment, registries_auth):
@@ -60,10 +62,10 @@ class DeploymentUpdateJob(DeploymentBase):
         deployment      = self.deployment.data
         connector_name  = get_connector_name(deployment)
         connector_class = get_connector_class(connector_name)
-        registries_auth = self.private_registries_auth(deployment)
+        registries_auth = self.private_registries_auth()
         connector       = initialize_connector(connector_class, self.job, self.deployment)
 
-        self.create_user_output_params(deployment, log)
+        self.create_user_output_params()
 
         self.job.set_progress(20)
 
@@ -83,10 +85,10 @@ class DeploymentUpdateJob(DeploymentBase):
             if ports_mapping:
                 self.api_dpl.update_port_parameters(deployment, ports_mapping)
         else:
-            application_params_update(self.api_dpl, deployment, services)
+            self.application_params_update(services)
 
         self.api_dpl.set_state_started(self.deployment_id)
         return 0
 
     def do_work(self):
-        return self.try_handle_raise_exception(log)
+        return self.try_handle_raise_exception()

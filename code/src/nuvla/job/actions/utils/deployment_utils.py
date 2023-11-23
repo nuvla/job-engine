@@ -91,22 +91,10 @@ def get_env(deployment: dict):
     return env_variables
 
 
-def application_params_update(api_dpl, deployment, services):
-    if services:
-        for service in services:
-            node_id = service['node-id']
-            for key, value in service.items():
-                api_dpl.set_parameter_create_if_needed(
-                    Deployment.id(deployment),
-                    Deployment.owner(deployment),
-                    f'{node_id}.{key}',
-                    param_value=value,
-                    node_id=node_id)
-
-
 class DeploymentBase(object):
 
-    def __init__(self, _, job):
+    def __init__(self, _, job, log=None):
+        self.log = log if log else logging.getLogger(self.__class__.__name__)
         self.job = job
         self.api = job.api
         self.deployment_id = self.job['target-resource']['href']
@@ -116,22 +104,39 @@ class DeploymentBase(object):
     def get_from_context(self, resource_id):
         return get_from_context(self.job, resource_id)
 
-    def get_hostname(self, log):
+    def get_nuvlaedge_id(self):
+        return self.deployment.data.get('nuvlabox')
+
+    def get_nuvlaedge(self, nuvlaedge_id=None):
+        if not nuvlaedge_id:
+            nuvlaedge_id = self.get_nuvlaedge_id()
+        return self.get_from_context(nuvlaedge_id)
+
+    def get_nuvlaedge_status(self, nuvlaedge_id=None):
+        ne_status_id = self.get_nuvlaedge(nuvlaedge_id)['nuvlabox-status']
+        return self.get_from_context(ne_status_id)
+
+    def get_hostname(self):
         try:
-            nuvlaedge_id = self.deployment.data.get('nuvlabox')
-            if nuvlaedge_id:
-                nuvlaedge = self.get_from_context(nuvlaedge_id)
-                nuvlaedge_status = self.get_from_context(nuvlaedge['nuvlabox-status'])
-                return nuvlaedge_status['ip']
+            if self.get_nuvlaedge_id():
+                return self.get_nuvlaedge_status()['ip']
         except Exception as e:
-            log.error(f'Failed to get hostname/ip from NuvlaEdge: {e}')
+            self.log.error(f'Failed to get hostname/ip from NuvlaEdge: {e}')
 
         credential_id = Deployment.credential_id(self.deployment)
         credential = self.get_from_context(credential_id)
         endpoint = self.get_from_context(credential['parent'])['endpoint']
         return re.search('(?:http.*://)?(?P<host>[^:/ ]+)', endpoint).group('host')
 
-    def get_deployment_api(self, deployment_id):
+    def get_nuvlaedge_ips(self):
+        try:
+            if self.get_nuvlaedge_id():
+                return self.get_nuvlaedge_status()['network']['ips']
+        except Exception as e:
+            self.log.error(f'Failed to get ips from NuvlaEdge: {e}')
+        return {}
+
+    def get_deployment_api(self, deployment_id) -> Deployment:
         creds = Deployment._get_attr(Deployment(self.api).get(deployment_id),
                                      'api-credentials')
         insecure = not self.api.session.verify
@@ -140,8 +145,8 @@ class DeploymentBase(object):
         api.login_apikey(creds['api-key'], creds['api-secret'])
         return Deployment(api)
 
-    def private_registries_auth(self, deployment):
-        registries_credentials = deployment.get('registries-credentials')
+    def private_registries_auth(self):
+        registries_credentials = self.deployment.data.get('registries-credentials')
         if registries_credentials:
             list_cred_infra = []
             for registry_cred in registries_credentials:
@@ -178,18 +183,45 @@ class DeploymentBase(object):
                                           user_id, param_name, param_value,
                                           node_id, param_description)
 
-    def create_user_output_params(self, deployment, log):
-        deployment_id = Deployment.id(deployment)
-        deployment_owner = Deployment.owner(deployment)
+    def application_params_update(self, services):
+        if services:
+            for service in services:
+                node_id = service['node-id']
+                for key, value in service.items():
+                    self.api_dpl.set_parameter_create_if_needed(
+                        Deployment.id(self.deployment),
+                        Deployment.owner(self.deployment),
+                        f'{node_id}.{key}',
+                        param_value=value,
+                        node_id=node_id)
 
+    def create_update_ips_output_parameters(self):
+        ips = self.get_nuvlaedge_ips()
+        if not ips:
+            return
+        for name, ip in ips.items():
+            self.api_dpl.set_parameter_create_if_needed(
+                Deployment.id(self.deployment),
+                Deployment.owner(self.deployment),
+                f'ip.{name}',
+                param_value=ip)
+
+    def create_update_hostname_output_parameter(self):
         self.create_update_deployment_parameter(
-            deployment_id=deployment_id,
-            user_id=deployment_owner,
+            deployment_id=Deployment.id(self.deployment),
+            user_id=Deployment.owner(self.deployment),
             param_name=DeploymentParameter.HOSTNAME['name'],
             param_description=DeploymentParameter.HOSTNAME['description'],
-            param_value=self.get_hostname(log))
+            param_value=self.get_hostname())
 
-        module_content = Deployment.module_content(deployment)
+    def create_user_output_params(self):
+        deployment_id = Deployment.id(self.deployment)
+        deployment_owner = Deployment.owner(self.deployment)
+
+        self.create_update_hostname_output_parameter()
+        self.create_update_ips_output_parameters()
+
+        module_content = Deployment.module_content(self.deployment)
         for output_param in module_content.get('output-parameters', []):
             self.create_deployment_parameter(
                 deployment_id=deployment_id,
@@ -201,18 +233,16 @@ class DeploymentBase(object):
     def handle_deployment(self):
         pass
 
-    def try_handle_raise_exception(self, log):
+    def try_handle_raise_exception(self):
         try:
             return self.handle_deployment()
         except Exception as ex:
-            log.error(
-                f"Failed to {self.job['action']} {self.deployment_id}: {ex}")
+            self.log.error(f"Failed to {self.job['action']} {self.deployment_id}: {ex}")
             try:
                 self.job.set_status_message(repr(ex))
                 if self.job.get('execution-mode', '').lower() != 'mixed':
                     self.api_dpl.set_state_error(self.deployment_id)
             except Exception as ex_state:
-                log.error(
-                    f'Failed to set error state for {self.deployment_id}: {ex_state}')
+                self.log.error(f'Failed to set error state for {self.deployment_id}: {ex_state}')
 
             raise ex

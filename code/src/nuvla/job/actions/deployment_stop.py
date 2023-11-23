@@ -21,6 +21,9 @@ log = logging.getLogger(action_name)
 @action(action_name, True)
 class DeploymentStopJob(DeploymentBase):
 
+    def __init__(self, _, job):
+        super().__init__(_, job, log)
+
     def try_delete_deployment_credentials(self, deployment_id):
         cred_api = Credential(self.api, subtype='dummy')
         credentials = cred_api.find_parent(deployment_id)
@@ -74,7 +77,7 @@ class DeploymentStopJob(DeploymentBase):
 
         self.job.set_progress(10)
 
-        self.try_handle_raise_exception(log)
+        self.try_handle_raise_exception()
 
         self.try_delete_deployment_credentials(self.deployment_id)
 
