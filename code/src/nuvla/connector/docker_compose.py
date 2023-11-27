@@ -300,7 +300,7 @@ class DockerCompose(Connector):
             compose_file.write(docker_compose)
             compose_file.close()
 
-            cmd = ["docker compose", "-f", compose_file_path, "config", "-q"]
+            cmd = ["docker", "compose", "-f", compose_file_path, "config", "-q"]
             result = execute_cmd(cmd, env=env).stdout
 
         return result
