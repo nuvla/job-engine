@@ -2,13 +2,11 @@
 
 import logging
 
-from ...connector import docker_service, docker_stack, \
-    docker_compose, kubernetes
+from ...connector import docker_service
 from nuvla.api.resources import Deployment, DeploymentParameter
 from nuvla.api.util.date import utcnow, nuvla_date
 from .utils.deployment_utils import (initialize_connector,
                                      DeploymentBase,
-                                     application_params_update,
                                      get_connector_name,
                                      get_connector_class,
                                      get_env)
@@ -18,8 +16,12 @@ action_name = 'deployment_state'
 
 log = logging.getLogger(action_name)
 
+
 @action(action_name, True)
 class DeploymentStateJob(DeploymentBase):
+
+    def __init__(self, _, job):
+        super().__init__(_, job, log)
 
     def get_component_state(self):
         connector = initialize_connector(docker_service, self.job,
@@ -141,7 +143,10 @@ class DeploymentStateJob(DeploymentBase):
 
         services = connector.get_services(name, env, **kwargs)
 
-        application_params_update(self.api_dpl, self.deployment, services)
+        self.create_update_hostname_output_parameter()
+        self.create_update_ips_output_parameters()
+
+        self.application_params_update(services)
 
     def do_work(self):
         log.info('Job started for {}.'.format(self.deployment_id))
