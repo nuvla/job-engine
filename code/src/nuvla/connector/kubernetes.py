@@ -47,7 +47,7 @@ def get_kubernetes_local_endpoint():
 class Kubernetes(Connector):
 
     def __init__(self, **kwargs):
-        super(Kubernetes, self).__init__(**kwargs)
+        super().__init__(**kwargs)
         # Mandatory kwargs
         self.ca = self.kwargs['ca']
         self.cert = self.kwargs['cert']
@@ -473,29 +473,8 @@ class Kubernetes(Connector):
          'StatefulSet',
          'DaemonSet']
 
-    def sanity_namespace(self, namespace):
-        '''
-        Check that the namespaces makes sense
-        A kubernetes NE will run in a namespace of type nuvla{edge|box}-UUID
-        whereas a deployment will run in a namespace type UUID only
-        '''
-
-        output = self._exec_stdout_json(['get', 'namespaces', '-o', 'json'])
-        namespaces = output.get('items',[])
-        for nns in namespaces:
-            ns = nns['metadata']['name']
-            log.debug(f"checking namespace: {ns}")
-            if namespace == ns:
-                return namespace
-            if namespace in ns:
-                log.info(f"The namespace: {namespace} has been corrected to: {ns}")
-                return ns
-
-        return 0
-
-
     @should_connect
-    def log(self, component: str, since: datetime, num_lines: int, **kwargs) -> str:
+    def log(self, component: str, since: datetime, num_lines: int,) -> str:
         """
         Given `component` as `<K8s object kind>/<name>` (e.g. Deployment/nginx),
         returns logs of all the containers of all the pods belonging to the
@@ -583,7 +562,7 @@ class Kubernetes(Connector):
     @should_connect
     def get_services(self, name, env, **kwargs):
         return self._get_services(name)
-    
+
     # @should_connect
     def commission(self, payload):
         """ Updates the NuvlaEdge resource with the provided payload
@@ -592,6 +571,7 @@ class Kubernetes(Connector):
         # pass
         if payload:
             self.api.operation(self.nuvlabox_resource, "commission", data=payload)
+
 
 class K8sLogging(Kubernetes):
 
@@ -608,20 +588,27 @@ class K8sLogging(Kubernetes):
 
         # FIXME: This needs to be parameterised.
         path = '/srv/nuvlaedge/shared'
-        super(K8sLogging, self).__init__(
+        # super(K8sLogging, self).__init__(
+        super().__init__(
             ca=open(f'{path}/ca.pem', encoding="utf8").read(),
             key=open(f'{path}/key.pem', encoding="utf8").read(),
             cert=open(f'{path}/cert.pem', encoding="utf8").read(),
-            endpoint=get_kubernetes_local_endpoint()
-        )
+            endpoint=get_kubernetes_local_endpoint(),
+            )
 
     @property
     def namespace(self):
         if not self._namespace:
             nuvlabox_status = self.api.get('nuvlabox-status').data
+            log.debug(f"The nuvlabox status is found to be:\n {json.dumps(nuvlabox_status, indent=2)}")
             self._namespace = \
                 nuvlabox_status['resources'][0]['installation-parameters']['project-name']
+
+        log.debug(f"The namespace is found to be: {self._namespace}")
+
         return self._namespace
+    
+
 class K8sEdgeMgmt(Kubernetes):
 
     KUB_JOB = 'job.batch/'
@@ -642,7 +629,7 @@ class K8sEdgeMgmt(Kubernetes):
 
         # FIXME: This needs to be parameterised.
         path = '/srv/nuvlaedge/shared'
-        super(K8sEdgeMgmt, self).__init__(
+        super().__init__(
             ca=open(f'{path}/ca.pem', encoding="utf8").read(),
             key=open(f'{path}/key.pem', encoding="utf8").read(),
             cert=open(f'{path}/cert.pem', encoding="utf8").read(),
@@ -1073,7 +1060,7 @@ class K8sSSHKey(Kubernetes):
         self.nuvlabox_resource = self.api.get(kwargs.get("nuvlabox_id"))
 
         path = '/srv/nuvlaedge/shared' # FIXME: needs to be parametrised.
-        super(K8sSSHKey, self).__init__(ca=open(f'{path}/ca.pem',encoding="utf8").read(),
+        super().__init__(ca=open(f'{path}/ca.pem',encoding="utf8").read(),
                                           key=open(f'{path}/key.pem',encoding="utf8").read(),
                                           cert=open(f'{path}/cert.pem',encoding="utf8").read(),
                                           endpoint=get_kubernetes_local_endpoint())
