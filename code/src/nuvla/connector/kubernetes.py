@@ -51,6 +51,16 @@ def setup_pems(name, path):
 
     return pem_path
 
+def super_args(path):
+    arggs = {
+        "cert": setup_pems("cert",path),
+        "key": setup_pems("key",path),
+        "ca": setup_pems("ca",path),
+        "endpoint": get_kubernetes_local_endpoint(),
+    }
+
+    return arggs
+
 class Kubernetes(Connector):
 
     def __init__(self, **kwargs):
@@ -79,7 +89,7 @@ class Kubernetes(Connector):
         return 'Kubernetes-cli'
 
     def connect(self):
-        log.info('Connecting to endpoint: %s', self.endpoint)
+        log.info(f"Connecting to endpoint: {self.endpoint}")
         self.ca_file = create_tmp_file(self.ca)
         self.cert_file = create_tmp_file(self.cert)
         self.key_file = create_tmp_file(self.key)
@@ -96,11 +106,12 @@ class Kubernetes(Connector):
             self.key_file = None
 
     def build_cmd_line(self, list_cmd):
-        '''Build the kubectl command line
+        """
+        Build the kubectl command line
 
            arguments:
            list_cmd: a list containing the kubectl command line and arguments
-        '''
+        """
         return ['kubectl', '-s', self.endpoint,
                 '--client-certificate', self.cert_file.name,
                 '--client-key', self.key_file.name,
@@ -373,12 +384,12 @@ class Kubernetes(Connector):
         return pods
 
     def valid_replica_set(self, replica_list: list):
-        '''
-        # Check that the current replica set is valid
-        # i.e. the required values are 1 and not 0!!
-        # in general we want the observedGeneration to be one
-        # and replicas to be not equal to zero
-        '''
+        """
+        Check that the current replica set is valid
+        i.e. the required values are 1 and not 0!!
+        in general we want the observedGeneration to be one
+        and replicas to be not equal to zero
+        """
         valid_replica_sets = []
         for replica in replica_list:
             test1 = replica['status']['replicas']
@@ -390,9 +401,9 @@ class Kubernetes(Connector):
 
     @should_connect
     def _get_pods_deployment(self, namespace, obj_name) -> list:
-        '''
+        """
         Find the valid ReplicaSet associated with the Deployment and get its name.
-        '''
+        """
         kind_top_level = 'Deployment'
         pods_owner_kind = 'ReplicaSet'
         replica_sets = []
@@ -576,7 +587,7 @@ class Kubernetes(Connector):
     def get_services(self, name, env, **kwargs):
         return self._get_services(name)
 
-    # @should_connect
+    @should_connect
     def commission(self, payload):
         """ Updates the NuvlaEdge resource with the provided payload
         :param payload: content to be updated in the NuvlaEdge resource
@@ -591,13 +602,12 @@ class Kubernetes(Connector):
         Function to get the namespace
         """
         log.debug("Calling for namespace...\n")
-        if not self._namespace:
+        if self._namespace is None:
             inst_params = \
                 self.api.search('nuvlabox-status', \
                                 filter=f"parent=\"{self.nuvlabox_id}\" ", \
                                 select='installation-parameters').resources
             for inst_param in inst_params:
-                # we should only have one set here
                 nuvlabox_status_string = str(inst_param.id)
                 log.debug(f"Nuvlabox status string: {nuvlabox_status_string}")
                 nb_status_data = self.api.get(nuvlabox_status_string).data
@@ -626,8 +636,7 @@ class K8sLogging(Kubernetes):
                 'NuvlaEdge management actions are only supported in pull mode.')
 
         path = NUVLAEDGE_SHARED_PATH # FIXME: This needs to be parameterised.
-        super().__init__(cert = setup_pems("cert",path),ca = setup_pems("ca",path),\
-            key = setup_pems("key",path),endpoint=get_kubernetes_local_endpoint(),)
+        super().__init__(**super_args(path))
 
 
 class K8sEdgeMgmt(Kubernetes):
@@ -650,9 +659,8 @@ class K8sEdgeMgmt(Kubernetes):
 
         # FIXME: This needs to be parameterised.
         path = NUVLAEDGE_SHARED_PATH
-        super().__init__(cert = setup_pems("cert",path),ca = setup_pems("ca",path),\
-            key = setup_pems("key",path),endpoint=get_kubernetes_local_endpoint(),)
-        
+        super().__init__(**super_args(path))
+
         self.ne_image_registry = os.getenv('NE_IMAGE_REGISTRY', '')
         self.ne_image_org = os.getenv('NE_IMAGE_ORGANIZATION', 'sixsq')
         self.ne_image_repo = os.getenv('NE_IMAGE_REPOSITORY', 'nuvlaedge')
@@ -751,7 +759,7 @@ class K8sEdgeMgmt(Kubernetes):
             current_version = json.loads(self.job.get('payload', '{}'))['current-version']
             project_name = json.loads(self.job.get('payload', '{}'))['project-name']
             result = self.check_target_release\
-                (helm_log_result, target_release, current_version) # no bother
+                (helm_log_result, target_release, current_version)
             if not self.check_project_name(helm_log_result, project_name):
                 return \
                     f"Project name {project_name} does not match \
@@ -966,7 +974,6 @@ class K8sEdgeMgmt(Kubernetes):
         """
 
         log.debug(f"The helm image is set to: {self.base_image}")
-        # the_helm_image = "nuvladev/nuvlaedge:issue-112-update" # changed for production. keep this for testing
         the_helm_image = self.base_image
         the_kube_config = "/root/.kube/config"
         the_host_kube_config = "/root/.kube"
@@ -998,7 +1005,7 @@ class K8sEdgeMgmt(Kubernetes):
 
         helm_result = self.apply_a_manifest(formatted_helm_yaml_manifest)
 
-        self.check_job_success(the_job_name) # does this make sense?
+        self.check_job_success(the_job_name)
 
         return helm_result
 
@@ -1062,10 +1069,9 @@ class K8sEdgeMgmt(Kubernetes):
                 return
 
 class K8sSSHKey(Kubernetes):
-    '''
+    """
     Class to handle SSH keys. Adding and revoking
-    '''
-    # def __init__(self, job):
+    """
     def __init__(self, **kwargs):
 
         self.job = kwargs.get("job")
@@ -1077,9 +1083,8 @@ class K8sSSHKey(Kubernetes):
         self.nuvlabox_resource = self.api.get(kwargs.get("nuvlabox_id"))
 
         path = NUVLAEDGE_SHARED_PATH # FIXME: needs to be parameterised.
-        super().__init__(cert = setup_pems("cert",path),ca = setup_pems("ca",path),\
-            key = setup_pems("key",path),endpoint=get_kubernetes_local_endpoint(),)
-        
+        super().__init__(super_args(path))
+
         self.ne_image_registry = os.getenv('NE_IMAGE_REGISTRY', '')
         self.ne_image_org = os.getenv('NE_IMAGE_ORGANIZATION', 'sixsq')
         self.ne_image_repo = os.getenv('NE_IMAGE_REPOSITORY', 'nuvlaedge')
@@ -1089,7 +1094,10 @@ class K8sSSHKey(Kubernetes):
 
     @should_connect
     def k8s_ssh_key(self, action, pubkey, user_home):
-        '''Doc string'''
+        """
+        A function to invoke the pod
+        to add/revoke a SSH key
+        """
 
         log.debug('CA file %s ', self.ca)
         log.debug('User certificate file %s ', self.cert)
@@ -1222,7 +1230,6 @@ class K8sSSHKey(Kubernetes):
             message_out="SSH public key deleted successfully"
 
         if update_payload is not None:
-            # self.commission(update_payload)
             logging.debug('The update payload is:\n%s\n',update_payload)
             self.api.operation(nuvlabox_resource, "commission", {"ssh-keys": update_payload})
             self.job.update_job(status_message=json.dumps(message_out))
