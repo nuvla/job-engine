@@ -51,6 +51,16 @@ def setup_pems(name, path):
 
     return pem_path
 
+@property
+def setup_super(path):
+
+    return \
+    super().__init__(
+            cert = setup_pems("cert",path),
+            ca = setup_pems("ca",path),
+            key = setup_pems("key",path),
+            endpoint=get_kubernetes_local_endpoint(),
+        )
 
 class Kubernetes(Connector):
 
@@ -626,13 +636,13 @@ class K8sLogging(Kubernetes):
             raise OperationNotAllowed(
                 'NuvlaEdge management actions are only supported in pull mode.')
 
-        path = NUVLAEDGE_SHARED_PATHs # FIXME: This needs to be parameterised.
-        super().__init__(
-            cert = setup_pems("cert",path),
-            ca = setup_pems("ca",path),
-            key = setup_pems("key",path),
-            endpoint=get_kubernetes_local_endpoint(),
-        )
+        path = NUVLAEDGE_SHARED_PATH # FIXME: This needs to be parameterised.
+        super().__init__(\
+            cert = setup_pems("cert",path),\
+            ca = setup_pems("ca",path),\
+            key = setup_pems("key",path),\
+            endpoint=get_kubernetes_local_endpoint(),)
+        # setup_super(path)
 
 
 class K8sEdgeMgmt(Kubernetes):
@@ -655,12 +665,12 @@ class K8sEdgeMgmt(Kubernetes):
 
         # FIXME: This needs to be parameterised.
         path = NUVLAEDGE_SHARED_PATH
-        super().__init__(
-            cert = setup_pems("cert",path),
-            ca = setup_pems("ca",path),
-            key = setup_pems("key",path),
-            endpoint=get_kubernetes_local_endpoint(),
-        )
+        super().__init__(\
+            cert = setup_pems("cert",path),\
+            ca = setup_pems("ca",path),\
+            key = setup_pems("key",path),\
+            endpoint=get_kubernetes_local_endpoint(),)
+        
         self.ne_image_registry = os.getenv('NE_IMAGE_REGISTRY', '')
         self.ne_image_org = os.getenv('NE_IMAGE_ORGANIZATION', 'sixsq')
         self.ne_image_repo = os.getenv('NE_IMAGE_REPOSITORY', 'nuvlaedge')
@@ -1085,13 +1095,12 @@ class K8sSSHKey(Kubernetes):
         self.nuvlabox_resource = self.api.get(kwargs.get("nuvlabox_id"))
 
         path = NUVLAEDGE_SHARED_PATH # FIXME: needs to be parameterised.
-        super().__init__(
-            cert = setup_pems("cert",path),
-            ca = setup_pems("ca",path),
-            key = setup_pems("key",path),
-            endpoint=get_kubernetes_local_endpoint(),
-        )
-        # borrowed from nuvlabox.py
+        super().__init__(\
+            cert = setup_pems("cert",path),\
+            ca = setup_pems("ca",path),\
+            key = setup_pems("key",path),\
+            endpoint=get_kubernetes_local_endpoint(),)
+        
         self.ne_image_registry = os.getenv('NE_IMAGE_REGISTRY', '')
         self.ne_image_org = os.getenv('NE_IMAGE_ORGANIZATION', 'sixsq')
         self.ne_image_repo = os.getenv('NE_IMAGE_REPOSITORY', 'nuvlaedge')
