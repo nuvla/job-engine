@@ -43,6 +43,13 @@ def get_kubernetes_local_endpoint():
         return f'https://{kubernetes_host}:{kubernetes_port}'
     return ''
 
+def setup_pems(name, path):
+
+    with open(f'{path}/{name}.pem', encoding="utf8") as pem_file:
+        pem_path = pem_file.read()
+
+    return pem_path
+
 
 class Kubernetes(Connector):
 
@@ -57,6 +64,12 @@ class Kubernetes(Connector):
         self.ca_file = None
         self.cert_file = None
         self.key_file = None
+
+        # JSW
+        # self.job = kwargs.get("job")
+        # self.api = self.job.api
+        # self.nuvlabox_id = kwargs.get("nuvlabox_id")
+        self._namespace = None
 
         self.ne_image_registry = os.getenv('NE_IMAGE_REGISTRY', '')
         self.ne_image_org = os.getenv('NE_IMAGE_ORGANIZATION', 'sixsq')
@@ -474,7 +487,7 @@ class Kubernetes(Connector):
          'DaemonSet']
 
     @should_connect
-    def log(self, component: str, since: datetime, num_lines: int,) -> str:
+    def log(self, component: str, since: datetime, num_lines: int, **kwargs) -> str:
         """
         Given `component` as `<K8s object kind>/<name>` (e.g. Deployment/nginx),
         returns logs of all the containers of all the pods belonging to the
@@ -500,13 +513,17 @@ class Kubernetes(Connector):
             obj_kind = "Deployment"
             obj_name = component
 
-        namespace = self.namespace
+        if kwargs.get("namespace"):
+            namespace = kwargs.get("namespace")
+        else:
+            namespace = self.namespace
 
-        log.debug(f"Calling the kubernetes get log function... \n object kind \
-            {obj_kind} and object name {obj_name} and namespace {namespace}")
+        log.info(f"Getting Kubernetes logs for: \n\
+                 Object kind {obj_kind}\n\
+                 Object name {obj_name}\n\
+                 in namespace {namespace}")
 
         try:
-            log.info(f"Getting logs for: {component} in namespace {namespace}")
             return self._get_component_logs(namespace, obj_kind,
                                             obj_name, since, num_lines)
         except Exception as ex:
@@ -572,6 +589,31 @@ class Kubernetes(Connector):
         if payload:
             self.api.operation(self.nuvlabox_resource, "commission", data=payload)
 
+    @property
+    def namespace(self):
+        """
+        Function to get the namespace
+        """
+        log.debug(f"Calling for namespace...\n")
+        if not self._namespace:
+            inst_params = \
+                self.api.search('nuvlabox-status', \
+                                filter=f"parent=\"{self.nuvlabox_id}\" ", \
+                                select='installation-parameters').resources
+            for inst_param in inst_params:
+                # we should only have one set here
+                nuvlabox_status_string = str(inst_param.id)
+                log.debug(f"Nuvlabox status string: {nuvlabox_status_string}")
+                nb_status_data = self.api.get(nuvlabox_status_string).data
+                log.debug(f"ggg is:\n{json.dumps(nb_status_data, indent=2)}")
+                namespace = nb_status_data['installation-parameters']['project-name']
+                log.debug(f"namespace is:\n{json.dumps(namespace, indent=2)}")
+            self._namespace = namespace
+
+        log.debug(f"The namespace is found to be: {self._namespace}")
+
+        return self._namespace
+
 
 class K8sLogging(Kubernetes):
 
@@ -580,34 +622,21 @@ class K8sLogging(Kubernetes):
         self.job = job
         self.api = job.api
 
+        self.nuvlabox_id = kwargs.get("nuvlabox_id")
         self._namespace = None
 
         if not job.is_in_pull_mode:
             raise OperationNotAllowed(
                 'NuvlaEdge management actions are only supported in pull mode.')
 
-        # FIXME: This needs to be parameterised.
-        path = '/srv/nuvlaedge/shared'
-        # super(K8sLogging, self).__init__(
+        path = '/srv/nuvlaedge/shared' # FIXME: This needs to be parameterised.
         super().__init__(
-            ca=open(f'{path}/ca.pem', encoding="utf8").read(),
-            key=open(f'{path}/key.pem', encoding="utf8").read(),
-            cert=open(f'{path}/cert.pem', encoding="utf8").read(),
+            cert = setup_pems("cert",path),
+            ca = setup_pems("ca",path),
+            key = setup_pems("key",path),
             endpoint=get_kubernetes_local_endpoint(),
-            )
+        )
 
-    @property
-    def namespace(self):
-        if not self._namespace:
-            nuvlabox_status = self.api.get('nuvlabox-status').data
-            log.debug(f"The nuvlabox status is found to be:\n {json.dumps(nuvlabox_status, indent=2)}")
-            self._namespace = \
-                nuvlabox_status['resources'][0]['installation-parameters']['project-name']
-
-        log.debug(f"The namespace is found to be: {self._namespace}")
-
-        return self._namespace
-    
 
 class K8sEdgeMgmt(Kubernetes):
 
@@ -630,12 +659,11 @@ class K8sEdgeMgmt(Kubernetes):
         # FIXME: This needs to be parameterised.
         path = '/srv/nuvlaedge/shared'
         super().__init__(
-            ca=open(f'{path}/ca.pem', encoding="utf8").read(),
-            key=open(f'{path}/key.pem', encoding="utf8").read(),
-            cert=open(f'{path}/cert.pem', encoding="utf8").read(),
-            endpoint=get_kubernetes_local_endpoint()
+            cert = setup_pems("cert",path),
+            ca = setup_pems("ca",path),
+            key = setup_pems("key",path),
+            endpoint=get_kubernetes_local_endpoint(),
         )
-
         self.ne_image_registry = os.getenv('NE_IMAGE_REGISTRY', '')
         self.ne_image_org = os.getenv('NE_IMAGE_ORGANIZATION', 'sixsq')
         self.ne_image_repo = os.getenv('NE_IMAGE_REPOSITORY', 'nuvlaedge')
@@ -661,7 +689,7 @@ class K8sEdgeMgmt(Kubernetes):
         """
         Function to generate the kubernetes reboot manifest and execute the job
         """
-        log.info(f'Using image: {self.base_image}')
+        log.debug(f'Using image: {self.base_image}')
 
         sleep_value = 10
         image_name = self.base_image
@@ -717,7 +745,7 @@ class K8sEdgeMgmt(Kubernetes):
         log.debug(f'Target release: {target_release}')
 
         if not self.nuvlabox_status:
-            result = "The nulvabox status could not be retrieved. Cannot proceed."
+            result = "The nuvlabox status could not be retrieved. Cannot proceed."
             log.info(result)
             return result, 99
 
@@ -892,7 +920,7 @@ class K8sEdgeMgmt(Kubernetes):
 
         read_log_cmd = self.build_cmd_line(['logs', self.KUB_JOB + the_job_name])
         log_result = execute_cmd(read_log_cmd)
-        log.info('The log result is:\n%s',log_result.stdout)
+        log.debug('The log result is:\n%s',log_result.stdout)
 
         return log_result
 
@@ -1059,12 +1087,13 @@ class K8sSSHKey(Kubernetes):
 
         self.nuvlabox_resource = self.api.get(kwargs.get("nuvlabox_id"))
 
-        path = '/srv/nuvlaedge/shared' # FIXME: needs to be parametrised.
-        super().__init__(ca=open(f'{path}/ca.pem',encoding="utf8").read(),
-                                          key=open(f'{path}/key.pem',encoding="utf8").read(),
-                                          cert=open(f'{path}/cert.pem',encoding="utf8").read(),
-                                          endpoint=get_kubernetes_local_endpoint())
-
+        path = '/srv/nuvlaedge/shared' # FIXME: needs to be parameterised.
+        super().__init__(
+            cert = setup_pems("cert",path),
+            ca = setup_pems("ca",path),
+            key = setup_pems("key",path),
+            endpoint=get_kubernetes_local_endpoint(),
+        )
         # borrowed from nuvlabox.py
         self.ne_image_registry = os.getenv('NE_IMAGE_REGISTRY', '')
         self.ne_image_org = os.getenv('NE_IMAGE_ORGANIZATION', 'sixsq')

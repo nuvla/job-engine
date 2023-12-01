@@ -24,23 +24,15 @@ class NuvlaBoxLogFetchJob(ResourceLogFetchJob):
 
         if not self._connector:
             if os.getenv('KUBERNETES_SERVICE_HOST'):
-                # path = '/srv/nuvlaedge/shared' # TODO parameterize this
-                # ca=open(f'{path}/ca.pem', encoding="utf8").read()
-                # key=open(f'{path}/key.pem', encoding="utf8").read()
-                # cert=open(f'{path}/cert.pem', encoding="utf8").read()
-                # kubernetes_host = os.getenv('KUBERNETES_SERVICE_HOST')
-                # kubernetes_port = os.getenv('KUBERNETES_SERVICE_PORT')
-
-                # if kubernetes_host and kubernetes_port:
-                  #   endpoint=f'https://{kubernetes_host}:{kubernetes_port}'
+                logging.debug(f"Kubernetes connector used.")
                 try:
                     self._connector = \
                         k8.K8sLogging(
-                            api=self.api, 
-                            nuvlabox_id=self.resource_log_parent, 
-                            job=self.job)
+                            api=self.api,
+                            nuvlabox_id=self.resource_log_parent,
+                            job=self.job,)
                 except Exception as e:
-                    logging.error(f'Kubernetes error:\n{str(e)}')   
+                    logging.error(f'Kubernetes error:\n{str(e)}')
             else:
                 self._connector = \
                     nb.NuvlaBox(
