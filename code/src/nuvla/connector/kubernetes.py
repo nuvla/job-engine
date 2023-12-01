@@ -1083,7 +1083,7 @@ class K8sSSHKey(Kubernetes):
         self.nuvlabox_resource = self.api.get(kwargs.get("nuvlabox_id"))
 
         path = NUVLAEDGE_SHARED_PATH # FIXME: needs to be parameterised.
-        super().__init__(super_args(path))
+        super().__init__(**super_args(path))
 
         self.ne_image_registry = os.getenv('NE_IMAGE_REGISTRY', '')
         self.ne_image_org = os.getenv('NE_IMAGE_ORGANIZATION', 'sixsq')
