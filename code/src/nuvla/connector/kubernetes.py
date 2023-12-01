@@ -23,6 +23,7 @@ from .utils import (create_tmp_file,
 
 log = logging.getLogger('kubernetes')
 
+NUVLAEDGE_SHARED_PATH = "/srv/nuvlaedge/shared"
 
 class OperationNotAllowed(Exception):
     pass
@@ -65,10 +66,6 @@ class Kubernetes(Connector):
         self.cert_file = None
         self.key_file = None
 
-        # JSW
-        # self.job = kwargs.get("job")
-        # self.api = self.job.api
-        # self.nuvlabox_id = kwargs.get("nuvlabox_id")
         self._namespace = None
 
         self.ne_image_registry = os.getenv('NE_IMAGE_REGISTRY', '')
@@ -594,7 +591,7 @@ class Kubernetes(Connector):
         """
         Function to get the namespace
         """
-        log.debug(f"Calling for namespace...\n")
+        log.debug("Calling for namespace...\n")
         if not self._namespace:
             inst_params = \
                 self.api.search('nuvlabox-status', \
@@ -629,7 +626,7 @@ class K8sLogging(Kubernetes):
             raise OperationNotAllowed(
                 'NuvlaEdge management actions are only supported in pull mode.')
 
-        path = '/srv/nuvlaedge/shared' # FIXME: This needs to be parameterised.
+        path = NUVLAEDGE_SHARED_PATHs # FIXME: This needs to be parameterised.
         super().__init__(
             cert = setup_pems("cert",path),
             ca = setup_pems("ca",path),
@@ -657,7 +654,7 @@ class K8sEdgeMgmt(Kubernetes):
                 'NuvlaEdge management actions are only supported in pull mode.')
 
         # FIXME: This needs to be parameterised.
-        path = '/srv/nuvlaedge/shared'
+        path = NUVLAEDGE_SHARED_PATH
         super().__init__(
             cert = setup_pems("cert",path),
             ca = setup_pems("ca",path),
@@ -1087,7 +1084,7 @@ class K8sSSHKey(Kubernetes):
 
         self.nuvlabox_resource = self.api.get(kwargs.get("nuvlabox_id"))
 
-        path = '/srv/nuvlaedge/shared' # FIXME: needs to be parameterised.
+        path = NUVLAEDGE_SHARED_PATH # FIXME: needs to be parameterised.
         super().__init__(
             cert = setup_pems("cert",path),
             ca = setup_pems("ca",path),
