@@ -64,6 +64,16 @@ class BulkDeploymentSetApply(BulkAction):
             elif target.startswith('nuvlabox/'):
                 return self._get_cred(target)
 
+    def _load_reset_deployment(self, deployment_id, application):
+        application_href = f'{application["id"]}_{application["version"]}'
+        module = self.user_api.get(application_href)
+        deployment = self.user_api.get(deployment_id)
+        deployment_data = deployment.data
+        deployment_data['module']['href'] = application_href
+        deployment_data['module']['content']['environmental-variables'] = module.data['content'].get(
+            'environmental-variables', [])
+        return deployment_data
+
     def _add_deployment(self, deployment_to_add):
         try:
             target = deployment_to_add['target']
@@ -87,15 +97,11 @@ class BulkDeploymentSetApply(BulkAction):
     def _update_deployment(self, deployment_to_update):
         try:
             deployment_id = deployment_to_update[0]['id']
-            deployment = self.user_api.get(deployment_id)
-            deployment_data = deployment.data
             application = deployment_to_update[1]["application"]
-            application_href = f'{application["id"]}_{application["version"]}'
+            deployment_data = self._load_reset_deployment(deployment_id, application)
             self._update_env_deployment(deployment_data, application)
             self._update_regs_creds_deployment(deployment_data, application)
             deployment = self.user_api.edit(deployment_id, deployment_data)
-            self.user_api.operation(deployment, 'fetch-module',
-                                    {'module-href': application_href})
             action = 'update' if deployment.operations.get('update') else 'start'
             self.user_api.operation(deployment, action,
                                     {'low-priority': True,
