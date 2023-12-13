@@ -188,23 +188,31 @@ class DeploymentBase(object):
             for service in services:
                 node_id = service['node-id']
                 for key, value in service.items():
-                    self.api_dpl.set_parameter_create_if_needed(
-                        Deployment.id(self.deployment),
-                        Deployment.owner(self.deployment),
-                        f'{node_id}.{key}',
-                        param_value=value,
-                        node_id=node_id)
+                    param_name = f'{node_id}.{key}'
+                    try:
+                        self.api_dpl.set_parameter_create_if_needed(
+                            Deployment.id(self.deployment),
+                            Deployment.owner(self.deployment),
+                            param_name,
+                            param_value=value,
+                            node_id=node_id)
+                    except Exception as e:
+                        self.log.error(f'Failed to set output parameter "{param_name}" with value "{value}": {e}')
 
     def create_update_ips_output_parameters(self):
         ips = self.get_nuvlaedge_ips()
         if not ips:
             return
         for name, ip in ips.items():
-            self.api_dpl.set_parameter_create_if_needed(
-                Deployment.id(self.deployment),
-                Deployment.owner(self.deployment),
-                f'ip.{name}',
-                param_value=ip)
+            param_name = f'ip.{name}'
+            try:
+                self.api_dpl.set_parameter_create_if_needed(
+                    Deployment.id(self.deployment),
+                    Deployment.owner(self.deployment),
+                    param_name,
+                    param_value=ip)
+            except Exception as e:
+                self.log.error(f'Failed to set output parameter "{param_name}" with value "{ip}": {e}')
 
     def create_update_hostname_output_parameter(self):
         self.create_update_deployment_parameter(
