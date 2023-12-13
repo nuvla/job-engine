@@ -103,6 +103,14 @@ class DockerCompose(Connector):
                 config.close()
                 env['DOCKER_CONFIG'] = tmp_dir_name
 
+            files = kwargs['files']
+            if files:
+                for file_info in files:
+                    file_path = tmp_dir_name + "/" + file_info['file-name']
+                    file = open(file_path, 'w')
+                    file.write(file_info['file-content'])
+                    file.close()
+
             cmd_pull = self.build_cmd_line(
                 ['-p', project_name, '-f', compose_file_path, 'pull'])
 
