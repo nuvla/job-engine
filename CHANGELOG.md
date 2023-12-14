@@ -6,6 +6,19 @@
 
 ## Released
 
+## [3.9.2] - 2023-12-14
+
+- Deployment set apply - Deployment parameter value is not changing when user delete the value from the deployment group
+
+## [3.9.1] - 2023-11-27
+
+- docker_compose.py: fix bug in config function used in validate-docker-compose action
+- deployment: provide NuvlaEdge IP addresses as output parameters
+  - update output parameter "hostname" in deployment_state action
+  - prevent having to pass "log" and "deployment" objects to method of DeploymentBase class
+- monitor bulk jobs - Canceled jobs should be part of done jobs
+- deployment set apply - use stop delete instead of force delete on deployment
+
 ## [3.9.0] - 2023-11-09
 
 - Global - Use values new type of query (#299)
