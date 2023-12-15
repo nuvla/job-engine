@@ -103,6 +103,14 @@ class DockerCompose(Connector):
                 config.close()
                 env['DOCKER_CONFIG'] = tmp_dir_name
 
+            files = kwargs['files']
+            if files:
+                for file_info in files:
+                    file_path = tmp_dir_name + "/" + file_info['file-name']
+                    file = open(file_path, 'w')
+                    file.write(file_info['file-content'])
+                    file.close()
+
             cmd_pull = self.build_cmd_line(
                 ['-p', project_name, '-f', compose_file_path, 'pull'])
 
@@ -206,8 +214,11 @@ class DockerCompose(Connector):
         return json.loads(self._execute_clean_command(cmd, env=env).stdout)
 
     def _extract_service_info(self, project_name, service, docker_compose_path, env):
-        service_id = self._get_service_id(project_name, service,
-                                          docker_compose_path, env)
+        service_id = self._get_service_id(project_name, service, docker_compose_path, env)
+        if not service_id:
+            log.warning(f'Cannot find container for service "{service}"')
+            return
+
         inspection = self._get_container_inspect(service_id, env)
         service_info = {
             'image': self._get_image(inspection),
@@ -220,12 +231,10 @@ class DockerCompose(Connector):
             try:
                 external_port = mapping[0].get('HostPort')
             except (KeyError, IndexError):
-                log.warning(
-                    "Cannot get mapping for container port %s" % internal_port)
+                log.warning(f'Cannot get mapping for container port {internal_port}')
                 continue
             except TypeError:
-                log.warning(
-                    "The exposed container port %s is not published to the host" % internal_port)
+                log.warning(f'The exposed container port {internal_port} is not published to the host')
                 continue
 
             if external_port:
@@ -245,9 +254,12 @@ class DockerCompose(Connector):
 
         stdout = self._execute_clean_command(cmd, env=env).stdout
 
-        services = [self._extract_service_info(project_name, service,
-                                               docker_compose_path, env)
-                    for service in stdout.splitlines()]
+        services = []
+        for service in stdout.splitlines():
+            service_info = self._extract_service_info(project_name, service, docker_compose_path, env)
+            if service_info:
+                services.append(service_info)
+
         return services
 
     @should_connect
