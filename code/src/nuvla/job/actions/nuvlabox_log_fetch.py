@@ -1,13 +1,14 @@
 # -*- coding: utf-8 -*-
 
+import os
 import logging
 
 from ...connector import nuvlabox as nb
+from ...connector import kubernetes as k8
 from ..actions import action
 from .utils.resource_log_fetch import ResourceLogFetchJob
 
 action_name = 'fetch_nuvlabox_log'
-
 
 @action(action_name, True)
 class NuvlaBoxLogFetchJob(ResourceLogFetchJob):
@@ -20,12 +21,25 @@ class NuvlaBoxLogFetchJob(ResourceLogFetchJob):
 
     @property
     def connector(self):
+
         if not self._connector:
-            self._connector = \
-                nb.NuvlaBox(
-                    api=self.api,
-                    nuvlabox_id=self.resource_log_parent,
-                    job=self.job)
+            if os.getenv('KUBERNETES_SERVICE_HOST'):
+                logging.debug("Kubernetes connector used.")
+                try:
+                    self._connector = \
+                        k8.K8sLogging(
+                            api=self.api,
+                            nuvlabox_id=self.resource_log_parent,
+                            job=self.job,)
+                except Exception as e:
+                    logging.error(f'Kubernetes error:\n{str(e)}')
+            else:
+                self._connector = \
+                    nb.NuvlaBox(
+                        api=self.api,
+                        nuvlabox_id=self.resource_log_parent,
+                        job=self.job)
+
         return self._connector
 
     @property

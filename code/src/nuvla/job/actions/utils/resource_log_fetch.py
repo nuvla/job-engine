@@ -5,7 +5,6 @@ from typing import Optional, List
 from datetime import datetime
 from nuvla.api.util.date import parse_nuvla_date
 
-
 def get_last_line_timestamp(lines: Optional[List[str]]) -> Optional[str]:
     return lines[-1].strip().split(' ')[0] if lines else None
 
@@ -56,7 +55,11 @@ class ResourceLogFetchJob(ABC):
 
     def get_component_logs(self, component: str, since: datetime,
                            lines: int) -> str:
-        return self.connector.log(component, since, lines)
+
+        self.log.debug(f"Calling get_component_logs...\n\
+            Connector is set to: {self.connector.__class__.__name__}")
+
+        return self.connector.log(component, since, lines,)
 
     def get_resource_log(self, log_id: str) -> dict:
         return self.api.get(log_id).data
@@ -71,10 +74,12 @@ class ResourceLogFetchJob(ABC):
     def get_components_logs(self) -> dict:
         since = self.get_since()
         components = self.get_list_components()
+        self.log.debug(f"components {components}")
         lines = self.resource_log.get('lines', 200)
         log = {}
         for component in components:
             try:
+                self.log.debug(f"component {component} since {since} and lines {lines}")
                 component_logs = self.get_component_logs(
                     component, since, lines).strip().splitlines()
             except Exception as e:

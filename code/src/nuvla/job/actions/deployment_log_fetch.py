@@ -40,6 +40,8 @@ class DeploymentLogFetchJob(ResourceLogFetchJob):
         return self._connector_name
 
     def get_kubernetes_log(self, component, since, lines):
+        self.log.debug(f"Calling the Kubernetes deployment logging...\n\
+            The Connector is set to: {self.connector.__class__.__name__}")
         return self.connector.log(component, since, lines,
                                   namespace=Deployment.uuid(self.deployment))
 

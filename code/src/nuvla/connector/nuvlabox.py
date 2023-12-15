@@ -176,7 +176,7 @@ class NuvlaBox(Connector):
                 f'{org}/{repo}:{default_tag}')
 
     def connect(self):
-        logging.info('Connecting to NuvlaEdge {}'.format(self.nuvlabox_id))
+
         self.nuvlabox_resource = self.api.get(self.nuvlabox_id)
         self.nuvlabox = self.nuvlabox_resource.data
         self.acl = self.nuvlabox.get('acl')
