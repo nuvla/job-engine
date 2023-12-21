@@ -5,14 +5,14 @@
 
   <artifactId>container-lite-dep</artifactId>
   <packaging>pom</packaging>
-  <version>3.9.4</version>
+  <version>3.9.5.dev</version>
   <name>job-engine/container-lite</name>
   <url>http://sixsq.com/</url>
 
   <parent>
     <groupId>sixsq.nuvla.job-engine</groupId>
     <artifactId>job-engine</artifactId>
-    <version>3.9.4</version>
+    <version>3.9.5.dev</version>
   </parent>
 
   <licenses>
