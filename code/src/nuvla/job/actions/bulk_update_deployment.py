@@ -11,14 +11,14 @@ class DeploymentBulkUpdateJob(DeploymentBulkJob):
     def __init__(self, _, job):
         super().__init__(_, job)
 
-    def action(self, resource):
+    def deployment_action(self, deployment):
         module_href = self.job.payload.get('module-href')
         if module_href:
-            self.user_api.operation(resource,
+            self.user_api.operation(deployment,
                                     'fetch-module',
                                     {'module-href': module_href})
-        self.user_api.operation(resource, 'update', {'low-priority': True,
-                                                     'parent-job': self.job.id})
+        self.user_api.operation(deployment, 'update', {'low-priority': True,
+                                                       'parent-job': self.job.id})
 
     def do_work(self):
         logging.info(f'Start bulk deployment update {self.job.id}')

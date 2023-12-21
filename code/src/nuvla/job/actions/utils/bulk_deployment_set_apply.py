@@ -5,12 +5,18 @@ from ..utils.bulk_action import BulkAction
 
 
 class BulkDeploymentSetApply(BulkAction):
+    KEY_DEPLOYMENTS_TO_ADD = 'deployments-to-add'
+    KEY_DEPLOYMENTS_TO_UPDATE = 'deployments-to-update'
+    KEY_DEPLOYMENTS_TO_REMOVE = 'deployments-to-remove'
 
     def __init__(self, _, job):
         super().__init__(_, job)
         self.dep_set_id = self.job['target-resource']['href']
         self.action_name = None
         self._log = None
+        self.operations = {self.KEY_DEPLOYMENTS_TO_ADD: self._add_deployment,
+                           self.KEY_DEPLOYMENTS_TO_UPDATE: self._update_deployment,
+                           self.KEY_DEPLOYMENTS_TO_REMOVE: self._remove_deployment}
 
     @property
     def log(self):
@@ -18,12 +24,18 @@ class BulkDeploymentSetApply(BulkAction):
             self._log = logging.getLogger(self.action_name)
         return self._log
 
+    @staticmethod
+    def _action_name_todo_el(operational_status, key):
+        return [(key, el) for el in operational_status.get(key, [])]
+
     def get_todo(self):
         deployment_set = self.user_api.get(self.dep_set_id)
-        operational_status = self.user_api.operation(
-            deployment_set, 'operational-status').data
+        operational_status = self.user_api.operation(deployment_set, 'operational-status').data
         self.log.info(f'{self.dep_set_id} - Operational status: {operational_status}')
-        return operational_status
+        todo = (self._action_name_todo_el(operational_status, self.KEY_DEPLOYMENTS_TO_ADD) +
+                self._action_name_todo_el(operational_status, self.KEY_DEPLOYMENTS_TO_UPDATE) +
+                self._action_name_todo_el(operational_status, self.KEY_DEPLOYMENTS_TO_REMOVE))
+        return todo
 
     def _create_deployment(self, credential, application, app_set):
         return self.user_api.add('deployment',
@@ -138,16 +150,16 @@ class BulkDeploymentSetApply(BulkAction):
         except Exception as ex:
             self.log.error(f'{self.dep_set_id} - Failed to remove {deployment_id}: {repr(ex)}')
 
-    @staticmethod
-    def _apply_op_status(func, operational_status, k):
-        return list(map(func, operational_status.get(k, [])))
+    def _get_operation(self, operation_name: str):
+        func = self.operations.get(operation_name)
+        if not func:
+            raise KeyError(f'Unknown deployment set operation name: {operation_name}')
+        return func
 
-    def bulk_operation(self):
-        op_status = self.todo
-        if op_status['status'] == 'NOK':
-            self._apply_op_status(self._add_deployment, op_status, 'deployments-to-add')
-            self._apply_op_status(self._remove_deployment, op_status, 'deployments-to-remove')
-            self._apply_op_status(self._update_deployment, op_status, 'deployments-to-update')
+    def action(self, todo_el):
+        action_name, data = todo_el
+        func = self._get_operation(action_name)
+        return func(data)
 
     def do_work(self):
         self.log.info(f'Start bulk deployment set apply {self.action_name} {self.job.id}')

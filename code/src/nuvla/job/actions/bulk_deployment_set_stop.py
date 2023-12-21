@@ -31,12 +31,10 @@ class BulkDeploymentSetStopJob(BulkAction):
             logging.error(f'Failed to stop {deployment_id}: {repr(ex)}')
             self.result['bootstrap-exceptions'][deployment_id] = repr(ex)
             self.result['FAILED'].append(deployment_id)
-
-    def bulk_operation(self):
-        for deployment_id in self.todo[:]:
-            self._stop_deployment(deployment_id)
-            self.todo.remove(deployment_id)
             self._push_result()
+
+    def action(self, deployment_id):
+        self._stop_deployment(deployment_id)
 
     def do_work(self):
         logging.info(f'Start bulk deployment set stop {self.job.id}')
