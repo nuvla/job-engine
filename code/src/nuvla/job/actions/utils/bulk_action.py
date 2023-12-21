@@ -40,7 +40,7 @@ class BulkAction(object):
 
     def bulk_operation(self):
         for todo_el in self.todo[:]:
-            self.action(self.user_api.get(todo_el))
+            self.action(todo_el)
             self.progress += self.progress_increment
             self.job.set_progress(int(self.progress))
 
