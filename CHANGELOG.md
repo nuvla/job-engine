@@ -6,6 +6,13 @@
 
 ## Released
 
+## [3.9.3] - 2023-12-21
+
+- Job - Edit duplicated fix
+- Bulk action - Refactor to make it more generic and set progress
+- Bulk deployment set apply - Recompute operational status on job startup
+- Container - Upgrade kubectl to v1.29
+
 ## [3.9.2] - 2023-12-14
 
 - Deployment set apply - Deployment parameter value is not changing when user delete the value from the deployment group
