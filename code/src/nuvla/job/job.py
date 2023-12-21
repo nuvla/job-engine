@@ -219,19 +219,7 @@ class Job(dict):
             retry_kazoo_queue_op(self.queue, 'consume')
             log.info('Reached final state: {} removed from queue.'.format(self.id))
 
-    def _edit_job(self, attribute_name, attribute_value):
-        try:
-            response = self.api.edit(self.id, {attribute_name: attribute_value})
-        except (NuvlaError, ConnectionError) as ex:
-            retry_kazoo_queue_op(self.queue, 'release')
-            reason = f'Failed to update attribute "{attribute_name}" for {self.id}! ' \
-                     f'Put it back in queue. Exception: {repr(ex)}'
-            raise JobUpdateError(reason)
-        else:
-            self.update(response.data)
-            self.consume_when_final_state()
-
-    def _edit_job_multi(self, attributes):
+    def __edit(self, attributes):
         try:
             response = self.api.edit(self.id, attributes)
         except (NuvlaError, ConnectionError):
@@ -242,6 +230,12 @@ class Job(dict):
         else:
             self.update(response.data)
             self.consume_when_final_state()
+
+    def _edit_job(self, attribute_name, attribute_value):
+        self.__edit({attribute_name: attribute_value})
+
+    def _edit_job_multi(self, attributes):
+        self.__edit(attributes)
 
     @property
     def context(self):
