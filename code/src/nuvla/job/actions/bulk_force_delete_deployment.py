@@ -11,7 +11,7 @@ class DeploymentBulkForceDeleteJob(DeploymentBulkJob):
     def __init__(self, _, job):
         super().__init__(_, job)
 
-    def action(self, resource):
+    def deployment_action(self, resource):
         self.user_api.operation(resource,
                                 'force-delete', {'low-priority': True,
                                                  'parent-job': self.job.id})

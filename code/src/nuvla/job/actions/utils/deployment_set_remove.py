@@ -15,7 +15,9 @@ class DeploymentSetRemove(object):
     def _deployments_to_remove(self):
         filter_deployment_set = f'deployment-set="{self.dep_set_id}"'
         deployments = self.api.search('deployment', filter=filter_deployment_set, select='id').resources
-        return [deployment.id for deployment in deployments]
+        deployments_ids = [deployment.id for deployment in deployments]
+        logging.info(f'{self.dep_set_id} - Deployments to remove: {deployments_ids}')
+        return deployments_ids
 
     @abstractmethod
     def _delete(self, deployment_id):

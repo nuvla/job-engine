@@ -11,8 +11,8 @@ class DeploymentBulkStopJob(DeploymentBulkJob):
     def __init__(self, _, job):
         super().__init__(_, job)
 
-    def action(self, resource):
-        self.user_api.operation(resource,
+    def deployment_action(self, deployment):
+        self.user_api.operation(deployment,
                                 'stop',
                                 {'low-priority': True,
                                  'parent-job': self.job.id})

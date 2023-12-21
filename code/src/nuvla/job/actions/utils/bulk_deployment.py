@@ -16,15 +16,13 @@ class DeploymentBulkJob(BulkAction, abc.ABC):
                                      select='id').resources]
 
     @abc.abstractmethod
-    def action(self, resource):
+    def deployment_action(self, deployment):
         pass
 
-    def bulk_operation(self):
-        for resource_id in self.todo[:]:
-            try:
-                self.action(self.user_api.get(resource_id))
-                self.todo.remove(resource_id)
-            except Exception as ex:
-                self.result['bootstrap-exceptions'][resource_id] = repr(ex)
-                self.result['FAILED'].append(resource_id)
+    def action(self, resource_id):
+        try:
+            return self.deployment_action(self.user_api.get(resource_id))
+        except Exception as ex:
+            self.result['bootstrap-exceptions'][resource_id] = repr(ex)
+            self.result['FAILED'].append(resource_id)
             self._push_result()
