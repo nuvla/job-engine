@@ -765,6 +765,9 @@ class K8sEdgeMgmt(Kubernetes):
                     f"Project name {project_name} does not match \
                     between helm on NulvaEdge and nuvla.io"\
                     , 99
+
+            self.helm_update_the_repo()
+
             helm_update_job_name = self.create_job_name("helm-update")
             helm_update_cmd = self.helm_gen_update_cmd_repo(target_release)
             helm_update_result = self.run_helm_container(helm_update_job_name, helm_update_cmd)
@@ -774,6 +777,14 @@ class K8sEdgeMgmt(Kubernetes):
             result = f"The helm version command gave error \n {helm_version_result.stderr}"
 
         return result, helm_update_result.returncode
+
+    def helm_update_the_repo(self):
+
+        helm_repo_update_job_name = self.create_job_name("helm-repo-update")
+        helm_repo_update_cmd="'helm repo update'"
+        helm_repo_update_result = \
+            self.run_helm_container(helm_repo_update_job_name, helm_repo_update_cmd)
+        log.info(f"Helm update result:\n {helm_repo_update_result}")
 
     def helm_gen_update_cmd_repo(self, target_release):
         """
