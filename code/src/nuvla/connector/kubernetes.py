@@ -749,6 +749,10 @@ class K8sEdgeMgmt(Kubernetes):
         install_params_from_nb_status = self.nuvlabox_status.get('installation-parameters', {})
         log.info\
             (f"The installation parameters from nuvlabox_status:\n{install_params_from_nb_status}")
+        log.info\
+            (f"The components from nuvlabox_status:\n\
+             {self.nuvlabox_status.get('components', {})}")
+
 
         the_job_name = self.create_job_name("helm-ver-check")
         helm_command = "'helm list -n default --no-headers'"
