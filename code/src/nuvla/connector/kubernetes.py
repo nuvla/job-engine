@@ -733,6 +733,28 @@ class K8sEdgeMgmt(Kubernetes):
             log.debug(f'The result of the ssh key addition: {reboot_result}')
         return reboot_result
 
+    @property
+    def components(self):
+        """
+        Function to get the installed components
+        """
+        log.info("Calling for components...\n")
+        components = \
+            self.api.search('nuvlabox-status', \
+                filter=f"parent=\"{self.nuvlabox_id}\" ", \
+                select='components').resources
+        for inst_comp in components:
+            nuvlabox_status_string = str(inst_comp.id)
+            log.info(f"Nuvlabox status string: {nuvlabox_status_string}")
+            nb_status_data = self.api.get(nuvlabox_status_string).data
+            log.debug(f"ggg is:\n{json.dumps(nb_status_data, indent=2)}")
+            # namespace = nb_status_data['components']
+            # 3og.debug(f"namespace is:\n{json.dumps(namespace, indent=2)}")
+
+        # log.debug(f"The components are found to be: {self._namespace}")
+
+        return "placeholder"
+
     def update_nuvlabox_engine(self, **kwargs):
         """
         General method to update a kubernetes deployed NuvlaEdge
@@ -746,17 +768,8 @@ class K8sEdgeMgmt(Kubernetes):
             log.info(result)
             return result, 99
 
-        inst_params = \
-            self.api.search('nuvlabox-status', \
-                filter=f"parent=\"{self.nuvlabox_id}\" ", \
-                select='installation-parameters').resources
-        log.info\
-            (f"The installation parameters from nuvlabox_status:\n{inst_params}")
+        installed_components = self.components
         
-        installed_components = \
-            self.api.search('nuvlabox-status', \
-                filter=f"parent=\"{self.nuvlabox_id}\" ", \
-                select='components').resources
         log.info\
             (f"The components from nuvlabox_status:\n{installed_components}")
 
