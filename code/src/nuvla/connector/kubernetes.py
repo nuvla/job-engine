@@ -746,12 +746,19 @@ class K8sEdgeMgmt(Kubernetes):
             log.info(result)
             return result, 99
 
-        install_params_from_nb_status = self.nuvlabox_status.get('installation-parameters', {})
+        inst_params = \
+            self.api.search('nuvlabox-status', \
+                filter=f"parent=\"{self.nuvlabox_id}\" ", \
+                select='installation-parameters').resources
         log.info\
-            (f"The installation parameters from nuvlabox_status:\n{install_params_from_nb_status}")
+            (f"The installation parameters from nuvlabox_status:\n{inst_params}")
+        
+        installed_components = \
+            self.api.search('nuvlabox-status', \
+                filter=f"parent=\"{self.nuvlabox_id}\" ", \
+                select='components').resources
         log.info\
-            (f"The components from nuvlabox_status:\n\
-             {self.nuvlabox_status.get('components', {})}")
+            (f"The components from nuvlabox_status:\n{installed_components}")
 
 
         the_job_name = self.create_job_name("helm-ver-check")
