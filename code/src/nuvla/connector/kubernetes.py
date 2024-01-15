@@ -814,7 +814,7 @@ class K8sEdgeMgmt(Kubernetes):
         mandatory_args = f" --set HOME={working_dir} \
             --set NUVLAEDGE_UUID=nuvlabox/{project_uuid} \
             --set kubernetesNode=$THE_HOST_NODE_NAME \
-            --set vpnClient=true"
+            --set vpnClient=true" # this needs to go!
 
         helm_namespace = " -n default"
 
@@ -906,6 +906,7 @@ class K8sEdgeMgmt(Kubernetes):
 
         possible_modules = ["USB", "Bluetooth", "GPU", "Modbus", "Network", "security"]
         for module in modules:
+            log.info(f"JSW: Current module -> {module}")
             for module_test in possible_modules:
                 if module_test.lower() in module.lower():
                     if "security" not in module_test.lower():
