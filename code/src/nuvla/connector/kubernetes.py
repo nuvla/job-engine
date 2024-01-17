@@ -979,6 +979,7 @@ class K8sEdgeMgmt(Kubernetes):
           name: {job_name}
         spec:
           ttlSecondsAfterFinished: {ttl_sec}
+          backoffLimit: {backoff_limit}
           template:
             spec:
               containers:
@@ -1024,7 +1025,8 @@ class K8sEdgeMgmt(Kubernetes):
         the_host_kube_config = "/root/.kube"
         the_host_helm_config = "/root/.config/helm"
         the_host_helm_cache = "/root/.cache/helm"
-        time_to_live = "60" # for production, once thoroughly tested this should be set to 1 or so
+        time_to_live = "10" # for production, once thoroughly tested this should be set to 1 or so
+        the_backoff_limit = "2" # this should be thought about a bit more
         the_host_deployment_path = "/root/deployment"
 
         base_command = "['sh', '-c',"
@@ -1042,8 +1044,9 @@ class K8sEdgeMgmt(Kubernetes):
             host_helm_config = the_host_helm_config, \
             host_helm_cache = the_host_helm_cache, \
             ttl_sec = time_to_live, \
+            backoff_limit = the_backoff_limit, \
             helm_command = built_command, \
-            host_deployment_path = the_host_deployment_path \
+            host_deployment_path = the_host_deployment_path, \
             )
 
         logging.debug("The re-formatted YAML is %s ", formatted_helm_yaml_manifest)
