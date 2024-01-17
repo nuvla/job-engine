@@ -734,26 +734,29 @@ class K8sEdgeMgmt(Kubernetes):
         return reboot_result
 
     @property
-    def components(self):
+    def deployed_components(self):
         """
         Function to get the installed components
         """
-        log.info("Calling for components...\n")
-        components = \
+        log.debug("Calling for components...\n")
+        resources = \
             self.api.search('nuvlabox-status', \
                 filter=f"parent=\"{self.nuvlabox_id}\" ", \
-                select='components').resources
-        for inst_comp in components:
-            nuvlabox_status_string = str(inst_comp.id)
-            log.info(f"Nuvlabox status string: {nuvlabox_status_string}")
+                ).resources
+        deployed_components=""
+        for resource in resources:
+            nuvlabox_status_string = str(resource.id)
+            log.debug(f"Nuvlabox status string: {nuvlabox_status_string}")
             nb_status_data = self.api.get(nuvlabox_status_string).data
-            log.debug(f"ggg is:\n{json.dumps(nb_status_data, indent=2)}")
-            # namespace = nb_status_data['components']
-            # 3og.debug(f"namespace is:\n{json.dumps(namespace, indent=2)}")
+            log.debug(f"The nuvlabox-status data is:\n{json.dumps(nb_status_data, indent=2)}")
+            for ffield in nb_status_data:
+                log.debug(f"Next field -> {ffield}")
+                if "components" in ffield:
+                    deployed_components = nb_status_data['components']
 
-        # log.debug(f"The components are found to be: {self._namespace}")
+        log.debug(f"The deployed components are:\n{deployed_components}")
 
-        return "placeholder"
+        return deployed_components
 
     def update_nuvlabox_engine(self, **kwargs):
         """
@@ -768,11 +771,13 @@ class K8sEdgeMgmt(Kubernetes):
             log.info(result)
             return result, 99
 
-        installed_components = self.components
-        
-        log.info\
+        installed_components = self.deployed_components
+        log.debug\
             (f"The components from nuvlabox_status:\n{installed_components}")
-
+        if not installed_components:
+            result = "The installed components cannot be found. Please try in a few minutes"
+            log.info(result)
+            return result, 98
 
         the_job_name = self.create_job_name("helm-ver-check")
         helm_command = "'helm list -n default --no-headers'"
@@ -788,7 +793,7 @@ class K8sEdgeMgmt(Kubernetes):
                 return \
                     f"Project name {project_name} does not match \
                     between helm on NulvaEdge and nuvla.io"\
-                    , 99
+                    , 97
 
             self.helm_update_the_repo()
 
@@ -837,8 +842,11 @@ class K8sEdgeMgmt(Kubernetes):
 
         mandatory_args = f" --set HOME={working_dir} \
             --set NUVLAEDGE_UUID=nuvlabox/{project_uuid} \
-            --set kubernetesNode=$THE_HOST_NODE_NAME \
-            --set vpnClient=true" # this needs to go!
+            --set kubernetesNode=$THE_HOST_NODE_NAME"
+
+        vpn_client_cmd = ""
+        if "vpn-client" in self.deployed_components:
+            vpn_client_cmd = " --set vpnClient=true"
 
         helm_namespace = " -n default"
 
@@ -847,6 +855,7 @@ class K8sEdgeMgmt(Kubernetes):
             {helm_namespace} \
             --version {target_release} \
             {mandatory_args} \
+            {vpn_client_cmd} \
             {peripherals} \
             {env_vars}"
 
