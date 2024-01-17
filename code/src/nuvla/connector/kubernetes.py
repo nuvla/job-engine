@@ -909,13 +909,13 @@ class K8sEdgeMgmt(Kubernetes):
         """
         Check the status of the target release
         """
+
+        message=f"chart version from {current_version} to {target_release}"
         if target_release not in helm_log_result.stdout:
-            result = \
-            f"Updating chart version change from {current_version} to {target_release}"
+            result = "Updating " + message
             log.info(result)
         else:
-            result = \
-                f"There is no chart version change from {current_version} to {target_release}"
+            result = "No change of " + message
             log.info(result)
         return result
 
