@@ -758,6 +758,24 @@ class K8sEdgeMgmt(Kubernetes):
 
         return deployed_components
 
+    def helm_check_multiple(self, target_release):
+        """
+        Check if the deployment is part of a multiple deployment
+        """
+        the_job_name = self.create_job_name("helm-check-multiple")
+        helm_command = f"'helm status {target_release} --show-resources -o json'"
+        helm_version_result = self.run_helm_container(the_job_name, helm_command)
+
+        if helm_version_result.returncode == 0 and not helm_version_result.stderr:
+            helm_log_result = self.read_a_log_file(the_job_name)
+            if "SET_MULTIPLE" in helm_log_result.stdout:
+                result = "This deployment is part of a multiple deployment. Cannot proceed."
+                log.info(result)
+                return result, 96
+
+        return None, 0
+
+
     def update_nuvlabox_engine(self, **kwargs):
         """
         General method to update a kubernetes deployed NuvlaEdge
@@ -778,6 +796,15 @@ class K8sEdgeMgmt(Kubernetes):
             result = "The installed components cannot be found. Please try in a few minutes"
             log.info(result)
             return result, 98
+        
+        # test that the deployment is not part of a multiple deployment
+        # to do this we need to check for the presence of the SET_MULTIPLE variable in the helm status
+        # if the SET_MULTIPLE variable is present, 
+        # then we should stop here and send a message and error code!
+
+        result, return_code = self.helm_check_multiple(target_release)
+        if return_code != 0:
+            return result, return_code 
 
         the_job_name = self.create_job_name("helm-ver-check")
         helm_command = "'helm list -n default --no-headers'"
@@ -1031,7 +1058,7 @@ class K8sEdgeMgmt(Kubernetes):
 
         base_command = "['sh', '-c',"
         cmd = the_helm_command
-        end_command = "]"
+        end_command = "]" 
 
         built_command = base_command + cmd + end_command
 
