@@ -767,7 +767,9 @@ class K8sEdgeMgmt(Kubernetes):
             helm_log_result = self.read_a_log_file(the_job_name)
             log.debug(f"Helm status result:\n {helm_log_result}")
             if "SET_MULTIPLE" in helm_log_result.stdout:
-                result = "This deployment is part of a multiple deployment. Cannot proceed."
+                result = "This deployment is part of a multiple \
+                    deployment.\nIt is not envisaged to run \
+                    updates in such a test environment.\n Cannot proceed."
                 log.info(result)
                 return result, 96
 
