@@ -743,7 +743,6 @@ class K8sEdgeMgmt(Kubernetes):
             self.api.search('nuvlabox-status', \
                 filter=f"parent=\"{self.nuvlabox_id}\" ", \
                 ).resources
-        deployed_components=""
         for resource in resources:
             nuvlabox_status_string = str(resource.id)
             log.debug(f"Nuvlabox status string: {nuvlabox_status_string}")
@@ -752,29 +751,27 @@ class K8sEdgeMgmt(Kubernetes):
             for ffield in nb_status_data:
                 log.debug(f"Next field -> {ffield}")
                 if "components" in ffield:
-                    deployed_components = nb_status_data['components']
+                    return nb_status_data['components']
+                    # deployed_components = nb_status_data['components']
+        return None
 
-        log.debug(f"The deployed components are:\n{deployed_components}")
-
-        return deployed_components
-
-    def helm_check_multiple(self, target_release):
+    def helm_check_multiple(self, helm_name):
         """
         Check if the deployment is part of a multiple deployment
         """
         the_job_name = self.create_job_name("helm-check-multiple")
-        helm_command = f"'helm status {target_release} --show-resources -o json'"
+        helm_command = f"'helm status -n default {helm_name} --show-resources -o json'"
         helm_version_result = self.run_helm_container(the_job_name, helm_command)
 
         if helm_version_result.returncode == 0 and not helm_version_result.stderr:
             helm_log_result = self.read_a_log_file(the_job_name)
+            log.debug(f"Helm status result:\n {helm_log_result}")
             if "SET_MULTIPLE" in helm_log_result.stdout:
                 result = "This deployment is part of a multiple deployment. Cannot proceed."
                 log.info(result)
                 return result, 96
 
         return None, 0
-
 
     def update_nuvlabox_engine(self, **kwargs):
         """
@@ -796,15 +793,11 @@ class K8sEdgeMgmt(Kubernetes):
             result = "The installed components cannot be found. Please try in a few minutes"
             log.info(result)
             return result, 98
-        
-        # test that the deployment is not part of a multiple deployment
-        # to do this we need to check for the presence of the SET_MULTIPLE variable in the helm status
-        # if the SET_MULTIPLE variable is present, 
-        # then we should stop here and send a message and error code!
 
-        result, return_code = self.helm_check_multiple(target_release)
+        project_name = self.get_helm_name()
+        result, return_code = self.helm_check_multiple(project_name)
         if return_code != 0:
-            return result, return_code 
+            return result, return_code
 
         the_job_name = self.create_job_name("helm-ver-check")
         helm_command = "'helm list -n default --no-headers'"
@@ -841,6 +834,25 @@ class K8sEdgeMgmt(Kubernetes):
         helm_repo_update_result = \
             self.run_helm_container(helm_repo_update_job_name, helm_repo_update_cmd)
         log.info(f"Helm update result:\n {helm_repo_update_result}")
+
+    def get_helm_name(self):
+        """text"""
+        install_params_from_payload = json.loads(self.job.get('payload', '{}'))
+        project_name = install_params_from_payload['project-name']
+
+        # check that helm knows about the project name
+        helm_job_name = self.create_job_name("helm-name-check")
+        helm_job_cmd = f"'helm list -n default --no-headers | grep {project_name}'"
+        helm_job_result = self.run_helm_container(helm_job_name, helm_job_cmd)
+        log.info(f"Helm name check result:\n {helm_job_result}")
+
+        if helm_job_result.returncode == 0 and not helm_job_result.stderr:
+            helm_job_log_result = self.read_a_log_file(helm_job_name)
+            if project_name in helm_job_log_result.stdout:
+                log.info(f"Found helm name: {project_name}")
+                return project_name
+        return None
+
 
     def helm_gen_update_cmd_repo(self, target_release):
         """
@@ -1052,7 +1064,7 @@ class K8sEdgeMgmt(Kubernetes):
         the_host_kube_config = "/root/.kube"
         the_host_helm_config = "/root/.config/helm"
         the_host_helm_cache = "/root/.cache/helm"
-        time_to_live = "10" # for production, once thoroughly tested this should be set to 1 or so
+        time_to_live = "60" # for production, once thoroughly tested this should be set to 1 or so
         the_backoff_limit = "2" # this should be thought about a bit more
         the_host_deployment_path = "/root/deployment"
 
