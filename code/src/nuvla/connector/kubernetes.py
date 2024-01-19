@@ -771,7 +771,7 @@ class K8sEdgeMgmt(Kubernetes):
                     deployment. It is not envisaged to run \
                     updates in such a test environment. Will not proceed."
                 log.info(result)
-                return result, 96
+                return result, 95
 
         return None, 0
 
