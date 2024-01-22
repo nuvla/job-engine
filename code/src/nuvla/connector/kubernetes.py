@@ -797,9 +797,9 @@ class K8sEdgeMgmt(Kubernetes):
             return result, 98
 
         project_name = self.get_helm_name()
-        result, return_code = self.helm_check_multiple(project_name)
-        if return_code != 0:
-            return result, return_code
+        # result, return_code = self.helm_check_multiple(project_name)
+        # if return_code != 0:
+          #   return result, return_code
 
         the_job_name = self.create_job_name("helm-ver-check")
         helm_command = "'helm list -n default --no-headers'"
