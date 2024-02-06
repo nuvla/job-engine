@@ -730,7 +730,7 @@ class K8sEdgeMgmt(Kubernetes):
             kubectl_cmd_reboot = self.build_cmd_line(cmd)
 
             reboot_result = execute_cmd(kubectl_cmd_reboot)
-            log.debug(f'The result of the ssh key addition: {reboot_result}')
+            log.debug(f'The result of the reboot action: {reboot_result}')
         return reboot_result
 
     def update_nuvlabox_engine(self, **kwargs):
@@ -1236,6 +1236,7 @@ class K8sSSHKey(Kubernetes):
             return 0
         return 1
 
+    # FIXME: this needs to be extracted and used for both K8s and Docker.
     def _get_user_home(self, nuvlabox_status):
         """
         Get the user home directory
