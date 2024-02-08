@@ -24,6 +24,8 @@ class ApplicationDockerComposeValidate(object):
 
         env_variables = {'NUVLA_DEPLOYMENT_ID': str(aux_port_value),
                          'NUVLA_DEPLOYMENT_UUID': str(aux_port_value),
+                         'NUVLA_DEPLOYMENT_GROUP_ID': str(aux_port_value),
+                         'NUVLA_DEPLOYMENT_GROUP_UUID': str(aux_port_value),
                          'NUVLA_API_KEY': str(aux_port_value),
                          'NUVLA_API_SECRET': str(aux_port_value),
                          'NUVLA_ENDPOINT': str(aux_port_value)}
