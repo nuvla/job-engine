@@ -1092,6 +1092,8 @@ class K8sSSHKey(Kubernetes):
         self.ne_image_name = os.getenv('NE_IMAGE_NAME', f'{self.ne_image_org}/{self.ne_image_repo}')
         self.base_image = f'{self.ne_image_registry}{self.ne_image_name}:{self.ne_image_tag}'
 
+        self.nuvlabox_id = kwargs.get("nuvlabox_id")
+
         self._nuvlabox = None
         self._nuvlabox_status = None
 
@@ -1100,7 +1102,7 @@ class K8sSSHKey(Kubernetes):
         if not self._nuvlabox:
             self._nuvlabox = self.api.get(self.nuvlabox_id).data
         return self._nuvlabox
-    
+
     @property
     def nuvlabox_status(self):
         if not self._nuvlabox_status:
@@ -1199,7 +1201,7 @@ class K8sSSHKey(Kubernetes):
         # nuvlabox_status = self.api.get("nuvlabox-status").data
         nuvlabox_resource = self.api.get(nuvlabox_id)
         # nuvlabox = nuvlabox_resource.data
-        logging.debug('nuvlabox: %s',self.nuvlabox)
+        # logging.debug('nuvlabox: %s',self.nuvlabox)
         user_home = self._get_user_home(self.nuvlabox_status)
         logging.info('The user home directory is: %s',user_home)
         ssh_keys = self.nuvlabox.get('ssh-keys', [])
