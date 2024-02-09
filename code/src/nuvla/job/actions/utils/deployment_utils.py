@@ -82,6 +82,10 @@ def get_env(deployment: dict):
         'NUVLA_API_KEY': deployment['api-credentials']['api-key'],
         'NUVLA_API_SECRET': deployment['api-credentials']['api-secret'],
         'NUVLA_ENDPOINT': deployment['api-endpoint']}
+    deployment_group_id = deployment.get('deployment-set')
+    if deployment_group_id:
+        env_variables['NUVLA_DEPLOYMENT_GROUP_ID'] = deployment_group_id
+        env_variables['NUVLA_DEPLOYMENT_GROUP_UUID'] = deployment_group_id.split('/')[-1]
 
     module_content = Deployment.module_content(deployment)
 
