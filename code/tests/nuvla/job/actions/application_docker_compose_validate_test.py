@@ -8,9 +8,8 @@ from nuvla.job.actions.application_docker_compose_validate import \
 def clean_return(ret: dict):
     ret.pop('NUVLA_DEPLOYMENT_ID')
     ret.pop('NUVLA_DEPLOYMENT_UUID')
-    ret.pop('NUVLA_DEPLOYMENT_UUID')
-    ret.pop('NUVLA_DEPLOYMENT_GROUP_ID')
-    ret.pop('NUVLA_DEPLOYMENT_GROUP_UUID')
+    ret.pop('NUVLA_DEPLOYMENT_GROUP_ID', None)
+    ret.pop('NUVLA_DEPLOYMENT_GROUP_UUID', None)
     ret.pop('NUVLA_API_KEY')
     ret.pop('NUVLA_API_SECRET')
     ret.pop('NUVLA_ENDPOINT')
