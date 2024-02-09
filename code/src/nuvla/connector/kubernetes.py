@@ -1250,5 +1250,5 @@ class K8sSSHKey(Kubernetes):
             if not user_home:
                 user_home = "/root"
                 # this could be interesting point to e.g. create a generic user edge_login and add ssh key?
-                logging.info('Attention: The user home has been set to: %s ',user_home)
+        logging.info('Attention: The user home has been found as: %s ',user_home)
         return user_home
