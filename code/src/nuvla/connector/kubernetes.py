@@ -1185,9 +1185,10 @@ class K8sSSHKey(Kubernetes):
         nuvlabox = nuvlabox_resource.data
         logging.debug('nuvlabox: %s',nuvlabox)
         user_home = self._get_user_home(nuvlabox_status)
+        logging.info('The user home directory is: %s',user_home)
         ssh_keys = nuvlabox.get('ssh-keys', [])
         logging.debug("Current ssh keys:\n%s\n", ssh_keys)
-        logging.info("The credential being added/revoked is: %s",credential_id)
+        logging.info("JSW: he credential being added/revoked is: %s",credential_id)
         if action.startswith('add'):
             if credential_id in ssh_keys:
                 logging.debug('The credential ID to be added is already present: %s',credential_id)
