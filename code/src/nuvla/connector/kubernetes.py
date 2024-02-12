@@ -1202,7 +1202,7 @@ class K8sSSHKey(Kubernetes):
         nuvlabox_resource = self.api.get(nuvlabox_id)
         # nuvlabox = nuvlabox_resource.data
         # logging.debug('nuvlabox: %s',self.nuvlabox)
-        user_home = self._get_user_home()
+        user_home = self._get_user_home() # test
         logging.info('The user home directory is: %s',user_home)
         ssh_keys = self.nuvlabox.get('ssh-keys', [])
         logging.debug("Current ssh keys:\n%s\n", ssh_keys)
