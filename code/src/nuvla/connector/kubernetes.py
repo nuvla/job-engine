@@ -97,6 +97,27 @@ class Kubernetes(Connector):
             self._nuvlabox_status = self.api.get(nuvlabox_status_id).data
         return self._nuvlabox_status
 
+   # FIXME: this needs to be extracted and used for both K8s and Docker.
+    def _get_user_home(self):
+        """
+        Get the user home directory
+
+        Returns: the user home directory
+        
+        """
+        user_home = self.nuvlabox_status.get('host-user-home')
+        if not user_home:
+            logging.info('The user home has not been found from the \
+                         nuvlabox-status. Using the environment variable HOME.')
+            user_home = os.getenv('HOME')
+            if not user_home:
+                logging.info\
+                    ('The user home has not been found from the \
+                     environment variable HOME. Using /root as default.')
+                user_home = "/root"
+                # this could be interesting point to e.g. create a generic user edge_login and add ssh key?
+        logging.info('The user home has been found to be: %s ',user_home)
+        return user_home
 
     @property
     def connector_type(self):
@@ -1188,11 +1209,9 @@ class K8sSSHKey(Kubernetes):
         credential_id: the nuvla ID of the credential
         nuvlabox_id: the id UID of the nuvlabox
         """
-        # nuvlabox_status = self.api.get("nuvlabox-status").data
+
         nuvlabox_resource = self.api.get(nuvlabox_id)
-        # nuvlabox = nuvlabox_resource.data
-        # logging.debug('nuvlabox: %s',self.nuvlabox)
-        user_home = self._get_user_home() # test
+        user_home = self._get_user_home()
         logging.info('The user home directory is: %s',user_home)
         ssh_keys = self.nuvlabox.get('ssh-keys', [])
         logging.debug("Current ssh keys:\n%s\n", ssh_keys)
@@ -1244,20 +1263,3 @@ class K8sSSHKey(Kubernetes):
             self.job.update_job(status_message=json.dumps(message_out))
             return 0
         return 1
-
-    # FIXME: this needs to be extracted and used for both K8s and Docker.
-    def _get_user_home(self):
-        """
-        Get the user home directory
-
-        Arguments:
-        nuvlabox_status: object containing the status of the nuvlabox
-        """
-        user_home = self.nuvlabox_status.get('host-user-home')
-        if not user_home:
-            user_home = os.getenv('HOME')
-            if not user_home:
-                user_home = "/root"
-                # this could be interesting point to e.g. create a generic user edge_login and add ssh key?
-        logging.info('Attention: The user home has been found as: %s ',user_home)
-        return user_home
