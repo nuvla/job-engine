@@ -85,6 +85,20 @@ class Kubernetes(Connector):
         self.base_image = f'{self.ne_image_registry}{self.ne_image_name}:{self.ne_image_tag}'
 
     @property
+    def nuvlabox(self):
+        if not self._nuvlabox:
+            self._nuvlabox = self.api.get(self.nuvlabox_id).data
+        return self._nuvlabox
+
+    @property
+    def nuvlabox_status(self):
+        if not self._nuvlabox_status:
+            nuvlabox_status_id = self.nuvlabox.get('nuvlabox-status')
+            self._nuvlabox_status = self.api.get(nuvlabox_status_id).data
+        return self._nuvlabox_status
+
+
+    @property
     def connector_type(self):
         return 'Kubernetes-cli'
 
