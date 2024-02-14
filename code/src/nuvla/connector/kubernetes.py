@@ -682,6 +682,7 @@ class K8sEdgeMgmt(Kubernetes):
         self.ne_image_name = os.getenv('NE_IMAGE_NAME', f'{self.ne_image_org}/{self.ne_image_repo}')
         self.base_image = f'{self.ne_image_registry}{self.ne_image_name}:{self.ne_image_tag}'
 
+    '''
     @property
     def nuvlabox(self):
         if not self._nuvlabox:
@@ -694,7 +695,8 @@ class K8sEdgeMgmt(Kubernetes):
             nuvlabox_status_id = self.nuvlabox.get('nuvlabox-status')
             self._nuvlabox_status = self.api.get(nuvlabox_status_id).data
         return self._nuvlabox_status
-
+    '''
+    
     @should_connect
     def reboot(self):
         """
@@ -1111,6 +1113,7 @@ class K8sSSHKey(Kubernetes):
         self._nuvlabox = None
         self._nuvlabox_status = None
 
+    '''
     @property
     def nuvlabox(self):
         if not self._nuvlabox:
@@ -1123,6 +1126,7 @@ class K8sSSHKey(Kubernetes):
             nuvlabox_status_id = self.nuvlabox.get('nuvlabox-status')
             self._nuvlabox_status = self.api.get(nuvlabox_status_id).data
         return self._nuvlabox_status
+    '''
 
     @should_connect
     def k8s_ssh_key(self, action, pubkey, user_home):
