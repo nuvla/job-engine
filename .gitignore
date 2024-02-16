@@ -4,6 +4,8 @@
 *.egg-info/
 *.iml
 .idea
+out/
+dist/
 venv*
 target
 versions.sh
