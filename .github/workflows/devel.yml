@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  build-package:
+  run-unittests:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -55,6 +55,45 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+  build-package:
+    needs: run-unittests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Setup Poetry
+        uses: snok/install-poetry@v1
+        with:
+          virtualenvs-create: true
+          virtualenvs-in-project: true
+
+      - name: Generate server requirements
+        run: >
+          poetry export
+          -f requirements.txt
+          -o requirements.server.txt
+          --without-hashes
+          --without-urls
+          --with server
+
+      - name: Build Package
+        run: |
+          poetry build --format=wheel
+          cp requirements.server.txt dist/
+          cp -r script/ dist/
+
+      - name: Save wheel
+        uses: actions/upload-artifact@v4
+        with:
+          name: wheel
+          path: dist/
 
 #  build-job-lite:
 #    needs: run-unittests
