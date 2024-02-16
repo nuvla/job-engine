@@ -87,7 +87,8 @@ jobs:
         run: |
           poetry build --format=wheel
           cp requirements.server.txt dist/
-          cp -r script/ dist/
+          cp -r scripts/ dist/
+          ls -la dist/
 
       - name: Save wheel
         uses: actions/upload-artifact@v4
