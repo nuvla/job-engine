@@ -33,7 +33,7 @@ jobs:
           --without-hashes
           --without-urls
           --with test
-          --with backend
+          --with server
 
       - name: Install TOX
         run: |
