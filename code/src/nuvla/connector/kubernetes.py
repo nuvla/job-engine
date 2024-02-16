@@ -97,7 +97,7 @@ class Kubernetes(Connector):
             self._nuvlabox_status = self.api.get(nuvlabox_status_id).data
         return self._nuvlabox_status
 
-   # FIXME: this needs to be extracted and used for both K8s and Docker.
+   # FIXME: this needs to be extracted and used for both K8s and Docker. Test
     def _get_user_home(self):
         """
         Get the user home directory
