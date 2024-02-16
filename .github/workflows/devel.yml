@@ -29,7 +29,7 @@ jobs:
         run: >
           poetry export
           -f requirements.txt
-          -o $OUTPUT_DIR/requirements.test.txt
+          -o requirements.test.txt
           --without-hashes
           --without-urls
           --with test
