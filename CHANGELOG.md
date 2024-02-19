@@ -6,6 +6,15 @@
 
 ## Released
 
+## [3.9.5](https://github.com/nuvla/job-engine/compare/v3.9.4...v3.9.5) (2024-02-19)
+
+
+### Bug Fixes
+
+* container's version as parent in container-lite wasn't bumped up ([b27d731](https://github.com/nuvla/job-engine/commit/b27d731762ec1c9961eff025fab56333fee09c49))
+* don't try to use registries creds if they are not provided for k8s ([#89](https://github.com/nuvla/job-engine/issues/89)) ([e03da05](https://github.com/nuvla/job-engine/commit/e03da052af95fdc8f9723142c1a1c2fd3d2fcf29))
+* return empty list by default ([#146](https://github.com/nuvla/job-engine/issues/146)) ([888bb70](https://github.com/nuvla/job-engine/commit/888bb70048ab0b165a39fa486bfd94c73bc394dc))
+
 ## [3.9.3] - 2023-12-21
 
 - Job - Edit duplicated fix
