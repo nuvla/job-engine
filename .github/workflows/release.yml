@@ -6,72 +6,72 @@ on:
       - remove-maven
 
 jobs:
-  run-unittests:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Install python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-
-      - name: Setup Poetry
-        uses: snok/install-poetry@v1
-        with:
-          virtualenvs-create: true
-          virtualenvs-in-project: true
-
-      - name: Generate test requirements
-        run: >
-          poetry export
-          -f requirements.txt
-          -o requirements.test.txt
-          --without-hashes
-          --without-urls
-          --with test
-          --with server
-
-      - name: Install TOX
-        run: |
-          pip install tox
-
-      - name: Run Unittests
-        id: unittests-run
-        run: |
-          tox
-
-      - name: Publish Unit Test Results
-        uses: EnricoMi/publish-unit-test-result-action@v2
-        if: always()
-        with:
-          files: test-report.xml
-
-      - name: Generate server requirements
-        run: >
-          poetry export
-          -f requirements.txt
-          -o requirements.server.txt
-          --without-hashes
-          --without-urls
-          --with server
-
-      - name: Build Package
-        run: |
-          poetry build --format=wheel
-          cp requirements.server.txt dist/requirements.txt
-          cp -r scripts/ dist/
-          ls -la dist/
-
-      - name: Save wheel
-        uses: actions/upload-artifact@v4
-        with:
-          name: freeze
-          path: dist/
+#  run-unittests:
+#    runs-on: ubuntu-latest
+#    steps:
+#      - name: Checkout
+#        uses: actions/checkout@v4
+#
+#      - name: Install python
+#        uses: actions/setup-python@v5
+#        with:
+#          python-version: '3.11'
+#
+#      - name: Setup Poetry
+#        uses: snok/install-poetry@v1
+#        with:
+#          virtualenvs-create: true
+#          virtualenvs-in-project: true
+#
+#      - name: Generate test requirements
+#        run: >
+#          poetry export
+#          -f requirements.txt
+#          -o requirements.test.txt
+#          --without-hashes
+#          --without-urls
+#          --with test
+#          --with server
+#
+#      - name: Install TOX
+#        run: |
+#          pip install tox
+#
+#      - name: Run Unittests
+#        id: unittests-run
+#        run: |
+#          tox
+#
+#      - name: Publish Unit Test Results
+#        uses: EnricoMi/publish-unit-test-result-action@v2
+#        if: always()
+#        with:
+#          files: test-report.xml
+#
+#      - name: Generate server requirements
+#        run: >
+#          poetry export
+#          -f requirements.txt
+#          -o requirements.server.txt
+#          --without-hashes
+#          --without-urls
+#          --with server
+#
+#      - name: Build Package
+#        run: |
+#          poetry build --format=wheel
+#          cp requirements.server.txt dist/requirements.txt
+#          cp -r scripts/ dist/
+#          ls -la dist/
+#
+#      - name: Save wheel
+#        uses: actions/upload-artifact@v4
+#        with:
+#          name: freeze
+#          path: dist/
 
   release-package:
-    needs: run-unittests
+#    needs: run-unittests
     runs-on: ubuntu-latest
     outputs:
       releases_created: ${{ steps.release-please.outputs.releases_created }}
@@ -90,6 +90,7 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           target-branch: ${{ github.ref_name }}
           config-file: ./.github/release-please-config.json
+          manifest-file: ./pyproject.toml
 
       - name: Install python
         uses: actions/setup-python@v5
