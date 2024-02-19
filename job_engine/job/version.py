@@ -1,5 +1,8 @@
-from importlib_metadata import version
+from importlib_metadata import version, PackageNotFoundError
 
 
 package_name = "nuvla-job-engine"
-version = version(package_name)
+try:
+    version = version(package_name)
+except PackageNotFoundError:
+    version = None
