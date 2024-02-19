@@ -71,7 +71,7 @@ jobs:
           path: dist/
 
   release-package:
-    needs: build-package
+    needs: run-unittests
     runs-on: ubuntu-latest
     outputs:
       releases_created: ${{ steps.release-please.outputs.releases_created }}
