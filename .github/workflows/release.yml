@@ -87,7 +87,7 @@ jobs:
       - id: release-please
         uses: google-github-actions/release-please-action@v4
         with:
-          bootstrap-sha: 3bdb69cca9d3f92e4377afed742ff7168ea3891f
+          bootstrap-sha: ${{ github.event.before }}
           release-type: python
           target-branch: remove-maven
 
