@@ -1,6 +1,5 @@
 {
   "bootstrap-sha": "59f339ac71f72c92bc015bd4c3f9d0d19f23e1b3",
   "release-type": "python",
-  "release-as": "3.9.5",
-  "target-branch": "remove-maven"
+  "release-as": "3.9.5"
 }
