@@ -105,8 +105,20 @@ jobs:
       - id: release-please
         uses: google-github-actions/release-please-action@v4
         with:
+          bootstrap-sha: 3bdb69cca9d3f92e4377afed742ff7168ea3891f
           release-type: python
           target-branch: remove-maven
+
+      - name: Install python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Setup Poetry
+        uses: snok/install-poetry@v1
+        with:
+          virtualenvs-create: true
+          virtualenvs-in-project: true
 
       - name: Download wheel
         uses: actions/download-artifact@v4
