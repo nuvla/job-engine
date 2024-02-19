@@ -138,7 +138,7 @@ jobs:
             PACKAGE_NAME=${{ env.PACKAGE_NAME }}
           push: true
           tags: >
-            nuvladev/${{ github.event.repository.name }}:${{ github.head_ref || github.ref_name }}
+            nuvladev/job:${{ github.head_ref || github.ref_name }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
