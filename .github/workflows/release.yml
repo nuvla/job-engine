@@ -1,16 +1,95 @@
-name: "trigger release"
+name: "Job Engine Release"
 
 on:
   push:
     branches:
       - remove-maven
 
-permissions:
-  contents: write
-  pull-requests: write
-
 jobs:
-  release:
+  run-unittests:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Setup Poetry
+        uses: snok/install-poetry@v1
+        with:
+          virtualenvs-create: true
+          virtualenvs-in-project: true
+
+      - name: Generate test requirements
+        run: >
+          poetry export
+          -f requirements.txt
+          -o requirements.test.txt
+          --without-hashes
+          --without-urls
+          --with test
+          --with server
+
+      - name: Install TOX
+        run: |
+          pip install tox
+
+      - name: Run Unittests
+        id: unittests-run
+        run: |
+          tox
+
+      - name: Publish Unit Test Results
+        uses: EnricoMi/publish-unit-test-result-action@v2
+        if: always()
+        with:
+          files: test-report.xml
+
+  build-package:
+    needs: run-unittests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Setup Poetry
+        uses: snok/install-poetry@v1
+        with:
+          virtualenvs-create: true
+          virtualenvs-in-project: true
+
+      - name: Generate server requirements
+        run: >
+          poetry export
+          -f requirements.txt
+          -o requirements.server.txt
+          --without-hashes
+          --without-urls
+          --with server
+
+      - name: Build Package
+        run: |
+          poetry build --format=wheel
+          cp requirements.server.txt dist/requirements.txt
+          cp -r scripts/ dist/
+          ls -la dist/
+
+      - name: Save wheel
+        uses: actions/upload-artifact@v4
+        with:
+          name: freeze
+          path: dist/
+
+  release-package:
+    needs: build-package
     runs-on: ubuntu-latest
     outputs:
       releases_created: ${{ steps.release-please.outputs.releases_created }}
@@ -18,13 +97,42 @@ jobs:
       minor: ${{ steps.release-please.outputs.minor }}
       patch: ${{ steps.release-please.outputs.patch }}
       tag_name: ${{ steps.release-please.outputs.tag_name }}
+
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
       - id: release-please
-        uses: google-github-actions/release-please-action@v3
+        uses: google-github-actions/release-please-action@v4
         with:
           release-type: python
           target-branch: remove-maven
 
+      - name: Install python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Setup Poetry
+        uses: snok/install-poetry@v1
+        with:
+          virtualenvs-create: true
+          virtualenvs-in-project: true
+
+      - name: Download wheel
+        uses: actions/download-artifact@v2
+        with:
+          name: freeze
+          path: dist/
+
+      - name: Add artifacts to release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release upload ${{ steps.release-please.outputs.tag_name }} dist/*.whl
+          gh release upload ${{ steps.release-please.outputs.tag_name }} dist/*.py
+          gh release upload ${{ steps.release-please.outputs.tag_name }} dist/*.txt
+    
 #  notify:
 #    name: Post Workflow Status To Slack
 #    needs: release
