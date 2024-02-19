@@ -4,8 +4,6 @@ ARG GIT_BRANCH
 ARG GIT_COMMIT_ID
 ARG GIT_DIRTY
 ARG GIT_BUILD_TIME
-ARG TRAVIS_BUILD_NUMBER
-ARG TRAVIS_BUILD_WEB_URL
 ARG IMAGE_NAME
 
 ARG DOCKER_CLIENT_VERSION=25.0
@@ -31,10 +29,12 @@ RUN apk --no-cache add --repository https://dl-cdn.alpinelinux.org/alpine/edge/c
 COPY --link scripts/ /app
 RUN chmod -R +x /app/
 
-COPY --link dist/nuvla_job_engine-0.1.0-py3-none-any.whl /tmp/build/nuvla_job_engine-0.1.0-py3-none-any.whl
+COPY --link requirements.txt /tmp/build/requirements.txt
+RUN pip install -r /tmp/build/requirements.txt
 
+COPY --link dist/nuvla_job_engine-3.9.4-py3-none-any.whl /tmp/build/nuvla_job_engine-3.9.4-py3-none-any.whl
+RUN pip install /tmp/build/nuvla_job_engine-3.9.4-py3-none-any.whl
 
-RUN pip install /tmp/build/nuvla_job_engine-0.1.0-py3-none-any.whl
 RUN rm -rf /tmp/build/
 
 # inherited from docker:18.09 Dockerfile

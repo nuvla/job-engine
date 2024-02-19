@@ -11,7 +11,7 @@ poetry export \
   -o $OUTPUT_DIR/requirements.txt \
   --without-hashes \
   --without-urls \
-  --with backend
+  --with server
 
 poetry export \
   -f requirements.txt \
@@ -19,7 +19,7 @@ poetry export \
   --without-hashes \
   --without-urls \
   --with test \
-  --with backend
+  --with server
 
 poetry export \
   -f requirements.txt \

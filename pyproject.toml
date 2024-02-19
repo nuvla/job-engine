@@ -16,10 +16,6 @@ classifiers = [
         'Programming Language :: Python :: 3.11',
         'Topic :: Software Development']
 
-
-#[tool.poetry.scripts]
-#job_deployment_state_push = "job_engine.scripts.job_deployment_state_push"
-
 [tool.poetry.dependencies]
 python = "^3.11"
 nuvla-api = "^3.0.9"
@@ -27,6 +23,7 @@ docker = "^7.0.0"
 pyyaml = "^6.0.1"
 statsd = "^4.0.1"
 packaging = "^23.2"
+importlib-metadata = "^7.0.1"
 
 [tool.poetry.group.server.dependencies]
 elasticsearch = "^7"
