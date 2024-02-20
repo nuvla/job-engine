@@ -1,11 +1,22 @@
 name: "UnitTests and Build Docker Dev. Image"
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref_name }}
+  cancel-in-progress: true
+
 on:
   push:
     branches:
       - main
       - master
   pull_request:
+    paths:
+      - "job_engine/**"
+      - "tests/**"
+      - "scripts/**"
+      - ".github/workflows/devel.yml"
+      - "pyproject.toml"
+      - "poetry.lock"
   workflow_dispatch:
 
 jobs:
