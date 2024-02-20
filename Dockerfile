@@ -1,11 +1,11 @@
 FROM python:3.11-alpine3.18
 
 ARG GIT_BRANCH
-ARG JOB_TAG_NAME=3.9.4
 ARG GIT_COMMIT_ID
 ARG GIT_DIRTY
 ARG GIT_BUILD_TIME
 ARG IMAGE_NAME
+ARG PACKAGE_TAG=3.9.4
 
 ARG DOCKER_CLIENT_VERSION=25.0
 ARG DOCKER_COMPOSE_VERSION=2.17
@@ -29,8 +29,8 @@ RUN apk --no-cache add --repository https://dl-cdn.alpinelinux.org/alpine/edge/c
 COPY --link dist/requirements.txt /tmp/build/requirements.txt
 RUN pip install -r /tmp/build/requirements.txt
 
-COPY --link dist/nuvla_job_engine-${JOB_TAG_NAME}-py3-none-any.whl /tmp/build/nuvla_job_engine-${JOB_TAG_NAME}-py3-none-any.whl
-RUN pip install /tmp/build/nuvla_job_engine-${JOB_TAG_NAME}-py3-none-any.whl
+COPY --link dist/nuvla_job_engine-${PACKAGE_TAG}-py3-none-any.whl /tmp/build/nuvla_job_engine-${PACKAGE_TAG}-py3-none-any.whl
+RUN pip install /tmp/build/nuvla_job_engine-${PACKAGE_TAG}-py3-none-any.whl
 
 RUN cp -r /usr/local/lib/python3.11/site-packages/scripts/ /app/
 RUN chmod -R +x /app/

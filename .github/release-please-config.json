@@ -3,10 +3,12 @@
   "release-type": "python",
   "target-branch": "remove-maven",
   "release-as": "3.9.5",
+  "include-v-in-tag": false,
   "packages": {
     ".": {
       "release-type": "python",
-      "release-as": "3.9.5"
+      "release-as": "3.9.5",
+      "include-v-in-tag": false
     }
   }
 }
