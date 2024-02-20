@@ -163,7 +163,7 @@ jobs:
           push: true
           tags: >
             nuvla/job:${{ needs.trigger-release.outputs.tag_name }},
-            nuvla/job:${{ needs.trigger-release.outputs.tag_name }}
+            nuvla/job:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
