@@ -73,7 +73,7 @@ jobs:
 
   publish-pypi:
     name: "Publish package to PyPi repository"
-    needs: publish-github
+    needs: [publish-github, trigger-release]
     if: needs.trigger-release.outputs.release_created
     runs-on: ubuntu-latest
     steps:
@@ -83,7 +83,7 @@ jobs:
 
   publish-docker:
     name: "Publish package to DockerHub"
-    needs: publish-github
+    needs: [publish-github, trigger-release]
     if: needs.trigger-release.outputs.release_created
     runs-on: ubuntu-latest
     steps:
