@@ -133,7 +133,7 @@ jobs:
           path: dist/
 
       - name: SetUp QEMU
-        uses: docker/setup-qemu-action@v2
+        uses: docker/setup-qemu-action@v3
 
       - name: Set up Docker Buildx
         id: buildx
