@@ -1,4 +1,4 @@
-name: "Devel Build"
+name: "UnitTests and Build Docker Dev. Image"
 
 on:
   push:
@@ -19,6 +19,13 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+
+      - name: Load cached Poetry installation
+        id: cached-poetry
+        uses: actions/cache@v3
+        with:
+          path: ~/.local  # the path depends on the OS
+          key: poetry-0  # increment to reset cache
 
       - name: Setup Poetry
         uses: snok/install-poetry@v1
@@ -69,6 +76,13 @@ jobs:
         with:
           python-version: '3.11'
 
+      - name: Load cached Poetry installation
+        id: cached-poetry
+        uses: actions/cache@v3
+        with:
+          path: ~/.local  # the path depends on the OS
+          key: poetry-0  # increment to reset cache
+
       - name: Setup Poetry
         uses: snok/install-poetry@v1
         with:
@@ -78,6 +92,7 @@ jobs:
       - name: Build Package
         run: |
           poetry build --format=wheel --no-interaction
+          cp ./dist/*.whl ./dist/nuvla_job_engine-latest-py3-none-any.whl
 
       - name: Generate server requirements
         run: >
@@ -135,6 +150,7 @@ jobs:
             GITHUB_RUN_ID=${{ github.run_id }}
             PROJECT_URL=${{ github.server_url }}/${{ github.repository }}
             PACKAGE_NAME=${{ env.PACKAGE_NAME }}
+            PACKAGE_TAG=latest
           push: true
           tags: >
             nuvladev/job:${{ github.head_ref || github.ref_name }}
