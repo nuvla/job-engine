@@ -6,7 +6,7 @@ on:
       - remove-maven
 
 jobs:
-  release-package:
+  trigger-release:
     runs-on: ubuntu-latest
     outputs:
       release_created: ${{ steps.release.outputs.release_created }}
@@ -26,8 +26,8 @@ jobs:
 
   publish-github:
     name: "Publish package to GitHub release"
-    needs: release-package
-    if: needs.release-package.outputs.release_created
+    needs: trigger-release
+    if: needs.trigger-release.outputs.release_created
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -68,16 +68,15 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          echo "Uploading artifacts to release ${{ needs.release-package.outputs.tag_name }}"
-          gh release upload ${{ needs.release-package.outputs.tag_name }} ./dist/*.whl
-          gh release upload ${{ needs.release-package.outputs.tag_name }} ./dist/scripts/*.py
-          gh release upload ${{ needs.release-package.outputs.tag_name }} ./dist/*.txt
+          echo "Uploading artifacts to release ${{ needs.trigger-release.outputs.tag_name }}"
+          gh release upload ${{ needs.trigger-release.outputs.tag_name }} ./dist/*.whl
+          gh release upload ${{ needs.trigger-release.outputs.tag_name }} ./dist/scripts/*.py
       
 
   publish-pypi:
     name: "Publish package to PyPi repository"
     needs: publish-github
-    if: needs.release-package.outputs.release_created
+    if: needs.trigger-release.outputs.release_created
     runs-on: ubuntu-latest
     steps:
       - name: "Test"
@@ -87,7 +86,7 @@ jobs:
   publish-docker:
     name: "Publish package to DockerHub"
     needs: publish-github
-    if: needs.release-package.outputs.release_created
+    if: needs.trigger-release.outputs.release_created
     runs-on: ubuntu-latest
     steps:
       - name: "Test"
