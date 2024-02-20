@@ -4,7 +4,7 @@ version = "3.9.4"
 description = "Nuvla Job Engine."
 license = "Apache License, Version 2.0"
 authors = ["SixSq SA <support@sixsq.com>"]
-packages = [{ include = "job_engine" }]
+packages = [{ include = "job_engine" }, { include = "scripts"}]
 classifiers = [
         'Development Status :: 4 - Betta',
         'License :: OSI Approved :: Apache Software License',

@@ -26,14 +26,15 @@ RUN apk --no-cache add gettext bash openssl openssh \
 RUN apk --no-cache add --repository https://dl-cdn.alpinelinux.org/alpine/edge/community \
     "kubectl~${KUBECTL_VERSION}"
 
-COPY --link dist/scripts/ /app
-RUN chmod -R +x /app/
 
 COPY --link dist/requirements.txt /tmp/build/requirements.txt
 RUN pip install -r /tmp/build/requirements.txt
 
 COPY --link dist/nuvla_job_engine-3.9.4-py3-none-any.whl /tmp/build/nuvla_job_engine-3.9.4-py3-none-any.whl
 RUN pip install /tmp/build/nuvla_job_engine-3.9.4-py3-none-any.whl
+
+RUN cp -r /usr/local/lib/python3.11/site-packages/scripts/ /app/
+RUN chmod -R +x /app/
 
 RUN rm -rf /tmp/build/
 
