@@ -1,4 +1,10 @@
 {
   "bootstrap-sha": "1efadf49fc2f4bffa9e23ded7538bad1746a07ff",
-  "release-type": "python"
+  "release-type": "python",
+  "target-branch": "remove-maven",
+  "packages": {
+    ".": {
+      "release-type": "python"
+    }
+  }
 }
