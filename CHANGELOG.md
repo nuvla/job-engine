@@ -6,6 +6,13 @@
 
 ## Released
 
+## [3.9.6](https://github.com/nuvla/job-engine/compare/v3.9.5...3.9.6) (2024-02-20)
+
+
+### Bug Fixes
+
+* trigger release ([add2635](https://github.com/nuvla/job-engine/commit/add2635a313685014d438a1ac6883d3351f1e09e))
+
 ## [3.9.5](https://github.com/nuvla/job-engine/compare/3.9.4...3.9.5) (2024-02-20)
 
 
