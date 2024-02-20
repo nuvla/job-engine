@@ -6,91 +6,32 @@ on:
       - remove-maven
 
 jobs:
-#  run-unittests:
-#    runs-on: ubuntu-latest
-#    steps:
-#      - name: Checkout
-#        uses: actions/checkout@v4
-#
-#      - name: Install python
-#        uses: actions/setup-python@v5
-#        with:
-#          python-version: '3.11'
-#
-#      - name: Setup Poetry
-#        uses: snok/install-poetry@v1
-#        with:
-#          virtualenvs-create: true
-#          virtualenvs-in-project: true
-#
-#      - name: Generate test requirements
-#        run: >
-#          poetry export
-#          -f requirements.txt
-#          -o requirements.test.txt
-#          --without-hashes
-#          --without-urls
-#          --with test
-#          --with server
-#
-#      - name: Install TOX
-#        run: |
-#          pip install tox
-#
-#      - name: Run Unittests
-#        id: unittests-run
-#        run: |
-#          tox
-#
-#      - name: Publish Unit Test Results
-#        uses: EnricoMi/publish-unit-test-result-action@v2
-#        if: always()
-#        with:
-#          files: test-report.xml
-#
-#      - name: Generate server requirements
-#        run: >
-#          poetry export
-#          -f requirements.txt
-#          -o requirements.server.txt
-#          --without-hashes
-#          --without-urls
-#          --with server
-#
-#      - name: Build Package
-#        run: |
-#          poetry build --format=wheel
-#          cp requirements.server.txt dist/requirements.txt
-#          cp -r scripts/ dist/
-#          ls -la dist/
-#
-#      - name: Save wheel
-#        uses: actions/upload-artifact@v4
-#        with:
-#          name: freeze
-#          path: dist/
-
   release-package:
-#    needs: run-unittests
     runs-on: ubuntu-latest
     outputs:
-      release_created: ${{ steps.release-please-step.outputs.releases_created }}
-      major: ${{ steps.release-please-step.outputs.major }}
-      minor: ${{ steps.release-please-step.outputs.minor }}
-      patch: ${{ steps.release-please-step.outputs.patch }}
-      tag_name: ${{ steps.release-please-step.outputs.tag_name }}
+      release_created: ${{ steps.release.outputs.release_created }}
+      major: ${{ steps.release.outputs.major }}
+      minor: ${{ steps.release.outputs.minor }}
+      patch: ${{ steps.release.outputs.patch }}
+      tag_name: ${{ steps.release.outputs.tag_name }}
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - id: release-please-step
+      - id: release
         uses: google-github-actions/release-please-action@v4
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           target-branch: ${{ github.ref_name }}
           config-file: .github/release-please-config.json
           manifest-file: .github/.release-please-manifest.json
+
+  publish-github:
+    name: "Publish package to GitHub release"
+    needs: release-package
+    if: needs.release-package.outputs.release_created
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
 
       - name: Install python
         uses: actions/setup-python@v5
@@ -106,26 +47,57 @@ jobs:
       - name: Build Package
         run: |
           poetry build --format=wheel
-          echo "Uploading artifacts to release ${{ steps.release-please-step.outputs.tag_name }}"
-          echo "Is release created: ${{ steps.release-please-step.outputs.release_created }}"
           cp -r scripts/ dist/
-          ls -la dist/
+
+      - name: Generate server requirements
+        run: >
+          poetry export
+          -f requirements.txt
+          -o dist/requirements.txt
+          --without-hashes
+          --without-urls
+          --with server
+
+      - name: Save wheel
+        uses: actions/upload-artifact@v4
+        with:
+          name: freeze
+          path: dist/
 
       - name: Add artifacts to release
-        if: ${{ steps.release-please-step.outputs.release_created }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          echo "Uploading artifacts to release ${{ steps.release-please-step.outputs.tag_name }}"
-          gh release upload ${{ steps.release-please-step.outputs.tag_name }} ./dist/*.whl
-          gh release upload ${{ steps.release-please-step.outputs.tag_name }} ./dist/scripts/
-          gh release upload ${{ steps.release-please-step.outputs.tag_name }} ./dist/*.txt
- 
-    
+          echo "Uploading artifacts to release ${{ needs.release-package.outputs.tag_name }}"
+          gh release upload ${{ needs.release-package.outputs.tag_name }} ./dist/*.whl
+          gh release upload ${{ needs.release-package.outputs.tag_name }} ./dist/scripts/*.py
+          gh release upload ${{ needs.release-package.outputs.tag_name }} ./dist/*.txt
+      
+
+  publish-pypi:
+    name: "Publish package to PyPi repository"
+    needs: publish-github
+    if: needs.release-package.outputs.release_created
+    runs-on: ubuntu-latest
+    steps:
+      - name: "Test"
+        run: |
+          echo "Testing"
+
+  publish-docker:
+    name: "Publish package to DockerHub"
+    needs: publish-github
+    if: needs.release-package.outputs.release_created
+    runs-on: ubuntu-latest
+    steps:
+      - name: "Test"
+        run: |
+          echo "Testing"
+
 #  notify:
 #    name: Post Workflow Status To Slack
 #    needs: release
-#    if: needs.release.outputs.releases_created
+#    if: needs.release.outputs.release_created
 #    runs-on: ubuntu-latest
 #    steps:
 #      - uses: Gamesight/slack-workflow-status@master
