@@ -1,10 +1,12 @@
 [tool.poetry]
 name = "nuvla-job-engine"
-version = "3.9.5"
+version = "3.9.4"
 description = "Nuvla Job Engine."
-license = "Apache License, Version 2.0"
+license = "Apache-2.0"
 authors = ["SixSq SA <support@sixsq.com>"]
-packages = [{ include = "job_engine" }, { include = "scripts"}]
+maintainers = ["Ignacio Penas <nacho@sixsq.com"]
+readme = "README.md"
+repository = "https://github.com/nuvla/job-engine"
 classifiers = [
         'Development Status :: 4 - Betta',
         'License :: OSI Approved :: Apache Software License',
@@ -15,6 +17,8 @@ classifiers = [
         'Programming Language :: Python :: 3.10',
         'Programming Language :: Python :: 3.11',
         'Topic :: Software Development']
+packages = [{ include = "job_engine" }, { include = "scripts"}]
+
 
 [tool.poetry.dependencies]
 python = "^3.11"
@@ -25,11 +29,13 @@ statsd = "^4.0.1"
 packaging = "^23.2"
 importlib-metadata = "^7.0.1"
 
+
 [tool.poetry.group.server.dependencies]
 elasticsearch = "^7"
 boto3 = "^1.34.40"
 kazoo = "^2.6.0"
 requests = "2.27.1"
+
 
 [tool.poetry.group.test.dependencies]
 mock = "^5.1.0"
