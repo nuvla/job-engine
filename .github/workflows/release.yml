@@ -3,7 +3,7 @@ name: "Job Engine Release"
 on:
   push:
     branches:
-      - remove-maven
+      - master
 
 jobs:
   trigger-release:
@@ -54,7 +54,7 @@ jobs:
 
       - name: Build Package
         run: |
-          poetry build
+          poetry build --no-interaction --format=wheel
 
       - name: Generate server requirements
         run: >
@@ -109,7 +109,7 @@ jobs:
 
       - name: Build Package
         run: |
-          poetry build
+          poetry build --no-interaction
 
       - name: Publish package
         run: |
@@ -162,18 +162,19 @@ jobs:
             PACKAGE_NAME=${{ env.PACKAGE_NAME }}
           push: true
           tags: >
-            nuvladev/job:${{ github.head_ref || github.ref_name }}
+            nuvla/job:${{ needs.trigger-release.outputs.tag_name }},
+            nuvla/job:${{ needs.trigger-release.outputs.tag_name }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-#  notify:
-#    name: Post Workflow Status To Slack
-#    needs: release
-#    if: needs.release.outputs.release_created
-#    runs-on: ubuntu-latest
-#    steps:
-#      - uses: Gamesight/slack-workflow-status@master
-#        with:
-#          repo_token: ${{secrets.GITHUB_TOKEN}}
-#          slack_webhook_url: ${{secrets.SLACK_WEBHOOK_URL}}
-#          include_commit_message: true
+  notify:
+    name: Post Workflow Status To Slack
+    needs: [publish-github, publish-docker, publish-pypi]
+    if: needs.release.outputs.release_created
+    runs-on: ubuntu-latest
+    steps:
+      - uses: Gamesight/slack-workflow-status@master
+        with:
+          repo_token: ${{secrets.GITHUB_TOKEN}}
+          slack_webhook_url: ${{secrets.SLACK_WEBHOOK_URL}}
+          include_commit_message: true
