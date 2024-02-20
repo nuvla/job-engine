@@ -170,7 +170,7 @@ jobs:
   notify:
     name: Post Workflow Status To Slack
     needs: [publish-github, publish-docker, publish-pypi]
-    if: needs.release.outputs.release_created
+    if: needs.trigger-release.outputs.release_created
     runs-on: ubuntu-latest
     steps:
       - uses: Gamesight/slack-workflow-status@master
