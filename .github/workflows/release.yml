@@ -85,6 +85,9 @@ jobs:
     if: needs.trigger-release.outputs.release_created
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
       - name: Install python
         uses: actions/setup-python@v5
         with:
@@ -104,11 +107,9 @@ jobs:
           virtualenvs-create: true
           virtualenvs-in-project: true
 
-      - name: Download artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: freeze
-          path: dist/
+      - name: Build Package
+        run: |
+          poetry build
 
       - name: Publish package
         run: |
