@@ -8,6 +8,13 @@
 
 * Add automated release with release-please ([798f6ba](https://github.com/nuvla/job-engine/commit/798f6bac76e79d66a2e64d33d1d7a2298d2572b7))
 
+## [3.10.0](https://github.com/nuvla/job-engine/compare/v3.9.4...v3.10.0) (2024-02-20)
+
+
+### Features
+
+* Add automated release with release-please ([798f6ba](https://github.com/nuvla/job-engine/commit/798f6bac76e79d66a2e64d33d1d7a2298d2572b7))
+
 ## [3.9.3] - 2023-12-21
 
 - Job - Edit duplicated fix
