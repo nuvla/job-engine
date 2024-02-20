@@ -74,7 +74,7 @@ jobs:
 #    needs: run-unittests
     runs-on: ubuntu-latest
     outputs:
-      releases_created: ${{ steps.release-please.outputs.releases_created }}
+      release_created: ${{ steps.release-please.outputs.release_created }}
       major: ${{ steps.release-please.outputs.major }}
       minor: ${{ steps.release-please.outputs.minor }}
       patch: ${{ steps.release-please.outputs.patch }}
@@ -111,7 +111,7 @@ jobs:
           ls -la dist/
 
       - name: Add artifacts to release
-        if: ${{ steps.release-please.outputs.tag_name }} != ""
+        if: ${{ steps.release-please-step.outputs.release-created }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
