@@ -3,6 +3,7 @@
   "release-type": "python",
   "release-as": "3.9.6",
   "include-v-in-tag": false,
+  
   "packages": {
     ".": {
       "release-type": "python",
