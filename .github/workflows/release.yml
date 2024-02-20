@@ -74,11 +74,11 @@ jobs:
 #    needs: run-unittests
     runs-on: ubuntu-latest
     outputs:
-      release_created: ${{ steps.release-please.outputs.release_created }}
-      major: ${{ steps.release-please.outputs.major }}
-      minor: ${{ steps.release-please.outputs.minor }}
-      patch: ${{ steps.release-please.outputs.patch }}
-      tag_name: ${{ steps.release-please.outputs.tag_name }}
+      release_created: ${{ steps.release-please-step.outputs.releases_created }}
+      major: ${{ steps.release-please-step.outputs.major }}
+      minor: ${{ steps.release-please-step.outputs.minor }}
+      patch: ${{ steps.release-please-step.outputs.patch }}
+      tag_name: ${{ steps.release-please-step.outputs.tag_name }}
 
     steps:
       - name: Checkout
@@ -106,19 +106,20 @@ jobs:
       - name: Build Package
         run: |
           poetry build --format=wheel
-          echo "Uploading artifacts to release ${{ steps.release-please.outputs.tag_name }}"
+          echo "Uploading artifacts to release ${{ steps.release-please-step.outputs.tag_name }}"
+          echo "Is release created: ${{ steps.release-please-step.outputs.release_created }}"
           cp -r scripts/ dist/
           ls -la dist/
 
       - name: Add artifacts to release
-        if: ${{ steps.release-please-step.outputs.release-created }}
+        if: ${{ steps.release-please-step.outputs.release_created }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          echo "Uploading artifacts to release ${{ steps.release-please.outputs.tag_name }}"
-          gh release upload ${{ steps.release-please.outputs.tag_name }} ./dist/*.whl
-          gh release upload ${{ steps.release-please.outputs.tag_name }} ./dist/scripts/
-          gh release upload ${{ steps.release-please.outputs.tag_name }} ./dist/*.txt
+          echo "Uploading artifacts to release ${{ steps.release-please-step.outputs.tag_name }}"
+          gh release upload ${{ steps.release-please-step.outputs.tag_name }} ./dist/*.whl
+          gh release upload ${{ steps.release-please-step.outputs.tag_name }} ./dist/scripts/
+          gh release upload ${{ steps.release-please-step.outputs.tag_name }} ./dist/*.txt
  
     
 #  notify:
