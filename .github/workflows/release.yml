@@ -111,7 +111,7 @@ jobs:
           ls -la dist/
 
       - name: Add artifacts to release
-        if: ${{ steps.release-please-step.outputs.releases_created }}
+        if: ${{ steps.release-please.outputs.tag_name }} != ""
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
