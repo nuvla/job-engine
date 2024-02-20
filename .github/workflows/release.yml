@@ -119,6 +119,7 @@ jobs:
             GIT_BRANCH=${{ github.head_ref || github.ref_name }}
             GIT_BUILD_TIME=$(date --utc +%FT%T.%3NZ)
             GIT_COMMIT_ID=${{ github.sha }}
+            JOB_TAG_NAME=${{ needs.trigger-release.outputs.tag_name }}
             GITHUB_RUN_NUMBER=${{ github.run_number }}
             GITHUB_RUN_ID=${{ github.run_id }}
             PROJECT_URL=${{ github.server_url }}/${{ github.repository }}

@@ -1,6 +1,7 @@
 FROM python:3.11-alpine3.18
 
 ARG GIT_BRANCH
+ARG JOB_TAG_NAME=3.9.4
 ARG GIT_COMMIT_ID
 ARG GIT_DIRTY
 ARG GIT_BUILD_TIME
@@ -15,8 +16,6 @@ LABEL git.branch=${GIT_BRANCH}
 LABEL git.commit.id=${GIT_COMMIT_ID}
 LABEL git.dirty=${GIT_DIRTY}
 LABEL git.build.time=${GIT_BUILD_TIME}
-LABEL ci.build.number=${TRAVIS_BUILD_NUMBER}
-LABEL ci.build.web.url=${TRAVIS_BUILD_WEB_URL}
 
 # Need scp (openssh) for docker-machine to transfer files to machines.
 RUN apk --no-cache add gettext bash openssl openssh \
@@ -30,8 +29,8 @@ RUN apk --no-cache add --repository https://dl-cdn.alpinelinux.org/alpine/edge/c
 COPY --link dist/requirements.txt /tmp/build/requirements.txt
 RUN pip install -r /tmp/build/requirements.txt
 
-COPY --link dist/nuvla_job_engine-3.9.4-py3-none-any.whl /tmp/build/nuvla_job_engine-3.9.4-py3-none-any.whl
-RUN pip install /tmp/build/nuvla_job_engine-3.9.4-py3-none-any.whl
+COPY --link dist/nuvla_job_engine-${JOB_TAG_NAME}-py3-none-any.whl /tmp/build/nuvla_job_engine-${JOB_TAG_NAME}-py3-none-any.whl
+RUN pip install /tmp/build/nuvla_job_engine-${JOB_TAG_NAME}-py3-none-any.whl
 
 RUN cp -r /usr/local/lib/python3.11/site-packages/scripts/ /app/
 RUN chmod -R +x /app/
