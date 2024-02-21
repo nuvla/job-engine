@@ -70,6 +70,44 @@ The formatting follows the coding style in defined in PEP 8.
    2 minutes before killing the process. Each thread that terminate his 
    running action will not take a new one.
 
+## Running unit tests
+Before running unit tests with `tox` you need to generate requirements file out. To do so, we first need to
+generate the test requirements file. This is done using poetry requirements exporter which can be installed as follows:
+
+```shell
+pip install poetry poetry-plugin-export
+```
+
+Then run export command:
+
+```shell
+poetry export -f requirements.txt -o requirements.test.txt --without-hashes --without-urls --with test --with server
+```
+
+Then run the unit tests with:
+
+```shell
+tox
+```
+
+## Locally Building Job Engine
+Before running `docker build` you need to generate requirements file and the wheel package.
+To do, install poetry and poetry-plugin-export as described above and then run:
+
+```shell
+poetry build --format=wheel
+poetry export -f requirements.txt -o dist/requirements.txt --without-hashes --without-urls --with server
+```
+The order of the commands might be important since the requirements file output goes into dist/ directory which is created by the first command.
+
+
+
+Then building the image requires the following command:
+```shell
+export JOB_ENGINE_VERSION=$(poetry version -s)
+docker build --build-arg="PACKAGE_TAG=${JOB_ENGINE_VERSION}" -t local/job:${JOB_ENGINE_VERSION} .
+```
+
 
 ## Copyright
 
