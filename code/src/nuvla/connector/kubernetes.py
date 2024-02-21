@@ -85,41 +85,6 @@ class Kubernetes(Connector):
         self.base_image = f'{self.ne_image_registry}{self.ne_image_name}:{self.ne_image_tag}'
 
     @property
-    def nuvlabox(self):
-        if not self._nuvlabox:
-            self._nuvlabox = self.api.get(self.nuvlabox_id).data
-        return self._nuvlabox
-
-    @property
-    def nuvlabox_status(self):
-        if not self._nuvlabox_status:
-            nuvlabox_status_id = self.nuvlabox.get('nuvlabox-status')
-            self._nuvlabox_status = self.api.get(nuvlabox_status_id).data
-        return self._nuvlabox_status
-
-   # FIXME: this needs to be extracted and used for both K8s and Docker. Test
-    def _get_user_home(self):
-        """
-        Get the user home directory
-
-        Returns: the user home directory
-        
-        """
-        user_home = self.nuvlabox_status.get('host-user-home')
-        if not user_home:
-            logging.info('The user home has not been found from the \
-                         nuvlabox-status. Using the environment variable HOME.')
-            user_home = os.getenv('HOME')
-            if not user_home:
-                logging.info\
-                    ('The user home has not been found from the \
-                     environment variable HOME. Using /root as default.')
-                user_home = "/root"
-                # this could be interesting point to e.g. create a generic user edge_login and add ssh key?
-        logging.info('The user home has been found to be: %s ',user_home)
-        return user_home
-
-    @property
     def connector_type(self):
         return 'Kubernetes-cli'
 
@@ -703,6 +668,18 @@ class K8sEdgeMgmt(Kubernetes):
         self.ne_image_name = os.getenv('NE_IMAGE_NAME', f'{self.ne_image_org}/{self.ne_image_repo}')
         self.base_image = f'{self.ne_image_registry}{self.ne_image_name}:{self.ne_image_tag}'
 
+    @property
+    def nuvlabox(self):
+        if not self._nuvlabox:
+            self._nuvlabox = self.api.get(self.nuvlabox_id).data
+        return self._nuvlabox
+
+    @property
+    def nuvlabox_status(self):
+        if not self._nuvlabox_status:
+            nuvlabox_status_id = self.nuvlabox.get('nuvlabox-status')
+            self._nuvlabox_status = self.api.get(nuvlabox_status_id).data
+        return self._nuvlabox_status
 
     @should_connect
     def reboot(self):
@@ -1067,7 +1044,7 @@ class K8sEdgeMgmt(Kubernetes):
 
             if success in check_result.stdout:
                 return
- 
+
     def check_job_success(self, the_job_name, success = "1/1"):
         """
         Check that a job has completed
@@ -1120,7 +1097,19 @@ class K8sSSHKey(Kubernetes):
         self._nuvlabox = None
         self._nuvlabox_status = None
 
-    
+    @property
+    def nuvlabox(self):
+        if not self._nuvlabox:
+            self._nuvlabox = self.api.get(self.nuvlabox_id).data
+        return self._nuvlabox
+
+    @property
+    def nuvlabox_status(self):
+        if not self._nuvlabox_status:
+            nuvlabox_status_id = self.nuvlabox.get('nuvlabox-status')
+            self._nuvlabox_status = self.api.get(nuvlabox_status_id).data
+        return self._nuvlabox_status
+
     @should_connect
     def k8s_ssh_key(self, action, pubkey, user_home):
         """
@@ -1263,3 +1252,23 @@ class K8sSSHKey(Kubernetes):
             self.job.update_job(status_message=json.dumps(message_out))
             return 0
         return 1
+    # FIXME: this needs to be extracted and used for both K8s and Docker. Test
+    # now a change to test whether the local build is working
+    def _get_user_home(self):
+        """
+        Get the user home directory
+        Returns: the user home directory
+        """
+        user_home = self.nuvlabox_status.get('host-user-home')
+        if not user_home:
+            logging.info('The user home has not been found from the \
+                         nuvlabox-status. Using the environment variable HOME.')
+            user_home = os.getenv('HOME')
+            if not user_home:
+                logging.info\
+                    ('The user home has not been found from the \
+                     environment variable HOME. Using /root as default.')
+                user_home = "/root"
+                # this could be interesting point to e.g. create a generic user edge_login and add ssh key?
+        logging.info('The user home has been found to be: %s ',user_home)
+        return user_home
