@@ -57,6 +57,9 @@ class Job(dict):
         self._engine_version = version_to_tuple(engine_version)
         if self._engine_version[0] < 2:
             self._engine_version_min = (0, 0, 1)
+        elif self._engine_version[0] == 4:
+            # For job-engine 4.x, we support jobs with version 2.x and 3.x
+            self._engine_version_min = (self._engine_version[0] - 2, 0, 0)
         else:
             self._engine_version_min = (self._engine_version[0] - 1, 0, 0)
         self._init()
