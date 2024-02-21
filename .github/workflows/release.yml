@@ -1,5 +1,9 @@
 name: "Job Engine Release"
 
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
 on:
   push:
     branches:
@@ -40,7 +44,7 @@ jobs:
 
       - name: Load cached Poetry installation
         id: cached-poetry
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: ~/.local  # the path depends on the OS
           key: poetry-0  # increment to reset cache
@@ -95,7 +99,7 @@ jobs:
 
       - name: Load cached Poetry installation
         id: cached-poetry
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: ~/.local  # the path depends on the OS
           key: poetry-0  # increment to reset cache
@@ -133,7 +137,7 @@ jobs:
           path: dist/
 
       - name: SetUp QEMU
-        uses: docker/setup-qemu-action@v2
+        uses: docker/setup-qemu-action@v3
 
       - name: Set up Docker Buildx
         id: buildx
@@ -163,14 +167,14 @@ jobs:
           push: true
           tags: >
             nuvla/job:${{ needs.trigger-release.outputs.tag_name }},
-            nuvla/job:${{ needs.trigger-release.outputs.tag_name }}
+            nuvla/job:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
   notify:
     name: Post Workflow Status To Slack
     needs: [publish-github, publish-docker, publish-pypi]
-    if: needs.release.outputs.release_created
+    if: needs.trigger-release.outputs.release_created
     runs-on: ubuntu-latest
     steps:
       - uses: Gamesight/slack-workflow-status@master
