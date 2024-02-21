@@ -1044,7 +1044,7 @@ class K8sEdgeMgmt(Kubernetes):
 
             if success in check_result.stdout:
                 return
- 
+
     def check_job_success(self, the_job_name, success = "1/1"):
         """
         Check that a job has completed
@@ -1081,7 +1081,7 @@ class K8sSSHKey(Kubernetes):
         self.api = kwargs.get("api")
 
         self.nuvlabox_resource = self.api.get(kwargs.get("nuvlabox_id"))
-
+        # small change to test the new version  
         path = NUVLAEDGE_SHARED_PATH # FIXME: needs to be parameterised.
         super().__init__(**super_args(path))
 
@@ -1091,6 +1091,24 @@ class K8sSSHKey(Kubernetes):
         self.ne_image_tag = os.getenv('NE_IMAGE_TAG', 'latest')
         self.ne_image_name = os.getenv('NE_IMAGE_NAME', f'{self.ne_image_org}/{self.ne_image_repo}')
         self.base_image = f'{self.ne_image_registry}{self.ne_image_name}:{self.ne_image_tag}'
+
+        self.nuvlabox_id = kwargs.get("nuvlabox_id")
+
+        self._nuvlabox = None
+        self._nuvlabox_status = None
+
+    @property
+    def nuvlabox(self):
+        if not self._nuvlabox:
+            self._nuvlabox = self.api.get(self.nuvlabox_id).data
+        return self._nuvlabox
+
+    @property
+    def nuvlabox_status(self):
+        if not self._nuvlabox_status:
+            nuvlabox_status_id = self.nuvlabox.get('nuvlabox-status')
+            self._nuvlabox_status = self.api.get(nuvlabox_status_id).data
+        return self._nuvlabox_status
 
     @should_connect
     def k8s_ssh_key(self, action, pubkey, user_home):
@@ -1180,12 +1198,11 @@ class K8sSSHKey(Kubernetes):
         credential_id: the nuvla ID of the credential
         nuvlabox_id: the id UID of the nuvlabox
         """
-        nuvlabox_status = self.api.get("nuvlabox-status").data
+
         nuvlabox_resource = self.api.get(nuvlabox_id)
-        nuvlabox = nuvlabox_resource.data
-        logging.debug('nuvlabox: %s',nuvlabox)
-        user_home = self._get_user_home(nuvlabox_status)
-        ssh_keys = nuvlabox.get('ssh-keys', [])
+        user_home = self._get_user_home()
+        logging.info('The user home directory is: %s',user_home)
+        ssh_keys = self.nuvlabox.get('ssh-keys', [])
         logging.debug("Current ssh keys:\n%s\n", ssh_keys)
         logging.info("The credential being added/revoked is: %s",credential_id)
         if action.startswith('add'):
@@ -1235,20 +1252,23 @@ class K8sSSHKey(Kubernetes):
             self.job.update_job(status_message=json.dumps(message_out))
             return 0
         return 1
-
-    # FIXME: this needs to be extracted and used for both K8s and Docker.
-    def _get_user_home(self, nuvlabox_status):
+    # FIXME: this needs to be extracted and used for both K8s and Docker. Test
+    # now a change to test whether the local build is working
+    def _get_user_home(self):
         """
         Get the user home directory
-
-        Arguments:
-        nuvlabox_status: object containing the status of the nuvlabox
+        Returns: the user home directory
         """
-        user_home = nuvlabox_status.get('host-user-home')
+        user_home = self.nuvlabox_status.get('host-user-home')
         if not user_home:
+            logging.info('The user home has not been found from the \
+                         nuvlabox-status. Using the environment variable HOME.')
             user_home = os.getenv('HOME')
             if not user_home:
+                logging.info\
+                    ('The user home has not been found from the \
+                     environment variable HOME. Using /root as default.')
                 user_home = "/root"
                 # this could be interesting point to e.g. create a generic user edge_login and add ssh key?
-                logging.info('Attention: The user home has been set to: %s ',user_home)
+        logging.info('The user home has been found to be: %s ',user_home)
         return user_home
