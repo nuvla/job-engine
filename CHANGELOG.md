@@ -6,6 +6,54 @@
 
 ## Released
 
+## [4.0.1](https://github.com/nuvla/job-engine/compare/4.0.0...4.0.1) (2024-02-21)
+
+
+### Bug Fixes
+
+* add check for job-engine v4 allowing up to 2 lower major versions ([709d6c1](https://github.com/nuvla/job-engine/commit/709d6c19c845b3ce5c94ace447229b1ff4b332e6))
+
+## [4.0.0](https://github.com/nuvla/job-engine/compare/3.9.6...4.0.0) (2024-02-21)
+
+
+### ⚠ BREAKING CHANGES
+
+* Add new release workflow and python packaging tools
+
+### Features
+
+* Add new release workflow and python packaging tools ([6d9fcaa](https://github.com/nuvla/job-engine/commit/6d9fcaa23327495cea31eeff8c98a823f59c49d8))
+
+
+### Bug Fixes
+
+* **ci:** Add concurrency limits and selective paths and files for devel build ([138f5b6](https://github.com/nuvla/job-engine/commit/138f5b622fd7d71c29d2720c8a8abb45951bae99))
+* **ci:** add concurrency to release so the current workflow is never canceled by itself ([38f5af0](https://github.com/nuvla/job-engine/commit/38f5af0bed9dc7f9fd9d4bcca280f9eb7b63e1fc))
+* **ci:** fix bugged condition on notify job on release workflow ([e3f2483](https://github.com/nuvla/job-engine/commit/e3f2483e8fc9a17d9da8f76f62a54fc7beab10a3))
+* **ci:** remove deprecated release.sh script ([f4e14e1](https://github.com/nuvla/job-engine/commit/f4e14e1a60abf633930bfeb4091c1094e939aeab))
+* **ci:** second tag in release-docker job now points to latest ([9a00f6f](https://github.com/nuvla/job-engine/commit/9a00f6ffbbc619db858828ae0bf12bc045f101a1))
+* **ci:** update cache action to v4 ([601f04d](https://github.com/nuvla/job-engine/commit/601f04d654b8a272c161504edefbb8d80c85f35e))
+* **ci:** update setup-qemu-action to v4 ([ba12fa9](https://github.com/nuvla/job-engine/commit/ba12fa993cbd46e06ffe24ef2157b098be7a6b3b))
+
+
+### Documentation
+
+* add dev local unitest and image build instructions ([01971f7](https://github.com/nuvla/job-engine/commit/01971f743975e8799c6e5cb324a34082dc517176))
+
+## [3.9.6](https://github.com/nuvla/job-engine/compare/v3.9.5...3.9.6) (2024-02-20)
+
+
+### Bug Fixes
+
+* trigger release ([add2635](https://github.com/nuvla/job-engine/commit/add2635a313685014d438a1ac6883d3351f1e09e))
+
+## [3.9.5](https://github.com/nuvla/job-engine/compare/3.9.4...3.9.5) (2024-02-20)
+
+
+### Features
+
+* Add automated release with release-please ([798f6ba](https://github.com/nuvla/job-engine/commit/798f6bac76e79d66a2e64d33d1d7a2298d2572b7))
+
 ## [3.9.3] - 2023-12-21
 
 - Job - Edit duplicated fix

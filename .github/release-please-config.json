@@ -1,0 +1,11 @@
+{
+  "release-type": "python",
+  "include-v-in-tag": false,
+  
+  "packages": {
+    ".": {
+      "release-type": "python",
+      "include-v-in-tag": false
+    }
+  }
+}

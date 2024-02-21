@@ -1,5 +1,0 @@
-nuvla-api==3.0.9
-docker
-pyyaml
-statsd
-packaging
