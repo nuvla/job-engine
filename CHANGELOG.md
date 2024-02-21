@@ -6,6 +6,13 @@
 
 ## Released
 
+## [4.0.1](https://github.com/nuvla/job-engine/compare/4.0.0...4.0.1) (2024-02-21)
+
+
+### Bug Fixes
+
+* add check for job-engine v4 allowing up to 2 lower major versions ([709d6c1](https://github.com/nuvla/job-engine/commit/709d6c19c845b3ce5c94ace447229b1ff4b332e6))
+
 ## [4.0.0](https://github.com/nuvla/job-engine/compare/3.9.6...4.0.0) (2024-02-21)
 
 
