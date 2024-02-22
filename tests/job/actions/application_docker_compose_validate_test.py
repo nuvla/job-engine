@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 import unittest
-from job_engine.job.actions.application_docker_compose_validate import \
+from nuvla.job_engine.job.actions.application_docker_compose_validate import \
     ApplicationDockerComposeValidate
 
 

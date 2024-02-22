@@ -1,8 +1,8 @@
 import unittest
 from mock import Mock
 
-import job_engine.connector.registry
-from job_engine.connector.registry import (image_str_to_dict,
+import nuvla.job_engine.connector.registry
+from nuvla.job_engine.connector.registry import (image_str_to_dict,
                                       image_dict_to_str,
                                       new_image_semantic_tag)
 
@@ -80,7 +80,7 @@ class TestRegistry(unittest.TestCase):
         assert image == 'registry.com/repo/name:1.2.3'
 
     def test_new_image_semantic_tag(self):
-        job_engine.connector.registry.list_tags = Mock(return_value={'tags': ['0.0.1', '0.0.2']})
+        nuvla.job_engine.connector.registry.list_tags = Mock(return_value={'tags': ['0.0.1', '0.0.2']})
         image = new_image_semantic_tag({'tag': '0.0.1'})
         assert image is not None
         assert image['tag'] == '0.0.2'

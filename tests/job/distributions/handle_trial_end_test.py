@@ -1,8 +1,8 @@
 import unittest
 from unittest.mock import MagicMock, patch
 
-from job_engine.job.distribution import DistributionBase
-from job_engine.job.distributions.handle_trial_end import \
+from nuvla.job_engine.job.distribution import DistributionBase
+from nuvla.job_engine.job.distributions.handle_trial_end import \
     HandleTrialEndJobsDistribution, \
     build_filter_customers
 
@@ -43,7 +43,7 @@ class TestHandleTrialEndJobsDistribution(unittest.TestCase):
             build_filter_customers(['1', '2', '3']))
 
     @patch.object(HandleTrialEndJobsDistribution, 'search_customers')
-    @patch('job_engine.job.distributions.handle_trial_end.build_filter_customers')
+    @patch('nuvla.job_engine.job.distributions.handle_trial_end.build_filter_customers')
     def test_get_customers(self,
                            mock_build_filter_customers,
                            mock_search_customers):

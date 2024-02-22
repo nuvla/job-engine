@@ -2,7 +2,7 @@
 
 import unittest
 
-from job_engine.job.util import status_message_from_exception
+from nuvla.job_engine.job.util import status_message_from_exception
 
 
 class CustomException(Exception):

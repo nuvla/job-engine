@@ -2,8 +2,8 @@
 
 import unittest
 from unittest.mock import patch
-from job_engine.job.distribution import DistributionBase
-from job_engine.job.distributions.register_usage_record_new_deployment import \
+from nuvla.job_engine.job.distribution import DistributionBase
+from nuvla.job_engine.job.distributions.register_usage_record_new_deployment import \
     RegisterUsageRecordNewDeploymentJobsDistribution
 from nuvla.api.models import CimiResource
 

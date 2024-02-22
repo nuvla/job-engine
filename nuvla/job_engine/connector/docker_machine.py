@@ -9,7 +9,7 @@ import shutil
 import glob
 import tempfile
 
-import job_engine.connector.machine as DockerMachine
+import nuvla.job_engine.connector.machine as DockerMachine
 
 from .connector import Connector, should_connect
 from nuvla.api.resources.credential import KubeConfig

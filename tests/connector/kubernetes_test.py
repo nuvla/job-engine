@@ -4,7 +4,7 @@ import unittest
 from datetime import datetime
 from mock import Mock
 
-from job_engine.connector.kubernetes import Kubernetes
+from nuvla.job_engine.connector.kubernetes import Kubernetes
 
 dir_path = os.path.dirname(os.path.abspath(__file__))
 

@@ -2,7 +2,7 @@
 
 import unittest
 
-from job_engine.connector.utils import (remove_protocol_from_url,
+from nuvla.job_engine.connector.utils import (remove_protocol_from_url,
                                    extract_host_from_url,
                                    LOCAL)
 
