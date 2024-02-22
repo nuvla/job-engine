@@ -733,12 +733,22 @@ class K8sEdgeMgmt(Kubernetes):
             log.debug(f'The result of the reboot action: {reboot_result}')
         return reboot_result
 
-    @property
     def deployed_components(self):
         """
-        Function to get the installed components
+        Function to get the installed components of a NuvlaEdge
+        Determines whether we are running on a NuvlaEdge or not
         """
         log.debug("Calling for components...\n")
+        if os.path.exists(f"{NUVLAEDGE_SHARED_PATH}/.nuvlabox_status"):
+            with open(f"{NUVLAEDGE_SHARED_PATH}/.nuvlabox_status", "r",\
+                encoding='utf-8') as nb_status_file:
+                nb_status = json.load(nb_status_file)
+                if log.level == logging.DEBUG:
+                    log.debug(str="The nuvlabox-status is: %s",\
+                               args=json.dumps(nb_status, indent=2))
+                if nb_status['components']:
+                    return nb_status['components']
+
         resources = \
             self.api.search('nuvlabox-status', \
                 filter=f"parent=\"{self.nuvlabox_id}\" ", \
@@ -746,13 +756,15 @@ class K8sEdgeMgmt(Kubernetes):
         for resource in resources:
             nuvlabox_status_string = str(resource.id)
             log.debug(f"Nuvlabox status string: {nuvlabox_status_string}")
-            nb_status_data = self.api.get(nuvlabox_status_string).data
-            log.debug(f"The nuvlabox-status data is:\n{json.dumps(nb_status_data, indent=2)}")
+            nb_status_data = \
+                self.api.get(nuvlabox_status_string, select=["components"]).data
+            if log.level == logging.DEBUG:
+                log.debug(str="The nuvlabox-status data is: %s", \
+                          args=json.dumps(nb_status_data, indent=2))
             for ffield in nb_status_data:
                 log.debug(f"Next field -> {ffield}")
                 if "components" in ffield:
                     return nb_status_data['components']
-                    # deployed_components = nb_status_data['components']
         return None
 
     def helm_check_multiple(self, helm_name):
@@ -788,18 +800,13 @@ class K8sEdgeMgmt(Kubernetes):
             log.info(result)
             return result, 99
 
-        installed_components = self.deployed_components
+        deployed_ne_components = self.deployed_components()
         log.debug\
-            (f"The components from nuvlabox_status:\n{installed_components}")
-        if not installed_components:
+            (f"The components from nuvlabox_status:\n{deployed_ne_components}")
+        if not deployed_ne_components:
             result = "The installed components cannot be found. Please try in a few minutes"
             log.info(result)
             return result, 98
-
-        project_name = self.get_helm_name()
-        # result, return_code = self.helm_check_multiple(project_name)
-        # if return_code != 0:
-          #   return result, return_code
 
         the_job_name = self.create_job_name("helm-ver-check")
         helm_command = "'helm list -n default --no-headers'"
@@ -838,7 +845,9 @@ class K8sEdgeMgmt(Kubernetes):
         log.info(f"Helm update result:\n {helm_repo_update_result}")
 
     def get_helm_name(self):
-        """text"""
+        """
+        Get the helm name from the payload to make sure it exists
+        """
         install_params_from_payload = json.loads(self.job.get('payload', '{}'))
         project_name = install_params_from_payload['project-name']
 
