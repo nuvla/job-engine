@@ -6,7 +6,7 @@ import logging
 import requests
 import threading
 import time
-from job_engine.job.actions.deployment_state import DeploymentStateJob
+from nuvla.job_engine.job.actions.deployment_state import DeploymentStateJob
 from nuvla.api.resources import Deployment
 from nuvla.api import Api
 

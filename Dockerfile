@@ -32,7 +32,7 @@ RUN pip install -r /tmp/build/requirements.txt
 COPY --link dist/nuvla_job_engine-${PACKAGE_TAG}-py3-none-any.whl /tmp/build/nuvla_job_engine-${PACKAGE_TAG}-py3-none-any.whl
 RUN pip install /tmp/build/nuvla_job_engine-${PACKAGE_TAG}-py3-none-any.whl
 
-RUN cp -r /usr/local/lib/python3.11/site-packages/scripts/ /app/
+RUN cp -r /usr/local/lib/python3.11/site-packages/nuvla/scripts/ /app/
 RUN chmod -R +x /app/
 
 RUN rm -rf /tmp/build/
