@@ -3,7 +3,7 @@
 import unittest
 from unittest.mock import MagicMock, patch
 
-from job_engine.job.actions.deployment_log_fetch import DeploymentLogFetchJob
+from nuvla.job_engine.job.actions.deployment_log_fetch import DeploymentLogFetchJob
 
 
 class TestResourceLogFetchJob(unittest.TestCase):
@@ -11,7 +11,7 @@ class TestResourceLogFetchJob(unittest.TestCase):
         self.obj = DeploymentLogFetchJob(MagicMock(), MagicMock())
 
     @patch(
-        'job_engine.job.actions.utils.resource_log_fetch.build_update_resource_log')
+        'nuvla.job_engine.job.actions.utils.resource_log_fetch.build_update_resource_log')
     @patch.object(DeploymentLogFetchJob, 'get_components_logs')
     @patch.object(DeploymentLogFetchJob, 'update_resource_log')
     def test_fetch_log(self,

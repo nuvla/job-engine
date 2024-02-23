@@ -7,7 +7,7 @@ import json
 
 from nuvla.api import Api, NuvlaError, ConnectionError
 
-from job_engine.job.util import retry_kazoo_queue_op
+from nuvla.job_engine.job.util import retry_kazoo_queue_op
 
 from .version import version as engine_version
 

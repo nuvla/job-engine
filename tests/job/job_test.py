@@ -2,7 +2,7 @@ import unittest
 from mock import Mock
 from unittest.mock import patch
 
-from job_engine.job import job
+from nuvla.job_engine.job import job
 from nuvla.api.models import CimiResource
 
 

@@ -2,7 +2,7 @@
 
 import unittest
 
-from job_engine.job.distributions.deployment_state import DeploymentStateJobsDistribution
+from nuvla.job_engine.job.distributions.deployment_state import DeploymentStateJobsDistribution
 
 
 class TestDeploymentStateJobsDistributor(unittest.TestCase):

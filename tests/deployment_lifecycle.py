@@ -5,11 +5,11 @@ import os
 import sys
 import time
 
-from job_engine.job.actions.deployment_start import DeploymentStartJob
-from job_engine.job.actions.deployment_state import DeploymentStateJob
-from job_engine.job.actions.deployment_stop import DeploymentStopJob
+from nuvla.job_engine.job.actions.deployment_start import DeploymentStartJob
+from nuvla.job_engine.job.actions.deployment_state import DeploymentStateJob
+from nuvla.job_engine.job.actions.deployment_stop import DeploymentStopJob
 from nuvla.api.resources import Deployment, DeploymentParameter, Credential
-from job_engine.job.job import Job
+from nuvla.job_engine.job.job import Job
 from nuvla.api.api import Api
 
 log = logging.getLogger('test')

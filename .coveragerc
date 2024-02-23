@@ -1,7 +1,7 @@
 [run]
 relative_files = True
 include =
-    job_engine/*
+    nuvla/*
     tests/*
 branch = True
 
