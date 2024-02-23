@@ -6,6 +6,13 @@
 
 ## Released
 
+## [4.0.2](https://github.com/nuvla/job-engine/compare/4.0.1...4.0.2) (2024-02-23)
+
+
+### Bug Fixes
+
+* **ci:** move job_engine back into nuvla package ([#342](https://github.com/nuvla/job-engine/issues/342)) ([e8de733](https://github.com/nuvla/job-engine/commit/e8de73396cddc282701f87b69d9f19f20ca64be9))
+
 ## [4.0.1](https://github.com/nuvla/job-engine/compare/4.0.0...4.0.1) (2024-02-21)
 
 
