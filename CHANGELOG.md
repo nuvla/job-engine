@@ -6,6 +6,18 @@
 
 ## Released
 
+## [4.1.0](https://github.com/nuvla/job-engine/compare/4.0.2...4.1.0) (2024-02-27)
+
+
+### Features
+
+* test mutliple release v2 ([500f1a6](https://github.com/nuvla/job-engine/commit/500f1a660ff3926d17dcbd949f18a63869827479))
+
+
+### Bug Fixes
+
+* test mutliple release v1 ([154d267](https://github.com/nuvla/job-engine/commit/154d26718c0931d0009136c3c15af0536381b5ec))
+
 ## [4.0.2](https://github.com/nuvla/job-engine/compare/4.0.1...4.0.2) (2024-02-23)
 
 
