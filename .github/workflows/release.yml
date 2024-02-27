@@ -9,6 +9,7 @@ on:
     branches:
       - test-multiple-commits
 
+
 jobs:
   trigger-release:
     runs-on: ubuntu-latest
