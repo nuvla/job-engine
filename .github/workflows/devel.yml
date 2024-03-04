@@ -79,7 +79,7 @@ jobs:
           ls -la
 
       - name: SonarCloud Scan
-        uses: SonarSource/sonarcloud-github-action@2.1.1
+        uses: SonarSource/sonarcloud-github-action@v2.1.1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONARCLOUD_TOKEN }}
