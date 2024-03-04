@@ -66,9 +66,10 @@ jobs:
       - name: Print current dir
         run: |
           ls -la
+          pwd
 
       - name: Lint Dockerfile
-        uses: hadolint/hadolint-action@master
+        uses: hadolint/hadolint-action@v3.1.0
         with:
           dockerfile: "Dockerfile*"
           output-file: "hadolint-output.json"
@@ -77,6 +78,7 @@ jobs:
       - name: Print current dir
         run: |
           ls -la
+          pwd
 
       - name: SonarCloud Scan
         uses: SonarSource/sonarcloud-github-action@v2.1.1
