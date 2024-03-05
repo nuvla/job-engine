@@ -6,6 +6,13 @@ concurrency:
 
 on:
   push:
+    path:
+        - "nuvla/**"
+        - "tests/**"
+        - ".github/workflows/dev-build.yml"
+        - "Dockerfile"
+        - "pyproject.toml"
+        - "poetry.lock"
   workflow_dispatch:
 
 jobs:
