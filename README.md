@@ -1,6 +1,6 @@
 # Nuvla Job Engine
 
-[![Build Status](https://github.com/nuvla/job-engine/actions/workflows/main.yml/badge.svg?branch=master)](https://github.com/nuvla/job-engine/actions/workflows/main.yml)
+[![Build Status](https://github.com/nuvla/job-engine/actions/workflows/release.yml/badge.svg?branch=master)](https://github.com/nuvla/job-engine/actions/workflows/release.yml)
 
 This repository contains the code and configuration for the Job engine, 
 packaged as a Docker container. 
