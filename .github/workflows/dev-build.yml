@@ -10,7 +10,6 @@ on:
 
 jobs:
   build-image:
-    needs: run-unittests
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
