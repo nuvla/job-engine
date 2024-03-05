@@ -6,7 +6,7 @@ concurrency:
 
 on:
   pull_request:
-    path:
+    paths:
         - "nuvla/**"
         - "tests/**"
         - ".github/workflows/dev-build.yml"

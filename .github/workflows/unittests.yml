@@ -6,7 +6,19 @@ concurrency:
 
 on:
   push:
+    paths:
+      - "nuvla/**"
+      - "tests/**"
+      - ".github/workflows/unittests.yml"
+      - "pyproject.toml"
+      - "poetry.lock"
   pull_request:
+    paths:
+      - "nuvla/**"
+      - "tests/**"
+      - ".github/workflows/unittests.yml"
+      - "pyproject.toml"
+      - "poetry.lock"
   workflow_dispatch:
 
 jobs:
