@@ -64,7 +64,6 @@ class Job(dict):
             self._engine_version_min = (self._engine_version[0] - 1, 0, 0)
         self._init()
 
-
     def _init(self):
         try:
             self.id = self.queue.get(timeout=5)
