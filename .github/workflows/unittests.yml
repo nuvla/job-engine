@@ -36,18 +36,11 @@ jobs:
 
       - name: Install test environment
         run: |
-          poetry install --with=tests,server
+          pip install tox
 
       - name: Run UnitTests
-        run: >
-          poetry run pytest 
-          --junitxml=test-report.xml 
-          --cov=nuvla 
-          --cov-report=xml 
-          --cov-report term 
-          --cov-config=.coveragerc 
-          --cov-branch
-
+        run: |
+          tox
 
       - name: SonarCloud Scan
         uses: SonarSource/sonarcloud-github-action@v2.1.1
