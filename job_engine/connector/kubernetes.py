@@ -1266,7 +1266,7 @@ class K8sSSHKey(Kubernetes):
             user_home = os.getenv('HOME')
             if not user_home:
                 logging.info\
-                    ('The user home has not been found from the \
+                    ('The user home not found from the \
                      environment variable HOME. Using /root as default.')
                 user_home = "/root"
                 # this could be interesting point to e.g. create a generic user edge_login and add ssh key?
