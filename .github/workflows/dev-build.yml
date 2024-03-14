@@ -1,82 +1,22 @@
-name: "UnitTests and Build Docker Dev. Image"
+name: "Development Build"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref_name }}
   cancel-in-progress: true
 
 on:
-  push:
-    branches:
-      - main
-      - master
   pull_request:
     paths:
-      - "job_engine/**"
-      - "tests/**"
-      - "scripts/**"
-      - ".github/workflows/devel.yml"
-      - "pyproject.toml"
-      - "poetry.lock"
+        - "nuvla/**"
+        - "tests/**"
+        - ".github/workflows/dev-build.yml"
+        - "Dockerfile"
+        - "pyproject.toml"
+        - "poetry.lock"
   workflow_dispatch:
 
 jobs:
-  run-unittests:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Install python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-
-      - name: Load cached Poetry installation
-        id: cached-poetry
-        uses: actions/cache@v4
-        with:
-          path: ~/.local  # the path depends on the OS
-          key: poetry-0  # increment to reset cache
-
-      - name: Setup Poetry
-        uses: snok/install-poetry@v1
-        with:
-          virtualenvs-create: true
-          virtualenvs-in-project: true
-
-      - name: Generate test requirements
-        run: >
-          poetry export
-          -f requirements.txt
-          -o requirements.test.txt
-          --without-hashes
-          --without-urls
-          --with test
-          --with server
-
-      - name: Install TOX
-        run: |
-          pip install tox
-
-      - name: Run Unittests
-        id: unittests-run
-        run: |
-          tox
-
-      - name: Publish Unit Test Results
-        uses: EnricoMi/publish-unit-test-result-action@v2
-        if: always()
-        with:
-          files: test-report.xml
-
-#      - name: SonarCloud Scan
-#        uses: SonarSource/sonarcloud-github-action@master
-#        env:
-#          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-#          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-
-  build-package:
-    needs: run-unittests
+  build-image:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -114,26 +54,6 @@ jobs:
           --without-urls
           --with server
 
-
-      - name: Save wheel
-        uses: actions/upload-artifact@v4
-        with:
-          name: freeze
-          path: dist/
-
-  build-job-engine:
-    needs: build-package
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Download artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: freeze
-          path: dist/
-
       - name: SetUp QEMU
         uses: docker/setup-qemu-action@v3
 
@@ -167,3 +87,4 @@ jobs:
             nuvladev/job:${{ github.head_ref || github.ref_name }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+

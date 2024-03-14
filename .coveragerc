@@ -1,7 +1,7 @@
 [run]
 relative_files = True
-include =
-    nuvla/*
+source = nuvla
+omit =
     tests/*
 branch = True
 
