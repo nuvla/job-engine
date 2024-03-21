@@ -6,6 +6,14 @@
 
 ## Released
 
+## [4.0.3](https://github.com/nuvla/job-engine/compare/4.0.2...4.0.3) (2024-03-21)
+
+
+### Bug Fixes
+
+* **action_bulk_deployment_set_apply:** Take Operational Status files overrides into account when creating deployments of a DG ([69498b9](https://github.com/nuvla/job-engine/commit/69498b973bb758ec91a61ed766e22703a44a686a))
+* **action_nuvlabox_releases:** Update github link from nuvlabox to nuvlaedge organization ([69498b9](https://github.com/nuvla/job-engine/commit/69498b973bb758ec91a61ed766e22703a44a686a))
+
 ## [4.0.2](https://github.com/nuvla/job-engine/compare/4.0.1...4.0.2) (2024-02-23)
 
 
