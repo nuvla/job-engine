@@ -3,8 +3,8 @@
 IMAGE_ORG=${1:-local}
 IMAGE_REPO=${2:-job}
 
-job_engine_version=$(poetry version -s)
-IMAGE_TAG_NAME=$IMAGE_ORG/$IMAGE_REPO:$job_engine_version
+export job_engine_version=$(poetry version -s)
+export IMAGE_TAG_NAME=$IMAGE_ORG/$IMAGE_REPO:$job_engine_version
 
 echo "Building job-engine version $job_engine_version to $IMAGE_TAG_NAME"
 
@@ -15,5 +15,5 @@ pip install poetry poetry-plugin-export
 
 poetry export -f requirements.txt -o dist/requirements.txt --without-hashes --without-urls --with server
 
-docker build --build-arg PACKAGE_TAG=$job_engine_version -t $IMAGE_TAG_NAME .
+docker build --build-arg PACKAGE_TAG=$job_engine_version -t ${IMAGE_TAG_NAME} .
 
