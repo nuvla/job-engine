@@ -733,6 +733,60 @@ class K8sEdgeMgmt(Kubernetes):
             log.debug(f'The result of the reboot action: {reboot_result}')
         return reboot_result
 
+    def deployed_components(self):
+        """
+        Function to get the installed components of a NuvlaEdge
+        Determines whether we are running on a NuvlaEdge or not
+        """
+        log.debug("Calling for components...\n")
+        if os.path.exists(f"{NUVLAEDGE_SHARED_PATH}/.nuvlabox_status"):
+            with open(f"{NUVLAEDGE_SHARED_PATH}/.nuvlabox_status", "r",\
+                encoding='utf-8') as nb_status_file:
+                nb_status = json.load(nb_status_file)
+                if log.level == logging.DEBUG:
+                    log.debug(str="The nuvlabox-status is: %s",\
+                               args=json.dumps(nb_status, indent=2))
+                if nb_status['components']:
+                    return nb_status['components']
+
+        resources = \
+            self.api.search('nuvlabox-status', \
+                filter=f"parent=\"{self.nuvlabox_id}\" ", \
+                ).resources
+        for resource in resources:
+            nuvlabox_status_string = str(resource.id)
+            log.debug(f"Nuvlabox status string: {nuvlabox_status_string}")
+            nb_status_data = \
+                self.api.get(nuvlabox_status_string, select=["components"]).data
+            if log.level == logging.DEBUG:
+                log.debug(str="The nuvlabox-status data is: %s", \
+                          args=json.dumps(nb_status_data, indent=2))
+            for ffield in nb_status_data:
+                log.debug(f"Next field -> {ffield}")
+                if "components" in ffield:
+                    return nb_status_data['components']
+        return None
+
+    def helm_check_multiple(self, helm_name):
+        """
+        Check if the deployment is part of a multiple deployment
+        """
+        the_job_name = self.create_job_name("helm-check-multiple")
+        helm_command = f"'helm status -n default {helm_name} --show-resources -o json'"
+        helm_version_result = self.run_helm_container(the_job_name, helm_command)
+
+        if helm_version_result.returncode == 0 and not helm_version_result.stderr:
+            helm_log_result = self.read_a_log_file(the_job_name)
+            log.debug(f"Helm status result:\n {helm_log_result}")
+            if "SET_MULTIPLE" in helm_log_result.stdout:
+                result = "This deployment is part of a multiple \
+                    deployment. It is not envisaged to run \
+                    updates in such a test environment. Will not proceed."
+                log.info(result)
+                return result, 95
+
+        return None, 0
+
     def update_nuvlabox_engine(self, **kwargs):
         """
         General method to update a kubernetes deployed NuvlaEdge
@@ -746,9 +800,13 @@ class K8sEdgeMgmt(Kubernetes):
             log.info(result)
             return result, 99
 
-        install_params_from_nb_status = self.nuvlabox_status.get('installation-parameters', {})
-        log.info\
-            (f"The installation parameters from nuvlabox_status:\n{install_params_from_nb_status}")
+        deployed_ne_components = self.deployed_components()
+        log.debug\
+            (f"The components from nuvlabox_status:\n{deployed_ne_components}")
+        if not deployed_ne_components:
+            result = "The installed components cannot be found. Please try in a few minutes"
+            log.info(result)
+            return result, 98
 
         the_job_name = self.create_job_name("helm-ver-check")
         helm_command = "'helm list -n default --no-headers'"
@@ -764,7 +822,10 @@ class K8sEdgeMgmt(Kubernetes):
                 return \
                     f"Project name {project_name} does not match \
                     between helm on NulvaEdge and nuvla.io"\
-                    , 99
+                    , 97
+
+            self.helm_update_the_repo()
+
             helm_update_job_name = self.create_job_name("helm-update")
             helm_update_cmd = self.helm_gen_update_cmd_repo(target_release)
             helm_update_result = self.run_helm_container(helm_update_job_name, helm_update_cmd)
@@ -774,6 +835,35 @@ class K8sEdgeMgmt(Kubernetes):
             result = f"The helm version command gave error \n {helm_version_result.stderr}"
 
         return result, helm_update_result.returncode
+
+    def helm_update_the_repo(self):
+
+        helm_repo_update_job_name = self.create_job_name("helm-repo-update")
+        helm_repo_update_cmd="'helm repo update'"
+        helm_repo_update_result = \
+            self.run_helm_container(helm_repo_update_job_name, helm_repo_update_cmd)
+        log.info(f"Helm update result:\n {helm_repo_update_result}")
+
+    def get_helm_name(self):
+        """
+        Get the helm name from the payload to make sure it exists
+        """
+        install_params_from_payload = json.loads(self.job.get('payload', '{}'))
+        project_name = install_params_from_payload['project-name']
+
+        # check that helm knows about the project name
+        helm_job_name = self.create_job_name("helm-name-check")
+        helm_job_cmd = f"'helm list -n default --no-headers | grep {project_name}'"
+        helm_job_result = self.run_helm_container(helm_job_name, helm_job_cmd)
+        log.info(f"Helm name check result:\n {helm_job_result}")
+
+        if helm_job_result.returncode == 0 and not helm_job_result.stderr:
+            helm_job_log_result = self.read_a_log_file(helm_job_name)
+            if project_name in helm_job_log_result.stdout:
+                log.info(f"Found helm name: {project_name}")
+                return project_name
+        return None
+
 
     def helm_gen_update_cmd_repo(self, target_release):
         """
@@ -802,8 +892,11 @@ class K8sEdgeMgmt(Kubernetes):
 
         mandatory_args = f" --set HOME={working_dir} \
             --set NUVLAEDGE_UUID=nuvlabox/{project_uuid} \
-            --set kubernetesNode=$THE_HOST_NODE_NAME \
-            --set vpnClient=true"
+            --set kubernetesNode=$THE_HOST_NODE_NAME"
+
+        vpn_client_cmd = ""
+        if "vpn-client" in self.deployed_components:
+            vpn_client_cmd = " --set vpnClient=true"
 
         helm_namespace = " -n default"
 
@@ -812,6 +905,7 @@ class K8sEdgeMgmt(Kubernetes):
             {helm_namespace} \
             --version {target_release} \
             {mandatory_args} \
+            {vpn_client_cmd} \
             {peripherals} \
             {env_vars}"
 
@@ -865,13 +959,13 @@ class K8sEdgeMgmt(Kubernetes):
         """
         Check the status of the target release
         """
+
+        message=f"chart version from {current_version} to {target_release}"
         if target_release not in helm_log_result.stdout:
-            result = \
-            f"Updating chart version change from {current_version} to {target_release}"
+            result = "Updating " + message
             log.info(result)
         else:
-            result = \
-                f"There is no chart version change from {current_version} to {target_release}"
+            result = "No change of " + message
             log.info(result)
         return result
 
@@ -895,6 +989,7 @@ class K8sEdgeMgmt(Kubernetes):
 
         possible_modules = ["USB", "Bluetooth", "GPU", "Modbus", "Network", "security"]
         for module in modules:
+            log.info(f"JSW: Current module -> {module}")
             for module_test in possible_modules:
                 if module_test.lower() in module.lower():
                     if "security" not in module_test.lower():
@@ -934,6 +1029,7 @@ class K8sEdgeMgmt(Kubernetes):
           name: {job_name}
         spec:
           ttlSecondsAfterFinished: {ttl_sec}
+          backoffLimit: {backoff_limit}
           template:
             spec:
               containers:
@@ -980,11 +1076,12 @@ class K8sEdgeMgmt(Kubernetes):
         the_host_helm_config = "/root/.config/helm"
         the_host_helm_cache = "/root/.cache/helm"
         time_to_live = "60" # for production, once thoroughly tested this should be set to 1 or so
+        the_backoff_limit = "2" # this should be thought about a bit more
         the_host_deployment_path = "/root/deployment"
 
         base_command = "['sh', '-c',"
         cmd = the_helm_command
-        end_command = "]"
+        end_command = "]" 
 
         built_command = base_command + cmd + end_command
 
@@ -997,8 +1094,9 @@ class K8sEdgeMgmt(Kubernetes):
             host_helm_config = the_host_helm_config, \
             host_helm_cache = the_host_helm_cache, \
             ttl_sec = time_to_live, \
+            backoff_limit = the_backoff_limit, \
             helm_command = built_command, \
-            host_deployment_path = the_host_deployment_path \
+            host_deployment_path = the_host_deployment_path, \
             )
 
         logging.debug("The re-formatted YAML is %s ", formatted_helm_yaml_manifest)
