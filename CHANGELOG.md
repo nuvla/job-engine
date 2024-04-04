@@ -6,6 +6,13 @@
 
 ## Released
 
+## [4.0.4](https://github.com/nuvla/job-engine/compare/4.0.3...4.0.4) (2024-04-04)
+
+
+### Bug Fixes
+
+* **nuvlabox:** fix issue with docker.tls.TLSConfig backward incompatible changes on v7.0.0 (updated in 72c8b6a) ([49a981c](https://github.com/nuvla/job-engine/commit/49a981cd013dd72db08a837e5ffb5d3c64033c9a))
+
 ## [4.0.3](https://github.com/nuvla/job-engine/compare/4.0.2...4.0.3) (2024-03-21)
 
 
