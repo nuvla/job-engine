@@ -148,9 +148,7 @@ class NuvlaBox(Connector):
         self.docker_api_endpoint = is_endpoint
         tls_config = docker.tls.TLSConfig(
             client_cert=(self.cert_file.name, self.key_file.name),
-            verify=False,
-            assert_hostname=False,
-            assert_fingerprint=False)
+            verify=False)
         self.docker_client = docker.DockerClient(
             base_url=remove_protocol_from_url(is_endpoint),
             tls=tls_config)
