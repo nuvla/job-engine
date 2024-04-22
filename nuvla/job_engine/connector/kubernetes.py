@@ -23,9 +23,9 @@ from .utils import (create_tmp_file,
 
 
 log = logging.getLogger('kubernetes')
-log.setLevel(logging.DEBUG)
 
 NUVLAEDGE_SHARED_PATH = "/srv/nuvlaedge/shared"
+
 
 class OperationNotAllowed(Exception):
     pass
@@ -46,12 +46,14 @@ def get_kubernetes_local_endpoint():
         return f'https://{kubernetes_host}:{kubernetes_port}'
     return ''
 
+
 def setup_pems(name, path):
 
     with open(f'{path}/{name}.pem', encoding="utf8") as pem_file:
         pem_path = pem_file.read()
 
     return pem_path
+
 
 def super_args(path):
     arggs = {
@@ -62,6 +64,7 @@ def super_args(path):
     }
 
     return arggs
+
 
 class Kubernetes(Connector):
 
@@ -244,9 +247,6 @@ class Kubernetes(Connector):
 
         objects = self._get_objects(deployment_uuid)
 
-        log.debug('Result: %s', result)
-        log.debug('Objects: %s', objects)
-
         return result, objects
 
     update = start
@@ -274,7 +274,7 @@ class Kubernetes(Connector):
         cmd_delete = self.build_cmd_line(
             ['delete', 'all', '--all-namespaces',
              '-l', f'nuvla.deployment.uuid={deployment_uuid}'])
-        log.debug(f'Command line to delete all resources: {cmd_delete}')
+        log.debug('Command line to delete all resources: %s', cmd_delete)
         return join_stderr_stdout(execute_cmd(cmd_delete))
 
     @should_connect
