@@ -12,7 +12,7 @@ class NuvlaBoxReleasesJob(object):
     def __init__(self, _, job):
         self.job = job
         self.api = job.api
-        self.nuvlabox_releases_url = "https://api.github.com/repos/nuvlabox/deployment/releases"
+        self.nuvlabox_releases_url = "https://api.github.com/repos/nuvlaedge/deployment/releases"
 
     def release_already_exists(self, release, published_at):
         results = self.api.search('nuvlabox-release',

@@ -55,6 +55,16 @@ class BulkDeploymentSetApply(BulkAction):
                 dep_env['value'] = app_env_overwrites[dep_env['name']]
 
     @staticmethod
+    def _update_files(deployment, application):
+        dep_files = deployment['module']['content'] \
+            .get('files', [])
+        app_files = application.get('files', [])
+        app_files_overwrites = {d['file-name']: d['file-content'] for d in app_files}
+        for dep_file in dep_files:
+            if dep_file['file-name'] in app_files_overwrites:
+                dep_file['file-content'] = app_files_overwrites[dep_file['file-name']]
+
+    @staticmethod
     def _update_regs_creds_deployment(deployment, application):
         app_regs_creds = application.get('registries-credentials')
         if app_regs_creds:
@@ -108,6 +118,7 @@ class BulkDeploymentSetApply(BulkAction):
             deployment = self.user_api.get(deployment_id)
             deployment_data = deployment.data
             self._update_env_deployment(deployment_data, application)
+            self._update_files(deployment_data, application)
             self._update_regs_creds_deployment(deployment_data, application)
             deployment = self.user_api.edit(deployment_id, deployment_data)
             self.log.debug(f'{self.dep_set_id} - starting deployment: {deployment_id}')
@@ -124,6 +135,7 @@ class BulkDeploymentSetApply(BulkAction):
             application = deployment_to_update[1]["application"]
             deployment_data = self._load_reset_deployment(deployment_id, application)
             self._update_env_deployment(deployment_data, application)
+            self._update_files(deployment_data, application)
             self._update_regs_creds_deployment(deployment_data, application)
             deployment = self.user_api.edit(deployment_id, deployment_data)
             action = 'update' if deployment.operations.get('update') else 'start'
