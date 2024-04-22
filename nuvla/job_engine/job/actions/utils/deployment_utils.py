@@ -15,7 +15,7 @@ from ....connector import (docker_service,
                            docker_compose,
                            kubernetes,
                            utils)
-from ....connector.kubernetes import get_kubernetes_local_endpoint
+from ....connector.k8s_driver import get_kubernetes_local_endpoint
 
 
 def get_connector_name(deployment):

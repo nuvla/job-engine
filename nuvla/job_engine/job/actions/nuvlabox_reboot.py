@@ -31,8 +31,8 @@ class NBRebootJob(object):
         return 0
 
     def _reboot_docker(self) -> str:
-        connector = NuvlaBox(api=self.api, \
-            nuvlabox_id=self.job['target-resource']['href'], job=self.job)
+        connector = NuvlaBox(api=self.api, job=self.job,
+                             nuvlabox_id=self.job['target-resource']['href'])
         return connector.reboot()
 
     def _reboot_k8s(self) -> str:

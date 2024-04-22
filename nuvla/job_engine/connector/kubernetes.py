@@ -1,672 +1,119 @@
 # -*- coding: utf-8 -*-
-import base64
 import json
 import logging
 import os
 import tempfile
-import time
-import yaml
-import random
-import string
+from typing import List, Union
+from abc import ABC
+
 import re
 
-from datetime import datetime
-from tempfile import TemporaryDirectory
-
+from .helm_driver import Helm
+from .k8s_driver import Kubernetes
 from ..job.job import Job
 from .connector import Connector, should_connect
-from .utils import (create_tmp_file,
-                    execute_cmd,
-                    generate_registry_config,
-                    join_stderr_stdout)
 
-
-log = logging.getLogger('kubernetes')
+log = logging.getLogger('k8s_connector')
+log.setLevel(logging.DEBUG)
 
 NUVLAEDGE_SHARED_PATH = "/srv/nuvlaedge/shared"
+NUVLAEDGE_STATUS_FILE = os.path.join(NUVLAEDGE_SHARED_PATH, '.nuvlabox_status')
+NE_STATUS_COLLECTION = 'nuvlabox-status'
+
 
 class OperationNotAllowed(Exception):
     pass
 
 
 def instantiate_from_cimi(api_infrastructure_service, api_credential):
-    return Kubernetes(
+    return K8sAppMgmt(
         ca=api_credential.get('ca', '').replace("\\n", "\n"),
         cert=api_credential.get('cert', '').replace("\\n", "\n"),
         key=api_credential.get('key', '').replace("\\n", "\n"),
         endpoint=api_infrastructure_service.get('endpoint'))
 
 
-def get_kubernetes_local_endpoint():
-    kubernetes_host = os.getenv('KUBERNETES_SERVICE_HOST')
-    kubernetes_port = os.getenv('KUBERNETES_SERVICE_PORT')
-    if kubernetes_host and kubernetes_port:
-        return f'https://{kubernetes_host}:{kubernetes_port}'
-    return ''
-
-def setup_pems(name, path):
-
-    with open(f'{path}/{name}.pem', encoding="utf8") as pem_file:
-        pem_path = pem_file.read()
-
-    return pem_path
-
-def super_args(path):
-    arggs = {
-        "cert": setup_pems("cert",path),
-        "key": setup_pems("key",path),
-        "ca": setup_pems("ca",path),
-        "endpoint": get_kubernetes_local_endpoint(),
-    }
-
-    return arggs
-
-class Kubernetes(Connector):
+class K8sAppMgmt(Connector, ABC):
+    """Class providing application management functionalities on Kubernetes.
+    """
 
     def __init__(self, **kwargs):
+
         super().__init__(**kwargs)
-        # Mandatory kwargs
-        self.ca = self.kwargs['ca']
-        self.cert = self.kwargs['cert']
-        self.key = self.kwargs['key']
 
-        self.endpoint = self.kwargs['endpoint']
-        self.ca_file = None
-        self.cert_file = None
-        self.key_file = None
+        self.k8s = Kubernetes(**kwargs)
 
-        self._namespace = None
-
-        self.ne_image_registry = os.getenv('NE_IMAGE_REGISTRY', '')
-        self.ne_image_org = os.getenv('NE_IMAGE_ORGANIZATION', 'sixsq')
-        self.ne_image_repo = os.getenv('NE_IMAGE_REPOSITORY', 'nuvlaedge')
-        self.ne_image_tag = os.getenv('NE_IMAGE_TAG', 'latest')
-        self.ne_image_name = os.getenv('NE_IMAGE_NAME', f'{self.ne_image_org}/{self.ne_image_repo}')
-        self.base_image = f'{self.ne_image_registry}{self.ne_image_name}:{self.ne_image_tag}'
-
-    @property
     def connector_type(self):
-        return 'Kubernetes-cli'
+        return self.k8s.connector_type
 
     def connect(self):
-        log.info(f"Connecting to endpoint: {self.endpoint}")
-        self.ca_file = create_tmp_file(self.ca)
-        self.cert_file = create_tmp_file(self.cert)
-        self.key_file = create_tmp_file(self.key)
+        self.k8s.connect()
 
     def clear_connection(self, connect_result):
-        if self.ca_file:
-            self.ca_file.close()
-            self.ca_file = None
-        if self.cert_file:
-            self.cert_file.close()
-            self.cert_file = None
-        if self.key_file:
-            self.key_file.close()
-            self.key_file = None
+        self.k8s.clear_connection(connect_result)
 
-    def build_cmd_line(self, list_cmd):
-        """
-        Build the kubectl command line
-
-           arguments:
-           list_cmd: a list containing the kubectl command line and arguments
-        """
-        return ['kubectl', '-s', self.endpoint,
-                '--client-certificate', self.cert_file.name,
-                '--client-key', self.key_file.name,
-                '--certificate-authority', self.ca_file.name] \
-               + list_cmd
-
-    @staticmethod
-    def _create_deployment_context(directory_path, namespace, docker_compose,
-                                   files, registries_auth):
-        manifest_file_path = directory_path + '/manifest.yml'
-        with open(manifest_file_path, 'w') as manifest_file:
-            manifest_file.write(docker_compose)
-
-        namespace_file_path = directory_path + '/namespace.yml'
-        with open(namespace_file_path, 'w') as namespace_file:
-            namespace_data = {'apiVersion': 'v1',
-                              'kind': 'Namespace',
-                              'metadata': {'name': namespace}}
-            yaml.safe_dump(namespace_data, namespace_file, allow_unicode=True)
-
-        kustomization_data = {'namespace': namespace,
-                              'resources': ['manifest.yml', 'namespace.yml']}
-
-        if files:
-            for file_info in files:
-                file_path = directory_path + "/" + file_info['file-name']
-                f = open(file_path, 'w')
-                f.write(file_info['file-content'])
-                f.close()
-
-        if registries_auth:
-            config = generate_registry_config(registries_auth)
-            config_b64 = base64.b64encode(config.encode('ascii')).decode(
-                'utf-8')
-            secret_registries_fn = 'secret-registries-credentials.yml'
-            secret_registries_path = os.path.join(directory_path,
-                                                  secret_registries_fn)
-            with open(secret_registries_path, 'w') as secret_registries_file:
-                secret_registries_data = {'apiVersion': 'v1',
-                                          'kind': 'Secret',
-                                          'metadata': {
-                                              'name': 'registries-credentials'},
-                                          'data': {
-                                              '.dockerconfigjson': config_b64},
-                                          'type': 'kubernetes.io/dockerconfigjson'}
-                yaml.safe_dump(secret_registries_data, secret_registries_file,
-                               allow_unicode=True)
-            kustomization_data.setdefault('resources', []) \
-                .append(secret_registries_fn)
-
-        kustomization_file_path = directory_path + '/kustomization.yml'
-        with open(kustomization_file_path, 'w') as kustomization_file:
-            yaml.safe_dump(kustomization_data, kustomization_file,
-                           allow_unicode=True)
-
-    @should_connect
-    def start(self, **kwargs):
-        # Mandatory kwargs
+    def start(self, **kwargs) -> [str, List[dict]]:
         env = kwargs['env']
         files = kwargs['files']
         manifest = kwargs['docker_compose']
         namespace = kwargs['name']
         registries_auth = kwargs['registries_auth']
 
-        envsubst_shell_format = ' '.join(['${}'.format(k) for k in env.keys()])
-        cmd = ['envsubst', envsubst_shell_format]
-        manifest_env_subs = execute_cmd(cmd,
-                                        env=env,
-                                        input=manifest).stdout
+        result = self.k8s.apply_manifest_with_context(manifest, namespace, env,
+                                                      files, registries_auth)
 
-        with TemporaryDirectory() as tmp_dir_name:
-            Kubernetes._create_deployment_context(tmp_dir_name,
-                                                  namespace,
-                                                  manifest_env_subs,
-                                                  files,
-                                                  registries_auth)
+        services = self.get_services(namespace, None)
 
-            cmd_deploy = self.build_cmd_line(['apply', '-k', tmp_dir_name])
-
-            result = join_stderr_stdout(execute_cmd(cmd_deploy))
-
-            services = self._get_services(namespace)
-
-            return result, services
+        return result, services
 
     update = start
 
-    @should_connect
     def stop(self, **kwargs):
         namespace = kwargs['name']
+        self.k8s.delete_namespace(namespace)
 
-        cmd_stop = self.build_cmd_line(['delete', 'namespace', namespace])
+    def list(self, filters=None, namespace=None):
+        return self.k8s.get_namespace_objects(namespace, filters)
 
-        try:
-            return join_stderr_stdout(execute_cmd(cmd_stop))
-        except Exception as ex:
-            if 'NotFound' in ex.args[0] if len(ex.args) > 0 else '':
-                return f'Namespace "{namespace}" not found.'
-            else:
-                raise ex
-
-    @should_connect
-    def list(self, filters=None):
-        # FIXME: Implement.
-        # cmd = self.build_cmd_line(['stack', 'ls'])
-        # return execute_cmd(cmd)
+    def version(self):
         pass
 
-    TIMESTAMP_FMT_UTC = '%Y-%m-%dT%H:%M:%S.%f000Z'
-
-    @classmethod
-    def _timestamp_now_utc(cls) -> str:
-        time_now = datetime.timestamp(datetime.now())
-        utc_timestamp = datetime.utcfromtimestamp(time_now)
-        return utc_timestamp.strftime(cls.TIMESTAMP_FMT_UTC)
-
-    def _build_logs_cmd(self,
-                        namespace: str,
-                        pod_unique_id: str,
-                        container_name: str,
-                        since: datetime,
-                        tail_lines: int) -> list:
-
-        container_opts = [f'pod/{pod_unique_id}',
-                          f'--container={container_name}']
-
-        list_opts_log = ['--timestamps=true',
-                         '--tail', str(tail_lines),
-                         '--namespace', namespace]
-        if since:
-            list_opts_log.extend(['--since-time', since.isoformat()])
-
-        return self.build_cmd_line(['logs'] + container_opts + list_opts_log)
-
-    @should_connect
-    def _get_container_logs(self,
-                            namespace,
-                            pod: dict,
-                            since: datetime,
-                            tail_lines: int = 10) -> str:
+    def get_services(self, namespace: str, _env, **kwargs) -> list:
         """
-        Given `pod` definition in a `namespace`, returns `tail_lines` log lines
-        from `since` date per each container found in the `pod` .
+        Returns both K8s Services and Deployments in the given `namespace`.
 
-        :param namespace: str
-        :param pod: dict
-        :param since: datetime
-        :param tail_lines: int
-        :return: str
+        :param namespace:
+        :param _env: this parameter is ignored.
+        :param kwargs: this parameter is ignored.
+        :return: list of dicts
         """
-        pod_logs = ''
-        pod_unique_id = pod['metadata']['name']
-        log.debug('Working with pod: %s', pod_unique_id)
-
-        for container in pod['spec']['containers']:
-            container_name = container['name']
-            log.debug('Working with container: %s', container_name)
-
-            cmd = self._build_logs_cmd(namespace,
-                                       pod_unique_id,
-                                       container_name,
-                                       since,
-                                       tail_lines)
-            log.debug('Logs command line: %s', cmd)
-
-            pod_container = f'pod/{pod_unique_id}->{container_name}'
-
-            try:
-                container_logs = execute_cmd(cmd).stdout
-            except Exception as ex:
-                log.error('Failed getting logs from %s: %s', pod_container, ex)
-                continue
-
-            if container_logs:
-                pod_logs += \
-                    f'\nLog last {tail_lines} lines for container ' \
-                    f'{pod_container}' \
-                    f'\n{container_logs}'
-            else:
-                pod_logs += \
-                    f'\n{self._timestamp_now_utc()}' \
-                    f' There are no log entries for {pod_container}' \
-                    f' since {since.isoformat()}'
-        return pod_logs
-
-    def _get_pods_logs(self,
-                       namespace,
-                       pods: list,
-                       since: datetime,
-                       num_lines: int) -> str:
-
-        logs_strings = []
-        for pod in pods:
-            log.debug('Get logs from pod: %s', pod)
-            if pod["kind"] == 'Pod':
-                logs = self._get_container_logs(namespace,
-                                                pod,
-                                                since,
-                                                num_lines)
-                logs_strings.append(logs)
-
-        log.debug('Final log string: %s', logs_strings)
-
-        return '\n'.join(logs_strings)
-
-    @staticmethod
-    def _filter_objects_owned(objects: list,
-                              kind: str,
-                              owner_kind: str,
-                              owner_name: str) -> list:
-        """
-        Given list of `objects` and desired object `kind`, returns list of
-        the object kinds that are owned by the object with kind `owner_kind`
-        and name `owner_name`.
-
-        :param objects: list
-        :param kind: str
-        :param owner_kind: str
-        :param owner_name: str
-        :return: list
-        """
-        log.debug(f"Filtering for Kind: {kind} owner_kind: \
-                  {owner_kind} owner_name: {owner_name}")
-        component_pods = []
-        for obj in objects:
-            log.debug(f"Current object: {obj} and obj kind: {obj['kind']}")
-            if obj['kind'] == kind and 'ownerReferences' in obj['metadata']: #  and self.valid_replica_set(obj):
-                owner = obj['metadata']['ownerReferences'][0]
-                if owner_kind == owner['kind'] and owner_name == owner['name']:
-                    component_pods.append(obj)
-        return component_pods
-
-    def _exec_stdout_json(self, cmd_params) -> {}:
-        cmd = self.build_cmd_line(cmd_params)
-        log.debug(f"created JSON command:\n{cmd}")
-        cmd_out = execute_cmd(cmd)
-        if cmd_out.stderr:
-            log.warning(f"JSON command stderr gives:\n{cmd_out.stderr}")
-
-        return json.loads(cmd_out.stdout)
-
-    @should_connect
-    def _get_pods_cronjob(self, namespace, obj_name) -> list:
-        # Find Jobs associated with the CronJob and get its name.
-        kind_top_level = 'CronJob'
-        pods_owner_kind = 'Job'
-        jobs = self._exec_stdout_json(['get', pods_owner_kind,
-                                       '-o', 'json',
-                                       '--namespace', namespace])
-        jobs_owned_by_cronjob = self._filter_objects_owned(jobs.get('items', []),
-                                                           pods_owner_kind,
-                                                           kind_top_level,
-                                                           obj_name)
-        if len(jobs_owned_by_cronjob) < 1:
-            log.error(f'Failed to find {pods_owner_kind} owned by '
-                      f'{kind_top_level}/{obj_name}.')
-            return []
-
-        jobs_names = [x['metadata']['name'] for x in jobs_owned_by_cronjob]
-
-        # Find Pods owned by the Jobs.
-        pods = []
-        all_pods = self._exec_stdout_json(['get', 'pods',
-                                           '-o', 'json',
-                                           '--namespace', namespace])
-        for pods_owner_name in jobs_names:
-            res = self._filter_objects_owned(all_pods['items'],
-                                             'Pod', pods_owner_kind, pods_owner_name)
-            pods.extend(res)
-        return pods
-
-    def valid_replica_set(self, replica_list: list):
-        """
-        Check that the current replica set is valid
-        i.e. the required values are 1 and not 0!!
-        in general we want the observedGeneration to be one
-        and replicas to be not equal to zero
-        """
-        valid_replica_sets = []
-        for replica in replica_list:
-            test1 = replica['status']['replicas']
-            if test1 != 0:
-                log.debug(f"found valid_replica_set: my variable: {replica}")
-                valid_replica_sets.append(replica)
-
-        return valid_replica_sets
-
-    @should_connect
-    def _get_pods_deployment(self, namespace, obj_name) -> list:
-        """
-        Find the valid ReplicaSet associated with the Deployment and get its name.
-        """
-        kind_top_level = 'Deployment'
-        pods_owner_kind = 'ReplicaSet'
-        replica_sets = []
-        owned_rep_sets = []
-        valid_replica_set = []
-
-        replica_sets = self._exec_stdout_json(['get', pods_owner_kind,
-                                              '-o', 'json',
-                                              '--namespace', namespace])
-
-        owned_rep_sets = self._filter_objects_owned(
-            replica_sets.get('items', []),
-            pods_owner_kind,
-            kind_top_level,
-            obj_name)
-
-        valid_replica_set = self.valid_replica_set(owned_rep_sets)
-
-        if len(valid_replica_set) < 1:
-            log.error(f'Failed to find {pods_owner_kind} owned by '
-                      f'{kind_top_level}/{obj_name}.')
-            return []
-        if len(valid_replica_set) > 1:
-            msg = f'There can only be single {pods_owner_kind}. ' \
-                  f'Found: {json.dumps(valid_replica_set)}'
-            log.error(msg)
-            raise Exception(msg)
-        pods_owner_name = valid_replica_set[0]['metadata']['name']
-        # Find Pods owned by the ReplicaSet.
-        all_pods = self._exec_stdout_json(['get', 'pods',
-                                           '-o', 'json',
-                                           '--namespace', namespace])
-        return self._filter_objects_owned(all_pods['items'], 'Pod',
-                                          pods_owner_kind, pods_owner_name)
-
-    @should_connect
-    def _get_pods_regular(self, namespace, owner_kind, owner_name):
-        kind = 'Pod'
-        all_pods = self._exec_stdout_json(['get', kind,
-                                           '-o', 'json',
-                                           '--namespace', namespace])
-        if len(all_pods) < 1:
-            log.warning(f'No {kind} in namespace {namespace}.')
-            return []
-        return self._filter_objects_owned(all_pods['items'], kind,
-                                          owner_kind, owner_name)
-
-    def _get_pods(self, namespace, obj_kind, obj_name) -> list:
-        if 'Deployment' == obj_kind:
-            return self._get_pods_deployment(namespace, obj_name)
-
-        if 'CronJob' == obj_kind:
-            return self._get_pods_cronjob(namespace, obj_name)
-
-        if obj_kind in ['Job', 'DaemonSet', 'StatefulSet']:
-            return self._get_pods_regular(namespace, obj_kind, obj_name)
-
-    def _get_component_logs(self,
-                            namespace: str,
-                            obj_kind: str,
-                            obj_name: str,
-                            since: datetime,
-                            num_lines: int) -> str:
-        """
-        Given Kubernetes workload object kind `obj_kind` and name `obj_name`
-        running in `namespace`, returns max `num_lines` logs from `since` of all
-        containers running in all its pods.
-
-        :param namespace: str - namespace component is running in
-        :param obj_kind: str - K8s object kind (e.g. Deployment, Job, etc.)
-        :param obj_name: str - K8s object name (e.g. nginx)
-        :param since: datetime - from what time to collect the logs
-        :param num_lines: int - max number of log lines to collect
-        :return: str - logs as string
-        """
-        pods = self._get_pods(namespace, obj_kind, obj_name)
-        try:
-            return self._get_pods_logs(namespace, pods, since, num_lines)
-        except Exception as ex:
-            log.error('Problem getting logs string: %s ', ex)
-        return ''
-
-    WORKLOAD_OBJECT_KINDS = \
-        ['Deployment',
-         'Job',
-         'CronJob',
-         'StatefulSet',
-         'DaemonSet']
-
-    @should_connect
-    def log(self, component: str, since: datetime, num_lines: int, **kwargs) -> str:
-        """
-        Given `component` as `<K8s object kind>/<name>` (e.g. Deployment/nginx),
-        returns logs of all the containers of all the pods belonging to the
-        `component` (as sting).
-
-        Only Kubernetes workload object kinds (which actually can contain Pods)
-        are considered for collection of logs.
-
-        :param component: str - `<K8s object kind>/<name>` (e.g. Deployment/nginx)
-        :param since: datetime - from what time to collect the logs
-        :param num_lines: int - max number of log lines to collect
-        :param kwargs: optional parameters
-        :return: str - logs as string
-        """
-
-        if "/" in component:
-            obj_kind, obj_name = component.split('/', 1)
-            if obj_kind not in self.WORKLOAD_OBJECT_KINDS:
-                msg = f"There are no meaningful logs for '{obj_kind}'."
-                log.warning(msg)
-                return f'{self._timestamp_now_utc()} {msg}\n'
-        else:
-            obj_kind = "Deployment"
-            obj_name = component
-
-        if kwargs.get("namespace"):
-            namespace = kwargs.get("namespace")
-        else:
-            namespace = self.namespace
-
-        log.info(f"Getting Kubernetes logs for: \n\
-                 Object kind {obj_kind}\n\
-                 Object name {obj_name}\n\
-                 in namespace {namespace}")
-
-        try:
-            return self._get_component_logs(namespace, obj_kind,
-                                            obj_name, since, num_lines)
-        except Exception as ex:
-            msg = f'There was an error getting logs for: {component}'
-            log.error('%s: %s', msg, ex)
-            return f'{self._timestamp_now_utc()} {msg}\n'
-
-    @staticmethod
-    def _extract_service_info(kube_resource):
-        resource_kind = kube_resource['kind']
-        node_id = '.'.join([resource_kind,
-                            kube_resource['metadata']['name']])
-        service_info = {'node-id': node_id}
-        if resource_kind == 'Deployment':
-            replicas_desired = kube_resource['spec']['replicas']
-            replicas_running = kube_resource['status'].get('readyReplicas', 0)
-            service_info['replicas.desired'] = str(replicas_desired)
-            service_info['replicas.running'] = str(replicas_running)
-        if resource_kind == 'Service':
-            ports = kube_resource['spec']['ports']
-            for port in ports:
-                external_port = port.get('nodePort')
-                if external_port:
-                    internal_port = port['port']
-                    protocol = port['protocol'].lower()
-                    service_info[f'{protocol}.{internal_port}'] = str(
-                        external_port)
-        return service_info
-
-    def _get_services(self, namespace):
-        cmd_services = self.build_cmd_line(['get', 'services', '--namespace',
-                                            namespace, '-o', 'json'])
-        kube_services = json.loads(execute_cmd(cmd_services).stdout).get(
-            'items', [])
-
-        cmd_deployments = self.build_cmd_line(
-            ['get', 'deployments', '--namespace',
-             namespace, '-o', 'json'])
-        kube_deployments = json.loads(execute_cmd(cmd_deployments).stdout).get(
-            'items', [])
-
-        services = [Kubernetes._extract_service_info(kube_resource)
-                    for kube_resource in kube_services + kube_deployments]
-
-        return services
-
-    @should_connect
-    def version(self):
-        cmd = self.build_cmd_line(['version', '-o', 'json'])
-        version = execute_cmd(cmd, timeout=5).stdout
-        return json.loads(version)
-
-    @should_connect
-    def get_services(self, name, env, **kwargs):
-        return self._get_services(name)
-
-    @should_connect
-    def commission(self, payload):
-        """ Updates the NuvlaEdge resource with the provided payload
-        :param payload: content to be updated in the NuvlaEdge resource
-        """
-        # pass
-        if payload:
-            self.api.operation(self.nuvlabox_resource, "commission", data=payload)
-
-    @property
-    def namespace(self):
-        """
-        Function to get the namespace
-        """
-        log.debug("Calling for namespace...\n")
-        if self._namespace is None:
-            inst_params = \
-                self.api.search('nuvlabox-status', \
-                                filter=f"parent=\"{self.nuvlabox_id}\" ", \
-                                select='installation-parameters').resources
-            for inst_param in inst_params:
-                nuvlabox_status_string = str(inst_param.id)
-                log.debug(f"Nuvlabox status string: {nuvlabox_status_string}")
-                nb_status_data = self.api.get(nuvlabox_status_string).data
-                log.debug(f"ggg is:\n{json.dumps(nb_status_data, indent=2)}")
-                namespace = nb_status_data['installation-parameters']['project-name']
-                log.debug(f"namespace is:\n{json.dumps(namespace, indent=2)}")
-            self._namespace = namespace
-
-        log.debug(f"The namespace is found to be: {self._namespace}")
-
-        return self._namespace
+        services = self.k8s.get_services(namespace)
+        deployments = self.k8s.get_deployments(namespace)
+        return [self.k8s.extract_service_info(resource)
+                for resource in services + deployments]
 
 
-class K8sLogging(Kubernetes):
+class K8sEdgeMgmt:
 
-    def __init__(self, job: Job, **kwargs):
+    NE_HELM_NAMESPACE = 'default'
 
-        self.job = job
-        self.api = job.api
-
-        self.nuvlabox_id = kwargs.get("nuvlabox_id")
-        self._namespace = None
+    def __init__(self, job: Job):
 
         if not job.is_in_pull_mode:
             raise OperationNotAllowed(
                 'NuvlaEdge management actions are only supported in pull mode.')
 
-        path = NUVLAEDGE_SHARED_PATH # FIXME: This needs to be parameterised.
-        super().__init__(**super_args(path))
-
-
-class K8sEdgeMgmt(Kubernetes):
-
-    KUB_JOB = 'job.batch/'
-
-    def __init__(self, job: Job, **kwargs):
-
         self.job = job
         self.api = job.api
+
+        self.nuvlabox_id = self.job['target-resource']['href']
 
         self._nuvlabox = None
         self._nuvlabox_status = None
 
-        self.nuvlabox_id=self.job['target-resource']['href']
+        self.k8s = Kubernetes.from_path_to_k8s_creds(NUVLAEDGE_SHARED_PATH)
 
-        if not job.is_in_pull_mode:
-            raise OperationNotAllowed(
-                'NuvlaEdge management actions are only supported in pull mode.')
-
-        # FIXME: This needs to be parameterised.
-        path = NUVLAEDGE_SHARED_PATH
-        super().__init__(**super_args(path))
-
-        self.ne_image_registry = os.getenv('NE_IMAGE_REGISTRY', '')
-        self.ne_image_org = os.getenv('NE_IMAGE_ORGANIZATION', 'sixsq')
-        self.ne_image_repo = os.getenv('NE_IMAGE_REPOSITORY', 'nuvlaedge')
-        self.ne_image_tag = os.getenv('NE_IMAGE_TAG', 'latest')
-        self.ne_image_name = os.getenv('NE_IMAGE_NAME', f'{self.ne_image_org}/{self.ne_image_repo}')
-        self.base_image = f'{self.ne_image_registry}{self.ne_image_name}:{self.ne_image_tag}'
+        self.helm = Helm(NUVLAEDGE_SHARED_PATH)
 
     @property
     def nuvlabox(self):
@@ -677,195 +124,199 @@ class K8sEdgeMgmt(Kubernetes):
     @property
     def nuvlabox_status(self):
         if not self._nuvlabox_status:
-            nuvlabox_status_id = self.nuvlabox.get('nuvlabox-status')
+            nuvlabox_status_id = self.nuvlabox.get(NE_STATUS_COLLECTION)
             self._nuvlabox_status = self.api.get(nuvlabox_status_id).data
         return self._nuvlabox_status
 
-    @should_connect
-    def reboot(self):
-        """
-        Function to generate the kubernetes reboot manifest and execute the job
-        """
-        log.debug(f'Using image: {self.base_image}')
+    def _build_reboot_job(self) -> str:
+        image_name = self.k8s.base_image
+        log.debug(f'Using image for reboot Job: {image_name}')
 
         sleep_value = 10
-        image_name = self.base_image
-        the_job_name = "reboot-nuvlaedge"
+        job_name = "reboot-nuvlaedge"
 
-        cmd = f"sleep {sleep_value} && echo b > /sysrq"
-        command = f"['sh', '-c', '{cmd}' ]"
+        command = f"['sh', '-c', 'sleep {sleep_value} && echo b > /sysrq']"
 
-        reboot_yaml_manifest = f"""
-            apiVersion: batch/v1
-            kind: Job
-            metadata:
-              name: {the_job_name}
-            spec:
-              ttlSecondsAfterFinished: 0
-              template:
-                spec:
-                  containers:
-                  - name: {the_job_name}
-                    image: {image_name}
-                    command: {command}
-                    volumeMounts:
-                    - name: reboot-vol
-                      mountPath: /sysrq
-                  volumes:
-                  - name: reboot-vol   
-                    hostPath:
-                      path: /proc/sysrq-trigger
-                  restartPolicy: Never
-              backoffLimit: 0
+        manifest = f"""apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {job_name}
+spec:
+  ttlSecondsAfterFinished: 0
+  template:
+    spec:
+      containers:
+      - name: {job_name}
+        image: {image_name}
+        command: {command}
+        volumeMounts:
+        - name: reboot-vol
+          mountPath: /sysrq
+      volumes:
+      - name: reboot-vol   
+        hostPath:
+          path: /proc/sysrq-trigger
+      restartPolicy: Never
+  backoffLimit: 0
+"""
+        return manifest
+
+    @should_connect
+    def reboot(self) -> str:
+        """
+        Reboots the host.
+
+        Generates the Kubernetes Job with the command to reboot the host and
+        launches it.
         """
 
-        log.debug(f"The re-formatted YAML is: \n{reboot_yaml_manifest}")
+        manifest = self._build_reboot_job()
+        log.debug('Host reboot Job: %s', manifest)
 
-        with TemporaryDirectory() as tmp_dir_name:
-            filename = f'{tmp_dir_name}/reboot_job_manifest.yaml'
-            with open(filename, 'w', encoding="utf-8") as reboot_manifest_file:
-                reboot_manifest_file.write(reboot_yaml_manifest)
+        result = self.k8s.apply_manifest(manifest, self.k8s.namespace)
+        log.debug('Host reboot Job launch result: %s', result)
 
-            cmd = ['apply', '-f', filename]
-            kubectl_cmd_reboot = self.build_cmd_line(cmd)
+        return 'Reboot ongoing'
 
-            reboot_result = execute_cmd(kubectl_cmd_reboot)
-            log.debug(f'The result of the reboot action: {reboot_result}')
-        return reboot_result
+    @staticmethod
+    def _get_ne_components_local(fn=NUVLAEDGE_STATUS_FILE) -> list:
+        log.info('Getting NuvlaEdge components from local file.')
 
-    def deployed_components(self):
-        """
-        Function to get the installed components of a NuvlaEdge
-        Determines whether we are running on a NuvlaEdge or not
-        """
-        log.debug("Calling for components...\n")
-        if os.path.exists(f"{NUVLAEDGE_SHARED_PATH}/.nuvlabox_status"):
-            with open(f"{NUVLAEDGE_SHARED_PATH}/.nuvlabox_status", "r",\
-                encoding='utf-8') as nb_status_file:
-                nb_status = json.load(nb_status_file)
-                if log.level == logging.DEBUG:
-                    log.debug(str="The nuvlabox-status is: %s",\
-                               args=json.dumps(nb_status, indent=2))
-                if nb_status['components']:
-                    return nb_status['components']
+        try:
+            if os.path.exists(fn):
+                with open(fn, encoding='utf-8') as fp:
+                    nb_status = json.load(fp)
+                    if log.level == logging.DEBUG:
+                        log.debug('Content of %s: %s', fn,
+                                  json.dumps(nb_status, indent=2))
+                    return nb_status.get('components', [])
+        except IOError as ex:
+            log.error(f'Unable to read file {fn}: {ex}')
+        except json.JSONDecodeError as ex:
+            log.error(f'Error decoding JSON from file {fn}: {ex}')
+        return []
+
+    def _get_ne_components_remote(self) -> list:
+        log.info('Getting NuvlaEdge components from Nuvla API.')
 
         resources = \
-            self.api.search('nuvlabox-status', \
-                filter=f"parent=\"{self.nuvlabox_id}\" ", \
-                ).resources
+            self.api.search(NE_STATUS_COLLECTION,
+                            filter=f'parent="{self.nuvlabox_id}"').resources
         for resource in resources:
-            nuvlabox_status_string = str(resource.id)
-            log.debug(f"Nuvlabox status string: {nuvlabox_status_string}")
+            log.debug('Nuvlabox status ID: %s', resource.id)
             nb_status_data = \
-                self.api.get(nuvlabox_status_string, select=["components"]).data
+                self.api.get(resource.id, select=['components']).data
             if log.level == logging.DEBUG:
-                log.debug(str="The nuvlabox-status data is: %s", \
-                          args=json.dumps(nb_status_data, indent=2))
-            for ffield in nb_status_data:
-                log.debug(f"Next field -> {ffield}")
-                if "components" in ffield:
-                    return nb_status_data['components']
-        return None
+                log.debug('The nuvlabox-status data is: %s',
+                          json.dumps(nb_status_data, indent=2))
+            return nb_status_data.get('components', [])
+        return []
 
-    def helm_check_multiple(self, helm_name):
+    def _deployed_components(self) -> list:
         """
-        Check if the deployment is part of a multiple deployment
+        Returns the installed components of a NuvlaEdge.
         """
-        the_job_name = self.create_job_name("helm-check-multiple")
-        helm_command = f"'helm status -n default {helm_name} --show-resources -o json'"
-        helm_version_result = self.run_helm_container(the_job_name, helm_command)
 
-        if helm_version_result.returncode == 0 and not helm_version_result.stderr:
-            helm_log_result = self.read_a_log_file(the_job_name)
-            log.debug(f"Helm status result:\n {helm_log_result}")
-            if "SET_MULTIPLE" in helm_log_result.stdout:
-                result = "This deployment is part of a multiple \
+        log.info('Getting deployed NuvlaEdge components...')
+
+        # FIXME: Persist the components locally on a field.
+        return self._get_ne_components_remote()
+
+    def check_multiple_nuvlaedges(self, helm_name):
+        """
+        Check if the deployment is part of a multiple NuvlaEdge deployments
+        on the same COE.
+        """
+        # FIXME: Join helm.run_command and k8s.read_job_log.
+        # FIXME: Be more surgical in getting SET_MULTIPLE.
+        job_name = self.k8s.create_object_name('check-multiple-NEs')
+        cmd = (f'helm status -n {self.NE_HELM_NAMESPACE} {helm_name} '
+               f'--show-resources -o json')
+        cmd_result = self.helm.run_command(cmd, job_name)
+
+        if cmd_result.returncode == 0 and not cmd_result.stderr:
+            helm_log_result = self.k8s.read_job_log(job_name)
+            log.debug('Helm status result: %s', helm_log_result)
+            if 'SET_MULTIPLE' in helm_log_result.stdout:
+                result = 'This deployment is part of a multiple \
                     deployment. It is not envisaged to run \
-                    updates in such a test environment. Will not proceed."
+                    updates in such a test environment. Will not proceed.'
                 log.info(result)
                 return result, 95
 
-        return None, 0
+        return None, cmd_result.returncode
+
+    def _get_project_name(self) -> str:
+        return json.loads(self.job.get('payload', '{}'))['project-name']
 
     def update_nuvlabox_engine(self, **kwargs):
         """
-        General method to update a kubernetes deployed NuvlaEdge
+        Updates a Kubernetes deployed NuvlaEdge.
+
+        The update is done by running a Helm upgrade command.
         """
 
         target_release = kwargs.get('target_release')
         log.debug(f'Target release: {target_release}')
 
         if not self.nuvlabox_status:
-            result = "The nuvlabox status could not be retrieved. Cannot proceed."
-            log.info(result)
+            result = 'The nuvlabox status could not be retrieved. Cannot proceed.'
+            log.warning(result)
             return result, 99
 
-        deployed_ne_components = self.deployed_components()
-        log.debug\
-            (f"The components from nuvlabox_status:\n{deployed_ne_components}")
-        if not deployed_ne_components:
-            result = "The installed components cannot be found. Please try in a few minutes"
-            log.info(result)
-            return result, 98
+        log.debug(f'NuvlaEdge status: {self.nuvlabox_status}')
 
-        the_job_name = self.create_job_name("helm-ver-check")
-        helm_command = "'helm list -n default --no-headers'"
-        helm_version_result = self.run_helm_container(the_job_name, helm_command)
+        # Check said deployment is running.
+        log.debug(f'Check Helm works?: {self.nuvlabox_status}')
+        job_name = self.k8s.create_object_name('helm-ver-check')
+        helm_command = 'helm list -n default --no-headers -o json'
+        job_result = self.helm.run_command(helm_command, job_name)
+        if job_result.returncode != 0:
+            result = f"The helm list command gave error \n {job_result.stderr}"
+            return result, job_result.returncode
+        log.info('Helm list result stdout: %s', job_result.stdout)
 
-        if helm_version_result.returncode == 0 and not helm_version_result.stderr:
-            helm_log_result = self.read_a_log_file(the_job_name)
-            current_version = json.loads(self.job.get('payload', '{}'))['current-version']
-            project_name = json.loads(self.job.get('payload', '{}'))['project-name']
-            result = self.check_target_release\
-                (helm_log_result, target_release, current_version)
-            if not self.check_project_name(helm_log_result, project_name):
-                return \
-                    f"Project name {project_name} does not match \
-                    between helm on NulvaEdge and nuvla.io"\
-                    , 97
+        project_name = self._get_project_name()
+        helm_log_result = self.k8s.read_job_log(job_name)
+        if not self._check_project_name(helm_log_result, project_name):
+            return f'Project name {project_name} does not match \
+                between helm on NuvlaEdge and Nuvla', 97
 
-            self.helm_update_the_repo()
+        self.helm.update_repo()
 
-            helm_update_job_name = self.create_job_name("helm-update")
-            helm_update_cmd = self.helm_gen_update_cmd_repo(target_release)
-            helm_update_result = self.run_helm_container(helm_update_job_name, helm_update_cmd)
-            log.info(f"Helm update result:\n {helm_update_result}")
-            result = result + "\n" + helm_update_result.stdout
-        else:
-            result = f"The helm version command gave error \n {helm_version_result.stderr}"
+        helm_update_job_name = self.k8s.create_object_name('helm-update')
+        helm_update_cmd = self._helm_gen_update_cmd_repo(target_release)
+        helm_update_result = self.helm.run_command(helm_update_cmd,
+                                                   helm_update_job_name)
+        log.info(f'Helm update result: {helm_update_result}')
+        current_version = json.loads(
+            self.job.get('payload', '{}'))['current-version']
+        result = self._check_target_release(helm_log_result, target_release,
+                                            current_version)
+        result = result + "\n" + helm_update_result.stdout
 
         return result, helm_update_result.returncode
 
-    def helm_update_the_repo(self):
-
-        helm_repo_update_job_name = self.create_job_name("helm-repo-update")
-        helm_repo_update_cmd="'helm repo update'"
-        helm_repo_update_result = \
-            self.run_helm_container(helm_repo_update_job_name, helm_repo_update_cmd)
-        log.info(f"Helm update result:\n {helm_repo_update_result}")
-
-    def get_helm_name(self):
+    def get_helm_project_name(self) -> Union[str, None]:
         """
-        Get the helm name from the payload to make sure it exists
+        Get the helm project name from the payload to make sure it exists.
         """
-        install_params_from_payload = json.loads(self.job.get('payload', '{}'))
-        project_name = install_params_from_payload['project-name']
+        project_name = self._get_project_name()
 
         # check that helm knows about the project name
-        helm_job_name = self.create_job_name("helm-name-check")
-        helm_job_cmd = f"'helm list -n default --no-headers | grep {project_name}'"
-        helm_job_result = self.run_helm_container(helm_job_name, helm_job_cmd)
-        log.info(f"Helm name check result:\n {helm_job_result}")
+        job_name = self.k8s.create_object_name('helm-name-check')
+        job_cmd = f'helm list -n default --no-headers | grep {project_name}'
+        job_result = self.helm.run_command(job_cmd, job_name)
+        log.info(f'Helm name check result:\n {job_result}')
 
-        if helm_job_result.returncode == 0 and not helm_job_result.stderr:
-            helm_job_log_result = self.read_a_log_file(helm_job_name)
+        if job_result.returncode == 0 and not job_result.stderr:
+            helm_job_log_result = self.k8s.read_job_log(job_name)
             if project_name in helm_job_log_result.stdout:
-                log.info(f"Found helm name: {project_name}")
+                log.info(f'Found helm name: {project_name}')
                 return project_name
         return None
 
-
-    def helm_gen_update_cmd_repo(self, target_release):
+    def _helm_gen_update_cmd_repo(self, target_release):
         """
         Generate the helm command that will run the update
         target_release: the new chart version
@@ -873,51 +324,55 @@ class K8sEdgeMgmt(Kubernetes):
         This version generates the command based on the nuvlaedge/nuvlaedge repository
         """
 
+        helm_repository = 'nuvlaedge/nuvlaedge'
+
         install_params_from_payload = json.loads(self.job.get('payload', '{}'))
-        log.info(json.dumps(install_params_from_payload, indent=2))
+        log.debug('Installation params: %s', install_params_from_payload)
 
         modules = install_params_from_payload['config-files']
         for module in modules:
-            log.debug("Found module: %s",module)
+            log.debug('Found module: %s', module)
 
         project_name = install_params_from_payload['project-name']
-        if "nuvlaedge-" in project_name:
+        project_uuid = ''
+        if 'nuvlaedge-' in project_name:
             log.debug(f"project name index : {len('nuvlaedge-')}")
-            project_uuid = project_name[len("nuvlaedge-"):]
-            log.debug(f"Found UUID : {project_uuid}")
-        helm_repository = "nuvlaedge/nuvlaedge"
+            project_uuid = project_name[len('nuvlaedge-'):]
+            log.debug(f'Found UUID : {project_uuid}')
         peripherals = self.get_helm_peripherals(modules)
         env_vars = self.get_env_vars_string(install_params_from_payload)
         working_dir = self.get_working_dir(install_params_from_payload)
 
-        mandatory_args = f" --set HOME={working_dir} \
+        mandatory_args = f' --set HOME={working_dir} \
             --set NUVLAEDGE_UUID=nuvlabox/{project_uuid} \
-            --set kubernetesNode=$THE_HOST_NODE_NAME"
+            --set kubernetesNode=$HOST_NODE_NAME'
 
-        vpn_client_cmd = ""
-        if "vpn-client" in self.deployed_components:
-            vpn_client_cmd = " --set vpnClient=true"
+        vpn_client_cmd = ''
 
-        helm_namespace = " -n default"
+        if 'vpn-client' in self._deployed_components():
+            vpn_client_cmd = ' --set vpnClient=true'
 
-        helm_update_cmd = f"helm upgrade {project_name} \
+        helm_namespace = ' -n default'
+
+        helm_update_cmd = f'helm upgrade {project_name} \
             {helm_repository} \
             {helm_namespace} \
             --version {target_release} \
             {mandatory_args} \
             {vpn_client_cmd} \
             {peripherals} \
-            {env_vars}"
+            {env_vars}'
 
-        log.info(f"Helm upgrade command: \n {helm_update_cmd}")
+        log.info(f'NuvlaEdge Helm upgrade command: {helm_update_cmd}')
 
         return helm_update_cmd
 
-    def get_working_dir(self, install_params_from_payload):
+    @staticmethod
+    def get_working_dir(install_params_from_payload):
         """
         Parse the payload and return a formatted string of helm environment variables
         """
-        working_dir="/root"
+        working_dir = "/root"
 
         if install_params_from_payload['working-dir']:
             return install_params_from_payload['working-dir']
@@ -925,7 +380,8 @@ class K8sEdgeMgmt(Kubernetes):
 
         return working_dir
 
-    def get_env_vars_string(self, install_params_from_payload):
+    @staticmethod
+    def get_env_vars_string(install_params_from_payload: dict):
         """
         Parse the payload and return a formatted string of helm environment variables
         """
@@ -937,7 +393,7 @@ class K8sEdgeMgmt(Kubernetes):
         for env_pair in envs:
             log.debug(f"Environment pair: {env_pair}")
             env_pair_mod = "".join(env_pair.split())
-            re_result = re.match(env_pair_pattern,env_pair_mod)
+            re_result = re.match(env_pair_pattern, env_pair_mod)
             log.debug(f"Matching result: {re_result}")
             if re_result:
                 new_vars_string = new_vars_string + " --set " + env_pair_mod
@@ -947,20 +403,13 @@ class K8sEdgeMgmt(Kubernetes):
 
         return new_vars_string
 
-    def create_job_name(self, the_job_name, k=5):
-        """
-        Create the job name with random string attached
-        """
-        new_job_name = the_job_name + "-" + ''.join(random.choices(string.digits, k=k))
-
-        return new_job_name
-
-    def check_target_release(self, helm_log_result, target_release, current_version):
+    @staticmethod
+    def _check_target_release(helm_log_result, target_release, current_version):
         """
         Check the status of the target release
         """
 
-        message=f"chart version from {current_version} to {target_release}"
+        message = f"chart version from {current_version} to {target_release}"
         if target_release not in helm_log_result.stdout:
             result = "Updating " + message
             log.info(result)
@@ -969,373 +418,76 @@ class K8sEdgeMgmt(Kubernetes):
             log.info(result)
         return result
 
-    def check_project_name(self, helm_log_result, project_name):
+    @staticmethod
+    def _check_project_name(helm_log_result: dict, project_name: str):
         """
         Check the status of the project name (namespace)
         """
         if project_name not in helm_log_result.stdout:
             result = \
-            f"Project namespace does not match between helm and nuvla {project_name}"
+                f"Project namespace does not match between helm and nuvla {project_name}"
             log.info(result)
             return False
 
         return True
 
-    def get_helm_peripherals(self, modules: []):
+    @staticmethod
+    def get_helm_peripherals(modules: list):
         """
         Generate the correct helm-specific strings for the update command
         """
         peripherals = ""
 
-        possible_modules = ["USB", "Bluetooth", "GPU", "Modbus", "Network", "security"]
+        possible_modules = ["USB", "Bluetooth", "GPU", "Modbus", "Network",
+                            "security"]
         for module in modules:
             log.info(f"JSW: Current module -> {module}")
             for module_test in possible_modules:
                 if module_test.lower() in module.lower():
                     if "security" not in module_test.lower():
                         peripherals = peripherals + " --set peripheralManager" \
-                        + module_test + "=true "
+                                      + module_test + "=true "
                     else:
                         peripherals = peripherals + " --set " + module_test.lower() + "=true "
 
-        log.info("Found peripherals list: %s",peripherals)
+        log.info("Found peripherals list: %s", peripherals)
         return peripherals
 
-    @should_connect
-    def read_a_log_file(self, the_job_name):
-        """
-        Read the log of a kubernetes batch job
+    def get_project_name(self) -> str:
+        ne_statuses = \
+            self.api.search(NE_STATUS_COLLECTION,
+                            filter=f'parent="{self.nuvlabox_id}"',
+                            select='installation-parameters').resources
+        for ne_status in ne_statuses:
+            nb_status_data = self.api.get(ne_status.id).data
+            return nb_status_data['installation-parameters']['project-name']
 
-        vars:
-        the_job_name: self explanatory... the name of the job
-        """
 
-        read_log_cmd = self.build_cmd_line(['logs', self.KUB_JOB + the_job_name])
-        log_result = execute_cmd(read_log_cmd)
-        log.debug('The log result is:\n%s',log_result.stdout)
-
-        return log_result
-
-    @should_connect
-    def run_helm_container(self, the_job_name, the_helm_command):
-        """
-        Generic to run a container with a helm command
-        """
-
-        helm_manifest="""
-        apiVersion: batch/v1
-        kind: Job
-        metadata:
-          name: {job_name}
-        spec:
-          ttlSecondsAfterFinished: {ttl_sec}
-          backoffLimit: {backoff_limit}
-          template:
-            spec:
-              containers:
-              - name: {job_name}
-                image: {helm_image}
-                ports:
-                env:
-                - name: THE_HOST_NODE_NAME
-                  valueFrom:
-                    fieldRef:
-                      fieldPath: spec.nodeName
-                - name: KUBECONFIG
-                  value: {kube_config}
-                command: {helm_command}
-                volumeMounts:
-                - name: kube-config
-                  mountPath: /root/.kube
-                - name: helm-config
-                  mountPath: /root/.config/helm
-                - name: helm-cache
-                  mountPath: /root/.cache/helm
-                - name: deployment-path
-                  mountPath: /root/deployment
-              volumes:
-              - name: kube-config
-                hostPath:
-                  path: {host_kube_config}
-              - name: helm-config
-                hostPath:
-                  path: {host_helm_config}
-              - name: helm-cache
-                hostPath:
-                  path: {host_helm_cache}
-              - name: deployment-path
-                hostPath:
-                  path: {host_deployment_path}
-              restartPolicy: Never
-        """
-
-        log.debug(f"The helm image is set to: {self.base_image}")
-        the_helm_image = self.base_image
-        the_kube_config = "/root/.kube/config"
-        the_host_kube_config = "/root/.kube"
-        the_host_helm_config = "/root/.config/helm"
-        the_host_helm_cache = "/root/.cache/helm"
-        time_to_live = "60" # for production, once thoroughly tested this should be set to 1 or so
-        the_backoff_limit = "2" # this should be thought about a bit more
-        the_host_deployment_path = "/root/deployment"
-
-        base_command = "['sh', '-c',"
-        cmd = the_helm_command
-        end_command = "]" 
-
-        built_command = base_command + cmd + end_command
-
-        formatted_helm_yaml_manifest = \
-            helm_manifest.format(\
-            job_name = the_job_name, \
-            helm_image = the_helm_image, \
-            kube_config = the_kube_config, \
-            host_kube_config = the_host_kube_config, \
-            host_helm_config = the_host_helm_config, \
-            host_helm_cache = the_host_helm_cache, \
-            ttl_sec = time_to_live, \
-            backoff_limit = the_backoff_limit, \
-            helm_command = built_command, \
-            host_deployment_path = the_host_deployment_path, \
-            )
-
-        logging.debug("The re-formatted YAML is %s ", formatted_helm_yaml_manifest)
-
-        helm_result = self.apply_a_manifest(formatted_helm_yaml_manifest)
-
-        self.check_job_success(the_job_name)
-
-        return helm_result
-
-    def apply_a_manifest(self, formatted_helm_yaml_manifest):
-        """
-        Run a manifest in a temporary directory
-        """
-        the_manifest = "the_manifest"
-
-        with TemporaryDirectory() as tmp_dir_name:
-            manifest_path = tmp_dir_name + '/' + the_manifest
-            with open(manifest_path, 'w',encoding="utf-8") \
-                as helm_manifest_file:
-                helm_manifest_file.write(formatted_helm_yaml_manifest)
-            helm_cmd = \
-                self.build_cmd_line(['apply', '-f', manifest_path])
-            helm_result = execute_cmd(helm_cmd)
-            log.debug('The result of the helm container : %s',helm_result)
-
-        return helm_result
-
-    def check_job_success_old(self, the_job_name, success = "1/1"):
-        """
-        Check that a job has completed
-        Runs until the success criteria is met
-
-        job_name: the name of the Job in kubernetes
-        success: the string that is present when a Job has completed
-
-        """
-        while True:
-            check_cmd = \
-                self.build_cmd_line(['get', self.KUB_JOB + the_job_name])
-            check_result = execute_cmd(check_cmd)
-            log.debug("The check result is:\n%s",check_result.stdout)
-
-            if success in check_result.stdout:
-                return
- 
-    def check_job_success(self, the_job_name, success = "1/1"):
-        """
-        Check that a job has completed
-        Runs until the success criteria is met
-
-        job_name: the name of the Job in kubernetes
-        success: the string that is present when a Job has completed
-
-        """
-
-        timeout = 5 # give ourselves 5 minutes for job to complete?
-
-        t_end = time.time() + 60 * timeout
-
-        while time.time() < t_end:
-            check_cmd = \
-                self.build_cmd_line(['get', self.KUB_JOB + the_job_name])
-            check_result = execute_cmd(check_cmd)
-            log.debug("The check result is:\n%s",check_result.stdout)
-
-            if success in check_result.stdout:
-                return
-
-class K8sSSHKey(Kubernetes):
+class K8sSSHKey:
     """
     Class to handle SSH keys. Adding and revoking
     """
-    def __init__(self, **kwargs):
 
-        self.job = kwargs.get("job")
-        if not self.job.is_in_pull_mode:
+    def __init__(self, job: Job, **kwargs):
+        if not job.is_in_pull_mode:
             raise ValueError('This action is only supported by pull mode')
 
-        self.api = kwargs.get("api")
+        self.job = job
+        self.api = job.api
 
         self.nuvlabox_resource = self.api.get(kwargs.get("nuvlabox_id"))
 
-        path = NUVLAEDGE_SHARED_PATH # FIXME: needs to be parameterised.
-        super().__init__(**super_args(path))
+        self.k8s = Kubernetes.from_path_to_k8s_creds(NUVLAEDGE_SHARED_PATH)
 
-        self.ne_image_registry = os.getenv('NE_IMAGE_REGISTRY', '')
-        self.ne_image_org = os.getenv('NE_IMAGE_ORGANIZATION', 'sixsq')
-        self.ne_image_repo = os.getenv('NE_IMAGE_REPOSITORY', 'nuvlaedge')
-        self.ne_image_tag = os.getenv('NE_IMAGE_TAG', 'latest')
-        self.ne_image_name = os.getenv('NE_IMAGE_NAME', f'{self.ne_image_org}/{self.ne_image_repo}')
-        self.base_image = f'{self.ne_image_registry}{self.ne_image_name}:{self.ne_image_tag}'
+    def connect(self):
+        self.k8s.connect()
 
-    @should_connect
-    def k8s_ssh_key(self, action, pubkey, user_home):
-        """
-        A function to invoke the pod
-        to add/revoke a SSH key
-        """
-
-        log.debug('CA file %s ', self.ca)
-        log.debug('User certificate file %s ', self.cert)
-        log.debug('User key file %s ', self.key)
-        log.debug('Endpoint %s ', self.endpoint)
-        log.debug('User home directory %s ', user_home)
-
-        reboot_yaml_manifest = """
-        apiVersion: batch/v1
-        kind: Job
-        metadata:
-          name: {job_name}
-        spec:
-          ttlSecondsAfterFinished: 5
-          template:
-            spec:
-              containers:
-              - name: {job_name}
-                image: {image_name}
-                command: {command}
-                env:
-                - name: SSH_PUB
-                  value: {pubkey_string}
-                volumeMounts:
-                - name: ssh-key-vol
-                  mountPath: {mount_path}
-              volumes:
-              - name: ssh-key-vol   
-                hostPath:
-                  path: {host_path_ssh}
-              restartPolicy: Never
-
-        """
-
-        image_name = self.base_image
-        mount_path = tempfile.gettempdir()
-        sleep_value = 2
-        base_command = "['sh', '-c',"
-        if action.startswith('revoke'):
-            cmd = "'grep -v \"${SSH_PUB}\" %s > \
-                    /tmp/temp && mv /tmp/temp %s && echo Success deleting public key'" \
-                      % (f'{mount_path}/.ssh/authorized_keys',
-                         f'{mount_path}/.ssh/authorized_keys')
-            the_job_name="revoke-ssh-key"
-        else:
-            cmd = "'sleep %s && echo -e \"${SSH_PUB}\" >> %s && echo Success adding public key'" \
-                % (f'{sleep_value}', f'{mount_path}/.ssh/authorized_keys')
-            the_job_name="add-ssh-key"
-        end_command = "]"
-
-        built_command = base_command + cmd + end_command
-        log.debug("The generated command is : %s",built_command)
-
-        formatted_reboot_yaml_manifest = \
-            reboot_yaml_manifest.format(job_name = the_job_name, \
-            host_path_ssh = user_home, \
-            command = built_command, pubkey_string = pubkey, \
-            mount_path = mount_path, image_name = image_name)
-
-        logging.debug("The re-formatted YAML is %s ", formatted_reboot_yaml_manifest)
-
-        with TemporaryDirectory() as tmp_dir_name:
-            with open(tmp_dir_name + '/reboot_job_manifest.yaml', 'w',encoding="utf-8") \
-                as reboot_manifest_file:
-                reboot_manifest_file.write(formatted_reboot_yaml_manifest)
-            cmd_ssh_key = \
-                self.build_cmd_line(['apply', '-f', tmp_dir_name + '/reboot_job_manifest.yaml'])
-            ssh_key_result = execute_cmd(cmd_ssh_key)
-            log.debug('The result of the ssh key addition : %s',ssh_key_result)
-
-        return ssh_key_result
-
-    def handle_ssh_key(self, action, pubkey, credential_id, nuvlabox_id):
-        """
-        General function to either add or revoke an SSH key from a nuvlabox 
-
-        Arguments:
-        action: value can be add or revoke
-        pubkey: the public key string to be added or revoked
-        credential_id: the nuvla ID of the credential
-        nuvlabox_id: the id UID of the nuvlabox
-        """
-        nuvlabox_status = self.api.get("nuvlabox-status").data
-        nuvlabox_resource = self.api.get(nuvlabox_id)
-        nuvlabox = nuvlabox_resource.data
-        logging.debug('nuvlabox: %s',nuvlabox)
-        user_home = self._get_user_home(nuvlabox_status)
-        ssh_keys = nuvlabox.get('ssh-keys', [])
-        logging.debug("Current ssh keys:\n%s\n", ssh_keys)
-        logging.info("The credential being added/revoked is: %s",credential_id)
-        if action.startswith('add'):
-            if credential_id in ssh_keys:
-                logging.debug('The credential ID to be added is already present: %s',credential_id)
-                self.job.update_job(status_message=json.dumps("SSH public key already present"))
-                return 1
-        else:
-            if credential_id not in ssh_keys:
-                logging.debug('The credential ID to be revoked is not in the list: %s',\
-                    credential_id)
-                self.job.update_job(status_message=json.dumps\
-                    ("The credential ID to be revoked is not in the list"))
-                return 1
-        result = self.k8s_ssh_key(action, pubkey, user_home)
-        if result.returncode == 0 and not result.stderr:
-            self.update_results(credential_id, ssh_keys, action, nuvlabox_resource)
-            return 0
-        self.job.update_job(status_message=json.dumps("The SSH public key add/revoke has failed."))
-        return 2
-
-    def update_results(self, credential_id, ssh_keys, action, nuvlabox_resource):
-        """Update the server side nuvla.io list of credentials
-
-        Arguments:
-        credential_id: the nuvla ID of the credential
-        ssh_keys: the list of ssh keys for the nuvlabox
-        action: either add or revoke the ssh key
-        nuvlabox_resource: the nuvlabox resource ID
-        """
-        logging.debug('Adding or deleting credential ID: %s',credential_id)
-        if action.startswith('add'):
-            update_payload = ssh_keys + [credential_id]
-            message_out="SSH public key added successfully"
-        else:
-            try:
-                ssh_keys.remove(credential_id)
-                logging.debug('The SSH keys (update_payload) after removal :\n%s\n',ssh_keys)
-                update_payload = ssh_keys
-            except ValueError:
-                update_payload = None
-            message_out="SSH public key deleted successfully"
-
-        if update_payload is not None:
-            logging.debug('The update payload is:\n%s\n',update_payload)
-            self.api.operation(nuvlabox_resource, "commission", {"ssh-keys": update_payload})
-            self.job.update_job(status_message=json.dumps(message_out))
-            return 0
-        return 1
+    def clear_connection(self, _):
+        self.k8s.clear_connection(None)
 
     # FIXME: this needs to be extracted and used for both K8s and Docker.
-    def _get_user_home(self, nuvlabox_status):
+    @staticmethod
+    def _get_user_home(nuvlabox_status):
         """
         Get the user home directory
 
@@ -1348,5 +500,185 @@ class K8sSSHKey(Kubernetes):
             if not user_home:
                 user_home = "/root"
                 # this could be interesting point to e.g. create a generic user edge_login and add ssh key?
-                logging.info('Attention: The user home has been set to: %s ',user_home)
+                logging.info('Attention: The user home has been set to: %s ',
+                             user_home)
         return user_home
+
+    # FIXME: pull this up into future parent class.
+    @should_connect
+    def commission(self, payload):
+        """ Updates the NuvlaEdge resource with the provided payload
+        :param payload: content to be updated in the NuvlaEdge resource
+        """
+        if payload:
+            self.api.operation(self.nuvlabox_resource, 'commission',
+                               data=payload)
+
+    @should_connect
+    def _ssh_key_add_revoke(self, action: str, pubkey: str, user_home: str):
+        """
+        Adds or revokes an SSH key.
+        """
+
+        self.k8s.state_debug()
+        log.debug('User home directory %s ', user_home)
+
+        sleep_sec = 2
+        mount_path = tempfile.gettempdir() + '/host-fs'
+        ssh_dir_path = f'{mount_path}/.ssh'
+        log.info('The SSH directory path is: %s', ssh_dir_path)
+        os.makedirs(ssh_dir_path, exist_ok=True)
+        authorized_keys_path = f'{ssh_dir_path}/authorized_keys'
+
+        if action == self.ACTION_REVOKE:
+            job_name = self.ACTION_REVOKE
+            cmds = [f'grep -v "${{SSH_PUB}}" {authorized_keys_path} > /tmp/temp',
+                    f'mv /tmp/temp {authorized_keys_path}',
+                    'echo Success deleting public key']
+        elif action == self.ACTION_ADD:
+            job_name = self.ACTION_ADD
+            cmds = [f'sleep {sleep_sec}',
+                    f'echo -e "${{SSH_PUB}}" >> {authorized_keys_path}',
+                    'echo Success adding public key']
+        else:
+            log.error('Action %s is not supported', action)
+            return 1
+
+        cmd = ' && '.join(cmds)
+        command = f"['sh', '-c', '{cmd}']"
+        log.debug('SSH keys update command: %s', command)
+
+        image_name = self.k8s.base_image
+        manifest = f"""apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {job_name}
+spec:
+  ttlSecondsAfterFinished: 5
+  template:
+    spec:
+      containers:
+      - name: {job_name}
+        image: {image_name}
+        command: {command}
+        env:
+        - name: SSH_PUB
+          value: {pubkey}
+        volumeMounts:
+        - name: ssh-key-vol
+          mountPath: {mount_path}
+      volumes:
+      - name: ssh-key-vol   
+        hostPath:
+          path: {user_home}
+      restartPolicy: Never
+"""
+        log.debug('SSH keys update Job: %s ', manifest)
+
+        result = self.k8s.apply_manifest(manifest, self.k8s.namespace)
+        log.debug('SSH key Job launch result: %s', result)
+
+        self.k8s.wait_job_succeeded(job_name, namespace=self.k8s.namespace)
+
+        return result
+
+    ACTION_ADD = 'add-ssh-key'
+    ACTION_REVOKE = 'revoke-ssh-key'
+
+    def _update_results(self, credential_id: str, ssh_keys: list, action: str):
+        """Update the list of credentials server side.
+
+        Arguments:
+            credential_id: the Nuvla ID of the credential
+            ssh_keys: the list of ssh keys for the NuvlaEdge
+            action: either add or revoke the ssh key
+        """
+        if action == self.ACTION_ADD:
+            logging.debug('Adding credential ID: %s', credential_id)
+            ssh_keys += [credential_id]
+            job_message = 'SSH public key added successfully'
+        elif action == self.ACTION_REVOKE:
+            logging.debug('Deleting credential ID: %s', credential_id)
+            try:
+                ssh_keys.remove(credential_id)
+                logging.debug('The SSH keys after removal : %s', ssh_keys)
+            except ValueError:
+                pass
+            job_message = 'SSH public key revoked successfully'
+        else:
+            job_message = f'Action {action} is not supported'
+            log.error(job_message)
+
+        self.commission({'ssh-keys': ssh_keys})
+
+        logging.debug('The ssh-keys update payload: %s', ssh_keys)
+        self.job.update_job(status_message=json.dumps(job_message))
+
+    def manage_ssh_key(self, action: str, pubkey: str, credential_id: str,
+                       nuvlabox_id: str) -> int:
+        """
+        Adds or revokes an SSH key from a NuvlaEdge.
+
+        Arguments:
+            action: value can be: add or revoke
+            pubkey: the ssh public key to be added or revoked
+            credential_id: credential ID
+            nuvlabox_id: NuvlaEdge ID
+        """
+        nuvlaedge = self.api.get(nuvlabox_id).data
+        logging.debug('NuvlaEdge resource: %s', nuvlaedge)
+        ssh_keys = nuvlaedge.get('ssh-keys', [])
+        logging.debug('Current SSH keys credential IDs: %s', ssh_keys)
+        logging.info('The credential being added/revoked: %s', credential_id)
+
+        if action == self.ACTION_ADD:
+            if credential_id in ssh_keys:
+                log.debug(
+                    'The credential ID to be added is already present: %s',
+                    credential_id)
+                self.job.update_job(
+                    status_message=json.dumps('SSH public key already present'))
+                return 1
+        elif action == self.ACTION_REVOKE:
+            if credential_id not in ssh_keys:
+                msg = 'The credential ID to be revoked is not in the list'
+                log.debug(
+                    '%s: %s', msg, credential_id)
+                self.job.update_job(status_message=msg)
+                return 1
+        else:
+            msg = f'SSH keys management action {action} is not supported'
+            log.error(msg)
+            self.job.update_job(status_message=msg)
+            return 1
+
+        nuvlaedge_status = self.api.get(NE_STATUS_COLLECTION).data
+        log.debug('NuvlaEdge status: %s', nuvlaedge_status)
+        user_home = self._get_user_home(nuvlaedge_status)
+        result = self._ssh_key_add_revoke(action, pubkey, user_home)
+
+        if result.returncode == 0 and not result.stderr:
+            self._update_results(credential_id, ssh_keys, action)
+            return 0
+
+        self.job.update_job(
+            status_message='The SSH public key add/revoke has failed.')
+        return 2
+
+
+class K8sLogging:
+
+    def __init__(self, job: Job, **kwargs):
+        self.k8s = Kubernetes.from_path_to_k8s_creds(NUVLAEDGE_SHARED_PATH)
+
+    def log(self, component: str, since: str, lines: int, namespace='') -> str:
+        """
+        Get the logs for a specific component.
+
+        :param component: the component for which to get the logs
+        :param since: the timestamp from which to get the logs
+        :param lines: the number of lines to return
+        :param namespace:
+        :return: the logs
+        """
+        return self.k8s.log(component, since, lines, namespace)
