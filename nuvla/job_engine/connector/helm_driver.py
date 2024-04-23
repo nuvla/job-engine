@@ -90,7 +90,7 @@ spec:
 
         result = self.k8s.apply_manifest(helm_manifest)
 
-        self.k8s.wait_job_succeeded(job_name)
+        self.k8s.wait_job_succeeded(job_name, self.k8s.namespace)
 
         return result
 
