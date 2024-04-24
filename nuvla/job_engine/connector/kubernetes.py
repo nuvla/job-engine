@@ -3,6 +3,7 @@ import json
 import logging
 import os
 import tempfile
+from datetime import datetime
 from typing import List, Union
 from abc import ABC
 
@@ -91,6 +92,10 @@ class K8sAppMgmt(Connector, ABC):
         deployments = self.k8s.get_deployments(namespace)
         return [self.k8s.extract_service_info(resource)
                 for resource in services + deployments]
+
+    def log(self, component: str, since: datetime, lines: int,
+            namespace='') -> str:
+        return self.k8s.log(component, since, lines, namespace)
 
 
 class K8sEdgeMgmt:
@@ -668,7 +673,7 @@ spec:
 
 class K8sLogging:
 
-    def __init__(self, job: Job, **kwargs):
+    def __init__(self):
         self.k8s = Kubernetes.from_path_to_k8s_creds(NUVLAEDGE_SHARED_PATH)
 
     def log(self, component: str, since: str, lines: int, namespace='') -> str:

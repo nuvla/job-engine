@@ -4,7 +4,7 @@ import os
 import logging
 
 from ...connector import nuvlabox as nb
-from ...connector import kubernetes as k8
+from ...connector import kubernetes as k8s
 from ..actions import action
 from .utils.resource_log_fetch import ResourceLogFetchJob
 
@@ -26,9 +26,7 @@ class NuvlaBoxLogFetchJob(ResourceLogFetchJob):
             if os.getenv('KUBERNETES_SERVICE_HOST'):
                 logging.debug("Kubernetes connector used.")
                 try:
-                    self._connector = \
-                        k8.K8sLogging(job=self.job,
-                                      nuvlabox_id=self.resource_log_parent)
+                    self._connector = k8s.K8sLogging()
                 except Exception as e:
                     logging.error(f'Kubernetes error:\n{str(e)}')
             else:
