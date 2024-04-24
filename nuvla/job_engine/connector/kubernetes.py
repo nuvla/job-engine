@@ -120,6 +120,12 @@ class K8sEdgeMgmt:
 
         self.helm = Helm(NUVLAEDGE_SHARED_PATH)
 
+    def connect(self):
+        self.k8s.connect()
+
+    def clear_connection(self, connect_result):
+        self.k8s.clear_connection(connect_result)
+
     @property
     def nuvlabox(self):
         if not self._nuvlabox:
