@@ -287,7 +287,7 @@ spec:
             return f'Project name {project_name} does not match \
                 between helm on NuvlaEdge and Nuvla', 97
 
-        self.helm.update_repo()
+        self.helm.repo_update()
 
         helm_update_job_name = self.k8s.create_object_name('helm-update')
         helm_update_cmd = self._helm_gen_update_cmd_repo(target_release)

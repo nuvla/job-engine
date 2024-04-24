@@ -94,8 +94,7 @@ spec:
 
         return result
 
-    def update_repo(self):
-
+    def repo_update(self):
         job_name = self.k8s.create_object_name('helm-repo-update')
         cmd = 'helm repo update'
         result = self.run_command(cmd, job_name)
