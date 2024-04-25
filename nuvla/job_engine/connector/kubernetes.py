@@ -4,6 +4,7 @@ import logging
 import os
 import tempfile
 from datetime import datetime
+from subprocess import CompletedProcess
 from typing import List, Union
 from abc import ABC
 
@@ -119,6 +120,7 @@ class K8sEdgeMgmt:
         self._nuvlabox_status = None
 
         self.k8s = Kubernetes.from_path_to_k8s_creds(NUVLAEDGE_SHARED_PATH)
+        self.k8s.state_debug()
 
         self.helm = Helm(NUVLAEDGE_SHARED_PATH)
 
@@ -143,7 +145,7 @@ class K8sEdgeMgmt:
 
     def _build_reboot_job(self) -> str:
         image_name = self.k8s.base_image
-        log.debug(f'Using image for reboot Job: {image_name}')
+        log.debug('Using image for reboot Job: %s', image_name)
 
         sleep_value = 10
         job_name = "reboot-nuvlaedge"
@@ -191,6 +193,7 @@ spec:
 
         return 'Reboot ongoing'
 
+    # FIXME: this can be extracted and used for both K8s and Docker.
     def _deployed_components(self) -> list:
         """Get the list of deployed components from the NuvlaEdge status.
         """
@@ -245,22 +248,21 @@ spec:
         """
 
         target_release = kwargs.get('target_release')
-        log.debug(f'Target release: {target_release}')
+        log.debug('Target release: %s', target_release)
 
         if not self.nuvlabox_status:
             result = 'The nuvlabox status could not be retrieved. Cannot proceed.'
             log.warning(result)
             return result, 99
 
-        log.debug(f'NuvlaEdge status: {self.nuvlabox_status}')
+        log.debug('NuvlaEdge status: %s', self.nuvlabox_status)
 
         # Check said deployment is running.
-        log.debug(f'Check Helm works?: {self.nuvlabox_status}')
         job_name = self.k8s.create_object_name('helm-ver-check')
         helm_command = 'helm list -n default --no-headers -o json'
         job_result = self.helm.run_command(helm_command, job_name)
         if job_result.returncode != 0:
-            result = f"The helm list command gave error \n {job_result.stderr}"
+            result = f'The helm list command gave error: {job_result.stderr}'
             return result, job_result.returncode
         log.info('Helm list result stdout: %s', job_result.stdout)
 
@@ -387,7 +389,7 @@ spec:
                 new_vars_string = new_vars_string + " --set " + env_pair_mod
                 log.debug(f"Current env var string: \n{new_vars_string}")
 
-        log.info(f"Environment list arguments: \n {new_vars_string}")
+        log.info('Environment list arguments: %s', new_vars_string)
 
         return new_vars_string
 
@@ -407,14 +409,13 @@ spec:
         return result
 
     @staticmethod
-    def _check_project_name(helm_log_result: dict, project_name: str):
+    def _check_project_name(helm_log_result: CompletedProcess, project_name: str):
         """
         Check the status of the project name (namespace)
         """
         if project_name not in helm_log_result.stdout:
-            result = \
-                f"Project namespace does not match between helm and nuvla {project_name}"
-            log.info(result)
+            log.info(
+                f'Project namespace does not match between helm and nuvla {project_name}')
             return False
 
         return True
@@ -466,6 +467,7 @@ class K8sSSHKey:
         self.nuvlabox_resource = self.api.get(kwargs.get("nuvlabox_id"))
 
         self.k8s = Kubernetes.from_path_to_k8s_creds(NUVLAEDGE_SHARED_PATH)
+        self.k8s.state_debug()
 
     def connect(self):
         self.k8s.connect()
@@ -508,7 +510,6 @@ class K8sSSHKey:
         Adds or revokes an SSH key.
         """
 
-        self.k8s.state_debug()
         log.debug('User home directory %s ', user_home)
 
         sleep_sec = 2
@@ -658,6 +659,7 @@ class K8sLogging:
 
     def __init__(self):
         self.k8s = Kubernetes.from_path_to_k8s_creds(NUVLAEDGE_SHARED_PATH)
+        self.k8s.state_debug()
 
     def log(self, component: str, since: str, lines: int, namespace='') -> str:
         """

@@ -73,8 +73,7 @@ class Kubernetes:
                 'cert': get_pem_content(path_to_k8s_creds, 'cert'),
                 'key': get_pem_content(path_to_k8s_creds, 'key'),
                 'ca': get_pem_content(path_to_k8s_creds, 'ca'),
-                'endpoint': get_kubernetes_local_endpoint(),
-            })
+                'endpoint': get_kubernetes_local_endpoint()})
 
     def state_debug(self):
         log.debug('Kubernetes object state:')
@@ -175,7 +174,7 @@ class Kubernetes:
     def _get_workload_log(self, workload_name: str) -> CompletedProcess:
         read_log_cmd = self.build_cmd_line(['logs', workload_name])
         log_result = execute_cmd(read_log_cmd)
-        log.debug('The logs of %s:\n%s', workload_name,
+        log.debug('The logs of %s: %s', workload_name,
                   log_result.stdout)
         return log_result
 
@@ -371,11 +370,12 @@ class Kubernetes:
         :param owner_name: str
         :return: list
         """
-        log.debug(f"Filtering for Kind: {kind} owner_kind: \
-                  {owner_kind} owner_name: {owner_name}")
+        lpog.debug('Filtering for Kind: %s owner_kind: %s owner_name: %s',
+                  kind, owner_kind, owner_name)
         component_pods = []
         for obj in objects:
-            log.debug(f"Current object: {obj} and obj kind: {obj['kind']}")
+            log.debug('Current object: %s and obj kind: %s', obj,
+                      obj['kind'])
             if obj['kind'] == kind and 'ownerReferences' in obj['metadata']:
                 owner = obj['metadata']['ownerReferences'][0]
                 if owner_kind == owner['kind'] and owner_name == owner['name']:
@@ -384,10 +384,10 @@ class Kubernetes:
 
     def _exec_stdout_json(self, cmd_params) -> {}:
         cmd = self.build_cmd_line(cmd_params)
-        log.debug(f"created JSON command:\n{cmd}")
+        log.debug('created JSON command: %s', cmd)
         cmd_out = execute_cmd(cmd)
         if cmd_out.stderr:
-            log.warning(f"JSON command stderr gives:\n{cmd_out.stderr}")
+            log.warning('JSON command stderr gives: %s', cmd_out.stderr)
 
         return json.loads(cmd_out.stdout)
 
@@ -647,10 +647,7 @@ class Kubernetes:
         workload_name: the name of the workload object kind in Kubernetes.
         """
 
-        # FIXME: remove
-        self.state_debug()
-
-        # TODO: If workload didn't succed, we should raise an exception and
+        # FIXME: If workload didn't succed, we should raise an exception and
         #  provide the logs of the application.
 
         t_end = time.time() + 60 * timeout_min
