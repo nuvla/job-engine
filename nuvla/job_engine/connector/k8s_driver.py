@@ -620,7 +620,7 @@ class Kubernetes:
         return json.loads(execute_cmd(cmd).stdout).get('items', [])
 
     @should_connect
-    def version(self):
+    def version(self) -> dict:
         cmd = self.build_cmd_line(['version', '-o', 'json'])
         version = execute_cmd(cmd, timeout=5).stdout
         return json.loads(version)

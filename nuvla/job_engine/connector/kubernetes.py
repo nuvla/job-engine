@@ -76,8 +76,10 @@ class K8sAppMgmt(Connector, ABC):
     def list(self, filters=None, namespace=None):
         return self.k8s.get_namespace_objects(namespace, filters)
 
-    def version(self):
-        pass
+    def version(self) -> dict:
+        """Returns the Kubernetes server and client versions.
+        """
+        return self.k8s.version()
 
     def get_services(self, namespace: str, _env, **kwargs) -> list:
         """
