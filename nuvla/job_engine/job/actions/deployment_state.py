@@ -132,16 +132,16 @@ class DeploymentStateJob(DeploymentBase):
 
     def get_application_state(self):
         kwargs = {}
-        env  = get_env(self.deployment.data)
-        name = Deployment.uuid(self.deployment)
-        connector_name  = get_connector_name(self.deployment)
+        env = get_env(self.deployment.data)
+        connector_name = get_connector_name(self.deployment)
         connector_class = get_connector_class(connector_name)
         connector = initialize_connector(connector_class, self.job, self.deployment)
 
         if Deployment.is_compatibility_docker_compose(self.deployment):
             kwargs['compose_file'] = Deployment.module_content(self.deployment)['docker-compose']
 
-        services = connector.get_services(name, env, **kwargs)
+        services = connector.get_services(Deployment.uuid(self.deployment),
+                                          env, **kwargs)
 
         self.create_update_hostname_output_parameter()
         self.create_update_ips_output_parameters()
