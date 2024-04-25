@@ -191,25 +191,10 @@ spec:
 
         return 'Reboot ongoing'
 
-    @staticmethod
-    def _get_ne_components_local(fn=NUVLAEDGE_STATUS_FILE) -> list:
-        log.info('Getting NuvlaEdge components from local file.')
+    def _deployed_components(self) -> list:
+        """Get the list of deployed components from the NuvlaEdge status.
+        """
 
-        try:
-            if os.path.exists(fn):
-                with open(fn, encoding='utf-8') as fp:
-                    nb_status = json.load(fp)
-                    if log.level == logging.DEBUG:
-                        log.debug('Content of %s: %s', fn,
-                                  json.dumps(nb_status, indent=2))
-                    return nb_status.get('components', [])
-        except IOError as ex:
-            log.error(f'Unable to read file {fn}: {ex}')
-        except json.JSONDecodeError as ex:
-            log.error(f'Error decoding JSON from file {fn}: {ex}')
-        return []
-
-    def _get_ne_components_remote(self) -> list:
         log.info('Getting NuvlaEdge components from Nuvla API.')
 
         resources = \
@@ -224,16 +209,6 @@ spec:
                           json.dumps(nb_status_data, indent=2))
             return nb_status_data.get('components', [])
         return []
-
-    def _deployed_components(self) -> list:
-        """
-        Returns the installed components of a NuvlaEdge.
-        """
-
-        log.info('Getting deployed NuvlaEdge components...')
-
-        # FIXME: Persist the components locally on a field.
-        return self._get_ne_components_remote()
 
     def check_multiple_nuvlaedges(self, helm_name):
         """
