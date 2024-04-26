@@ -59,7 +59,7 @@ class ResourceLogFetchJob(ABC):
         self.log.debug(f"Calling get_component_logs...\n\
             Connector is set to: {self.connector.__class__.__name__}")
 
-        return self.connector.log(component, since, lines,)
+        return self.connector.log(component, since, lines)
 
     def get_resource_log(self, log_id: str) -> dict:
         return self.api.get(log_id).data
