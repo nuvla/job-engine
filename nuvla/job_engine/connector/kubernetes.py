@@ -14,6 +14,7 @@ from .helm_driver import Helm
 from .k8s_driver import Kubernetes
 from ..job.job import Job
 from .connector import Connector, should_connect
+from .utils import join_stderr_stdout
 
 log = logging.getLogger('k8s_connector')
 log.setLevel(logging.DEBUG)
@@ -58,21 +59,50 @@ class K8sAppMgmt(Connector, ABC):
         env = kwargs['env']
         files = kwargs['files']
         manifest = kwargs['docker_compose']
-        namespace = kwargs['name']
+        # This is the deployment ID.
+        deployment_uuid = kwargs['name']
         registries_auth = kwargs['registries_auth']
 
-        result = self.k8s.apply_manifest_with_context(manifest, namespace, env,
-                                                      files, registries_auth)
+        custom_namespaces = Kubernetes.get_all_namespaces_from_manifest(manifest)
+        log.debug('Namespaces from manifest: %s', custom_namespaces)
+        if len(custom_namespaces) > 1:
+            msg = (f'Only single namespace allowed in manifest. Found:'
+                   f' {custom_namespaces}')
+            log.error(msg)
+            raise ValueError(msg)
+        if custom_namespaces:
+            namespace = list(custom_namespaces)[0]
+        else:
+            namespace = deployment_uuid
 
-        services = self.get_services(namespace, None)
+        result = join_stderr_stdout(
+            self.k8s.apply_manifest_with_context(manifest, namespace, env,
+                                                 files, registries_auth))
 
-        return result, services
+        objects = self._get_k8s_objects(deployment_uuid)
+
+        return result, objects
 
     update = start
 
-    def stop(self, **kwargs):
-        namespace = kwargs['name']
-        self.k8s.delete_namespace(namespace)
+    def stop(self, **kwargs) -> str:
+        deployment_uuid = kwargs['name']
+
+        # Delete the deployment UUID-based namespace and all resources in it.
+        try:
+            return join_stderr_stdout(self.k8s.delete_namespace(deployment_uuid))
+        except Exception as ex:
+            if 'NotFound' in ex.args[0] if len(ex.args) > 0 else '':
+                log.warning(f'Namespace "{deployment_uuid}" not found.')
+            else:
+                raise ex
+
+        # When the deployment UUID-based namespace wasn't found, we will
+        # delete all the resources by deployment UUID label. We will not be
+        # deleting the namespaces, but only the resources in them. This is
+        # because the namespaces might have not been created by Nuvla.
+        label = f'nuvla.deployment.uuid={deployment_uuid}'
+        return join_stderr_stdout(self.k8s.delete_all_resources_by_label(label))
 
     def list(self, filters=None, namespace=None):
         return self.k8s.get_namespace_objects(namespace, filters)
@@ -82,19 +112,21 @@ class K8sAppMgmt(Connector, ABC):
         """
         return self.k8s.version()
 
-    def get_services(self, namespace: str, _env, **kwargs) -> list:
+    def get_services(self, deployment_uuid: str, _, **kwargs) -> list:
         """
-        Returns both K8s Services and Deployments in the given `namespace`.
+        Returns both K8s Services and Deployments by `deployment_uuid`.
 
-        :param namespace:
-        :param _env: this parameter is ignored.
+        :param deployment_uuid: Deployment UUID
+        :param _: this parameter is ignored.
         :param kwargs: this parameter is ignored.
         :return: list of dicts
         """
-        services = self.k8s.get_services(namespace)
-        deployments = self.k8s.get_deployments(namespace)
-        return [self.k8s.extract_service_info(resource)
-                for resource in services + deployments]
+        return self._get_k8s_objects(deployment_uuid)
+
+    def _get_k8s_objects(self, deployment_uuid):
+        objects = ['deployments',
+                   'services']
+        return self.k8s.get_objects(deployment_uuid, objects)
 
     def log(self, component: str, since: datetime, lines: int,
             namespace='') -> str:

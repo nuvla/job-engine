@@ -8,7 +8,7 @@ import time
 from datetime import datetime
 from subprocess import CompletedProcess
 from tempfile import TemporaryDirectory
-from typing import List
+from typing import List, Dict
 
 import yaml
 
@@ -143,21 +143,28 @@ class Kubernetes:
 
     @should_connect
     def apply_manifest_with_context(self, manifest: str, namespace, env: dict,
-                                    files: List[dict], registries_auth):
+                                    files: List[dict],
+                                    registries_auth: list) -> CompletedProcess:
         if env:
             manifest = manifest_interpolate_env_vars(manifest, env)
 
+        common_labels = {'nuvla.application.name': namespace,
+                         'nuvla.deployment.uuid': env['NUVLA_DEPLOYMENT_UUID']}
+        if 'NUVLA_DEPLOYMENT_GROUP_UUID' in env:
+            common_labels.update(
+                {'nuvla.deployment-group.uuid': env['NUVLA_DEPLOYMENT_GROUP_UUID']})
+
         with TemporaryDirectory() as dir_name:
-            self.create_app_deployment_context(dir_name,
-                                               namespace,
-                                               manifest,
-                                               files,
-                                               registries_auth)
+            self._create_deployment_context(dir_name,
+                                            namespace,
+                                            manifest,
+                                            files,
+                                            registries_auth,
+                                            common_labels)
 
             cmd_deploy = self.build_cmd_line(['apply', '-k', dir_name])
 
-            result = join_stderr_stdout(execute_cmd(cmd_deploy))
-        return result
+            return execute_cmd(cmd_deploy)
 
     @should_connect
     def read_job_log(self, job_name: str) -> CompletedProcess:
@@ -179,9 +186,21 @@ class Kubernetes:
         return log_result
 
     @staticmethod
-    def create_app_deployment_context(directory_path: str, namespace: str,
-                                      manifest: str, files: List[dict],
-                                      registries_auth: List[dict]):
+    def get_all_namespaces_from_manifest(manifest: str) -> set:
+        namespaces = set()
+        try:
+            for doc in yaml.safe_load_all(manifest):
+                ns = doc.get('metadata', {}).get('namespace', '')
+                if ns:
+                    namespaces.add(ns)
+        except Exception as ex:
+            log.error('Failed to extract namespaces from manifest: %s', ex)
+        return namespaces
+
+    @staticmethod
+    def _create_deployment_context(directory_path, namespace, manifest,
+                                   files, registries_auth: list,
+                                   common_labels: Dict[str, str] = None):
         manifest_file_path = directory_path + '/manifest.yml'
         with open(manifest_file_path, 'w') as manifest_file:
             manifest_file.write(manifest)
@@ -191,9 +210,13 @@ class Kubernetes:
             namespace_data = {'apiVersion': 'v1',
                               'kind': 'Namespace',
                               'metadata': {'name': namespace}}
+            log.debug('Namespace data: %s', namespace_data)
             yaml.safe_dump(namespace_data, namespace_file, allow_unicode=True)
 
+        # NB! We have to place the objects from the manifest into a namespace,
+        # otherwise we will get them deployed into the namespace of the job.
         kustomization_data = {'namespace': namespace,
+                              'commonLabels': common_labels,
                               'resources': ['manifest.yml', 'namespace.yml']}
 
         if files:
@@ -205,10 +228,12 @@ class Kubernetes:
 
         if registries_auth:
             config = generate_registry_config(registries_auth)
-            config_b64 = base64.b64encode(config.encode('ascii')).decode('utf-8')
-            registries_fn = 'registries-credentials.yml'
-            registries_path = os.path.join(directory_path, registries_fn)
-            with open(registries_path, 'w') as fp:
+            config_b64 = base64.b64encode(config.encode('ascii')).decode(
+                'utf-8')
+            secret_registries_fn = 'secret-registries-credentials.yml'
+            secret_registries_path = os.path.join(directory_path,
+                                                  secret_registries_fn)
+            with open(secret_registries_path, 'w') as secret_registries_file:
                 secret_registries_data = {'apiVersion': 'v1',
                                           'kind': 'Secret',
                                           'metadata': {
@@ -216,26 +241,29 @@ class Kubernetes:
                                           'data': {
                                               '.dockerconfigjson': config_b64},
                                           'type': 'kubernetes.io/dockerconfigjson'}
-                yaml.safe_dump(secret_registries_data, fp, allow_unicode=True)
+                yaml.safe_dump(secret_registries_data, secret_registries_file,
+                               allow_unicode=True)
             kustomization_data.setdefault('resources', []) \
-                .append(registries_fn)
+                .append(secret_registries_fn)
+
+        log.debug('Kustomization data: %s', kustomization_data)
 
         kustomization_file_path = directory_path + '/kustomization.yml'
         with open(kustomization_file_path, 'w') as fd:
             yaml.safe_dump(kustomization_data, fd, allow_unicode=True)
 
     @should_connect
-    def delete_namespace(self, namespace: str):
+    def delete_namespace(self, namespace: str) -> CompletedProcess:
+        cmd = self.build_cmd_line(['delete', 'namespace', namespace])
+        log.debug('Command line to delete namespace: %s', cmd)
+        return execute_cmd(cmd)
 
-        cmd_stop = self.build_cmd_line(['delete', 'namespace', namespace])
-
-        try:
-            return join_stderr_stdout(execute_cmd(cmd_stop))
-        except Exception as ex:
-            if 'NotFound' in ex.args[0] if len(ex.args) > 0 else '':
-                return f'Namespace "{namespace}" not found.'
-            else:
-                raise ex
+    @should_connect
+    def delete_all_resources_by_label(self, label: str) -> CompletedProcess:
+        cmd = self.build_cmd_line(
+            ['delete', 'all', '--all-namespaces', '-l', label])
+        log.debug('Command line to delete all resources by label: %s', cmd)
+        return execute_cmd(cmd)
 
     @should_connect
     def get_namespace_objects(self, namespace, objects: list):
@@ -370,7 +398,7 @@ class Kubernetes:
         :param owner_name: str
         :return: list
         """
-        lpog.debug('Filtering for Kind: %s owner_kind: %s owner_name: %s',
+        log.debug('Filtering for Kind: %s owner_kind: %s owner_name: %s',
                   kind, owner_kind, owner_name)
         component_pods = []
         for obj in objects:
@@ -574,50 +602,81 @@ class Kubernetes:
             return f'{self._timestamp_now_utc()} {msg}\n'
 
     @staticmethod
-    def extract_service_info(kube_resource):
+    def _extract_object_info(kube_resource):
         resource_kind = kube_resource['kind']
         node_id = '.'.join([resource_kind,
                             kube_resource['metadata']['name']])
-        service_info = {'node-id': node_id}
+        object_info = {'node-id': node_id}
         if resource_kind == 'Deployment':
-            replicas_desired = kube_resource['spec']['replicas']
-            replicas_running = kube_resource['status'].get('readyReplicas', 0)
-            service_info['replicas.desired'] = str(replicas_desired)
-            service_info['replicas.running'] = str(replicas_running)
+            Kubernetes._object_info_deployment(kube_resource, object_info)
         if resource_kind == 'Service':
-            ports = kube_resource['spec']['ports']
-            for port in ports:
-                external_port = port.get('nodePort')
-                if external_port:
-                    internal_port = port['port']
-                    protocol = port['protocol'].lower()
-                    service_info[f'{protocol}.{internal_port}'] = str(
-                        external_port)
-        return service_info
+            Kubernetes._object_info_service(kube_resource, object_info)
+        return object_info
+
+    @staticmethod
+    def _object_info_service(kube_resource, object_info):
+        ports = kube_resource['spec']['ports']
+        for port in ports:
+            external_port = port.get('nodePort')
+            if external_port:
+                internal_port = port['port']
+                protocol = port['protocol'].lower()
+                object_info[f'{protocol}.{internal_port}'] = str(external_port)
+
+    @staticmethod
+    def _object_info_deployment(kube_resource, object_info):
+        replicas_desired = kube_resource['spec']['replicas']
+        replicas_running = kube_resource['status'].get('readyReplicas', 0)
+        object_info['replicas.desired'] = str(replicas_desired)
+        object_info['replicas.running'] = str(replicas_running)
 
     @should_connect
-    def get_services(self, namespace: str) -> list:
-        """
-        Returns K8s Services in the given `namespace`.
-
-        :param namespace:
-        :return: list of dicts
-        """
+    def _get_objects_in_namespace(self, object_kinds: List[str],
+                                  namespace: str) -> list:
+        objects = ','.join(object_kinds)
         cmd = self.build_cmd_line(
-            ['get', 'services', '--namespace', namespace, '-o', 'json'])
+            ['get', objects, '--namespace', namespace, '-o', 'json'])
         return json.loads(execute_cmd(cmd).stdout).get('items', [])
 
     @should_connect
-    def get_deployments(self, namespace):
-        """
-        Returns K8s Deployments in the given `namespace`.
-
-        :param namespace:
-        :return: list of dicts
-        """
+    def _get_objects_by_deployment_uuid(self, deployment_uuid: str,
+                                        object_kinds: List[str] = None) -> list:
+        objects = ','.join(object_kinds)
         cmd = self.build_cmd_line(
-            ['get', 'deployments', '--namespace', namespace, '-o', 'json'])
-        return json.loads(execute_cmd(cmd).stdout).get('items', [])
+            ['get', objects, '--all-namespaces', '-o', 'json',
+             '-l', f'nuvla.deployment.uuid={deployment_uuid}'])
+        kube_objects = json.loads(execute_cmd(cmd).stdout).get('items', [])
+
+        return [self._extract_object_info(kube_resource)
+                for kube_resource in kube_objects]
+
+    DEFAULT_OBJECTS = ['deployments', 'services']
+
+    @should_connect
+    def get_objects(self, deployment_uuid, object_kinds: List[str]):
+
+        object_kinds = object_kinds or self.DEFAULT_OBJECTS
+
+        objects = self._get_objects_by_deployment_uuid(deployment_uuid,
+                                                       object_kinds)
+        if objects:
+            log.debug('Found objects %s by deployment UUID label %s',
+                      objects, deployment_uuid)
+            return objects
+
+        log.warning(f'No objects found by deployment UUID label: {deployment_uuid}')
+
+        namespace = deployment_uuid
+
+        kube_objects = self._get_objects_in_namespace(object_kinds, namespace)
+        objects = [self._extract_object_info(kube_resource)
+                   for kube_resource in kube_objects]
+        if not objects:
+            log.warning(f'No objects found in namespace: {namespace}')
+        else:
+            log.debug('Found objects %s in namespace %s',
+                      objects, deployment_uuid)
+        return objects
 
     @should_connect
     def version(self) -> dict:
