@@ -6,6 +6,15 @@
 
 ## Released
 
+## [4.0.5](https://github.com/nuvla/job-engine/compare/4.0.4...4.0.5) (2024-04-26)
+
+
+### Bug Fixes
+
+* **nuvla-api:** Upgrade nuvla-api to v4.0.0 ([156d61d](https://github.com/nuvla/job-engine/commit/156d61dd61df585136cc11e4fb3703154ab45c18))
+* **nuvla:** Package nuvla extend search path to be able to import nuvla-api module ([156d61d](https://github.com/nuvla/job-engine/commit/156d61dd61df585136cc11e4fb3703154ab45c18))
+* **requests:** Remove dependency, it will come from nuvla-api ([156d61d](https://github.com/nuvla/job-engine/commit/156d61dd61df585136cc11e4fb3703154ab45c18))
+
 ## [4.0.4](https://github.com/nuvla/job-engine/compare/4.0.3...4.0.4) (2024-04-04)
 
 
