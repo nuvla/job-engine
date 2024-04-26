@@ -14,7 +14,7 @@ from .helm_driver import Helm
 from .k8s_driver import Kubernetes
 from ..job.job import Job
 from .connector import Connector, should_connect
-from .utils import join_stderr_stdout
+from .utils import join_stderr_stdout, unique_id_short
 
 log = logging.getLogger('k8s_connector')
 log.setLevel(logging.DEBUG)
@@ -131,6 +131,40 @@ class K8sAppMgmt(Connector, ABC):
     def log(self, component: str, since: datetime, lines: int,
             namespace='') -> str:
         return self.k8s.log(component, since, lines, namespace)
+
+
+class HelmAppMgmt(Connector, ABC):
+    """Class providing application management functionalities using Helm.
+    """
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.helm = Helm(NUVLAEDGE_SHARED_PATH)
+
+    def start(self, **kwargs):
+        env = kwargs['env']
+        files = kwargs['files']
+
+        # DOTO: add later
+        # registries_auth = kwargs['registries_auth']
+        # self.helm.k8s....
+
+        repo_url = kwargs['helm-repo-url']
+        repo_name = unique_id_short(repo_url)
+
+        # Add Helm repo
+        self.helm.repo_add(repo_name, repo_url)
+
+        chart_name = f'{repo_name}/{kwargs["helm-chart-name"]}'
+        deployment_uuid = kwargs['name']
+        helm_release = f'deployment-{deployment_uuid}'
+        # Install Helm chart
+        result = self.helm.install(helm_release, chart_name, deployment_uuid)
+
+        object_kinds = ['deployments',
+                        'services']
+        objects = self.helm.k8s.get_objects(deployment_uuid, object_kinds)
+
+        return result, objects
 
 
 class K8sEdgeMgmt:

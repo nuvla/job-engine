@@ -40,6 +40,16 @@ def manifest_interpolate_env_vars(manifest: str, env: dict) -> str:
     return execute_cmd(cmd, env=env, input=manifest).stdout
 
 
+def add_private_container_registries(registries_auth):
+    config = generate_registry_config(registries_auth)
+    config_b64 = base64.b64encode(config.encode('ascii')).decode('utf-8')
+    return {'apiVersion': 'v1',
+            'kind': 'Secret',
+            'metadata': {'name': 'registries-credentials'},
+            'data': {'.dockerconfigjson': config_b64},
+            'type': 'kubernetes.io/dockerconfigjson'}
+
+
 class Kubernetes:
 
     K8S_JOB = 'job.batch/'
@@ -227,20 +237,12 @@ class Kubernetes:
                 f.close()
 
         if registries_auth:
-            config = generate_registry_config(registries_auth)
-            config_b64 = base64.b64encode(config.encode('ascii')).decode(
-                'utf-8')
             secret_registries_fn = 'secret-registries-credentials.yml'
             secret_registries_path = os.path.join(directory_path,
                                                   secret_registries_fn)
+            secret_registries_data = add_private_container_registries(registries_auth)
+
             with open(secret_registries_path, 'w') as secret_registries_file:
-                secret_registries_data = {'apiVersion': 'v1',
-                                          'kind': 'Secret',
-                                          'metadata': {
-                                              'name': 'registries-credentials'},
-                                          'data': {
-                                              '.dockerconfigjson': config_b64},
-                                          'type': 'kubernetes.io/dockerconfigjson'}
                 yaml.safe_dump(secret_registries_data, secret_registries_file,
                                allow_unicode=True)
             kustomization_data.setdefault('resources', []) \
@@ -739,3 +741,6 @@ class Kubernetes:
         self._wait_workload_succeeded(self.K8S_JOB + job_name,
                                       namespace,
                                       timeout_min)
+
+    def create_docker_secret(self):
+        add_private_container_registries()

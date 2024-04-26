@@ -46,6 +46,10 @@ def unique_id(*args):
     return hashlib.sha256(':'.join(map(str, args)).encode()).hexdigest()
 
 
+def unique_id_short(*args, take=8):
+    return hashlib.sha256(':'.join(map(str, args)).encode()).hexdigest()[:take]
+
+
 def append_os_env(env):
     final_env = os.environ.copy()
     if env:

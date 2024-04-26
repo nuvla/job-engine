@@ -95,11 +95,11 @@ class DeploymentStartJob(DeploymentBase):
         self.api_dpl.update_port_parameters(deployment, ports_mapping)
 
     def start_application(self, deployment: dict):
-        connector_name   = get_connector_name(deployment)
-        connector_class  = get_connector_class(connector_name)
-        connector        = initialize_connector(connector_class, self.job, deployment)
-        module_content   = Deployment.module_content(deployment)
-        registries_auth  = self.private_registries_auth()
+        connector_name = get_connector_name(deployment)
+        connector_class = get_connector_class(connector_name)
+        connector = initialize_connector(connector_class, self.job, deployment)
+        module_content = Deployment.module_content(deployment)
+        registries_auth = self.private_registries_auth()
 
         result, services = connector.start(
             name=Deployment.uuid(deployment),

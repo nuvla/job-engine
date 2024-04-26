@@ -94,8 +94,21 @@ spec:
 
         return result
 
+    def repo_add(self, repo_name: str, repo_url: str):
+        job_name = self.k8s.create_object_name('helm-repo-add')
+        cmd = f'helm repo add {repo_name} {repo_url}'
+        result = self.run_command(cmd, job_name)
+        log.info(f'Helm add repo result: {result}')
+
     def repo_update(self):
         job_name = self.k8s.create_object_name('helm-repo-update')
         cmd = 'helm repo update'
         result = self.run_command(cmd, job_name)
         log.info(f'Helm update result: {result}')
+
+    def install(self, helm_release, chart_name, namespace):
+        job_name = self.k8s.create_object_name('helm-install')
+        cmd = (f'helm install {helm_release} {chart_name} '
+               f'--namespace {namespace} --create-namespace')
+        result = self.run_command(cmd, job_name)
+        log.info(f'Helm install result: {result}')
