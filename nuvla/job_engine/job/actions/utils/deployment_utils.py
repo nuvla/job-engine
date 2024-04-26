@@ -29,6 +29,9 @@ def get_connector_name(deployment):
     elif Deployment.is_application_kubernetes(deployment):
         return 'kubernetes'
 
+    elif Deployment.is_application_helm(deployment):
+        return 'helm'
+
     subtype = Deployment.subtype(deployment)
     raise ValueError(f'Unsupported deployment subtype "{subtype}"')
 
@@ -38,7 +41,8 @@ def get_connector_class(connector_name):
         'docker_service': docker_service,
         'docker_stack':   docker_stack,
         'docker_compose': docker_compose,
-        'kubernetes':     kubernetes
+        'kubernetes':     kubernetes,
+        'helm':     kubernetes
     }[connector_name]
 
 
