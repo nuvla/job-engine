@@ -87,7 +87,8 @@ spec:
 """
 
         logging.debug('Helm Job YAML %s ', helm_manifest)
-
+        print('Helm Job YAML %s ', helm_manifest)
+        
         result = self.k8s.apply_manifest(helm_manifest)
 
         self.k8s.wait_job_succeeded(job_name, self.k8s.namespace)
@@ -96,7 +97,9 @@ spec:
 
     def repo_add(self, repo_name: str, repo_url: str):
         job_name = self.k8s.create_object_name('helm-repo-add')
+        print(f'Adding helm repo {repo_name} with url {repo_url}')
         cmd = f'helm repo add {repo_name} {repo_url}'
+        print(f'Running command: {cmd} with job name: {job_name}')
         result = self.run_command(cmd, job_name)
         log.info(f'Helm add repo result: {result}')
 
@@ -112,3 +115,5 @@ spec:
                f'--namespace {namespace} --create-namespace')
         result = self.run_command(cmd, job_name)
         log.info(f'Helm install result: {result}')
+        return result
+    

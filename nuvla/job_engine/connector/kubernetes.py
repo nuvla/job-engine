@@ -151,12 +151,14 @@ class HelmAppMgmt(Connector, ABC):
         env = kwargs['env']
         files = kwargs['files']
 
-        # DOTO: add later
+        # TODO: add later
         # registries_auth = kwargs['registries_auth']
         # self.helm.k8s....
 
-        repo_url = kwargs['helm-repo-url']
+        repo_url = kwargs['helm_repo_url']
         repo_name = unique_id_short(repo_url)
+
+        print("Adding Helm repo %s %s", repo_name, repo_url)
 
         # Add Helm repo
         self.helm.repo_add(repo_name, repo_url)
