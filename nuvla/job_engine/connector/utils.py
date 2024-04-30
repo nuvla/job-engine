@@ -12,6 +12,7 @@ from subprocess import run, STDOUT, PIPE, TimeoutExpired, CompletedProcess
 from tempfile import NamedTemporaryFile
 
 log = logging.getLogger('connector_utils')
+log.setLevel(logging.DEBUG)
 
 LOCAL = 'local'
 
@@ -90,8 +91,8 @@ def join_stderr_stdout(process_result: CompletedProcess):
     return f'StdOut: \n{process_result.stdout} \n\nStdErr: \n{process_result.stderr}'
 
 
-def create_tmp_file(content):
-    file = NamedTemporaryFile(delete=True)
+def create_tmp_file(content, delete=True):
+    file = NamedTemporaryFile(delete=delete)
     file.write(content.encode())
     file.flush()
     return file

@@ -145,7 +145,7 @@ class HelmAppMgmt(Connector, ABC):
     """
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.helm = Helm(NUVLAEDGE_SHARED_PATH)
+        self.helm = Helm(NUVLAEDGE_SHARED_PATH, **kwargs)
 
     def start(self, **kwargs):
         env = kwargs['env']
@@ -155,17 +155,15 @@ class HelmAppMgmt(Connector, ABC):
         # registries_auth = kwargs['registries_auth']
         # self.helm.k8s....
 
-        repo_url = kwargs['helm-repo-url']
-        repo_name = unique_id_short(repo_url)
-
-        # Add Helm repo
-        self.helm.repo_add(repo_name, repo_url)
-
-        chart_name = f'{repo_name}/{kwargs["helm-chart-name"]}'
+        repo_url = kwargs['helm_repo_url']
         deployment_uuid = kwargs['name']
         helm_release = f'deployment-{deployment_uuid}'
+        chart_name = kwargs['helm_chart_name']
         # Install Helm chart
-        result = self.helm.install(helm_release, chart_name, deployment_uuid)
+        result = self.helm.install(repo_url,
+                                   helm_release,
+                                   chart_name,
+                                   deployment_uuid)
 
         object_kinds = ['deployments',
                         'services']
@@ -344,8 +342,6 @@ spec:
         if not self._check_project_name(helm_log_result, project_name):
             return f'Project name {project_name} does not match \
                 between helm on NuvlaEdge and Nuvla', 97
-
-        self.helm.repo_update()
 
         helm_update_job_name = self.k8s.create_object_name('helm-update')
         helm_update_cmd = self._helm_gen_update_cmd_repo(target_release)

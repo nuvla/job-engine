@@ -14,7 +14,7 @@ import yaml
 
 from nuvla.job_engine.connector.connector import should_connect
 from nuvla.job_engine.connector.utils import create_tmp_file, execute_cmd, \
-    join_stderr_stdout, generate_registry_config
+    generate_registry_config
 
 log = logging.getLogger('k8s_driver')
 log.setLevel(logging.DEBUG)
@@ -66,6 +66,7 @@ class Kubernetes:
         self.ca_file = None
         self.cert_file = None
         self.key_file = None
+        self._delete_creds = kwargs.get('delete_creds', False)
 
         self._namespace = None
 
@@ -78,12 +79,14 @@ class Kubernetes:
         self.base_image = f'{self.ne_image_registry}{self.ne_image_name}:{self.ne_image_tag}'
 
     @staticmethod
-    def from_path_to_k8s_creds(path_to_k8s_creds: str):
-        return Kubernetes(**{
-                'cert': get_pem_content(path_to_k8s_creds, 'cert'),
-                'key': get_pem_content(path_to_k8s_creds, 'key'),
-                'ca': get_pem_content(path_to_k8s_creds, 'ca'),
-                'endpoint': get_kubernetes_local_endpoint()})
+    def from_path_to_k8s_creds(path_to_k8s_creds: str, **kwargs):
+        params = {
+            'cert': get_pem_content(path_to_k8s_creds, 'cert'),
+            'key': get_pem_content(path_to_k8s_creds, 'key'),
+            'ca': get_pem_content(path_to_k8s_creds, 'ca'),
+            'endpoint': get_kubernetes_local_endpoint()}
+        params.update(kwargs)
+        return Kubernetes(**params)
 
     def state_debug(self):
         log.debug('Kubernetes object state:')
@@ -98,9 +101,9 @@ class Kubernetes:
 
     def connect(self):
         log.info(f'Kubernetes endpoint: {self.endpoint}')
-        self.ca_file = create_tmp_file(self.ca)
-        self.cert_file = create_tmp_file(self.cert)
-        self.key_file = create_tmp_file(self.key)
+        self.ca_file = create_tmp_file(self.ca, self._delete_creds)
+        self.cert_file = create_tmp_file(self.cert, self._delete_creds)
+        self.key_file = create_tmp_file(self.key, self._delete_creds)
 
     def clear_connection(self, _connect_result):
         if self.ca_file:
