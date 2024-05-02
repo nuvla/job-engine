@@ -89,11 +89,11 @@ class Kubernetes:
         return Kubernetes(**params)
 
     def state_debug(self):
-        log.debug('Kubernetes object state:')
-        log.debug('CA file %s ', self.ca)
-        log.debug('User certificate file %s ', self.cert)
-        log.debug('User key file %s ', self.key)
-        log.debug('Endpoint %s ', self.endpoint)
+        print('Kubernetes object state:')
+        print('CA file %s ', self.ca)
+        print('User certificate file %s ', self.cert)
+        print('User key file %s ', self.key)
+        print('Endpoint %s ', self.endpoint)
 
     @property
     def connector_type(self):
@@ -689,9 +689,10 @@ class Kubernetes:
         version = execute_cmd(cmd, timeout=5).stdout
         return json.loads(version)
 
-    @staticmethod
-    def _get_namespace_local():
-        cmd = ['cat', '/var/run/secrets/kubernetes.io/serviceaccount/namespace']
+    NAMESPACE_FILE='/var/run/secrets/kubernetes.io/serviceaccount/namespace'
+    @classmethod
+    def _get_namespace_local(cls):
+        cmd = ['cat', cls.NAMESPACE_FILE]
         return execute_cmd(cmd).stdout.strip()
 
     @property

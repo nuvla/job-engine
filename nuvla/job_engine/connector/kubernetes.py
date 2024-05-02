@@ -155,10 +155,26 @@ class HelmAppMgmt(Connector, ABC):
         # registries_auth = kwargs['registries_auth']
         # self.helm.k8s....
 
+        # JSW install the role and clusterole manifests to kubernetes 
+        # before the helm commands can be run
+        # these need to be installed to the underlying kubernetes installation
+
+        # helm_service_acct_roles = self.helm.service_account_roles()
+
+        # helm_service_acct_clusterroles = self.helm.service_account_clusterroles()
+       
         repo_url = kwargs['helm_repo_url']
         deployment_uuid = kwargs['name']
         helm_release = f'deployment-{deployment_uuid}'
         chart_name = kwargs['helm_chart_name']
+        print(f'Helm release: {helm_release}')
+ 
+        # A test... create the namespace here
+        # no need for now...
+        # cmd = ['create', 'namespace', deployment_uuid]
+        # create_ns_cmd = self.helm.k8s.build_cmd_line(cmd)
+        # self.k8s.run_command(create_ns_cmd)
+
         # Install Helm chart
         result = self.helm.install(repo_url,
                                    helm_release,
