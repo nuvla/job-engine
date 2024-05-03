@@ -83,7 +83,7 @@ def execute_cmd(cmd, **kwargs) -> CompletedProcess:
     if result.returncode == 0:
         return result
     else:
-        log.exception(result)
+        log.error('Error executing command: %s', result)
         raise Exception(result.stderr)
 
 

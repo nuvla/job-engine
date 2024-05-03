@@ -88,7 +88,6 @@ class DockerContentTrustCheck(object):
             self.job.set_progress(50)
             images_status = self.verify_images(images)
             self.job.set_progress(90)
-            print(images_status)
             self.job.set_status_message(json.dumps(images_status))
         except Exception as ex:
             log.error('Failed to {} {}: {}'.format(action_name, href, ex))

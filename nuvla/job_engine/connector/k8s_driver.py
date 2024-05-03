@@ -149,7 +149,8 @@ class Kubernetes:
             cmd = ['apply', '-f', manifest_path]
             if namespace:
                 cmd = ['-n', namespace] + cmd
-            result = execute_cmd(self.build_cmd_line(cmd))
+            cmd_exec = self.build_cmd_line(cmd)
+            result = execute_cmd(cmd_exec)
             log.debug('The result of applying manifest: %s', result)
 
         return result
@@ -689,10 +690,11 @@ class Kubernetes:
         version = execute_cmd(cmd, timeout=5).stdout
         return json.loads(version)
 
-    @staticmethod
-    def _get_namespace_local():
-        cmd = ['cat', '/var/run/secrets/kubernetes.io/serviceaccount/namespace']
-        return execute_cmd(cmd).stdout.strip()
+    NAMESPACE_FILE = '/var/run/secrets/kubernetes.io/serviceaccount/namespace'
+
+    @classmethod
+    def _get_namespace_local(cls):
+        return execute_cmd(['cat', cls.NAMESPACE_FILE]).stdout.strip()
 
     @property
     def namespace(self):
@@ -745,5 +747,14 @@ class Kubernetes:
                                       namespace,
                                       timeout_min)
 
-    def create_docker_secret(self):
-        add_private_container_registries()
+    @should_connect
+    def create_namespace(self, namespace: str, exists_ok=False) -> CompletedProcess:
+        cmd = self.build_cmd_line(['create', 'namespace', namespace])
+        log.debug('Command line to create namespace: %s', cmd)
+        try:
+            return execute_cmd(cmd)
+        except Exception as ex:
+            if exists_ok and 'AlreadyExists' in ex.args[0]:
+                log.warning(f'Namespace {namespace} already exists.')
+                return CompletedProcess(cmd, 1, None, ex.args[0])
+            raise ex
