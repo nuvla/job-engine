@@ -14,7 +14,7 @@ import yaml
 
 from nuvla.job_engine.connector.connector import should_connect
 from nuvla.job_engine.connector.utils import create_tmp_file, execute_cmd, \
-    generate_registry_config
+    generate_registry_config, to_base64, from_base64, md5sum
 
 log = logging.getLogger('k8s_driver')
 log.setLevel(logging.DEBUG)
@@ -57,16 +57,13 @@ class Kubernetes:
     def __init__(self, **kwargs):
 
         # Mandatory kwargs
-        self.ca = kwargs['ca']
-        self.cert = kwargs['cert']
-        self.key = kwargs['key']
+        self._ca_base64 = to_base64(kwargs['ca'])
+        self._cert_base64 = to_base64(kwargs['cert'])
+        self._key_base64 = to_base64(kwargs['key'])
 
-        self.endpoint = kwargs['endpoint']
+        self._endpoint = kwargs['endpoint']
 
-        self.kube_config_file = None
-        self.ca_base64 = None
-        self.cert_base64 = None
-        self.key_base64 = None
+        self._kube_config_file = None
         self._delete_creds = kwargs.get('delete_creds', False)
 
         self._namespace = None
@@ -91,30 +88,25 @@ class Kubernetes:
 
     def state_debug(self):
         log.debug('Kubernetes object state:')
-        log.debug('CA file %s ', self.ca)
-        log.debug('User certificate file %s ', self.cert)
-        log.debug('User key file %s ', self.key)
-        log.debug('Endpoint %s ', self.endpoint)
+        log.debug('CA %s', from_base64(self._ca_base64))
+        log.debug('User certificate %s', from_base64(self._cert_base64))
+        log.debug('User key md5sum: %s', md5sum(from_base64(self._key_base64)))
+        log.debug('Kubernetes endpoint %s', self._endpoint)
 
     @property
     def connector_type(self):
         return 'Kubernetes-cli'
 
-    def connect(self):
-        log.info(f'Kubernetes endpoint: {self.endpoint}')
-        if not self.ca_base64:
-            self.ca_base64 = base64.b64encode(self.ca.encode('ascii')).decode('utf-8')
-        if not self.cert_base64:
-            self.cert_base64 = base64.b64encode(self.cert.encode('ascii')).decode('utf-8')
-        if not self.key_base64:
-            self.key_base64 = base64.b64encode(self.key.encode('ascii')).decode('utf-8')
+    def kubeconfig(self) -> str:
+        return self._kube_config_file.name
 
+    def connect(self):
         kube_config: str = f"""
 apiVersion: v1
 clusters:
 - cluster:
-    certificate-authority-data: {self.ca_base64}
-    server: {self.endpoint}
+    certificate-authority-data: {self._ca_base64}
+    server: {self._endpoint}
   name: ne-cluster-name
 contexts:
 - context:
@@ -126,15 +118,16 @@ kind: Config
 users:
 - name: ne-user-name
   user:
-    client-certificate-data: {self.cert_base64}
-    client-key-data: {self.key_base64}
+    client-certificate-data: {self._cert_base64}
+    client-key-data: {self._key_base64}
 """
-        self.kube_config_file = create_tmp_file(kube_config)
+        log.debug('Kubeconfig: %s', kube_config)
+        self._kube_config_file = create_tmp_file(kube_config, self._delete_creds)
 
     def clear_connection(self, _connect_result):
-        if self.kube_config_file:
-            self.kube_config_file.close()
-            self.kube_config_file = None
+        if self._kube_config_file:
+            self._kube_config_file.close()
+            self._kube_config_file = None
 
     def build_cmd_line(self, cmd: list) -> list:
         """
@@ -143,7 +136,7 @@ users:
         Arguments:
            cmd: a list containing the kubectl command line and arguments
         """
-        return ['kubectl', '--kubeconfig', self.kube_config_file.name] \
+        return ['kubectl', '--kubeconfig', self.kubeconfig()] \
             + cmd
 
     @staticmethod

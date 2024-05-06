@@ -51,6 +51,10 @@ def unique_id_short(*args, take=8):
     return hashlib.sha256(':'.join(map(str, args)).encode()).hexdigest()[:take]
 
 
+def md5sum(s: str) -> str:
+    return hashlib.md5(s.encode()).hexdigest()
+
+
 def append_os_env(env):
     final_env = os.environ.copy()
     if env:
@@ -98,11 +102,19 @@ def create_tmp_file(content, delete=True):
     return file
 
 
+def to_base64(s: str, encoding='utf-8') -> str:
+    return base64.b64encode(s.encode(encoding)).decode(encoding)
+
+
+def from_base64(s: str, encoding='utf-8') -> str:
+    return base64.b64decode(s.encode(encoding)).decode(encoding)
+
+
 def generate_registry_config(registries_auth: list):
     auths = {}
     for registry_auth in registries_auth:
-        user_pass = registry_auth['username'] + ':' + registry_auth['password']
-        auth = base64.b64encode(user_pass.encode('ascii')).decode('utf-8')
+        auth = to_base64(
+            registry_auth['username'] + ':' + registry_auth['password'])
         auths['https://' + registry_auth['serveraddress']] = {'auth': auth}
     return json.dumps({'auths': auths})
 

@@ -143,6 +143,10 @@ class HelmAppMgmt(Connector, ABC):
         super().__init__(**kwargs)
         self.helm = Helm(NUVLAEDGE_SHARED_PATH, **kwargs)
 
+    @staticmethod
+    def _helm_release_name(deployment_uuid):
+        return f'deployment-{deployment_uuid}'
+
     def start(self, deployment: dict, **kwargs) -> [str, List[dict]]:
         env = kwargs['env']
         files = kwargs['files']
@@ -155,12 +159,22 @@ class HelmAppMgmt(Connector, ABC):
         repo_url = app_module.get('helm-repo-url')
         chart_name = app_module.get('helm-chart-name')
         deployment_uuid = kwargs['name']
-        helm_release = f'deployment-{deployment_uuid}'
-        # Install Helm chart
-        result = self.helm.install(repo_url,
-                                   helm_release,
-                                   chart_name,
-                                   deployment_uuid)
+        helm_release = self._helm_release_name(deployment_uuid)
+        try:
+            result = self.helm.install(repo_url,
+                                       helm_release,
+                                       chart_name,
+                                       deployment_uuid)
+        except Exception as ex:
+            log.exception(f'Failed to install Helm chart: {ex}')
+            if 'cannot re-use a name' in ex.args[0]:
+                args = list(ex.args)
+                args[0] = (args[0].strip() +
+                           f'. Helm release: {helm_release}. '
+                           f'Currently running: {self.helm.list(deployment_uuid)}')
+                ex.args = tuple(args)
+                raise ex
+            raise ex
 
         object_kinds = ['deployments',
                         'services']
@@ -168,8 +182,10 @@ class HelmAppMgmt(Connector, ABC):
 
         return result.stdout, objects
 
-    def stop(self) -> str:
-        result = self.helm.uninstall()
+    def stop(self, deployment: dict, **kwargs) -> str:
+        deployment_uuid = kwargs['name']
+        helm_release = self._helm_release_name(deployment_uuid)
+        result = self.helm.uninstall(helm_release, deployment_uuid)
         return result.stdout
 
 

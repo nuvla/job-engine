@@ -1,3 +1,4 @@
+import json
 import logging
 from subprocess import CompletedProcess
 
@@ -76,7 +77,7 @@ spec:
         """
 
         cmd = ['helm',
-               '--kubeconfig', self.k8s.kube_config_file.name] \
+               '--kubeconfig', self.k8s.kubeconfig()] \
             + command
 
         log.debug('Helm command to run %s ', cmd)
@@ -95,7 +96,7 @@ spec:
                helm_release, chart_name,
                '--namespace', namespace, '--create-namespace']
         result = self.run_command(cmd)
-        log.debug(f'Helm install command result: {result}')
+        log.debug('Helm install command result: %s', result)
         return result
 
     def _service_account_roles(self, namespace):
@@ -251,7 +252,13 @@ roleRef:
         result = self.k8s.apply_manifest(the_manifest)
         log.info(f'service account clusterroles install result: {result}')
 
-    def uninstall(self, helm_release, namespace):
+    def uninstall(self, helm_release, namespace) -> CompletedProcess:
         cmd = ['uninstall', helm_release, '--namespace', namespace]
         return self.run_command(cmd)
+
+    def list(self, namespace, all=False) -> dict:
+        cmd = ['list', '--namespace', namespace, '-o', 'json']
+        if all:
+            cmd += ['--all']
+        return json.loads(self.run_command(cmd).stdout)
 
