@@ -5,7 +5,6 @@ from nuvla.job_engine.connector.connector import should_connect
 from nuvla.job_engine.connector.k8s_driver import Kubernetes
 from nuvla.job_engine.connector.utils import execute_cmd
 
-
 log = logging.getLogger('helm_driver')
 log.setLevel(logging.DEBUG)
 
@@ -26,8 +25,9 @@ class Helm:
     def clear_connection(self, connect_result):
         self.k8s.clear_connection(connect_result)
 
-    def run_command(self, command: str, job_name: str, backoff_limit=0,
-                    namespace=None) -> CompletedProcess:
+    def run_command_container(self, command: str, job_name: str,
+                              backoff_limit=0,
+                              namespace=None) -> CompletedProcess:
         """
         Generic to run a container with a helm command as Kubernetes Job.
         """
@@ -70,23 +70,35 @@ spec:
         return result
 
     @should_connect
-    def install(self, helm_repo, helm_release, chart_name, namespace):
+    def run_command(self, command: list) -> CompletedProcess:
+        """
+        Generic to run a container with a Helm command.
+        """
+
+        cmd = ['helm',
+               '--kubeconfig', self.k8s.kube_config_file.name] \
+            + command
+
+        log.debug('Helm command to run %s ', cmd)
+
+        return execute_cmd(cmd)
+
+    def install(self, helm_repo, helm_release, chart_name, namespace) -> CompletedProcess:
 
         self.k8s.create_namespace(namespace, exists_ok=True)
 
-        self.service_account_roles(namespace)
-        self.service_account_clusterroles(namespace)
+        self._service_account_roles(namespace)
+        self._service_account_clusterroles(namespace)
 
-        job_name = self.k8s.create_object_name('helm-install')
-        cmd = ['helm', 'install',
+        cmd = ['install',
                '--repo', helm_repo,
                helm_release, chart_name,
                '--namespace', namespace, '--create-namespace']
-        result = self.run_command(' '.join(cmd), job_name,
-                                  namespace=self.k8s.namespace)
-        log.info(f'Helm install result: {result}')
+        result = self.run_command(cmd)
+        log.debug(f'Helm install command result: {result}')
+        return result
 
-    def service_account_roles(self, namespace):
+    def _service_account_roles(self, namespace):
         roles_manifest = f'''
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
@@ -190,7 +202,7 @@ roleRef:
         result = self.k8s.apply_manifest(roles_manifest)
         log.debug(f'service account roles install result: {result}')
 
-    def service_account_clusterroles(self, namespace):
+    def _service_account_clusterroles(self, namespace):
         the_manifest = f'''
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
@@ -238,4 +250,8 @@ roleRef:
 '''
         result = self.k8s.apply_manifest(the_manifest)
         log.info(f'service account clusterroles install result: {result}')
+
+    def uninstall(self, helm_release, namespace):
+        cmd = ['uninstall', helm_release, '--namespace', namespace]
+        return self.run_command(cmd)
 

@@ -63,9 +63,10 @@ class Kubernetes:
 
         self.endpoint = kwargs['endpoint']
 
-        self.ca_file = None
-        self.cert_file = None
-        self.key_file = None
+        self.kube_config_file = None
+        self.ca_base64 = None
+        self.cert_base64 = None
+        self.key_base64 = None
         self._delete_creds = kwargs.get('delete_creds', False)
 
         self._namespace = None
@@ -101,20 +102,39 @@ class Kubernetes:
 
     def connect(self):
         log.info(f'Kubernetes endpoint: {self.endpoint}')
-        self.ca_file = create_tmp_file(self.ca, self._delete_creds)
-        self.cert_file = create_tmp_file(self.cert, self._delete_creds)
-        self.key_file = create_tmp_file(self.key, self._delete_creds)
+        if not self.ca_base64:
+            self.ca_base64 = base64.b64encode(self.ca.encode('ascii')).decode('utf-8')
+        if not self.cert_base64:
+            self.cert_base64 = base64.b64encode(self.cert.encode('ascii')).decode('utf-8')
+        if not self.key_base64:
+            self.key_base64 = base64.b64encode(self.key.encode('ascii')).decode('utf-8')
+
+        kube_config: str = f"""
+apiVersion: v1
+clusters:
+- cluster:
+    certificate-authority-data: {self.ca_base64}
+    server: {self.endpoint}
+  name: ne-cluster-name
+contexts:
+- context:
+    cluster: ne-cluster-name
+    user: ne-user-name
+  name: ne-context-name
+current-context: ne-context-name
+kind: Config
+users:
+- name: ne-user-name
+  user:
+    client-certificate-data: {self.cert_base64}
+    client-key-data: {self.key_base64}
+"""
+        self.kube_config_file = create_tmp_file(kube_config)
 
     def clear_connection(self, _connect_result):
-        if self.ca_file:
-            self.ca_file.close()
-            self.ca_file = None
-        if self.cert_file:
-            self.cert_file.close()
-            self.cert_file = None
-        if self.key_file:
-            self.key_file.close()
-            self.key_file = None
+        if self.kube_config_file:
+            self.kube_config_file.close()
+            self.kube_config_file = None
 
     def build_cmd_line(self, cmd: list) -> list:
         """
@@ -123,10 +143,7 @@ class Kubernetes:
         Arguments:
            cmd: a list containing the kubectl command line and arguments
         """
-        return ['kubectl', '-s', self.endpoint,
-                '--client-certificate', self.cert_file.name,
-                '--client-key', self.key_file.name,
-                '--certificate-authority', self.ca_file.name] \
+        return ['kubectl', '--kubeconfig', self.kube_config_file.name] \
             + cmd
 
     @staticmethod
@@ -608,7 +625,7 @@ class Kubernetes:
             return f'{self._timestamp_now_utc()} {msg}\n'
 
     @staticmethod
-    def _extract_object_info(kube_resource):
+    def _extract_object_info(kube_resource) -> dict:
         resource_kind = kube_resource['kind']
         node_id = '.'.join([resource_kind,
                             kube_resource['metadata']['name']])
@@ -659,7 +676,7 @@ class Kubernetes:
     DEFAULT_OBJECTS = ['deployments', 'services']
 
     @should_connect
-    def get_objects(self, deployment_uuid, object_kinds: List[str]):
+    def get_objects(self, deployment_uuid, object_kinds: List[str]) -> List[dict]:
 
         object_kinds = object_kinds or self.DEFAULT_OBJECTS
 

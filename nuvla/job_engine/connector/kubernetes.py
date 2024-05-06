@@ -14,7 +14,7 @@ from .helm_driver import Helm
 from .k8s_driver import Kubernetes
 from ..job.job import Job
 from .connector import Connector, should_connect
-from .utils import join_stderr_stdout, unique_id_short
+from .utils import join_stderr_stdout
 
 log = logging.getLogger('k8s_connector')
 log.setLevel(logging.DEBUG)
@@ -29,18 +29,14 @@ class OperationNotAllowed(Exception):
 
 
 def instantiate_from_cimi(api_infrastructure_service, api_credential):
-    if api_infrastructure_service.get('type') == 'kubernetes':
-        return K8sAppMgmt(
-            ca=api_credential.get('ca', '').replace("\\n", "\n"),
-            cert=api_credential.get('cert', '').replace("\\n", "\n"),
-            key=api_credential.get('key', '').replace("\\n", "\n"),
-            endpoint=api_infrastructure_service.get('endpoint'))
-    elif api_infrastructure_service.get('type') == 'helm':
-        return HelmAppMgmt(
-            ca=api_credential.get('ca', '').replace("\\n", "\n"),
-            cert=api_credential.get('cert', '').replace("\\n", "\n"),
-            key=api_credential.get('key', '').replace("\\n", "\n"),
-            endpoint=api_infrastructure_service.get('endpoint'))
+    d = dict(ca=api_credential.get('ca', '').replace("\\n", "\n"),
+             cert=api_credential.get('cert', '').replace("\\n", "\n"),
+             key=api_credential.get('key', '').replace("\\n", "\n"),
+             endpoint=api_infrastructure_service.get('endpoint'))
+    if api_infrastructure_service.get('subtype') == 'kubernetes':
+        return K8sAppMgmt(**d)
+    elif api_infrastructure_service.get('subtype') == 'helm':
+        return HelmAppMgmt(**d)
 
 
 class K8sAppMgmt(Connector, ABC):
@@ -147,18 +143,19 @@ class HelmAppMgmt(Connector, ABC):
         super().__init__(**kwargs)
         self.helm = Helm(NUVLAEDGE_SHARED_PATH, **kwargs)
 
-    def start(self, **kwargs):
+    def start(self, deployment: dict, **kwargs) -> [str, List[dict]]:
         env = kwargs['env']
         files = kwargs['files']
 
-        # DOTO: add later
+        # TODO: add later
         # registries_auth = kwargs['registries_auth']
         # self.helm.k8s....
 
-        repo_url = kwargs['helm_repo_url']
+        app_module = deployment.get('module', {})
+        repo_url = app_module.get('helm-repo-url')
+        chart_name = app_module.get('helm-chart-name')
         deployment_uuid = kwargs['name']
         helm_release = f'deployment-{deployment_uuid}'
-        chart_name = kwargs['helm_chart_name']
         # Install Helm chart
         result = self.helm.install(repo_url,
                                    helm_release,
@@ -169,7 +166,11 @@ class HelmAppMgmt(Connector, ABC):
                         'services']
         objects = self.helm.k8s.get_objects(deployment_uuid, object_kinds)
 
-        return result, objects
+        return result.stdout, objects
+
+    def stop(self) -> str:
+        result = self.helm.uninstall()
+        return result.stdout
 
 
 class K8sEdgeMgmt:
