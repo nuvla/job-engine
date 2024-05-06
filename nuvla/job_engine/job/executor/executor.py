@@ -11,6 +11,7 @@ from ..base import Base
 from ..job import Job, JobUpdateError, \
     JOB_FAILED, JOB_SUCCESS, JOB_QUEUED, JOB_RUNNING
 from ..util import override, retry_kazoo_queue_op, status_message_from_exception
+from ...connector.kubernetes import NUVLAEDGE_SHARED_PATH, set_shared_path
 
 CONNECTION_POOL_SIZE = 4
 
@@ -47,6 +48,16 @@ class Executor(Base):
     def _set_command_specific_options(self, parser):
         parser.add_argument('--job-id', dest='job_id', metavar='ID',
                             help='Pull mode single job id to execute')
+
+    def _set_nuvlaedge_working_dir(self):
+        """
+        Sets the NuvlaEdge working directory for Kubernetes. For docker, it is not required
+        Returns:
+
+        """
+        if self.args.nuvlaedge_fs:
+            logging.info(f"Setting NuvlaEdge shared path from {NUVLAEDGE_SHARED_PATH} to: {self.args.nuvlaedge_fs}")
+            set_shared_path(self.args.nuvlaedge_fs)
 
     def _process_jobs(self, queue):
         is_single_job_only = isinstance(queue, LocalOneJobQueue)

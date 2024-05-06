@@ -27,6 +27,11 @@ log = logging.getLogger('kubernetes')
 NUVLAEDGE_SHARED_PATH = "/srv/nuvlaedge/shared"
 
 
+def set_shared_path(path: str):
+    global NUVLAEDGE_SHARED_PATH
+    NUVLAEDGE_SHARED_PATH = path
+
+
 class OperationNotAllowed(Exception):
     pass
 
