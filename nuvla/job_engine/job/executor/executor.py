@@ -124,4 +124,7 @@ class Executor(Base):
         job_id = self.args.job_id
         queue = LocalOneJobQueue(job_id) if job_id else self.kz.LockingQueue('/job')
 
+        # Required for K8s
+        self._set_nuvlaedge_working_dir()
+
         self._process_jobs(queue)
