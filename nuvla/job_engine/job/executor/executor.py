@@ -49,7 +49,7 @@ class Executor(Base):
         parser.add_argument('--job-id', dest='job_id', metavar='ID',
                             help='Pull mode single job id to execute')
 
-    def _set_nuvlaedge_working_dir(self):
+    def _set_nuvlaedge_shared_dir(self):
         """
         Sets the NuvlaEdge working directory for Kubernetes. For docker, it is not required
         Returns:
@@ -125,6 +125,6 @@ class Executor(Base):
         queue = LocalOneJobQueue(job_id) if job_id else self.kz.LockingQueue('/job')
 
         # Required for K8s
-        self._set_nuvlaedge_working_dir()
+        self._set_nuvlaedge_shared_dir()
 
         self._process_jobs(queue)
