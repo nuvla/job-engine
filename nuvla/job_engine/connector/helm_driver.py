@@ -88,6 +88,7 @@ spec:
 
         self.k8s.create_namespace(namespace, exists_ok=True)
 
+        # FIXME: remove?
         # self._service_account_roles(namespace)
         # self._service_account_clusterroles(namespace)
 

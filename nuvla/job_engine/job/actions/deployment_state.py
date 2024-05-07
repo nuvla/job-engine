@@ -8,7 +8,7 @@ from nuvla.api.util.date import utcnow, nuvla_date
 from .utils.deployment_utils import (initialize_connector,
                                      DeploymentBase,
                                      get_connector_name,
-                                     get_connector_class,
+                                     get_connector_module,
                                      get_env)
 from ..actions import action
 
@@ -136,8 +136,9 @@ class DeploymentStateJob(DeploymentBase):
             kwargs['compose_file'] = Deployment.module_content(self.deployment)['docker-compose']
 
         connector_name = get_connector_name(self.deployment)
-        connector_class = get_connector_class(connector_name)
-        connector = initialize_connector(connector_class, self.job, self.deployment)
+        connector_module = get_connector_module(connector_name)
+        connector = initialize_connector(connector_module, self.job,
+                                         self.deployment)
         services = connector.get_services(Deployment.uuid(self.deployment),
                                           get_env(self.deployment.data),
                                           **kwargs)

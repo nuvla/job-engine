@@ -7,9 +7,11 @@ from ...connector import docker_service
 from ..actions import action
 from .utils.deployment_utils import (DeploymentBase,
                                      get_connector_name,
-                                     get_connector_class,
+                                     get_connector_module,
                                      initialize_connector,
-                                     get_env)
+                                     get_env,
+                                     HELM_APP_SUBTYPE,
+                                     HELM_CONNECTOR_KIND)
 
 from nuvla.api.resources import Deployment, DeploymentParameter
 
@@ -96,8 +98,8 @@ class DeploymentStartJob(DeploymentBase):
 
     def start_application(self, deployment: dict):
         connector_name = get_connector_name(deployment)
-        connector_class = get_connector_class(connector_name)
-        connector = initialize_connector(connector_class, self.job, deployment)
+        connector_module = get_connector_module(connector_name)
+        connector = initialize_connector(connector_module, self.job, deployment)
         module_content = Deployment.module_content(deployment)
         registries_auth = self.private_registries_auth()
 
@@ -112,14 +114,33 @@ class DeploymentStartJob(DeploymentBase):
 
         self.application_params_update(services)
 
+    def start_application_helm(self, deployment: dict):
+        connector_module = get_connector_module(HELM_CONNECTOR_KIND)
+        connector = initialize_connector(connector_module, self.job, deployment)
+        module_content = Deployment.module_content(deployment)
+        registries_auth = self.private_registries_auth()
+
+        result, services = connector.start(
+            deployment=deployment,
+            name=Deployment.uuid(deployment),
+            env=get_env(deployment),
+            files=module_content.get('files'),
+            registries_auth=registries_auth)
+
+        self.job.set_status_message(result)
+
+        self.application_params_update(services)
+
     @override
     def handle_deployment(self):
         deployment = self.deployment.data
 
         self.create_user_output_params()
 
-        if Deployment.is_component(self.deployment):
+        if Deployment.is_component(deployment):
             self.start_component(deployment)
+        elif Deployment.subtype(deployment) == HELM_APP_SUBTYPE:
+            self.start_application_helm(deployment)
         else:
             self.start_application(deployment)
 

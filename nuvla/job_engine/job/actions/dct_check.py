@@ -1,12 +1,14 @@
 # -*- coding: utf-8 -*-
 
 import json
-import yaml
 import logging
+import yaml
 
-from subprocess import run
 from collections.abc import Iterable
+from subprocess import run
+
 from ..actions import action
+from .utils.deployment_utils import HELM_APP_SUBTYPE
 
 action_name = 'dct_check'
 
@@ -64,7 +66,7 @@ class DockerContentTrustCheck(object):
             compose_file = list(yaml.load_all(docker_compose,
                                               Loader=yaml.FullLoader))
             images = find_in_dict(compose_file, 'image')
-        elif subtype == 'application_helm':
+        elif subtype == HELM_APP_SUBTYPE:
             status_message = 'DCT check for Helm chart is not supported'
             log.warning(status_message)
             self.job.set_status_message(status_message)
