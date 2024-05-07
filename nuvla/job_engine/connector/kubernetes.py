@@ -10,6 +10,8 @@ from abc import ABC
 
 import re
 
+from nuvla.api.resources import Deployment
+
 from .helm_driver import Helm
 from .k8s_driver import Kubernetes
 from ..job.job import Job
@@ -137,7 +139,7 @@ class K8sAppMgmt(Connector, ABC):
 
 
 class HelmAppMgmt(Connector, ABC):
-    """Class providing application management functionalities using Helm.
+    """Class providing Helm application management functionalities using.
     """
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -155,9 +157,9 @@ class HelmAppMgmt(Connector, ABC):
         # registries_auth = kwargs['registries_auth']
         # self.helm.k8s....
 
-        app_module = deployment.get('module', {})
-        repo_url = app_module.get('helm-repo-url')
-        chart_name = app_module.get('helm-chart-name')
+        app_content = Deployment.module_content(deployment)
+        repo_url = app_content.get('helm-repo-url')
+        chart_name = app_content.get('helm-chart-name')
         deployment_uuid = kwargs['name']
         helm_release = self._helm_release_name(deployment_uuid)
         try:
@@ -182,11 +184,47 @@ class HelmAppMgmt(Connector, ABC):
 
         return result.stdout, objects
 
+    def update(self, deployment: dict, **kwargs):
+        app_content = Deployment.module_content(deployment)
+        repo_url = app_content.get('helm-repo-url')
+        chart_name = app_content.get('helm-chart-name')
+        deployment_uuid = kwargs['name']
+        helm_release = self._helm_release_name(deployment_uuid)
+
+        result = self.helm.upgrade(repo_url, helm_release, chart_name,
+                                   deployment_uuid)
+
+        object_kinds = ['deployments',
+                        'services']
+        objects = self.helm.k8s.get_objects(deployment_uuid, object_kinds)
+
+        return result.stdout, objects
+
     def stop(self, deployment: dict, **kwargs) -> str:
         deployment_uuid = kwargs['name']
         helm_release = self._helm_release_name(deployment_uuid)
-        result = self.helm.uninstall(helm_release, deployment_uuid)
+        try:
+            result = self.helm.uninstall(helm_release, deployment_uuid)
+        except Exception as ex:
+            log.exception(f'Failed to uninstall Helm chart: {ex}')
+            if 'not found' in ex.args[0]:
+                log.warning(f'Helm release "{helm_release}" not found.')
+                return ex.args[0]
+            raise ex
         return result.stdout
+
+    def get_services(self, deployment_uuid: str, _, **kwargs) -> list:
+        """
+        Returns both K8s Services and Deployments by `deployment_uuid`.
+
+        :param deployment_uuid: Deployment UUID
+        :param _: this parameter is ignored.
+        :param kwargs: this parameter is ignored.
+        :return: list of dicts
+        """
+        objects = ['deployments',
+                   'services']
+        return self.helm.k8s.get_objects(deployment_uuid, objects)
 
 
 class K8sEdgeMgmt:

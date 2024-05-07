@@ -88,8 +88,8 @@ spec:
 
         self.k8s.create_namespace(namespace, exists_ok=True)
 
-        self._service_account_roles(namespace)
-        self._service_account_clusterroles(namespace)
+        # self._service_account_roles(namespace)
+        # self._service_account_clusterroles(namespace)
 
         cmd = ['install',
                '--repo', helm_repo,
@@ -97,6 +97,15 @@ spec:
                '--namespace', namespace, '--create-namespace']
         result = self.run_command(cmd)
         log.debug('Helm install command result: %s', result)
+        return result
+
+    def upgrade(self, helm_repo, helm_release, chart_name, namespace) -> CompletedProcess:
+        cmd = ['upgrade',
+               '--repo', helm_repo,
+               helm_release, chart_name,
+               '--namespace', namespace]
+        result = self.run_command(cmd)
+        log.debug('Helm upgrade command result: %s', result)
         return result
 
     def _service_account_roles(self, namespace):
@@ -254,7 +263,12 @@ roleRef:
 
     def uninstall(self, helm_release, namespace) -> CompletedProcess:
         cmd = ['uninstall', helm_release, '--namespace', namespace]
-        return self.run_command(cmd)
+        result = self.run_command(cmd)
+        try:
+            self.k8s.delete_namespace(namespace)
+        except Exception as e:
+            log.error(f'Error deleting namespace {namespace}: {e}')
+        return result
 
     def list(self, namespace, all=False) -> dict:
         cmd = ['list', '--namespace', namespace, '-o', 'json']
