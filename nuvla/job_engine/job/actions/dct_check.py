@@ -12,8 +12,11 @@ action_name = 'dct_check'
 
 log = logging.getLogger(action_name)
 
+
 def iterable(obj):
-    return isinstance(obj, Iterable) and not isinstance(obj, (str, bytes, bytearray))
+    return isinstance(obj, Iterable) and \
+        not isinstance(obj, (str, bytes, bytearray))
+
 
 def find_in_dict(obj, key):
     if isinstance(obj, dict):
@@ -43,7 +46,7 @@ class DockerContentTrustCheck(object):
         else:
             module = element['module']
         subtype = module['subtype']
-        images  = []
+        images = []
 
         if subtype == 'component':
             image = module['content']['image']
@@ -58,8 +61,13 @@ class DockerContentTrustCheck(object):
             images = [image_name]
         elif subtype in ['application', 'application_kubernetes']:
             docker_compose = module['content']['docker-compose']
-            compose_file = list(yaml.load_all(docker_compose, Loader=yaml.FullLoader))
+            compose_file = list(yaml.load_all(docker_compose,
+                                              Loader=yaml.FullLoader))
             images = find_in_dict(compose_file, 'image')
+        elif subtype == 'application_helm':
+            status_message = 'DCT check for Helm chart is not supported'
+            log.warning(status_message)
+            self.job.set_status_message(status_message)
         else:
             status_message = 'Unsupported module type: {}'.format(subtype)
             log.error(status_message)
@@ -85,10 +93,11 @@ class DockerContentTrustCheck(object):
         try:
             self.job.set_progress(10)
             images = set(self.get_images(href))
-            self.job.set_progress(50)
-            images_status = self.verify_images(images)
+            if images:
+                self.job.set_progress(50)
+                images_status = self.verify_images(images)
+                self.job.set_status_message(json.dumps(images_status))
             self.job.set_progress(90)
-            self.job.set_status_message(json.dumps(images_status))
         except Exception as ex:
             log.error('Failed to {} {}: {}'.format(action_name, href, ex))
             self.job.set_status_message(str(ex).splitlines()[-1])
