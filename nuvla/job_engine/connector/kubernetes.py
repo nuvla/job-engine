@@ -19,15 +19,8 @@ from .utils import join_stderr_stdout
 log = logging.getLogger('k8s_connector')
 log.setLevel(logging.DEBUG)
 
-_NUVLAEDGE_SHARED_PATH = "/srv/nuvlaedge/shared"
-NUVLAEDGE_STATUS_FILE = os.path.join(_NUVLAEDGE_SHARED_PATH, '.nuvlabox_status')
+
 NE_STATUS_COLLECTION = 'nuvlabox-status'
-
-
-def set_shared_path(path: str):
-    global _NUVLAEDGE_SHARED_PATH, NUVLAEDGE_STATUS_FILE
-    _NUVLAEDGE_SHARED_PATH = path
-    NUVLAEDGE_STATUS_FILE = os.path.join(_NUVLAEDGE_SHARED_PATH, '.nuvlabox_status')
 
 
 class OperationNotAllowed(Exception):
@@ -157,10 +150,10 @@ class K8sEdgeMgmt:
         self._nuvlabox = None
         self._nuvlabox_status = None
 
-        self.k8s = Kubernetes.from_path_to_k8s_creds(_NUVLAEDGE_SHARED_PATH)
+        self.k8s = Kubernetes.from_path_to_k8s_creds(job.nuvlaedge_shared_path)
         self.k8s.state_debug()
 
-        self.helm = Helm(_NUVLAEDGE_SHARED_PATH)
+        self.helm = Helm(job.nuvlaedge_shared_path)
 
     def connect(self):
         self.k8s.connect()
@@ -504,7 +497,7 @@ class K8sSSHKey:
 
         self.nuvlabox_resource = self.api.get(kwargs.get("nuvlabox_id"))
 
-        self.k8s = Kubernetes.from_path_to_k8s_creds(_NUVLAEDGE_SHARED_PATH)
+        self.k8s = Kubernetes.from_path_to_k8s_creds(job.nuvlaedge_shared_path)
         self.k8s.state_debug()
 
     def connect(self):
@@ -695,8 +688,8 @@ spec:
 
 class K8sLogging:
 
-    def __init__(self):
-        self.k8s = Kubernetes.from_path_to_k8s_creds(_NUVLAEDGE_SHARED_PATH)
+    def __init__(self, job: Job):
+        self.k8s = Kubernetes.from_path_to_k8s_creds(job.nuvlaedge_shared_path)
         self.k8s.state_debug()
 
     def log(self, component: str, since: str, lines: int, namespace='') -> str:

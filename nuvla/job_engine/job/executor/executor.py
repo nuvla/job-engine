@@ -5,13 +5,14 @@ import logging
 
 from requests.adapters import HTTPAdapter
 
+
 from ..actions import get_action, ActionNotImplemented
 from ..actions.utils.bulk_action import BulkAction
 from ..base import Base
 from ..job import Job, JobUpdateError, \
     JOB_FAILED, JOB_SUCCESS, JOB_QUEUED, JOB_RUNNING
 from ..util import override, retry_kazoo_queue_op, status_message_from_exception
-from ...connector.kubernetes import set_shared_path
+
 
 CONNECTION_POOL_SIZE = 4
 
@@ -49,15 +50,6 @@ class Executor(Base):
         parser.add_argument('--job-id', dest='job_id', metavar='ID',
                             help='Pull mode single job id to execute')
 
-    def _set_nuvlaedge_shared_dir(self):
-        """
-        Sets the NuvlaEdge working directory for Kubernetes. For docker, it is not required
-        Returns:
-
-        """
-        if self.args.nuvlaedge_fs:
-            set_shared_path(self.args.nuvlaedge_fs)
-
     def _process_jobs(self, queue):
         is_single_job_only = isinstance(queue, LocalOneJobQueue)
         api_http_adapter = HTTPAdapter(pool_maxsize=CONNECTION_POOL_SIZE,
@@ -66,7 +58,7 @@ class Executor(Base):
         self.api.session.mount('https://', api_http_adapter)
 
         while not Executor.stop_event.is_set():
-            job = Job(self.api, queue)
+            job = Job(self.api, queue, self.args.nuvlaedge_fs)
 
             if job.nothing_to_do:
                 if is_single_job_only:
@@ -122,8 +114,5 @@ class Executor(Base):
 
         job_id = self.args.job_id
         queue = LocalOneJobQueue(job_id) if job_id else self.kz.LockingQueue('/job')
-
-        # Required for K8s
-        self._set_nuvlaedge_shared_dir()
 
         self._process_jobs(queue)
