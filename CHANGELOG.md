@@ -6,6 +6,13 @@
 
 ## Released
 
+## [4.0.6](https://github.com/nuvla/job-engine/compare/4.0.5...4.0.6) (2024-05-08)
+
+
+### Bug Fixes
+
+* add argument nuvlaedge-fs to executor ([#355](https://github.com/nuvla/job-engine/issues/355)) ([9611137](https://github.com/nuvla/job-engine/commit/9611137f8709b8cd4bedb43208aa612d41368e61))
+
 ## [4.0.5](https://github.com/nuvla/job-engine/compare/4.0.4...4.0.5) (2024-04-26)
 
 
