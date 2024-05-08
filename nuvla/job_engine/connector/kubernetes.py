@@ -24,12 +24,12 @@ from .utils import (create_tmp_file,
 
 log = logging.getLogger('kubernetes')
 
-NUVLAEDGE_SHARED_PATH = "/srv/nuvlaedge/shared"
+_NUVLAEDGE_SHARED_PATH = "/srv/nuvlaedge/shared"
 
 
 def set_shared_path(path: str):
-    global NUVLAEDGE_SHARED_PATH
-    NUVLAEDGE_SHARED_PATH = path
+    global _NUVLAEDGE_SHARED_PATH
+    _NUVLAEDGE_SHARED_PATH = path
 
 
 class OperationNotAllowed(Exception):
@@ -729,7 +729,7 @@ class K8sLogging(Kubernetes):
             raise OperationNotAllowed(
                 'NuvlaEdge management actions are only supported in pull mode.')
 
-        path = NUVLAEDGE_SHARED_PATH # FIXME: This needs to be parameterised.
+        path = _NUVLAEDGE_SHARED_PATH # FIXME: This needs to be parameterised.
         super().__init__(**super_args(path))
 
 
@@ -752,7 +752,7 @@ class K8sEdgeMgmt(Kubernetes):
                 'NuvlaEdge management actions are only supported in pull mode.')
 
         # FIXME: This needs to be parameterised.
-        path = NUVLAEDGE_SHARED_PATH
+        path = _NUVLAEDGE_SHARED_PATH
         super().__init__(**super_args(path))
 
         self.ne_image_registry = os.getenv('NE_IMAGE_REGISTRY', '')
@@ -1176,7 +1176,7 @@ class K8sSSHKey(Kubernetes):
 
         self.nuvlabox_resource = self.api.get(kwargs.get("nuvlabox_id"))
 
-        path = NUVLAEDGE_SHARED_PATH # FIXME: needs to be parameterised.
+        path = _NUVLAEDGE_SHARED_PATH # FIXME: needs to be parameterised.
         super().__init__(**super_args(path))
 
         self.ne_image_registry = os.getenv('NE_IMAGE_REGISTRY', '')

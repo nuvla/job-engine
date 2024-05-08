@@ -11,7 +11,7 @@ from ..base import Base
 from ..job import Job, JobUpdateError, \
     JOB_FAILED, JOB_SUCCESS, JOB_QUEUED, JOB_RUNNING
 from ..util import override, retry_kazoo_queue_op, status_message_from_exception
-from ...connector.kubernetes import NUVLAEDGE_SHARED_PATH, set_shared_path
+from ...connector.kubernetes import set_shared_path
 
 CONNECTION_POOL_SIZE = 4
 
@@ -56,7 +56,6 @@ class Executor(Base):
 
         """
         if self.args.nuvlaedge_fs:
-            logging.info(f"Setting NuvlaEdge shared path from {NUVLAEDGE_SHARED_PATH} to: {self.args.nuvlaedge_fs}")
             set_shared_path(self.args.nuvlaedge_fs)
 
     def _process_jobs(self, queue):
