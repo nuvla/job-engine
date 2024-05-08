@@ -93,7 +93,7 @@ def create_tmp_file(content):
     return file
 
 
-def generate_registry_config(registries_auth):
+def generate_registry_config(registries_auth: list):
     auths = {}
     for registry_auth in registries_auth:
         user_pass = registry_auth['username'] + ':' + registry_auth['password']

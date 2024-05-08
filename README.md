@@ -20,7 +20,7 @@ It's done in a way to be horizontally scalled on different nodes.
 
 To contribute code to this repository, please follow these steps:
 
- 1. Create a branch from master with a descriptive, kebab-cased name
+ 1. Create a branch from main with a descriptive, kebab-cased name
     to hold all your changes.
 
  2. Follow the developer guidelines concerning formatting, etc. when
