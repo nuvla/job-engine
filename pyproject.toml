@@ -35,7 +35,7 @@ boto3 = "^1.34.40"
 kazoo = "^2.6.0"
 
 
-[tool.poetry.group.test.dependencies]
+[tool.poetry.group.tests.dependencies]
 mock = "^5.1.0"
 pytest = "^8.0.0"
 pytest-cov = "^4.1.0"
