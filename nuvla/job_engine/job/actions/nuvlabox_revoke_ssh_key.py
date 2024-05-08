@@ -39,10 +39,10 @@ class NBRevokeSSHKey(object):
             public_key = self.job.context[credential_id]['public-key']
             self.job.set_progress(10)
             if os.getenv('KUBERNETES_SERVICE_HOST'):
-                logging.debug('We are using Kubernetes on nuvlabox ID : %s ',nuvlabox_id)
-                connector = K8sSSHKey(api=self.api, nuvlabox_id=nuvlabox_id, job=self.job)
-                connector.handle_ssh_key('revoke-ssh-key', public_key, \
-                    credential_id, nuvlabox_id=nuvlabox_id)
+                logging.debug('Using Kubernetes on NuvlaEdge: %s', nuvlabox_id)
+                connector = K8sSSHKey(job=self.job, nuvlabox_id=nuvlabox_id)
+                connector.manage_ssh_key(K8sSSHKey.ACTION_REVOKE, public_key,
+                                         credential_id, nuvlabox_id=nuvlabox_id)
             else:
                 connector = NB.NuvlaBox(api=self.api, nuvlabox_id=nuvlabox_id, job=self.job)
                 r = connector.nuvlabox_manage_ssh_key('revoke-ssh-key', public_key)

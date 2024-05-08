@@ -21,7 +21,7 @@ class NBUpdateJob(object):
         logging.info('Updating NuvlaBox {}'.format(nuvlabox_id))
         if os.getenv('KUBERNETES_SERVICE_HOST'):
             logging.debug('Found kubernetes installation.')
-            connector = K8sEdgeMgmt(job=self.job)
+            connector = K8sEdgeMgmt(self.job)
         else:
             logging.info('Found docker installation.')
             connector = NB.NuvlaBox(api=self.api, nuvlabox_id=nuvlabox_id, job=self.job)

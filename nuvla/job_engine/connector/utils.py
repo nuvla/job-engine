@@ -72,7 +72,7 @@ def execute_cmd(cmd, **kwargs) -> CompletedProcess:
                      timeout=timeout, encoding='UTF-8')
         log.debug('Command result: %s', result)
     except TimeoutExpired:
-        message = 'Command execution timed out after {} seconds'.format(timeout)
+        message = f'Command execution timed out after {timeout} seconds'
         log.exception(message)
         raise Exception(message)
     if result.returncode == 0:
@@ -93,7 +93,7 @@ def create_tmp_file(content):
     return file
 
 
-def generate_registry_config(registries_auth):
+def generate_registry_config(registries_auth: list):
     auths = {}
     for registry_auth in registries_auth:
         user_pass = registry_auth['username'] + ':' + registry_auth['password']
