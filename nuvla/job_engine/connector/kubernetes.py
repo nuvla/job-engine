@@ -21,8 +21,8 @@ from .utils import join_stderr_stdout
 log = logging.getLogger('k8s_connector')
 log.setLevel(logging.DEBUG)
 
-NUVLAEDGE_SHARED_PATH = "/srv/nuvlaedge/shared"
-NUVLAEDGE_STATUS_FILE = os.path.join(NUVLAEDGE_SHARED_PATH, '.nuvlabox_status')
+_NUVLAEDGE_SHARED_PATH = "/srv/nuvlaedge/shared"
+NUVLAEDGE_STATUS_FILE = os.path.join(_NUVLAEDGE_SHARED_PATH, '.nuvlabox_status')
 NE_STATUS_COLLECTION = 'nuvlabox-status'
 
 
@@ -143,7 +143,7 @@ class HelmAppMgmt(Connector, ABC):
     """
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.helm = Helm(NUVLAEDGE_SHARED_PATH, **kwargs)
+        self.helm = Helm(_NUVLAEDGE_SHARED_PATH, **kwargs)
 
     @staticmethod
     def _helm_release_name(deployment_uuid):
@@ -245,10 +245,10 @@ class K8sEdgeMgmt:
         self._nuvlabox = None
         self._nuvlabox_status = None
 
-        self.k8s = Kubernetes.from_path_to_k8s_creds(NUVLAEDGE_SHARED_PATH)
+        self.k8s = Kubernetes.from_path_to_k8s_creds(_NUVLAEDGE_SHARED_PATH)
         self.k8s.state_debug()
 
-        self.helm = Helm(NUVLAEDGE_SHARED_PATH)
+        self.helm = Helm(_NUVLAEDGE_SHARED_PATH)
 
     def connect(self):
         self.k8s.connect()
@@ -590,7 +590,7 @@ class K8sSSHKey:
 
         self.nuvlabox_resource = self.api.get(kwargs.get("nuvlabox_id"))
 
-        self.k8s = Kubernetes.from_path_to_k8s_creds(NUVLAEDGE_SHARED_PATH)
+        self.k8s = Kubernetes.from_path_to_k8s_creds(_NUVLAEDGE_SHARED_PATH)
         self.k8s.state_debug()
 
     def connect(self):
@@ -782,7 +782,7 @@ spec:
 class K8sLogging:
 
     def __init__(self):
-        self.k8s = Kubernetes.from_path_to_k8s_creds(NUVLAEDGE_SHARED_PATH)
+        self.k8s = Kubernetes.from_path_to_k8s_creds(_NUVLAEDGE_SHARED_PATH)
         self.k8s.state_debug()
 
     def log(self, component: str, since: str, lines: int, namespace='') -> str:
