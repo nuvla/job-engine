@@ -159,9 +159,10 @@ class HelmAppMgmt(Connector, ABC):
         # registries_auth = kwargs['registries_auth']
         # self.helm.k8s....
 
-        app_content = Deployment.module_content(deployment)
-        repo_url = app_content.get('helm-repo-url')
-        chart_name = app_content.get('helm-chart-name')
+        # all this below has to be commented out...
+        # app_content = Deployment.module_content(deployment)
+        # repo_url = app_content.get('helm-repo-url')
+        # chart_name = app_content.get('helm-chart-name')
         deployment_uuid = kwargs['name']
         # not used quite yet... still testing
         # version = app_content.get('helm-chart-version')
