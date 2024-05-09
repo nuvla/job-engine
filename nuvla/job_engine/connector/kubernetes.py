@@ -173,8 +173,8 @@ class HelmAppMgmt(Connector, ABC):
         # version = app_content.get('helm-chart-version')
         # the version is optional, if not provided, the latest will be used
 
-        # check for a version. if not found set to latest
-        version = deployment['module'].get('helm-chart-version', 'latest')
+        # check for a version
+        version = deployment['module'].get('helm-chart-version', '')
 
         helm_release = self._helm_release_name(deployment_uuid)
         try:
