@@ -84,7 +84,7 @@ spec:
 
         return execute_cmd(cmd)
 
-    def install(self, helm_repo, helm_release, chart_name, namespace) -> CompletedProcess:
+    def install(self, helm_repo, helm_release, chart_name, namespace, version) -> CompletedProcess:
 
         self.k8s.create_namespace(namespace, exists_ok=True)
 
@@ -95,7 +95,7 @@ spec:
         cmd = ['install',
                '--repo', helm_repo,
                helm_release, chart_name,
-               '--version', '0.1.0',
+               '--version', version,
                '--namespace', namespace, '--create-namespace']
         result = self.run_command(cmd)
         log.debug('Helm install command result: %s', result)
