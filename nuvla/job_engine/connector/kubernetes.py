@@ -161,24 +161,27 @@ class HelmAppMgmt(Connector, ABC):
 
         # all this below has to be commented out...
         # app_content = Deployment.module_content(deployment)
-
         # repo_url = app_content.get('helm-repo-url')
-        repo_url = deployment['module']['helm-repo-url']
         # chart_name = app_content.get('helm-chart-name')
+
+        repo_url = deployment['module']['helm-repo-url']
         chart_name = deployment['module']['helm-chart-name']
-        
+
         deployment_uuid = kwargs['name']
 
         # not to be used quite yet... still testing
         # version = app_content.get('helm-chart-version')
         # the version is optional, if not provided, the latest will be used
 
+        # check for a version. if not found set to latest
+
         helm_release = self._helm_release_name(deployment_uuid)
         try:
             result = self.helm.install(repo_url,
                                        helm_release,
                                        chart_name,
-                                       deployment_uuid)
+                                       deployment_uuid,
+                                       version='0.1.0')
         except Exception as ex:
             log.exception(f'Failed to install Helm chart: {ex}')
             if 'cannot re-use a name' in ex.args[0]:
