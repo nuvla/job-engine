@@ -163,9 +163,10 @@ class HelmAppMgmt(Connector, ABC):
         # app_content = Deployment.module_content(deployment)
 
         # repo_url = app_content.get('helm-repo-url')
-        repo_url = kwargs['helm-repo-url']
+        repo_url = deployment['module']['helm-repo-url']
         # chart_name = app_content.get('helm-chart-name')
-        chart_name = kwargs['helm-chart-name']
+        chart_name = deployment['module']['helm-chart-name']
+        
         deployment_uuid = kwargs['name']
 
         # not to be used quite yet... still testing
