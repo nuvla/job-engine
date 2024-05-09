@@ -174,6 +174,7 @@ class HelmAppMgmt(Connector, ABC):
         # the version is optional, if not provided, the latest will be used
 
         # check for a version. if not found set to latest
+        version = deployment['module'].get('helm-chart-version', 'latest')
 
         helm_release = self._helm_release_name(deployment_uuid)
         try:
@@ -181,7 +182,7 @@ class HelmAppMgmt(Connector, ABC):
                                        helm_release,
                                        chart_name,
                                        deployment_uuid,
-                                       version='0.1.0')
+                                       version)
         except Exception as ex:
             log.exception(f'Failed to install Helm chart: {ex}')
             if 'cannot re-use a name' in ex.args[0]:
