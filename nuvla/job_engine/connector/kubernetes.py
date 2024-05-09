@@ -10,7 +10,7 @@ from abc import ABC
 
 import re
 
-from nuvla.api.resources import Deployment
+# from nuvla.api.resources import Deployment
 
 from .helm_driver import Helm
 from .k8s_driver import Kubernetes
@@ -21,7 +21,9 @@ from .utils import join_stderr_stdout
 log = logging.getLogger('k8s_connector')
 log.setLevel(logging.DEBUG)
 
-_NUVLAEDGE_SHARED_PATH = "/srv/nuvlaedge/shared"
+# _NUVLAEDGE_SHARED_PATH = "/srv/nuvlaedge/shared"
+# for testing purposes only - to be removed
+_NUVLAEDGE_SHARED_PATH = "/var/lib/nuvlaedge/nuvlaedge-81822385-f67c-4ccb-ac71-a62b8557a15a"
 NUVLAEDGE_STATUS_FILE = os.path.join(_NUVLAEDGE_SHARED_PATH, '.nuvlabox_status')
 NE_STATUS_COLLECTION = 'nuvlabox-status'
 
@@ -161,6 +163,10 @@ class HelmAppMgmt(Connector, ABC):
         repo_url = app_content.get('helm-repo-url')
         chart_name = app_content.get('helm-chart-name')
         deployment_uuid = kwargs['name']
+        # not used quite yet... still testing
+        # version = app_content.get('helm-chart-version')
+        # the version is optional, if not provided, the latest will be used
+
         helm_release = self._helm_release_name(deployment_uuid)
         try:
             result = self.helm.install(repo_url,

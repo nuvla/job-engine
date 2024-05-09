@@ -5,7 +5,7 @@ import logging
 import re
 import json
 
-from nuvla.api import Api, NuvlaError, ConnectionError
+# from nuvla.api import Api, NuvlaError, ConnectionError
 
 from nuvla.job_engine.job.util import retry_kazoo_queue_op
 
