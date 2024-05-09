@@ -95,6 +95,7 @@ spec:
         cmd = ['install',
                '--repo', helm_repo,
                helm_release, chart_name,
+               '--version', '0.1.0',
                '--namespace', namespace, '--create-namespace']
         result = self.run_command(cmd)
         log.debug('Helm install command result: %s', result)
