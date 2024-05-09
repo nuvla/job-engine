@@ -161,10 +161,14 @@ class HelmAppMgmt(Connector, ABC):
 
         # all this below has to be commented out...
         # app_content = Deployment.module_content(deployment)
+
         # repo_url = app_content.get('helm-repo-url')
+        repo_url = kwargs['helm-repo-url']
         # chart_name = app_content.get('helm-chart-name')
+        chart_name = kwargs['helm-chart-name']
         deployment_uuid = kwargs['name']
-        # not used quite yet... still testing
+
+        # not to be used quite yet... still testing
         # version = app_content.get('helm-chart-version')
         # the version is optional, if not provided, the latest will be used
 
