@@ -163,17 +163,12 @@ class HelmAppMgmt(Connector, ABC):
         # app_content = Deployment.module_content(deployment)
         # repo_url = app_content.get('helm-repo-url')
         # chart_name = app_content.get('helm-chart-name')
+        # version = app_content.get('helm-chart-version', '')
 
         repo_url = deployment['module']['helm-repo-url']
         chart_name = deployment['module']['helm-chart-name']
-
         deployment_uuid = kwargs['name']
-
-        # not to be used quite yet... still testing
-        # version = app_content.get('helm-chart-version')
-        # the version is optional, if not provided, the latest will be used
-
-        # check for a version
+        # the version is optional
         version = deployment['module'].get('helm-chart-version', '')
 
         helm_release = self._helm_release_name(deployment_uuid)
@@ -201,14 +196,20 @@ class HelmAppMgmt(Connector, ABC):
         return result.stdout, objects
 
     def update(self, deployment: dict, **kwargs):
-        app_content = Deployment.module_content(deployment)
-        repo_url = app_content.get('helm-repo-url')
-        chart_name = app_content.get('helm-chart-name')
+        # app_content = Deployment.module_content(deployment)
+        # repo_url = app_content.get('helm-repo-url')
+        # chart_name = app_content.get('helm-chart-name')
+
+        repo_url = deployment['module']['helm-repo-url']
+        chart_name = deployment['module']['helm-chart-name']
         deployment_uuid = kwargs['name']
+        # the version is optional
+        version = deployment['module'].get('helm-chart-version', '')
+
         helm_release = self._helm_release_name(deployment_uuid)
 
         result = self.helm.upgrade(repo_url, helm_release, chart_name,
-                                   deployment_uuid)
+                                   deployment_uuid, version)
 
         object_kinds = ['deployments',
                         'services']

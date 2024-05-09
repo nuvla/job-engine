@@ -101,10 +101,11 @@ spec:
         log.debug('Helm install command result: %s', result)
         return result
 
-    def upgrade(self, helm_repo, helm_release, chart_name, namespace) -> CompletedProcess:
+    def upgrade(self, helm_repo, helm_release, chart_name, namespace, version) -> CompletedProcess:
         cmd = ['upgrade',
                '--repo', helm_repo,
                helm_release, chart_name,
+               '--version', version,
                '--namespace', namespace]
         result = self.run_command(cmd)
         log.debug('Helm upgrade command result: %s', result)
