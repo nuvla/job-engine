@@ -2,20 +2,20 @@
 import json
 import logging
 import os
+import re
 import tempfile
+
+from abc import ABC
 from datetime import datetime
 from subprocess import CompletedProcess
 from typing import List, Union
-from abc import ABC
-
-import re
 
 from nuvla.api.resources import Deployment
 
-from .helm_driver import Helm
-from .k8s_driver import Kubernetes
 from ..job.job import Job
 from .connector import Connector, should_connect
+from .helm_driver import Helm
+from .k8s_driver import Kubernetes
 from .utils import join_stderr_stdout
 
 log = logging.getLogger('k8s_connector')
@@ -160,13 +160,15 @@ class HelmAppMgmt(Connector, ABC):
         app_content = Deployment.module_content(deployment)
         repo_url = app_content.get('helm-repo-url')
         chart_name = app_content.get('helm-chart-name')
+        version = app_content.get('helm-chart-version')
         deployment_uuid = kwargs['name']
         helm_release = self._helm_release_name(deployment_uuid)
         try:
             result = self.helm.install(repo_url,
                                        helm_release,
                                        chart_name,
-                                       deployment_uuid)
+                                       deployment_uuid,
+                                       version=version)
         except Exception as ex:
             log.exception(f'Failed to install Helm chart: {ex}')
             if 'cannot re-use a name' in ex.args[0]:
@@ -178,9 +180,7 @@ class HelmAppMgmt(Connector, ABC):
                 raise ex
             raise ex
 
-        object_kinds = ['deployments',
-                        'services']
-        objects = self.helm.k8s.get_objects(deployment_uuid, object_kinds)
+        objects = self.get_services(deployment_uuid, None)
 
         return result.stdout, objects
 
@@ -188,15 +188,17 @@ class HelmAppMgmt(Connector, ABC):
         app_content = Deployment.module_content(deployment)
         repo_url = app_content.get('helm-repo-url')
         chart_name = app_content.get('helm-chart-name')
+        version = app_content.get('helm-chart-version')
         deployment_uuid = kwargs['name']
         helm_release = self._helm_release_name(deployment_uuid)
 
-        result = self.helm.upgrade(repo_url, helm_release, chart_name,
-                                   deployment_uuid)
+        result = self.helm.upgrade(repo_url,
+                                   helm_release,
+                                   chart_name,
+                                   deployment_uuid,
+                                   version=version)
 
-        object_kinds = ['deployments',
-                        'services']
-        objects = self.helm.k8s.get_objects(deployment_uuid, object_kinds)
+        objects = self.get_services(deployment_uuid, None)
 
         return result.stdout, objects
 

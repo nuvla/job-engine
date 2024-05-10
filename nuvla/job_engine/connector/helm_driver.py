@@ -84,7 +84,8 @@ spec:
 
         return execute_cmd(cmd)
 
-    def install(self, helm_repo, helm_release, chart_name, namespace) -> CompletedProcess:
+    def install(self, helm_repo, helm_release, chart_name, namespace,
+                version=None) -> CompletedProcess:
 
         self.k8s.create_namespace(namespace, exists_ok=True)
 
@@ -96,15 +97,20 @@ spec:
                '--repo', helm_repo,
                helm_release, chart_name,
                '--namespace', namespace, '--create-namespace']
+        if version:
+            cmd += ['--version', version]
         result = self.run_command(cmd)
         log.debug('Helm install command result: %s', result)
         return result
 
-    def upgrade(self, helm_repo, helm_release, chart_name, namespace) -> CompletedProcess:
+    def upgrade(self, helm_repo, helm_release, chart_name, namespace,
+                version=None) -> CompletedProcess:
         cmd = ['upgrade',
                '--repo', helm_repo,
                helm_release, chart_name,
                '--namespace', namespace]
+        if version:
+            cmd += ['--version', version]
         result = self.run_command(cmd)
         log.debug('Helm upgrade command result: %s', result)
         return result
