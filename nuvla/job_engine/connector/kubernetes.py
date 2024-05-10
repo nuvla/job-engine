@@ -145,10 +145,6 @@ class HelmAppMgmt(Connector, ABC):
         super().__init__(**kwargs)
         self.helm = Helm(_NUVLAEDGE_SHARED_PATH, **kwargs)
 
-    @staticmethod
-    def _helm_release_name(deployment_uuid):
-        return f'deployment-{deployment_uuid}'
-
     def start(self, deployment: dict, **kwargs) -> [str, List[dict]]:
         env = kwargs['env']
         files = kwargs['files']
@@ -161,13 +157,12 @@ class HelmAppMgmt(Connector, ABC):
         repo_url = app_content.get('helm-repo-url')
         chart_name = app_content.get('helm-chart-name')
         version = app_content.get('helm-chart-version')
-        deployment_uuid = kwargs['name']
-        helm_release = self._helm_release_name(deployment_uuid)
+        helm_release = namespace = kwargs['name']
         try:
             result = self.helm.install(repo_url,
                                        helm_release,
                                        chart_name,
-                                       deployment_uuid,
+                                       namespace,
                                        version=version)
         except Exception as ex:
             log.exception(f'Failed to install Helm chart: {ex}')
@@ -175,12 +170,12 @@ class HelmAppMgmt(Connector, ABC):
                 args = list(ex.args)
                 args[0] = (args[0].strip() +
                            f'. Helm release: {helm_release}. '
-                           f'Currently running: {self.helm.list(deployment_uuid)}')
+                           f'Currently running: {self.helm.list(namespace)}')
                 ex.args = tuple(args)
                 raise ex
             raise ex
 
-        objects = self.get_services(deployment_uuid, None)
+        objects = self.get_services(namespace, None)
 
         return result.stdout, objects
 
@@ -189,24 +184,22 @@ class HelmAppMgmt(Connector, ABC):
         repo_url = app_content.get('helm-repo-url')
         chart_name = app_content.get('helm-chart-name')
         version = app_content.get('helm-chart-version')
-        deployment_uuid = kwargs['name']
-        helm_release = self._helm_release_name(deployment_uuid)
+        helm_release = namespace = kwargs['name']
 
         result = self.helm.upgrade(repo_url,
                                    helm_release,
                                    chart_name,
-                                   deployment_uuid,
+                                   namespace,
                                    version=version)
 
-        objects = self.get_services(deployment_uuid, None)
+        objects = self.get_services(namespace, None)
 
         return result.stdout, objects
 
     def stop(self, deployment: dict, **kwargs) -> str:
-        deployment_uuid = kwargs['name']
-        helm_release = self._helm_release_name(deployment_uuid)
+        helm_release = namespace = kwargs['name']
         try:
-            result = self.helm.uninstall(helm_release, deployment_uuid)
+            result = self.helm.uninstall(helm_release, namespace)
         except Exception as ex:
             log.exception(f'Failed to uninstall Helm chart: {ex}')
             if 'not found' in ex.args[0]:
