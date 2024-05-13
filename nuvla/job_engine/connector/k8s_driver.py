@@ -557,7 +557,8 @@ class Kubernetes:
          'Job',
          'CronJob',
          'StatefulSet',
-         'DaemonSet']
+         'DaemonSet',
+         'Pod']
 
     @should_connect
     def log(self, component: str, since: datetime, num_lines: int,
