@@ -6,6 +6,14 @@
 
 ## Released
 
+## [4.0.7](https://github.com/nuvla/job-engine/compare/4.0.6...4.0.7) (2024-05-13)
+
+
+### Bug Fixes
+
+* kubernetes pod logs retrieval ([#358](https://github.com/nuvla/job-engine/issues/358)) ([d3324da](https://github.com/nuvla/job-engine/commit/d3324da75f1408dc8e821a749a68fb14c03d8a68))
+* nuvlabox_releases.py: create release by default with view-data ACL for group/nuvla-anon ([4de2fb7](https://github.com/nuvla/job-engine/commit/4de2fb7a69e3e5c97529b3928aebfee41d11fc96))
+
 ## [4.0.6](https://github.com/nuvla/job-engine/compare/4.0.5...4.0.6) (2024-05-08)
 
 
