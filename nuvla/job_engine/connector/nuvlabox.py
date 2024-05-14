@@ -659,10 +659,7 @@ class NuvlaBox(Connector):
 
         # 3rd - run the Docker command
 
-        new_env_dict = {}
-        for i in new_env:
-            k, s, v = i.partition('=')
-            new_env_dict[k] = v
+        new_env_dict = {k: v for k, _, v in (j.partition('=') for j in new_env)}
 
         installer_image = new_env_dict.get('NE_IMAGE_INSTALLER')
         if installer_image:
