@@ -6,6 +6,13 @@
 
 ## Released
 
+## [4.0.8](https://github.com/nuvla/job-engine/compare/4.0.7...4.0.8) (2024-05-14)
+
+
+### Bug Fixes
+
+* **nuvlabox.py:** nuvlabox_update() do not fail if docker pull fails ([#359](https://github.com/nuvla/job-engine/issues/359)) ([7cc5e8b](https://github.com/nuvla/job-engine/commit/7cc5e8b8b752837498a970960507343a46658110))
+
 ## [4.0.7](https://github.com/nuvla/job-engine/compare/4.0.6...4.0.7) (2024-05-13)
 
 
