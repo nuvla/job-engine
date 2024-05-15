@@ -145,25 +145,34 @@ class HelmAppMgmt(Connector, ABC):
         super().__init__(**kwargs)
         self.helm = Helm(_NUVLAEDGE_SHARED_PATH, **kwargs)
 
+    @staticmethod
+    def _helm_release_name(string: str):
+        return 'release-' + string
+
     def start(self, deployment: dict, **kwargs) -> [str, List[dict]]:
         env = kwargs['env']
         files = kwargs['files']
 
-        # TODO: add later
-        # registries_auth = kwargs['registries_auth']
-        # self.helm.k8s....
+        namespace = kwargs['name']
+        helm_release = self._helm_release_name(namespace)
+
+        registries_auth = kwargs.get('registries_auth')
+        helm_repo_cred = kwargs.get('helm_repo_cred')
 
         app_content = Deployment.module_content(deployment)
         repo_url = app_content.get('helm-repo-url')
         chart_name = app_content.get('helm-chart-name')
         version = app_content.get('helm-chart-version')
-        helm_release = namespace = kwargs['name']
+        helm_absolute_url = app_content.get('helm-absolute-url')
         try:
             result = self.helm.install(repo_url,
                                        helm_release,
                                        chart_name,
                                        namespace,
-                                       version=version)
+                                       version=version,
+                                       registries_auth=registries_auth,
+                                       helm_repo_cred=helm_repo_cred,
+                                       helm_absolute_url=helm_absolute_url)
         except Exception as ex:
             log.exception(f'Failed to install Helm chart: {ex}')
             if 'cannot re-use a name' in ex.args[0]:
@@ -184,20 +193,26 @@ class HelmAppMgmt(Connector, ABC):
         repo_url = app_content.get('helm-repo-url')
         chart_name = app_content.get('helm-chart-name')
         version = app_content.get('helm-chart-version')
-        helm_release = namespace = kwargs['name']
+        namespace = kwargs['name']
+        helm_release = self._helm_release_name(namespace)
+        helm_absolute_url = app_content.get('helm-absolute-url')
+        helm_repo_cred = kwargs.get('helm_repo_cred')
 
         result = self.helm.upgrade(repo_url,
                                    helm_release,
                                    chart_name,
                                    namespace,
-                                   version=version)
+                                   version=version,
+                                   helm_repo_cred=helm_repo_cred,
+                                   helm_absolute_url=helm_absolute_url)
 
         objects = self.get_services(namespace, None)
 
         return result.stdout, objects
 
     def stop(self, deployment: dict, **kwargs) -> str:
-        helm_release = namespace = kwargs['name']
+        namespace = kwargs['name']
+        helm_release = self._helm_release_name(namespace)
         try:
             result = self.helm.uninstall(helm_release, namespace)
         except Exception as ex:

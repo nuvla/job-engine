@@ -40,14 +40,32 @@ def manifest_interpolate_env_vars(manifest: str, env: dict) -> str:
     return execute_cmd(cmd, env=env, input=manifest).stdout
 
 
-def add_private_container_registries(registries_auth):
+def k8s_secret_image_registries_auths(registries_auth: list,
+                                      secret_name='registries-credentials'):
     config = generate_registry_config(registries_auth)
-    config_b64 = base64.b64encode(config.encode('ascii')).decode('utf-8')
     return {'apiVersion': 'v1',
             'kind': 'Secret',
-            'metadata': {'name': 'registries-credentials'},
-            'data': {'.dockerconfigjson': config_b64},
+            'metadata': {'name': secret_name},
+            'data': {'.dockerconfigjson': to_base64(config)},
             'type': 'kubernetes.io/dockerconfigjson'}
+
+
+def store_yaml_file(data: dict, file_name, directory_path='.',
+                    allow_unicode=True) -> str:
+    file_path = os.path.join(directory_path, file_name)
+    with open(file_path, 'w') as fd:
+        yaml.safe_dump(data, fd, allow_unicode=allow_unicode)
+    return file_path
+
+
+REGISTRIES_AUTHS_FN: str = 'secret-image-registries-auths.yml'
+
+
+def store_k8s_secret_registries_auths_file(registries_auths: list,
+                                           directory_path='.',
+                                           file_name=REGISTRIES_AUTHS_FN) -> str:
+    data = k8s_secret_image_registries_auths(registries_auths)
+    return store_yaml_file(data, file_name, directory_path=directory_path)
 
 
 class Kubernetes:
@@ -245,20 +263,15 @@ users:
 
         if files:
             for file_info in files:
-                file_path = directory_path + "/" + file_info['file-name']
+                file_path = os.path.join(directory_path, file_info['file-name'])
                 f = open(file_path, 'w')
                 f.write(file_info['file-content'])
                 f.close()
 
         if registries_auth:
-            secret_registries_fn = 'secret-registries-credentials.yml'
-            secret_registries_path = os.path.join(directory_path,
-                                                  secret_registries_fn)
-            secret_registries_data = add_private_container_registries(registries_auth)
-
-            with open(secret_registries_path, 'w') as secret_registries_file:
-                yaml.safe_dump(secret_registries_data, secret_registries_file,
-                               allow_unicode=True)
+            secret_registries_fn = \
+                store_k8s_secret_registries_auths_file(
+                    registries_auth, directory_path=directory_path)
             kustomization_data.setdefault('resources', []) \
                 .append(secret_registries_fn)
 
@@ -768,3 +781,14 @@ users:
                 log.warning(f'Namespace {namespace} already exists.')
                 return CompletedProcess(cmd, 1, None, ex.args[0])
             raise ex
+
+    @should_connect
+    def add_secret_image_registries_auths(self, registries_auths: list,
+                                          namespace=None) -> CompletedProcess:
+        secret_data = k8s_secret_image_registries_auths(registries_auths)
+        cmd_base = ['apply', '-f', '-']
+        if namespace:
+            cmd_base = ['-n', namespace, ] + cmd_base
+        cmd = self.build_cmd_line(cmd_base)
+        log.debug('Command line to add secret image registries auths: %s', cmd)
+        return execute_cmd(cmd, input=yaml.dump(secret_data))
