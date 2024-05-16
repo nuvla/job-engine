@@ -34,10 +34,10 @@ def get_kubernetes_local_endpoint():
     return ''
 
 
-def manifest_interpolate_env_vars(manifest: str, env: dict) -> str:
+def string_interpolate_env_vars(string: str, env: dict) -> str:
     envsubst_shell_format = ' '.join([f'${k}' for k in env.keys()])
     cmd = ['envsubst', envsubst_shell_format]
-    return execute_cmd(cmd, env=env, input=manifest).stdout
+    return execute_cmd(cmd, env=env, input=string).stdout
 
 
 def k8s_secret_image_registries_auths(registries_auth: list,
@@ -188,7 +188,7 @@ users:
                                     files: List[dict],
                                     registries_auth: list) -> CompletedProcess:
         if env:
-            manifest = manifest_interpolate_env_vars(manifest, env)
+            manifest = string_interpolate_env_vars(manifest, env)
 
         common_labels = {'nuvla.application.name': namespace,
                          'nuvla.deployment.uuid': env['NUVLA_DEPLOYMENT_UUID']}

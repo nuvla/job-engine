@@ -119,19 +119,8 @@ class DeploymentStartJob(DeploymentBase):
         connector = initialize_connector(connector_module, self.job, deployment)
         module_content = Deployment.module_content(deployment)
         registries_auth = self.private_registries_auth()
-
-        helm_repo_cred = {}
-        helm_repo_cred_id = module_content.get('helm-repo-creds')
-        if helm_repo_cred_id:
-            try:
-                cred = self.job.context[helm_repo_cred_id]
-            except Exception as e:
-                msg = f'Failed getting helm repo creds from context: {e}'
-                log.exception(msg, e)
-                raise Exception(msg)
-            helm_repo_cred = {k: cred.get(k) for k in ('username', 'password')}
-
-        result, services = connector.start(
+        helm_repo_cred = self.helm_repo_cred(module_content)
+        result, services, release = connector.start(
             deployment=deployment,
             name=Deployment.uuid(deployment),
             env=get_env(deployment),
@@ -142,6 +131,8 @@ class DeploymentStartJob(DeploymentBase):
         self.job.set_status_message(result)
 
         self.application_params_update(services)
+
+        self.app_helm_release_params_set(release)
 
     @override
     def handle_deployment(self):

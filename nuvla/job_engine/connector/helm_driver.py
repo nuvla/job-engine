@@ -4,7 +4,7 @@ from subprocess import CompletedProcess
 
 from nuvla.job_engine.connector.connector import should_connect
 from nuvla.job_engine.connector.k8s_driver import Kubernetes
-from nuvla.job_engine.connector.utils import execute_cmd
+from nuvla.job_engine.connector.utils import execute_cmd, create_tmp_file
 
 log = logging.getLogger('helm_driver')
 log.setLevel(logging.DEBUG)
@@ -85,73 +85,114 @@ spec:
         return execute_cmd(cmd)
 
     def _from_absolute_url(self, op: str, release: str,
-                           absolute_url: str, namespace: str):
+                           absolute_url: str, namespace: str, values_yaml=None):
         cmd = [op, release, absolute_url,
                '--namespace', namespace]
+        values_yaml_fd = None
+        if values_yaml:
+            values_yaml_fd = create_tmp_file(values_yaml)
+            cmd += ['--values', values_yaml_fd.name]
         result = self.run_command(cmd)
         log.debug('Helm %s command result: %s', op, result)
+        if values_yaml_fd:
+            values_yaml_fd.close()
         return result
 
     def _op_install_upgrade(self, op, chart_name, helm_absolute_url,
                             helm_release, helm_repo, helm_repo_cred, namespace,
-                            version):
+                            version, values_yaml):
         if helm_absolute_url:
             result = self._from_absolute_url(op, helm_release,
                                              helm_absolute_url, namespace)
         elif helm_repo_cred:
-            repo_name = 'helm-repo'
-
-            # FIXME: username and password need to go to a config file.
-            cmd = ['repo', 'add', repo_name, helm_repo,
-                   '--username', helm_repo_cred['username'],
-                   '--password', helm_repo_cred['password']]
-            result = self.run_command(cmd)
-            log.debug('Helm repo add command result: %s', result)
-
-            result = self.run_command(['repo', 'update'])
-            log.debug('Helm repo update command result: %s', result)
-
-            cmd = [op, helm_release,
-                   f'{repo_name}/{chart_name}',
-                   '--namespace', namespace]
-            if version:
-                cmd += ['--version', version]
-            result = self.run_command(cmd)
-            log.debug('Helm install command result: %s', result)
-            try:
-                cmd = ['repo', 'remove', repo_name]
-                res = self.run_command(cmd)
-                log.debug('Helm repo remove command result: %s', res)
-            except Exception as e:
-                log.error(f'Error removing helm repo {repo_name}: {e}')
+            result = self._from_helm_repo_cred(op, helm_repo, helm_repo_cred,
+                                               chart_name, version, values_yaml,
+                                               helm_release, namespace)
         else:
             cmd = [op, '--repo', helm_repo,
                    helm_release, chart_name,
                    '--namespace', namespace]
             if version:
                 cmd += ['--version', version]
+            values_yaml_fd = None
+            if values_yaml:
+                values_yaml_fd = create_tmp_file(values_yaml)
+                cmd += ['--values', values_yaml_fd.name]
             result = self.run_command(cmd)
             log.debug('Helm %s command result: %s', op, result)
+            if values_yaml_fd:
+                values_yaml_fd.close()
+        return result
+
+    def _from_helm_repo_cred(self, op, helm_repo, helm_repo_cred, chart_name,
+                             version, values_yaml, helm_release, namespace):
+        repo_name = 'helm-repo'
+
+        repos_config = f"""
+apiVersion: ""
+generated: "0001-01-01T00:00:00Z"
+repositories:
+- caFile: ""
+  certFile: ""
+  insecure_skip_tls_verify: false
+  keyFile: ""
+  name: {repo_name}
+  pass_credentials_all: false
+  url: {helm_repo}
+  username: {helm_repo_cred['username']}
+  password: {helm_repo_cred['password']}
+"""
+        repos_config_fd = create_tmp_file(repos_config)
+
+        result = self.run_command(['repo', 'update',
+                                   '--repository-config', repos_config_fd.name])
+        log.debug('Helm repo update command result: %s', result)
+
+        cmd = [op, helm_release,
+               f'{repo_name}/{chart_name}',
+               '--repository-config', repos_config_fd.name,
+               '--namespace', namespace]
+
+        if version:
+            cmd += ['--version', version]
+
+        values_yaml_fd = None
+        if values_yaml:
+            values_yaml_fd = create_tmp_file(values_yaml)
+            cmd += ['--values', values_yaml_fd.name]
+
+        try:
+            result = self.run_command(cmd)
+            log.debug('Helm %s command result: %s', op, result)
+        except Exception as e:
+            log.error(f'Error running helm {op}: {e}')
+            raise e
+        else:
+            if repos_config_fd:
+                repos_config_fd.close()
+            if values_yaml_fd:
+                values_yaml_fd.close()
+
         return result
 
     def install(self, helm_repo, helm_release, chart_name, namespace,
                 version=None, registries_auth=list, helm_repo_cred=dict,
-                helm_absolute_url=None) -> CompletedProcess:
+                helm_absolute_url=None, chart_values_yaml=None) -> CompletedProcess:
         self.k8s.create_namespace(namespace, exists_ok=True)
 
         if registries_auth:
             self.k8s.add_secret_image_registries_auths(registries_auth,
                                                        namespace)
 
-        result = self._op_install_upgrade('install', chart_name,
-                                          helm_absolute_url,
-                                          helm_release, helm_repo,
-                                          helm_repo_cred, namespace, version)
-        return result
+        return self._op_install_upgrade('install', chart_name,
+                                        helm_absolute_url,
+                                        helm_release, helm_repo,
+                                        helm_repo_cred, namespace, version,
+                                        chart_values_yaml)
 
     def upgrade(self, helm_repo, helm_release, chart_name, namespace,
-                version=None, helm_repo_cred=dict, helm_absolute_url=None) -> \
-            CompletedProcess:
+                version=None, helm_repo_cred=dict, helm_absolute_url=None,
+                chart_values_yaml=None) -> CompletedProcess:
 
         # TODO: check we might need this.
         # if registries_auth:
@@ -159,10 +200,9 @@ spec:
         #                                                namespace)
 
         return self._op_install_upgrade('upgrade', chart_name,
-                                        helm_absolute_url,
-                                        helm_release, helm_repo,
-                                        helm_repo_cred, namespace,
-                                        version)
+                                        helm_absolute_url, helm_release,
+                                        helm_repo, helm_repo_cred, namespace,
+                                        version, chart_values_yaml)
 
     def _service_account_roles(self, namespace):
         roles_manifest = f'''
@@ -326,9 +366,11 @@ roleRef:
             log.error(f'Error deleting namespace {namespace}: {e}')
         return result
 
-    def list(self, namespace, all=False) -> dict:
+    def list(self, namespace, all=False, release=None) -> dict:
         cmd = ['list', '--namespace', namespace, '-o', 'json']
         if all:
             cmd += ['--all']
+        if release:
+            cmd += ['-f', release]
         return json.loads(self.run_command(cmd).stdout)
 

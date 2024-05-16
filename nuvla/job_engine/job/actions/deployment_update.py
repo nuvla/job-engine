@@ -55,13 +55,14 @@ class DeploymentUpdateJob(DeploymentBase):
     def get_update_params_kubernetes(self, deployment, registries_auth):
         return self.get_update_params_docker_stack(deployment, registries_auth)
 
-    @staticmethod
-    def get_update_params_helm(deployment, registries_auth):
+    def get_update_params_helm(self, deployment, registries_auth):
         module_content = Deployment.module_content(deployment)
+        helm_repo_cred = self.helm_repo_cred(module_content)
         return {'env': get_env(deployment),
                 'files': module_content.get('files'),
                 'name': Deployment.uuid(deployment),
-                'registries_auth': registries_auth}
+                'registries_auth': registries_auth,
+                'helm_repo_cred': helm_repo_cred}
 
     def handle_deployment(self):
         log.info(f'Job update_deployment started for {self.deployment_id}.')
@@ -86,9 +87,12 @@ class DeploymentUpdateJob(DeploymentBase):
         }[connector_name](deployment, registries_auth)
 
         if connector_name == HELM_CONNECTOR_KIND:
-            _, services = connector.update(deployment, **kwargs)
+            result, services, release = connector.update(deployment, **kwargs)
+            self.app_helm_release_params_update(release)
         else:
-            _, services = connector.update(**kwargs)
+            result, services = connector.update(**kwargs)
+        if result:
+            self.job.set_status_message(result)
         self.job.set_progress(80)
 
         if connector_name == 'docker_service':

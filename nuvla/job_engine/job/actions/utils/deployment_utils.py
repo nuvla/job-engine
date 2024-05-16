@@ -177,6 +177,35 @@ class DeploymentBase(object):
         else:
             return None
 
+    def helm_repo_cred(self, module_content) -> dict:
+        helm_repo_cred = {}
+        helm_repo_cred_id = module_content.get('helm-repo-creds')
+        if helm_repo_cred_id:
+            try:
+                cred = self.job.context[helm_repo_cred_id]
+            except Exception as e:
+                msg = f'Failed getting helm repo creds from context: {e}'
+                self.log.exception(msg, e)
+                raise Exception(msg)
+            helm_repo_cred = {k: cred.get(k) for k in ('username', 'password')}
+        return helm_repo_cred
+
+    def app_helm_release_params_set(self, release: dict):
+        deployment_id = Deployment.id(self.deployment)
+        deployment_owner = Deployment.owner(self.deployment)
+        for k, v in release.items():
+            self.create_deployment_parameter(
+                deployment_id, deployment_owner,
+                f'helm-{k}', v)
+
+    def app_helm_release_params_update(self, release: dict):
+        deployment_id = Deployment.id(self.deployment)
+        deployment_owner = Deployment.owner(self.deployment)
+        for k, v in release.items():
+            self.create_update_deployment_parameter(
+                deployment_id, deployment_owner,
+                f'helm-{k}', v)
+
     def create_deployment_parameter(self, deployment_id, user_id,
                                     param_name, param_value=None,
                                     node_id=None, param_description=None):

@@ -15,7 +15,7 @@ from nuvla.api.resources import Deployment
 from ..job.job import Job
 from .connector import Connector, should_connect
 from .helm_driver import Helm
-from .k8s_driver import Kubernetes
+from .k8s_driver import Kubernetes, string_interpolate_env_vars
 from .utils import join_stderr_stdout
 
 log = logging.getLogger('k8s_connector')
@@ -146,15 +146,21 @@ class HelmAppMgmt(Connector, ABC):
         self.helm = Helm(_NUVLAEDGE_SHARED_PATH, **kwargs)
 
     @staticmethod
-    def _helm_release_name(string: str):
+    def helm_release_name(string: str):
         return 'release-' + string
 
-    def start(self, deployment: dict, **kwargs) -> [str, List[dict]]:
-        env = kwargs['env']
-        files = kwargs['files']
+    def get_helm_release(self, helm_release, namespace) -> dict:
+        release = {}
+        releases = self.helm.list(namespace, release=release)
+        if releases:
+            return releases[0]
+        log.warning(f'Helm release "{helm_release}" not found in '
+                    f'namespace {namespace}.')
+        return release
 
+    def start(self, deployment: dict, **kwargs) -> [str, List[dict], dict]:
         namespace = kwargs['name']
-        helm_release = self._helm_release_name(namespace)
+        helm_release = self.helm_release_name(namespace)
 
         registries_auth = kwargs.get('registries_auth')
         helm_repo_cred = kwargs.get('helm_repo_cred')
@@ -164,6 +170,14 @@ class HelmAppMgmt(Connector, ABC):
         chart_name = app_content.get('helm-chart-name')
         version = app_content.get('helm-chart-version')
         helm_absolute_url = app_content.get('helm-absolute-url')
+
+        files = kwargs.get('files')
+
+        env = kwargs.get('env')
+        chart_values_yaml = app_content.get('helm-chart-values')
+        if chart_values_yaml and env:
+            chart_values_yaml = string_interpolate_env_vars(chart_values_yaml,
+                                                            env)
         try:
             result = self.helm.install(repo_url,
                                        helm_release,
@@ -172,7 +186,8 @@ class HelmAppMgmt(Connector, ABC):
                                        version=version,
                                        registries_auth=registries_auth,
                                        helm_repo_cred=helm_repo_cred,
-                                       helm_absolute_url=helm_absolute_url)
+                                       helm_absolute_url=helm_absolute_url,
+                                       chart_values_yaml=chart_values_yaml)
         except Exception as ex:
             log.exception(f'Failed to install Helm chart: {ex}')
             if 'cannot re-use a name' in ex.args[0]:
@@ -186,17 +201,27 @@ class HelmAppMgmt(Connector, ABC):
 
         objects = self.get_services(namespace, None)
 
-        return result.stdout, objects
+        release = self.get_helm_release(helm_release, namespace)
 
-    def update(self, deployment: dict, **kwargs):
+        return result.stdout, objects, release
+
+    def update(self, deployment: dict, **kwargs) -> [str, List[dict], dict]:
         app_content = Deployment.module_content(deployment)
         repo_url = app_content.get('helm-repo-url')
         chart_name = app_content.get('helm-chart-name')
         version = app_content.get('helm-chart-version')
         namespace = kwargs['name']
-        helm_release = self._helm_release_name(namespace)
+        helm_release = self.helm_release_name(namespace)
         helm_absolute_url = app_content.get('helm-absolute-url')
         helm_repo_cred = kwargs.get('helm_repo_cred')
+
+        files = kwargs.get('files')
+
+        env = kwargs.get('env')
+        chart_values_yaml = app_content.get('helm-chart-values')
+        if chart_values_yaml and env:
+            chart_values_yaml = string_interpolate_env_vars(chart_values_yaml,
+                                                            env)
 
         result = self.helm.upgrade(repo_url,
                                    helm_release,
@@ -204,15 +229,18 @@ class HelmAppMgmt(Connector, ABC):
                                    namespace,
                                    version=version,
                                    helm_repo_cred=helm_repo_cred,
-                                   helm_absolute_url=helm_absolute_url)
+                                   helm_absolute_url=helm_absolute_url,
+                                   chart_values_yaml=chart_values_yaml)
 
         objects = self.get_services(namespace, None)
 
-        return result.stdout, objects
+        release = self.get_helm_release(helm_release, namespace)
+
+        return result.stdout, objects, release
 
     def stop(self, deployment: dict, **kwargs) -> str:
         namespace = kwargs['name']
-        helm_release = self._helm_release_name(namespace)
+        helm_release = self.helm_release_name(namespace)
         try:
             result = self.helm.uninstall(helm_release, namespace)
         except Exception as ex:

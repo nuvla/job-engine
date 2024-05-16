@@ -9,6 +9,7 @@ from .utils.deployment_utils import (initialize_connector,
                                      DeploymentBase,
                                      get_connector_name,
                                      get_connector_module,
+                                     HELM_CONNECTOR_KIND,
                                      get_env)
 from ..actions import action
 
@@ -147,6 +148,12 @@ class DeploymentStateJob(DeploymentBase):
         self.create_update_ips_output_parameters()
 
         self.application_params_update(services)
+
+        if connector_name == HELM_CONNECTOR_KIND:
+            namespace = Deployment.uuid(self.deployment.data)
+            release_name = connector.helm_release_name(namespace)
+            release = connector.get_helm_release(release_name, namespace=namespace)
+            self.app_helm_release_params_update(release)
 
     def do_work(self):
         log.info('Job started for {}.'.format(self.deployment_id))
