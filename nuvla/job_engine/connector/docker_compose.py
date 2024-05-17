@@ -184,7 +184,7 @@ class DockerCompose(Connector):
             cmd = self.build_cmd_line(list_opts, docker_command='logs')
             return execute_cmd(cmd).stdout
         else:
-            raise Exception(f'Failed to find container "{component}" for {deployment_uuid}')
+            return f'[Failed to find container "{component}" for deployment {deployment_uuid}]'
 
     @staticmethod
     def _get_image(container_info):
