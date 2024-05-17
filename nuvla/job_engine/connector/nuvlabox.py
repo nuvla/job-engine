@@ -634,18 +634,20 @@ class NuvlaBox(Connector):
 
         target_release = kwargs.get('target_release')
         command.append(f'--target-version={target_release}')
-
+        
+        updater_env = {
+            'NUVLA_ENDPOINT': self.api.endpoint,
+            'NUVLA_ENDPOINT_INSECURE': str(not self.api.session.verify)
+        }
         if all(k in self.api.session.login_params for k in ['key', 'secret']):
             key = self.api.session.login_params['key']
             secret = self.api.session.login_params['secret']
-            updater_env = {
+            updater_env.update({
                 'NUVLABOX_API_KEY': key,
                 'NUVLABOX_API_SECRET': secret,
                 'NUVLAEDGE_API_KEY': key,
                 'NUVLAEDGE_API_SECRET': secret
-            }
-        else:
-            updater_env = {}
+            })
 
         current_version = self.nuvlabox_status.get('nuvlabox-engine-version',
                                                    install_params_from_payload.get(
