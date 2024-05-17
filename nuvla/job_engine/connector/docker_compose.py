@@ -184,7 +184,7 @@ class DockerCompose(Connector):
             cmd = self.build_cmd_line(list_opts, docker_command='logs')
             return execute_cmd(cmd).stdout
         else:
-            return ''
+            return f'{datetime.utcnow().isoformat()} [Failed to find container "{component}" for deployment {deployment_uuid}]'
 
     @staticmethod
     def _get_image(container_info):
@@ -196,7 +196,7 @@ class DockerCompose(Connector):
     def _get_service_id(self, project_name, service, docker_compose_path, env):
         cmd = self.build_cmd_line(['-p', project_name,
                                    '-f', docker_compose_path,
-                                   'ps', '-q', service])
+                                   'ps', '-q', '-a', service])
         stdout = self._execute_clean_command(cmd, env=env).stdout
 
         return yaml.load(stdout, Loader=yaml.FullLoader)
