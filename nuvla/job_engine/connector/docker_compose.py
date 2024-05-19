@@ -182,7 +182,7 @@ class DockerCompose(Connector):
             since_opt = ['--since', since.isoformat()] if since else []
             list_opts = ['-t', '--tail', str(lines)] + since_opt + [service_id]
             cmd = self.build_cmd_line(list_opts, docker_command='logs')
-            return execute_cmd(cmd).stdout
+            return execute_cmd(cmd, sterr_in_stdout=True).stdout
         else:
             return f'{datetime.utcnow().isoformat()} [Failed to find container "{component}" for deployment {deployment_uuid}]'
 
