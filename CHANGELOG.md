@@ -6,6 +6,15 @@
 
 ## Released
 
+## [4.0.9](https://github.com/nuvla/job-engine/compare/4.0.8...4.0.9) (2024-05-19)
+
+
+### Bug Fixes
+
+* deployment logs: include stderr when retrieving logs (docker) ([#364](https://github.com/nuvla/job-engine/issues/364)) ([1987c4c](https://github.com/nuvla/job-engine/commit/1987c4c9ed3db8136889bda2e26ad0a3fbb3e442))
+* **docker_compose.py:** fix log retrival of stopped container and return an error message if the container is not found ([#362](https://github.com/nuvla/job-engine/issues/362)) ([8c9521d](https://github.com/nuvla/job-engine/commit/8c9521d913466f7885598a5e0619a1d2305311df))
+* **nuvlabox.py:** nuvlabox_update() set NUVLA_ENDPOINT and NUVLA_ENDOINT_INSECURE env vars to the installer container ([#361](https://github.com/nuvla/job-engine/issues/361)) ([5b28af8](https://github.com/nuvla/job-engine/commit/5b28af8bb10afca8e8de87397799d72b9284f3ac))
+
 ## [4.0.8](https://github.com/nuvla/job-engine/compare/4.0.7...4.0.8) (2024-05-14)
 
 
