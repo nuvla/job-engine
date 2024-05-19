@@ -1,11 +1,14 @@
 # -*- coding: utf-8 -*-
-import os
-import re
-import json
 import base64
 import hashlib
+import json
 import logging
+import os
+import re
 import signal
+
+from typing import List
+
 from contextlib import contextmanager
 from datetime import datetime, timedelta
 from subprocess import run, STDOUT, PIPE, TimeoutExpired, CompletedProcess
@@ -100,6 +103,29 @@ def create_tmp_file(content, delete=True):
     file.write(content.encode())
     file.flush()
     return file
+
+
+def string_interpolate_env_vars(string: str, env: dict) -> str:
+    envsubst_shell_format = ' '.join([f'${k}' for k in env.keys()])
+    cmd = ['envsubst', envsubst_shell_format]
+    return execute_cmd(cmd, env=env, input=string).stdout
+
+
+def store_files(files, directory_path='.'):
+    for file_info in files:
+        file_path = os.path.join(directory_path, file_info['file-name'])
+        f = open(file_path, 'w')
+        f.write(file_info['file-content'])
+        f.close()
+
+
+def interpolate_and_store_files(env: dict, files: List[dict]):
+    files_store = []
+    for file in files:
+        content = string_interpolate_env_vars(file['file-content'], env)
+        files_store.append({'file-name': file['file-name'],
+                            'file-content': content})
+    store_files(files_store)
 
 
 def to_base64(s: str, encoding='utf-8') -> str:

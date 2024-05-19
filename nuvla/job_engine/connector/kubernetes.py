@@ -15,8 +15,9 @@ from nuvla.api.resources import Deployment
 from ..job.job import Job
 from .connector import Connector, should_connect
 from .helm_driver import Helm
-from .k8s_driver import Kubernetes, string_interpolate_env_vars
-from .utils import join_stderr_stdout
+from .k8s_driver import Kubernetes
+from .utils import join_stderr_stdout, interpolate_and_store_files, \
+    string_interpolate_env_vars
 
 log = logging.getLogger('k8s_connector')
 log.setLevel(logging.DEBUG)
@@ -158,36 +159,39 @@ class HelmAppMgmt(Connector, ABC):
                     f'namespace {namespace}.')
         return release
 
-    def start(self, deployment: dict, **kwargs) -> [str, List[dict], dict]:
+    def _op_install_upgrade(self, op: str, deployment: dict, **kwargs) -> \
+            [str, List[dict], dict]:
         namespace = kwargs['name']
         helm_release = self.helm_release_name(namespace)
 
-        registries_auth = kwargs.get('registries_auth')
         helm_repo_cred = kwargs.get('helm_repo_cred')
 
         app_content = Deployment.module_content(deployment)
-        repo_url = app_content.get('helm-repo-url')
+        helm_repo_url = app_content.get('helm-repo-url')
         chart_name = app_content.get('helm-chart-name')
         version = app_content.get('helm-chart-version')
         helm_absolute_url = app_content.get('helm-absolute-url')
-
-        files = kwargs.get('files')
+        chart_values_yaml = app_content.get('helm-chart-values')
 
         env = kwargs.get('env')
-        chart_values_yaml = app_content.get('helm-chart-values')
+
+        interpolate_and_store_files(env, kwargs.get('files'))
+
         if chart_values_yaml and env:
-            chart_values_yaml = string_interpolate_env_vars(chart_values_yaml,
-                                                            env)
+            chart_values_yaml = string_interpolate_env_vars(chart_values_yaml, env)
+
+        registries_auth = kwargs.get('registries_auth')
+        # FIXME: check how to handle the secrets during upgrade.
+        if registries_auth and op != 'upgrade':
+            self.helm.k8s.create_namespace(namespace, exists_ok=True)
+            self.helm.k8s.add_secret_image_registries_auths(registries_auth,
+                                                            namespace)
         try:
-            result = self.helm.install(repo_url,
-                                       helm_release,
-                                       chart_name,
-                                       namespace,
-                                       version=version,
-                                       registries_auth=registries_auth,
-                                       helm_repo_cred=helm_repo_cred,
-                                       helm_absolute_url=helm_absolute_url,
-                                       chart_values_yaml=chart_values_yaml)
+            result = self.helm.op_install_upgrade(op, helm_release,
+                                                  helm_repo_url, helm_repo_cred,
+                                                  helm_absolute_url, chart_name,
+                                                  version, namespace,
+                                                  chart_values_yaml)
         except Exception as ex:
             log.exception(f'Failed to install Helm chart: {ex}')
             if 'cannot re-use a name' in ex.args[0]:
@@ -205,38 +209,11 @@ class HelmAppMgmt(Connector, ABC):
 
         return result.stdout, objects, release
 
+    def start(self, deployment: dict, **kwargs) -> [str, List[dict], dict]:
+        return self._op_install_upgrade('install', deployment, **kwargs)
+
     def update(self, deployment: dict, **kwargs) -> [str, List[dict], dict]:
-        app_content = Deployment.module_content(deployment)
-        repo_url = app_content.get('helm-repo-url')
-        chart_name = app_content.get('helm-chart-name')
-        version = app_content.get('helm-chart-version')
-        namespace = kwargs['name']
-        helm_release = self.helm_release_name(namespace)
-        helm_absolute_url = app_content.get('helm-absolute-url')
-        helm_repo_cred = kwargs.get('helm_repo_cred')
-
-        files = kwargs.get('files')
-
-        env = kwargs.get('env')
-        chart_values_yaml = app_content.get('helm-chart-values')
-        if chart_values_yaml and env:
-            chart_values_yaml = string_interpolate_env_vars(chart_values_yaml,
-                                                            env)
-
-        result = self.helm.upgrade(repo_url,
-                                   helm_release,
-                                   chart_name,
-                                   namespace,
-                                   version=version,
-                                   helm_repo_cred=helm_repo_cred,
-                                   helm_absolute_url=helm_absolute_url,
-                                   chart_values_yaml=chart_values_yaml)
-
-        objects = self.get_services(namespace, None)
-
-        release = self.get_helm_release(helm_release, namespace)
-
-        return result.stdout, objects, release
+        return self._op_install_upgrade('upgrade', deployment, **kwargs)
 
     def stop(self, deployment: dict, **kwargs) -> str:
         namespace = kwargs['name']

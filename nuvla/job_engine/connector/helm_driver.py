@@ -98,32 +98,6 @@ spec:
             values_yaml_fd.close()
         return result
 
-    def _op_install_upgrade(self, op, chart_name, helm_absolute_url,
-                            helm_release, helm_repo, helm_repo_cred, namespace,
-                            version, values_yaml):
-        if helm_absolute_url:
-            result = self._from_absolute_url(op, helm_release,
-                                             helm_absolute_url, namespace)
-        elif helm_repo_cred:
-            result = self._from_helm_repo_cred(op, helm_repo, helm_repo_cred,
-                                               chart_name, version, values_yaml,
-                                               helm_release, namespace)
-        else:
-            cmd = [op, '--repo', helm_repo,
-                   helm_release, chart_name,
-                   '--namespace', namespace]
-            if version:
-                cmd += ['--version', version]
-            values_yaml_fd = None
-            if values_yaml:
-                values_yaml_fd = create_tmp_file(values_yaml)
-                cmd += ['--values', values_yaml_fd.name]
-            result = self.run_command(cmd)
-            log.debug('Helm %s command result: %s', op, result)
-            if values_yaml_fd:
-                values_yaml_fd.close()
-        return result
-
     def _from_helm_repo_cred(self, op, helm_repo, helm_repo_cred, chart_name,
                              version, values_yaml, helm_release, namespace):
         repo_name = 'helm-repo'
@@ -153,6 +127,9 @@ repositories:
                '--repository-config', repos_config_fd.name,
                '--namespace', namespace]
 
+        if op == 'install' and namespace:
+            cmd += ['--create-namespace']
+
         if version:
             cmd += ['--version', version]
 
@@ -175,34 +152,49 @@ repositories:
 
         return result
 
+    def op_install_upgrade(self, op, helm_release, helm_repo_url, helm_repo_cred,
+                           helm_absolute_url, chart_name, version, namespace,
+                           values_yaml):
+        if helm_absolute_url:
+            result = self._from_absolute_url(op, helm_release,
+                                             helm_absolute_url, namespace)
+        elif helm_repo_cred:
+            result = self._from_helm_repo_cred(op, helm_repo_url, helm_repo_cred,
+                                               chart_name, version, values_yaml,
+                                               helm_release, namespace)
+        else:
+            cmd = [op, '--repo', helm_repo_url,
+                   helm_release, chart_name,
+                   '--namespace', namespace]
+            if op == 'install' and namespace:
+                cmd += ['--create-namespace']
+            if version:
+                cmd += ['--version', version]
+            values_yaml_fd = None
+            if values_yaml:
+                values_yaml_fd = create_tmp_file(values_yaml)
+                cmd += ['--values', values_yaml_fd.name]
+            result = self.run_command(cmd)
+            log.debug('Helm %s command result: %s', op, result)
+            if values_yaml_fd:
+                values_yaml_fd.close()
+        return result
+
     def install(self, helm_repo, helm_release, chart_name, namespace,
-                version=None, registries_auth=list, helm_repo_cred=dict,
-                helm_absolute_url=None, chart_values_yaml=None) -> CompletedProcess:
-        self.k8s.create_namespace(namespace, exists_ok=True)
-
-        if registries_auth:
-            self.k8s.add_secret_image_registries_auths(registries_auth,
-                                                       namespace)
-
-        return self._op_install_upgrade('install', chart_name,
-                                        helm_absolute_url,
-                                        helm_release, helm_repo,
-                                        helm_repo_cred, namespace, version,
-                                        chart_values_yaml)
+                version=None, helm_repo_cred=dict, helm_absolute_url=None,
+                chart_values_yaml=None) -> CompletedProcess:
+        return self.op_install_upgrade('install', helm_release, helm_repo,
+                                       helm_repo_cred, helm_absolute_url,
+                                       chart_name, version, namespace,
+                                       chart_values_yaml)
 
     def upgrade(self, helm_repo, helm_release, chart_name, namespace,
                 version=None, helm_repo_cred=dict, helm_absolute_url=None,
                 chart_values_yaml=None) -> CompletedProcess:
-
-        # TODO: check we might need this.
-        # if registries_auth:
-        #     self.k8s.add_secret_image_registries_auths(registries_auth,
-        #                                                namespace)
-
-        return self._op_install_upgrade('upgrade', chart_name,
-                                        helm_absolute_url, helm_release,
-                                        helm_repo, helm_repo_cred, namespace,
-                                        version, chart_values_yaml)
+        return self.op_install_upgrade('upgrade', helm_release, helm_repo,
+                                       helm_repo_cred, helm_absolute_url,
+                                       chart_name, version, namespace,
+                                       chart_values_yaml)
 
     def _service_account_roles(self, namespace):
         roles_manifest = f'''

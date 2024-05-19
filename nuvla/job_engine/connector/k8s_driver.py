@@ -1,20 +1,20 @@
-import base64
 import json
 import logging
 import os
 import random
 import string
 import time
+import yaml
+
 from datetime import datetime
 from subprocess import CompletedProcess
 from tempfile import TemporaryDirectory
 from typing import List, Dict
 
-import yaml
-
 from nuvla.job_engine.connector.connector import should_connect
 from nuvla.job_engine.connector.utils import create_tmp_file, execute_cmd, \
-    generate_registry_config, to_base64, from_base64, md5sum
+    generate_registry_config, to_base64, from_base64, md5sum, store_files, \
+    string_interpolate_env_vars
 
 log = logging.getLogger('k8s_driver')
 log.setLevel(logging.DEBUG)
@@ -32,12 +32,6 @@ def get_kubernetes_local_endpoint():
     if kubernetes_host and kubernetes_port:
         return f'https://{kubernetes_host}:{kubernetes_port}'
     return ''
-
-
-def string_interpolate_env_vars(string: str, env: dict) -> str:
-    envsubst_shell_format = ' '.join([f'${k}' for k in env.keys()])
-    cmd = ['envsubst', envsubst_shell_format]
-    return execute_cmd(cmd, env=env, input=string).stdout
 
 
 def k8s_secret_image_registries_auths(registries_auth: list,
@@ -262,11 +256,7 @@ users:
                               'resources': ['manifest.yml', 'namespace.yml']}
 
         if files:
-            for file_info in files:
-                file_path = os.path.join(directory_path, file_info['file-name'])
-                f = open(file_path, 'w')
-                f.write(file_info['file-content'])
-                f.close()
+            store_files(files, directory_path)
 
         if registries_auth:
             secret_registries_fn = \
