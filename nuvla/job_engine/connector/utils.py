@@ -121,7 +121,7 @@ def store_files(files, directory_path='.'):
 
 def interpolate_and_store_files(env: dict, files: List[dict]):
     files_store = []
-    for file in files:
+    for file in files or []:
         content = string_interpolate_env_vars(file['file-content'], env)
         files_store.append({'file-name': file['file-name'],
                             'file-content': content})
