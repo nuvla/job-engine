@@ -193,7 +193,7 @@ class HelmAppMgmt(Connector, ABC):
                                                   version, namespace,
                                                   chart_values_yaml)
         except Exception as ex:
-            log.exception(f'Failed to install Helm chart: {ex}')
+            log.exception(f'Failed to {op} Helm chart: {ex}')
             if 'cannot re-use a name' in ex.args[0]:
                 args = list(ex.args)
                 args[0] = (args[0].strip() +
