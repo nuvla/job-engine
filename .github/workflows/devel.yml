@@ -11,7 +11,7 @@ on:
       - master
   pull_request:
     paths:
-      - "job_engine/**"
+      - "nuvla/**"
       - "tests/**"
       - "scripts/**"
       - ".github/workflows/devel.yml"

@@ -61,6 +61,12 @@ class Base(object):
                             action='store_true',
                             help='Do not check Nuvla certificate')
 
+        # NuvlaEdge fs is required here since version 2.14.0 because the shared directory changed. For the moment,
+        # we are keeping the default value as /srv/nuvlaedge/shared. NuvlaEdge should pass the correct value
+        parser.add_argument('--nuvlaedge-fs', dest='nuvlaedge_fs',
+                            default='/srv/nuvlaedge/shared/',
+                            help='NuvlaEdge data directory (default: /srv/nuvlaedge/shared)')
+
         parser.add_argument('--api-authn-header', dest='api_authn_header', default=None,
                             help='Set header for internal authentication')
 

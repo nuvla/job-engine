@@ -22,8 +22,11 @@ from .utils import join_stderr_stdout, interpolate_and_store_files, \
 log = logging.getLogger('k8s_connector')
 log.setLevel(logging.DEBUG)
 
+
 _NUVLAEDGE_SHARED_PATH = "/srv/nuvlaedge/shared"
 NUVLAEDGE_STATUS_FILE = os.path.join(_NUVLAEDGE_SHARED_PATH, '.nuvlabox_status')
+
+
 NE_STATUS_COLLECTION = 'nuvlabox-status'
 
 
@@ -606,6 +609,7 @@ class K8sSSHKey:
         self.nuvlabox_resource = self.api.get(kwargs.get("nuvlabox_id"))
 
         self.k8s = Kubernetes.from_path_to_k8s_creds(_NUVLAEDGE_SHARED_PATH)
+
         self.k8s.state_debug()
 
     def connect(self):

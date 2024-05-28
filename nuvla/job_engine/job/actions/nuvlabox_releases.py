@@ -105,9 +105,11 @@ class NuvlaBoxReleasesJob(object):
                 'compose-files': compose_files,
                 'acl': {
                     'view-data': [
+                        'group/nuvla-anon',
                         'group/nuvla-user'
                     ],
                     'view-meta': [
+                        'group/nuvla-anon',
                         'group/nuvla-user'
                     ],
                     'view-acl': [

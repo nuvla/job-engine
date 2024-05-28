@@ -6,6 +6,46 @@
 
 ## Released
 
+## [4.0.9](https://github.com/nuvla/job-engine/compare/4.0.8...4.0.9) (2024-05-19)
+
+
+### Bug Fixes
+
+* deployment logs: include stderr when retrieving logs (docker) ([#364](https://github.com/nuvla/job-engine/issues/364)) ([1987c4c](https://github.com/nuvla/job-engine/commit/1987c4c9ed3db8136889bda2e26ad0a3fbb3e442))
+* **docker_compose.py:** fix log retrival of stopped container and return an error message if the container is not found ([#362](https://github.com/nuvla/job-engine/issues/362)) ([8c9521d](https://github.com/nuvla/job-engine/commit/8c9521d913466f7885598a5e0619a1d2305311df))
+* **nuvlabox.py:** nuvlabox_update() set NUVLA_ENDPOINT and NUVLA_ENDOINT_INSECURE env vars to the installer container ([#361](https://github.com/nuvla/job-engine/issues/361)) ([5b28af8](https://github.com/nuvla/job-engine/commit/5b28af8bb10afca8e8de87397799d72b9284f3ac))
+
+## [4.0.8](https://github.com/nuvla/job-engine/compare/4.0.7...4.0.8) (2024-05-14)
+
+
+### Bug Fixes
+
+* **nuvlabox.py:** nuvlabox_update() do not fail if docker pull fails ([#359](https://github.com/nuvla/job-engine/issues/359)) ([7cc5e8b](https://github.com/nuvla/job-engine/commit/7cc5e8b8b752837498a970960507343a46658110))
+
+## [4.0.7](https://github.com/nuvla/job-engine/compare/4.0.6...4.0.7) (2024-05-13)
+
+
+### Bug Fixes
+
+* kubernetes pod logs retrieval ([#358](https://github.com/nuvla/job-engine/issues/358)) ([d3324da](https://github.com/nuvla/job-engine/commit/d3324da75f1408dc8e821a749a68fb14c03d8a68))
+* nuvlabox_releases.py: create release by default with view-data ACL for group/nuvla-anon ([4de2fb7](https://github.com/nuvla/job-engine/commit/4de2fb7a69e3e5c97529b3928aebfee41d11fc96))
+
+## [4.0.6](https://github.com/nuvla/job-engine/compare/4.0.5...4.0.6) (2024-05-08)
+
+
+### Bug Fixes
+
+* add argument nuvlaedge-fs to executor ([#355](https://github.com/nuvla/job-engine/issues/355)) ([9611137](https://github.com/nuvla/job-engine/commit/9611137f8709b8cd4bedb43208aa612d41368e61))
+
+## [4.0.5](https://github.com/nuvla/job-engine/compare/4.0.4...4.0.5) (2024-04-26)
+
+
+### Bug Fixes
+
+* **nuvla-api:** Upgrade nuvla-api to v4.0.0 ([156d61d](https://github.com/nuvla/job-engine/commit/156d61dd61df585136cc11e4fb3703154ab45c18))
+* **nuvla:** Package nuvla extend search path to be able to import nuvla-api module ([156d61d](https://github.com/nuvla/job-engine/commit/156d61dd61df585136cc11e4fb3703154ab45c18))
+* **requests:** Remove dependency, it will come from nuvla-api ([156d61d](https://github.com/nuvla/job-engine/commit/156d61dd61df585136cc11e4fb3703154ab45c18))
+
 ## [4.0.4](https://github.com/nuvla/job-engine/compare/4.0.3...4.0.4) (2024-04-04)
 
 

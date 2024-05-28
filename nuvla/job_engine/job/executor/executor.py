@@ -5,12 +5,14 @@ import logging
 
 from requests.adapters import HTTPAdapter
 
+
 from ..actions import get_action, ActionNotImplemented
 from ..actions.utils.bulk_action import BulkAction
 from ..base import Base
 from ..job import Job, JobUpdateError, \
     JOB_FAILED, JOB_SUCCESS, JOB_QUEUED, JOB_RUNNING
 from ..util import override, retry_kazoo_queue_op, status_message_from_exception
+
 
 CONNECTION_POOL_SIZE = 4
 
@@ -56,7 +58,7 @@ class Executor(Base):
         self.api.session.mount('https://', api_http_adapter)
 
         while not Executor.stop_event.is_set():
-            job = Job(self.api, queue)
+            job = Job(self.api, queue, self.args.nuvlaedge_fs)
 
             if job.nothing_to_do:
                 if is_single_job_only:

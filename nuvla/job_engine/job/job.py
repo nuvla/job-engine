@@ -45,13 +45,15 @@ class JobUpdateError(Exception):
 
 class Job(dict):
 
-    def __init__(self, api, queue):
+    def __init__(self, api, queue, nuvlaedge_shared_path=None):
         super(Job, self).__init__()
         self.nothing_to_do = False
         self.id = None
         self.cimi_job = None
         self.queue = queue
         self.api = api
+        self.nuvlaedge_shared_path = nuvlaedge_shared_path
+
         self._context = None
         self._payload = None
         self._engine_version = version_to_tuple(engine_version)

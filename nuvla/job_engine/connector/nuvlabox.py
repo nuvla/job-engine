@@ -34,6 +34,7 @@ class NuvlaBox(Connector):
         self.ssl_file = None
         self.docker_client = None
         self.docker_api_endpoint = None
+        self.engine_version = None
         self.nuvlabox_api = requests.Session()
         self.nuvlabox_api.verify = False
         self.nuvlabox_api.headers = {'Content-Type': 'application/json',
@@ -180,10 +181,10 @@ class NuvlaBox(Connector):
         self.acl = self.nuvlabox.get('acl')
         self.get_nuvlabox_status()
 
-        engine_version = self.nuvlabox_status.get('nuvlabox-engine-version')
+        self.engine_version = self.nuvlabox_status.get('nuvlabox-engine-version')
 
         self.installer_image_name, self.installer_image_name_fallback = \
-            self.get_installer_image_names(engine_version)
+            self.get_installer_image_names(self.engine_version)
 
         if self.job.get('execution-mode', '').lower() == 'pull':
             self.docker_client = docker.from_env()
@@ -365,7 +366,6 @@ class NuvlaBox(Connector):
                 self.infer_docker_client().images.pull(image_name)
             else:
                 raise
-
         return image_name
 
     def infer_docker_client(self):
@@ -634,18 +634,20 @@ class NuvlaBox(Connector):
 
         target_release = kwargs.get('target_release')
         command.append(f'--target-version={target_release}')
-
+        
+        updater_env = {
+            'NUVLA_ENDPOINT': self.api.endpoint,
+            'NUVLA_ENDPOINT_INSECURE': str(not self.api.session.verify)
+        }
         if all(k in self.api.session.login_params for k in ['key', 'secret']):
             key = self.api.session.login_params['key']
             secret = self.api.session.login_params['secret']
-            updater_env = {
+            updater_env.update({
                 'NUVLABOX_API_KEY': key,
                 'NUVLABOX_API_SECRET': secret,
                 'NUVLAEDGE_API_KEY': key,
                 'NUVLAEDGE_API_SECRET': secret
-            }
-        else:
-            updater_env = {}
+            })
 
         current_version = self.nuvlabox_status.get('nuvlabox-engine-version',
                                                    install_params_from_payload.get(
@@ -659,13 +661,38 @@ class NuvlaBox(Connector):
 
         # 3rd - run the Docker command
 
+        new_env_dict = {k: v for k, _, v in (j.partition('=') for j in new_env)}
+
+        installer_image = new_env_dict.get('NE_IMAGE_INSTALLER')
+        if installer_image:
+            self.installer_image = installer_image
+            self.installer_image_name, self.installer_image_name_fallback = \
+                self.get_installer_image_names(self.engine_version)
+        
         logging.info(
             f'Running NuvlaEdge update container {self.installer_image_name} '
             f'(fallback: {self.installer_image_name_fallback})')
-        image = self.pull_docker_image(self.installer_image_name,
-                                       self.installer_image_name_fallback)
-        self.run_container_from_installer(image, detach, container_name,
-                                          volumes, command, updater_env)
+
+        images = (self.installer_image_name, self.installer_image_name_fallback)
+        image = None
+        try:
+            image = self.pull_docker_image(*images)
+        except Exception as e:
+            logging.warning(f'Failed to pull NuvlaEdge installer image: {str(e)}, will try if any is already available locally')
+
+        run_container_args = (detach, container_name, volumes, command, updater_env)
+        
+        if image is not None:
+            self.run_container_from_installer(image, *run_container_args)
+        else:
+            for img in images:
+                try:
+                    self.run_container_from_installer(img, *run_container_args)
+                    break
+                except Exception as e:
+                    logging.warning(f'Failed to run NuvlaEdge installer from local image {img}: {str(e)}')
+            else:
+                raise Exception(f'Cannot run NuvlaEdge installer from any of the available images: {images}')
 
         # 4th - monitor the update, waiting for it to finish to capture the output
         timeout_after = 600  # 10 minutes
