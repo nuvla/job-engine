@@ -88,6 +88,10 @@ spec:
                            absolute_url: str, namespace: str, values_yaml=None):
         cmd = [op, release, absolute_url,
                '--namespace', namespace]
+
+        if op == 'install' and namespace:
+            cmd += ['--create-namespace']
+
         values_yaml_fd = None
         if values_yaml:
             values_yaml_fd = create_tmp_file(values_yaml)
