@@ -1,5 +1,13 @@
-FROM python:3.11-alpine3.18
+ARG ALPINE_MAJ_MIN_VERSION=3.19
+ARG PYTHON_MAJ_MIN_VERSION=3.11
+ARG BASE_IMAGE=python:${PYTHON_MAJ_MIN_VERSION}-alpine${ALPINE_MAJ_MIN_VERSION}
+ARG DOCKER_VERSION=25-cli
 
+FROM docker:${DOCKER_VERSION} AS docker
+FROM ${BASE_IMAGE}
+
+ARG KUBECTL_VERSION=1.30
+ARG HELM_VERSION=3.14
 ARG GIT_BRANCH
 ARG GIT_COMMIT_ID
 ARG GIT_DIRTY
@@ -7,21 +15,20 @@ ARG GIT_BUILD_TIME
 ARG IMAGE_NAME
 ARG PACKAGE_TAG=3.9.4
 
-ARG DOCKER_CLIENT_VERSION=25.0
-ARG DOCKER_COMPOSE_VERSION=2.17
-ARG KUBECTL_VERSION=1.30
-ARG HELM_VERSION=3.11
-
 LABEL git.branch=${GIT_BRANCH}
 LABEL git.commit.id=${GIT_COMMIT_ID}
 LABEL git.dirty=${GIT_DIRTY}
 LABEL git.build.time=${GIT_BUILD_TIME}
 
+# Docker and docker compose CLIs
+COPY --from=docker /usr/local/bin/docker /usr/bin/docker
+COPY --from=docker /usr/local/libexec/docker/cli-plugins/docker-compose \
+                   /usr/local/libexec/docker/cli-plugins/docker-compose
+
+
 # Need scp (openssh) for docker-machine to transfer files to machines.
 RUN apk --no-cache add gettext bash openssl openssh \
-    "helm~${HELM_VERSION}" \
-    "docker-cli~${DOCKER_CLIENT_VERSION}" \
-    "docker-cli-compose~${DOCKER_COMPOSE_VERSION}"
+    "helm~${HELM_VERSION}"
 RUN apk --no-cache add --repository https://dl-cdn.alpinelinux.org/alpine/edge/community \
     "kubectl~${KUBECTL_VERSION}"
 

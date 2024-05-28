@@ -17,6 +17,7 @@ on:
       - ".github/workflows/devel.yml"
       - "pyproject.toml"
       - "poetry.lock"
+      - "Dockerfile"
   workflow_dispatch:
 
 jobs:
