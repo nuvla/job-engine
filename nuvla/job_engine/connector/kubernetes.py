@@ -20,7 +20,6 @@ from .utils import join_stderr_stdout, interpolate_and_store_files, \
     string_interpolate_env_vars
 
 log = logging.getLogger('k8s_connector')
-log.setLevel(logging.DEBUG)
 
 
 _NUVLAEDGE_SHARED_PATH = "/srv/nuvlaedge/shared"

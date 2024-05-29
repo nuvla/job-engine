@@ -15,7 +15,6 @@ from subprocess import run, STDOUT, PIPE, TimeoutExpired, CompletedProcess
 from tempfile import NamedTemporaryFile
 
 log = logging.getLogger('connector_utils')
-log.setLevel(logging.DEBUG)
 
 LOCAL = 'local'
 

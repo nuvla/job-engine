@@ -7,7 +7,6 @@ from nuvla.job_engine.connector.k8s_driver import Kubernetes
 from nuvla.job_engine.connector.utils import execute_cmd, create_tmp_file
 
 log = logging.getLogger('helm_driver')
-log.setLevel(logging.DEBUG)
 
 
 class Helm:

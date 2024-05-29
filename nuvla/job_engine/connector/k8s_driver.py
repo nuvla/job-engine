@@ -17,7 +17,6 @@ from nuvla.job_engine.connector.utils import create_tmp_file, execute_cmd, \
     string_interpolate_env_vars
 
 log = logging.getLogger('k8s_driver')
-log.setLevel(logging.DEBUG)
 
 
 def get_pem_content(path, name):
