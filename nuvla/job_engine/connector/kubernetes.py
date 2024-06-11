@@ -215,7 +215,15 @@ class HelmAppMgmt(Connector, ABC):
         return self._op_install_upgrade('install', deployment, **kwargs)
 
     def update(self, deployment: dict, **kwargs) -> [str, List[dict], dict]:
-        return self._op_install_upgrade('upgrade', deployment, **kwargs)
+        try:
+            return self._op_install_upgrade('upgrade', deployment, **kwargs)
+        except Exception as ex:
+            if 'UPGRADE FAILED' in ex.args[0]:
+                if 'has no deployed releases' in ex.args[0]:
+                    log.warning('No release found. Run installation instead.')
+                    return self._op_install_upgrade('install', deployment,
+                                                    **kwargs)
+            raise ex
 
     def stop(self, deployment: dict, **kwargs) -> str:
         namespace = kwargs['name']
