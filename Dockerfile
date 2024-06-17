@@ -53,11 +53,6 @@ ENV IMAGE_NAME ${IMAGE_NAME}
 
 ADD https://raw.githubusercontent.com/docker-library/docker/master/modprobe.sh /usr/local/bin/modprobe
 
-# This only works for amd64 but it also isn't necessary for push mode
-# since its only use is for infrastructure_service_swarm_start/stop, and that's a server-side feature
-RUN curl --proto "=https" -s -L https://github.com/docker/machine/releases/download/v0.16.2/docker-machine-$(uname -s)-$(uname -m) >/tmp/docker-machine && \
-            install /tmp/docker-machine /usr/local/bin/docker-machine && rm -f /tmp/docker-machine
-
 # my_init as ENTRYPOINT to protect us from zombies.
 # It assumes python3 at that location.
 RUN ln -s $(which python3) /usr/bin/python3
