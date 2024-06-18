@@ -6,6 +6,26 @@
 
 ## Released
 
+## [4.1.0](https://github.com/nuvla/job-engine/compare/4.0.9...4.1.0) (2024-06-18)
+
+
+### Bug Fixes
+
+* **alpine:** v3.18 -&gt; v3.19 ([9ca626a](https://github.com/nuvla/job-engine/commit/9ca626a92a3e6f07c8ad5bfd1428761e7565b5a6))
+* **ci:** Run devel workflow when Dockerfile content change ([#365](https://github.com/nuvla/job-engine/issues/365)) ([9ca626a](https://github.com/nuvla/job-engine/commit/9ca626a92a3e6f07c8ad5bfd1428761e7565b5a6))
+* **coe_provision:** Action removed ([#368](https://github.com/nuvla/job-engine/issues/368)) ([61815ab](https://github.com/nuvla/job-engine/commit/61815ab40ec58d11fe63acb57eb6668ad4361371))
+* **coe_start:** Action removed ([61815ab](https://github.com/nuvla/job-engine/commit/61815ab40ec58d11fe63acb57eb6668ad4361371))
+* **coe_stop:** Action removed ([61815ab](https://github.com/nuvla/job-engine/commit/61815ab40ec58d11fe63acb57eb6668ad4361371))
+* **coe_terminate:** Action removed ([61815ab](https://github.com/nuvla/job-engine/commit/61815ab40ec58d11fe63acb57eb6668ad4361371))
+* **docker_machine:** Remove docker machine connector and binary ([61815ab](https://github.com/nuvla/job-engine/commit/61815ab40ec58d11fe63acb57eb6668ad4361371))
+* **docker-cli-compose:** v2.17 -&gt; 2.27 ([9ca626a](https://github.com/nuvla/job-engine/commit/9ca626a92a3e6f07c8ad5bfd1428761e7565b5a6))
+* **helm:** v3.11 -&gt; 3.14 ([9ca626a](https://github.com/nuvla/job-engine/commit/9ca626a92a3e6f07c8ad5bfd1428761e7565b5a6))
+
+
+### Miscellaneous Chores
+
+* release 4.1.0 ([7860b7d](https://github.com/nuvla/job-engine/commit/7860b7da47507cb2478d706ec09149b20b251edf))
+
 ## [4.0.9](https://github.com/nuvla/job-engine/compare/4.0.8...4.0.9) (2024-05-19)
 
 
