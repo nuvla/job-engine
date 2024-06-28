@@ -29,14 +29,14 @@ def get_connector_name(deployment: Union[dict, CimiResource]):
     if Deployment.is_component(deployment):
         return 'docker_service'
 
-    if Deployment.is_application(deployment):
+    elif Deployment.is_application(deployment):
         is_compose = Deployment.is_compatibility_docker_compose(deployment)
         return 'docker_compose' if is_compose else 'docker_stack'
 
-    if Deployment.is_application_kubernetes(deployment):
+    elif Deployment.is_application_kubernetes(deployment):
         return 'kubernetes'
 
-    if Deployment.subtype(deployment) == HELM_APP_SUBTYPE:
+    elif Deployment.subtype(deployment) == HELM_APP_SUBTYPE:
         return HELM_CONNECTOR_KIND
 
     subtype = Deployment.subtype(deployment)
