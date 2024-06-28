@@ -142,7 +142,7 @@ class K8sAppMgmt(Connector, ABC):
 
 
 class HelmAppMgmt(Connector, ABC):
-    """Class providing Helm application management functionalities using.
+    """Class providing Helm-based application management functionalities.
     """
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
