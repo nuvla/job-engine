@@ -177,18 +177,29 @@ class DeploymentBase(object):
         else:
             return None
 
-    def helm_repo_cred(self, module_content) -> dict:
-        helm_repo_cred = {}
-        helm_repo_cred_id = module_content.get('helm-repo-creds')
-        if helm_repo_cred_id:
-            try:
-                cred = self.job.context[helm_repo_cred_id]
-            except Exception as e:
-                msg = f'Failed getting helm repo creds from context: {e}'
-                self.log.exception(msg, e)
-                raise Exception(msg)
-            helm_repo_cred = {k: cred.get(k) for k in ('username', 'password')}
-        return helm_repo_cred
+    def helm_repo_cred(self, module_content: dict) -> dict:
+        helm_repo_cred_id = module_content.get('helm-repo-cred')
+        if not helm_repo_cred_id:
+            return {}
+        try:
+            cred = self.job.context[helm_repo_cred_id]
+        except Exception as e:
+            msg = f'Failed getting {helm_repo_cred_id} from context: {e}'
+            self.log.exception(msg, e)
+            raise Exception(msg)
+        return {k: cred.get(k) for k in ('username', 'password')}
+
+    def helm_repo_url(self, module_content: dict) -> str:
+        helm_repo_url_id = module_content.get('helm-repo-url')
+        if not helm_repo_url_id:
+            return ''
+        try:
+            infra = self.job.context[helm_repo_url_id]
+        except Exception as e:
+            msg = f'Failed getting {helm_repo_url_id} from context: {e}'
+            self.log.exception(msg, e)
+            raise Exception(msg)
+        return infra.get('endpoint')
 
     def app_helm_release_params_set(self, release: dict):
         deployment_id = Deployment.id(self.deployment)

@@ -120,12 +120,14 @@ class DeploymentStartJob(DeploymentBase):
         module_content = Deployment.module_content(deployment)
         registries_auth = self.private_registries_auth()
         helm_repo_cred = self.helm_repo_cred(module_content)
+        helm_repo_url = self.helm_repo_url(module_content)
         result, services, release = connector.start(
             deployment=deployment,
             name=Deployment.uuid(deployment),
             env=get_env(deployment),
             files=module_content.get('files'),
             helm_repo_cred=helm_repo_cred,
+            helm_repo_url=helm_repo_url,
             registries_auth=registries_auth)
 
         self.job.set_status_message(result)
