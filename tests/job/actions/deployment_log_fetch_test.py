@@ -8,7 +8,7 @@ from nuvla.job_engine.job.actions.deployment_log_fetch import DeploymentLogFetch
 
 class TestResourceLogFetchJob(unittest.TestCase):
     def setUp(self) -> None:
-        self.obj = DeploymentLogFetchJob(MagicMock(), MagicMock())
+        self.obj = DeploymentLogFetchJob(MagicMock())
 
     @patch(
         'nuvla.job_engine.job.actions.utils.resource_log_fetch.build_update_resource_log')
