@@ -11,7 +11,7 @@ log = logging.getLogger(action_name)
 @action(action_name)
 class RegisterUsageRecord(object):
 
-    def __init__(self, _, job):
+    def __init__(self, job):
         self.job = job
         self.api = job.api
 

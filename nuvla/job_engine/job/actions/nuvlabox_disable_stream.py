@@ -10,7 +10,7 @@ from nuvla.api import NuvlaError
 @action('disable-stream', True)
 class NBDisableStreamJob(object):
 
-    def __init__(self, _, job):
+    def __init__(self, job):
         self.job = job
         self.api = job.api
 

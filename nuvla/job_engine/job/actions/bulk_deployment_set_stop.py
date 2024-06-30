@@ -9,8 +9,8 @@ from .utils.bulk_action import BulkAction
 @action('bulk_deployment_set_stop')
 class BulkDeploymentSetStopJob(BulkAction):
 
-    def __init__(self, _, job):
-        super().__init__(_, job)
+    def __init__(self, job):
+        super().__init__(job)
         self.dep_set_id = self.job['target-resource']['href']
 
     def get_todo(self):

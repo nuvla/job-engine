@@ -6,7 +6,7 @@ import json
 class BulkAction(object):
     FINAL_PROGRESS = 20
 
-    def __init__(self, _, job):
+    def __init__(self, job):
         self.job = job
         self.user_api = job.get_user_api()
         self.result = {

@@ -9,8 +9,8 @@ class BulkDeploymentSetApply(BulkAction):
     KEY_DEPLOYMENTS_TO_UPDATE = 'deployments-to-update'
     KEY_DEPLOYMENTS_TO_REMOVE = 'deployments-to-remove'
 
-    def __init__(self, _, job):
-        super().__init__(_, job)
+    def __init__(self, job):
+        super().__init__(job)
         self.dep_set_id = self.job['target-resource']['href']
         self.action_name = None
         self._log = None

@@ -8,8 +8,8 @@ from .utils.bulk_deployment import DeploymentBulkJob
 @action('bulk_stop_deployment')
 class DeploymentBulkStopJob(DeploymentBulkJob):
 
-    def __init__(self, _, job):
-        super().__init__(_, job)
+    def __init__(self, job):
+        super().__init__(job)
 
     def deployment_action(self, deployment):
         self.user_api.operation(deployment,
