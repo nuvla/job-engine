@@ -6,6 +6,13 @@
 
 ## Released
 
+## [4.1.1](https://github.com/nuvla/job-engine/compare/4.1.0...4.1.1) (2024-07-01)
+
+
+### Code Refactoring
+
+* executor and actions ([#370](https://github.com/nuvla/job-engine/issues/370)) ([2225388](https://github.com/nuvla/job-engine/commit/22253887489e09c803b61d12aee381dec09ba11a))
+
 ## [4.1.0](https://github.com/nuvla/job-engine/compare/4.0.9...4.1.0) (2024-06-18)
 
 
