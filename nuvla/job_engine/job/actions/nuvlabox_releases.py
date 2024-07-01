@@ -9,7 +9,7 @@ import requests
 @action('update_nuvlabox_releases')
 class NuvlaBoxReleasesJob(object):
 
-    def __init__(self, _, job):
+    def __init__(self, job):
         self.job = job
         self.api = job.api
         self.nuvlabox_releases_url = "https://api.github.com/repos/nuvlaedge/deployment/releases"

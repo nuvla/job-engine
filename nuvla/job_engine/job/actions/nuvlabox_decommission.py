@@ -8,7 +8,7 @@ from ..actions import action
 @action('decommission_nuvlabox')
 class NuvlaBoxDeleteJob(object):
 
-    def __init__(self, _, job):
+    def __init__(self, job):
         self.job = job
         self.api = job.api
         self.error = 0

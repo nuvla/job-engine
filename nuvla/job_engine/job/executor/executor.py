@@ -5,7 +5,6 @@ import logging
 
 from requests.adapters import HTTPAdapter
 
-
 from ..actions import get_action, ActionNotImplemented
 from ..actions.utils.bulk_action import BulkAction
 from ..base import Base
@@ -36,19 +35,55 @@ class Executor(Base):
     def __init__(self):
         super(Executor, self).__init__()
 
-    def _get_action_instance(self, job):
+    def _set_command_specific_options(self, parser):
+        parser.add_argument('--job-id', dest='job_id', metavar='ID',
+                            help='Pull mode single job id to execute')
+
+    @staticmethod
+    def get_action_instance(job):
         if 'action' not in job:
-            raise Exception('Invalid job: {}.'.format(job))
+            raise ValueError('Invalid job: {}.'.format(job))
         action_name = job.get('action')
         action = get_action(action_name)
         if not action:
             raise ActionNotImplemented(action_name)
+        return action(job)
 
-        return action(self, job)
-
-    def _set_command_specific_options(self, parser):
-        parser.add_argument('--job-id', dest='job_id', metavar='ID',
-                            help='Pull mode single job id to execute')
+    @classmethod
+    def process_job(cls, job):
+        try:
+            action_instance = cls.get_action_instance(job)
+            job.set_state(JOB_RUNNING)
+            return_code = action_instance.do_work()
+        except ActionNotImplemented as e:
+            logging.error('Action "{}" not implemented'.format(str(e)))
+            # Consume not implemented action to avoid queue
+            # to be filled with not implemented actions
+            msg = f'Not implemented action {job.id}'
+            status_message = '{}: {}'.format(msg, str(e))
+            job.update_job(state=JOB_FAILED, status_message=status_message)
+        except JobUpdateError as e:
+            logging.error('{} update error: {}'.format(job.id, str(e)))
+        except Exception:
+            status_message = status_message_from_exception()
+            if job.get('execution-mode', '').lower() == 'mixed':
+                status_message = 'Re-running job in pull mode after failed first attempt: ' \
+                                 f'{status_message}'
+                job._edit_job_multi({'state': JOB_QUEUED,
+                                     'status-message': status_message,
+                                     'execution-mode': 'pull'})
+                retry_kazoo_queue_op(job.queue, 'consume')
+            else:
+                job.update_job(state=JOB_FAILED, status_message=status_message, return_code=1)
+            logging.error(f'Failed to process {job.id}, with error: {status_message}')
+        else:
+            if isinstance(action_instance, BulkAction):
+                retry_kazoo_queue_op(job.queue, 'consume')
+                logging.info(f'Bulk job removed from queue {job.id}.')
+            else:
+                state = JOB_SUCCESS if return_code == 0 else JOB_FAILED
+                job.update_job(state=state, return_code=return_code)
+                logging.info('Finished {} with return_code {}.'.format(job.id, return_code))
 
     def _process_jobs(self, queue):
         is_single_job_only = isinstance(queue, LocalOneJobQueue)
@@ -68,39 +103,7 @@ class Executor(Base):
 
             logging.info('Got new {}.'.format(job.id))
 
-            try:
-                action_instance = self._get_action_instance(job)
-                job.set_state(JOB_RUNNING)
-                return_code = action_instance.do_work()
-            except ActionNotImplemented as e:
-                logging.error('Action "{}" not implemented'.format(str(e)))
-                # Consume not implemented action to avoid queue
-                # to be filled with not implemented actions
-                msg = f'Not implemented action {job.id}'
-                status_message = '{}: {}'.format(msg, str(e))
-                job.update_job(state=JOB_FAILED, status_message=status_message)
-            except JobUpdateError as e:
-                logging.error('{} update error: {}'.format(job.id, str(e)))
-            except Exception:
-                status_message = status_message_from_exception()
-                if job.get('execution-mode', '').lower() == 'mixed':
-                    status_message = 'Re-running job in pull mode after failed first attempt: ' \
-                                     f'{status_message}'
-                    job._edit_job_multi({'state': JOB_QUEUED,
-                                         'status-message': status_message,
-                                         'execution-mode': 'pull'})
-                    retry_kazoo_queue_op(job.queue, 'consume')
-                else:
-                    job.update_job(state=JOB_FAILED, status_message=status_message, return_code=1)
-                logging.error(f'Failed to process {job.id}, with error: {status_message}')
-            else:
-                if isinstance(action_instance, BulkAction):
-                    retry_kazoo_queue_op(job.queue, 'consume')
-                    logging.info(f'Bulk job removed from queue {job.id}.')
-                else:
-                    state = JOB_SUCCESS if return_code == 0 else JOB_FAILED
-                    job.update_job(state=state, return_code=return_code)
-                    logging.info('Finished {} with return_code {}.'.format(job.id, return_code))
+            self.process_job(job)
 
             if is_single_job_only:
                 break

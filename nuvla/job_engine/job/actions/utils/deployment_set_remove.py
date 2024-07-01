@@ -7,7 +7,7 @@ from ...util import mapv
 
 class DeploymentSetRemove(object):
 
-    def __init__(self, _, job):
+    def __init__(self, job):
         self.job = job
         self.api = job.api
         self.dep_set_id = self.job['target-resource']['href']

@@ -13,7 +13,7 @@ from nuvla.api import NuvlaError
 @action('update_vulnerabilities_database')
 class VulnerabilitiesDatabaseJob(object):
 
-    def __init__(self, _, job):
+    def __init__(self, job):
         self.job = job
         self.api = job.api
         config = self.api.get('configuration/nuvla')

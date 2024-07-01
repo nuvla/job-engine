@@ -17,8 +17,8 @@ log = logging.getLogger(action_name)
 @action(action_name, True)
 class DeploymentUpdateJob(DeploymentBase):
 
-    def __init__(self, _, job):
-        super().__init__(_, job, log)
+    def __init__(self, job):
+        super().__init__(job, log)
 
     @staticmethod
     def get_update_params_docker_service(deployment, registries_auth):

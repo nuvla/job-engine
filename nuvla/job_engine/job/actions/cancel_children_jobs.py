@@ -11,7 +11,7 @@ import logging
 @action('cancel_children_jobs')
 class CancelChildrenJobsJob(object):
 
-    def __init__(self, _, job):
+    def __init__(self, job):
         self.job = job
         self.nuvla: Nuvla = self.job.api
 
