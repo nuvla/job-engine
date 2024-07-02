@@ -1,11 +1,14 @@
 # -*- coding: utf-8 -*-
-import os
-import re
-import json
 import base64
 import hashlib
+import json
 import logging
+import os
+import re
 import signal
+
+from typing import List
+
 from contextlib import contextmanager
 from datetime import datetime, timedelta
 from subprocess import run, STDOUT, PIPE, TimeoutExpired, CompletedProcess
@@ -46,6 +49,14 @@ def unique_id(*args):
     return hashlib.sha256(':'.join(map(str, args)).encode()).hexdigest()
 
 
+def unique_id_short(*args, take=8):
+    return hashlib.sha256(':'.join(map(str, args)).encode()).hexdigest()[:take]
+
+
+def md5sum(s: str) -> str:
+    return hashlib.md5(s.encode()).hexdigest()
+
+
 def append_os_env(env):
     final_env = os.environ.copy()
     if env:
@@ -78,7 +89,7 @@ def execute_cmd(cmd, **kwargs) -> CompletedProcess:
     if result.returncode == 0:
         return result
     else:
-        log.exception(result)
+        log.error('Error executing command: %s', result)
         raise Exception(result.stderr)
 
 
@@ -86,18 +97,49 @@ def join_stderr_stdout(process_result: CompletedProcess):
     return f'StdOut: \n{process_result.stdout} \n\nStdErr: \n{process_result.stderr}'
 
 
-def create_tmp_file(content):
-    file = NamedTemporaryFile(delete=True)
+def create_tmp_file(content, delete=True):
+    file = NamedTemporaryFile(delete=delete)
     file.write(content.encode())
     file.flush()
     return file
 
 
+def string_interpolate_env_vars(string: str, env: dict) -> str:
+    envsubst_shell_format = ' '.join([f'${k}' for k in env.keys()])
+    cmd = ['envsubst', envsubst_shell_format]
+    return execute_cmd(cmd, env=env, input=string).stdout
+
+
+def store_files(files, directory_path='.'):
+    for file_info in files:
+        file_path = os.path.join(directory_path, file_info['file-name'])
+        f = open(file_path, 'w')
+        f.write(file_info['file-content'])
+        f.close()
+
+
+def interpolate_and_store_files(env: dict, files: List[dict]):
+    files_store = []
+    for file in files or []:
+        content = string_interpolate_env_vars(file['file-content'], env)
+        files_store.append({'file-name': file['file-name'],
+                            'file-content': content})
+    store_files(files_store)
+
+
+def to_base64(s: str, encoding='utf-8') -> str:
+    return base64.b64encode(s.encode(encoding)).decode(encoding)
+
+
+def from_base64(s: str, encoding='utf-8') -> str:
+    return base64.b64decode(s.encode(encoding)).decode(encoding)
+
+
 def generate_registry_config(registries_auth: list):
     auths = {}
     for registry_auth in registries_auth:
-        user_pass = registry_auth['username'] + ':' + registry_auth['password']
-        auth = base64.b64encode(user_pass.encode('ascii')).decode('utf-8')
+        auth = to_base64(
+            registry_auth['username'] + ':' + registry_auth['password'])
         auths['https://' + registry_auth['serveraddress']] = {'auth': auth}
     return json.dumps({'auths': auths})
 

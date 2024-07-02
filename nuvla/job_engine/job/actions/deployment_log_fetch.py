@@ -4,7 +4,7 @@ import logging
 from datetime import datetime
 from nuvla.api.resources import Deployment
 from ..actions import action
-from .utils.deployment_utils import (get_connector_class,
+from .utils.deployment_utils import (get_connector_module,
                                      get_connector_name,
                                      initialize_connector,
                                      docker_stack,
@@ -27,10 +27,11 @@ class DeploymentLogFetchJob(ResourceLogFetchJob):
     def connector(self):
         if not self._connector:
             if self.connector_name == 'docker_service':
-                connector_class = docker_stack
+                connector_module = docker_stack
             else:
-                connector_class = get_connector_class(self.connector_name)
-            self._connector = initialize_connector(connector_class, self.job, self.deployment)
+                connector_module = get_connector_module(self.connector_name)
+            self._connector = initialize_connector(connector_module, self.job,
+                                                   self.deployment)
         return self._connector
 
     @property

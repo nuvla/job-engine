@@ -2,22 +2,28 @@
 import json
 import logging
 import os
+import re
 import tempfile
+
+from abc import ABC
 from datetime import datetime
 from subprocess import CompletedProcess
 from typing import List, Union
-from abc import ABC
 
-import re
+from nuvla.api.resources import Deployment
 
-from .helm_driver import Helm
-from .k8s_driver import Kubernetes
 from ..job.job import Job
 from .connector import Connector, should_connect
-from .utils import join_stderr_stdout
+from .helm_driver import Helm
+from .k8s_driver import Kubernetes
+from .utils import join_stderr_stdout, interpolate_and_store_files, \
+    string_interpolate_env_vars
 
 log = logging.getLogger('k8s_connector')
-log.setLevel(logging.DEBUG)
+
+
+_NUVLAEDGE_SHARED_PATH = "/srv/nuvlaedge/shared"
+NUVLAEDGE_STATUS_FILE = os.path.join(_NUVLAEDGE_SHARED_PATH, '.nuvlabox_status')
 
 
 NE_STATUS_COLLECTION = 'nuvlabox-status'
@@ -28,11 +34,14 @@ class OperationNotAllowed(Exception):
 
 
 def instantiate_from_cimi(api_infrastructure_service, api_credential):
-    return K8sAppMgmt(
-        ca=api_credential.get('ca', '').replace("\\n", "\n"),
-        cert=api_credential.get('cert', '').replace("\\n", "\n"),
-        key=api_credential.get('key', '').replace("\\n", "\n"),
-        endpoint=api_infrastructure_service.get('endpoint'))
+    d = dict(ca=api_credential.get('ca', '').replace("\\n", "\n"),
+             cert=api_credential.get('cert', '').replace("\\n", "\n"),
+             key=api_credential.get('key', '').replace("\\n", "\n"),
+             endpoint=api_infrastructure_service.get('endpoint'))
+    if api_infrastructure_service.get('subtype') == 'kubernetes':
+        return K8sAppMgmt(**d)
+    elif api_infrastructure_service.get('subtype') == 'helm':
+        return HelmAppMgmt(**d)
 
 
 class K8sAppMgmt(Connector, ABC):
@@ -132,6 +141,117 @@ class K8sAppMgmt(Connector, ABC):
         return self.k8s.log(component, since, lines, namespace)
 
 
+class HelmAppMgmt(Connector, ABC):
+    """Class providing Helm-based application management functionalities.
+    """
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.helm = Helm(_NUVLAEDGE_SHARED_PATH, **kwargs)
+
+    @staticmethod
+    def helm_release_name(string: str):
+        return 'release-' + string
+
+    def get_helm_release(self, helm_release, namespace) -> dict:
+        release = {}
+        releases = self.helm.list(namespace, release=release)
+        if releases:
+            return releases[0]
+        log.warning(f'Helm release "{helm_release}" not found in '
+                    f'namespace {namespace}.')
+        return release
+
+    def _op_install_upgrade(self, op: str, deployment: dict, **kwargs) -> \
+            [str, List[dict], dict]:
+        namespace = kwargs['name']
+        helm_release = self.helm_release_name(namespace)
+
+        helm_repo_cred = kwargs.get('helm_repo_cred')
+
+        app_content = Deployment.module_content(deployment)
+        helm_repo_url = app_content.get('helm-repo-url')
+        chart_name = app_content.get('helm-chart-name')
+        version = app_content.get('helm-chart-version')
+        helm_absolute_url = app_content.get('helm-absolute-url')
+        chart_values_yaml = app_content.get('helm-chart-values')
+
+        env = kwargs.get('env')
+
+        interpolate_and_store_files(env, kwargs.get('files'))
+
+        if chart_values_yaml and env:
+            chart_values_yaml = string_interpolate_env_vars(chart_values_yaml, env)
+
+        registries_auth = kwargs.get('registries_auth')
+        # FIXME: check how to handle the secrets during upgrade.
+        if registries_auth and op != 'upgrade':
+            self.helm.k8s.create_namespace(namespace, exists_ok=True)
+            self.helm.k8s.add_secret_image_registries_auths(registries_auth,
+                                                            namespace)
+        try:
+            result = self.helm.op_install_upgrade(op, helm_release,
+                                                  helm_repo_url, helm_repo_cred,
+                                                  helm_absolute_url, chart_name,
+                                                  version, namespace,
+                                                  chart_values_yaml)
+        except Exception as ex:
+            log.exception(f'Failed to {op} Helm chart: {ex}')
+            if 'cannot re-use a name' in ex.args[0]:
+                args = list(ex.args)
+                args[0] = (args[0].strip() +
+                           f'. Helm release: {helm_release}. '
+                           f'Currently running: {self.helm.list(namespace)}')
+                ex.args = tuple(args)
+                raise ex
+            raise ex
+
+        objects = self.get_services(namespace, None)
+
+        release = self.get_helm_release(helm_release, namespace)
+
+        return result.stdout, objects, release
+
+    def start(self, deployment: dict, **kwargs) -> [str, List[dict], dict]:
+        return self._op_install_upgrade('install', deployment, **kwargs)
+
+    def update(self, deployment: dict, **kwargs) -> [str, List[dict], dict]:
+        try:
+            return self._op_install_upgrade('upgrade', deployment, **kwargs)
+        except Exception as ex:
+            if 'UPGRADE FAILED' in ex.args[0]:
+                if 'has no deployed releases' in ex.args[0]:
+                    log.warning('No release found. Run installation instead.')
+                    return self._op_install_upgrade('install', deployment,
+                                                    **kwargs)
+            raise ex
+
+    def stop(self, deployment: dict, **kwargs) -> str:
+        namespace = kwargs['name']
+        helm_release = self.helm_release_name(namespace)
+        try:
+            result = self.helm.uninstall(helm_release, namespace)
+        except Exception as ex:
+            log.exception(f'Failed to uninstall Helm chart: {ex}')
+            if 'not found' in ex.args[0]:
+                log.warning(f'Helm release "{helm_release}" not found.')
+                return ex.args[0]
+            raise ex
+        return result.stdout
+
+    def get_services(self, deployment_uuid: str, _, **kwargs) -> list:
+        """
+        Returns both K8s Services and Deployments by `deployment_uuid`.
+
+        :param deployment_uuid: Deployment UUID
+        :param _: this parameter is ignored.
+        :param kwargs: this parameter is ignored.
+        :return: list of dicts
+        """
+        objects = ['deployments',
+                   'services']
+        return self.helm.k8s.get_objects(deployment_uuid, objects)
+
+
 class K8sEdgeMgmt:
 
     NE_HELM_NAMESPACE = 'default'
@@ -150,10 +270,10 @@ class K8sEdgeMgmt:
         self._nuvlabox = None
         self._nuvlabox_status = None
 
-        self.k8s = Kubernetes.from_path_to_k8s_creds(job.nuvlaedge_shared_path)
+        self.k8s = Kubernetes.from_path_to_k8s_creds(_NUVLAEDGE_SHARED_PATH)
         self.k8s.state_debug()
 
-        self.helm = Helm(job.nuvlaedge_shared_path)
+        self.helm = Helm(_NUVLAEDGE_SHARED_PATH)
 
     def connect(self):
         self.k8s.connect()
@@ -302,8 +422,6 @@ spec:
         if not self._check_project_name(helm_log_result, project_name):
             return f'Project name {project_name} does not match \
                 between helm on NuvlaEdge and Nuvla', 97
-
-        self.helm.repo_update()
 
         helm_update_job_name = self.k8s.create_object_name('helm-update')
         helm_update_cmd = self._helm_gen_update_cmd_repo(target_release)
@@ -497,7 +615,8 @@ class K8sSSHKey:
 
         self.nuvlabox_resource = self.api.get(kwargs.get("nuvlabox_id"))
 
-        self.k8s = Kubernetes.from_path_to_k8s_creds(job.nuvlaedge_shared_path)
+        self.k8s = Kubernetes.from_path_to_k8s_creds(_NUVLAEDGE_SHARED_PATH)
+
         self.k8s.state_debug()
 
     def connect(self):
@@ -688,8 +807,8 @@ spec:
 
 class K8sLogging:
 
-    def __init__(self, job: Job):
-        self.k8s = Kubernetes.from_path_to_k8s_creds(job.nuvlaedge_shared_path)
+    def __init__(self):
+        self.k8s = Kubernetes.from_path_to_k8s_creds(_NUVLAEDGE_SHARED_PATH)
         self.k8s.state_debug()
 
     def log(self, component: str, since: str, lines: int, namespace='') -> str:

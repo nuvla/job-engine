@@ -7,9 +7,11 @@ from ...connector import docker_service
 from ..actions import action
 from .utils.deployment_utils import (DeploymentBase,
                                      get_connector_name,
-                                     get_connector_class,
+                                     get_connector_module,
                                      initialize_connector,
-                                     get_env)
+                                     get_env,
+                                     HELM_APP_SUBTYPE,
+                                     HELM_CONNECTOR_KIND)
 
 from nuvla.api.resources import Deployment, DeploymentParameter
 
@@ -95,11 +97,11 @@ class DeploymentStartJob(DeploymentBase):
         self.api_dpl.update_port_parameters(deployment, ports_mapping)
 
     def start_application(self, deployment: dict):
-        connector_name   = get_connector_name(deployment)
-        connector_class  = get_connector_class(connector_name)
-        connector        = initialize_connector(connector_class, self.job, deployment)
-        module_content   = Deployment.module_content(deployment)
-        registries_auth  = self.private_registries_auth()
+        connector_name = get_connector_name(deployment)
+        connector_module = get_connector_module(connector_name)
+        connector = initialize_connector(connector_module, self.job, deployment)
+        module_content = Deployment.module_content(deployment)
+        registries_auth = self.private_registries_auth()
 
         result, services = connector.start(
             name=Deployment.uuid(deployment),
@@ -112,14 +114,38 @@ class DeploymentStartJob(DeploymentBase):
 
         self.application_params_update(services)
 
+    def start_application_helm(self, deployment: dict):
+        connector_module = get_connector_module(HELM_CONNECTOR_KIND)
+        connector = initialize_connector(connector_module, self.job, deployment)
+        module_content = Deployment.module_content(deployment)
+        registries_auth = self.private_registries_auth()
+        helm_repo_cred = self.helm_repo_cred(module_content)
+        helm_repo_url = self.helm_repo_url(module_content)
+        result, services, release = connector.start(
+            deployment=deployment,
+            name=Deployment.uuid(deployment),
+            env=get_env(deployment),
+            files=module_content.get('files'),
+            helm_repo_cred=helm_repo_cred,
+            helm_repo_url=helm_repo_url,
+            registries_auth=registries_auth)
+
+        self.job.set_status_message(result)
+
+        self.application_params_update(services)
+
+        self.app_helm_release_params_set(release)
+
     @override
     def handle_deployment(self):
         deployment = self.deployment.data
 
         self.create_user_output_params()
 
-        if Deployment.is_component(self.deployment):
+        if Deployment.is_component(deployment):
             self.start_component(deployment)
+        elif Deployment.subtype(deployment) == HELM_APP_SUBTYPE:
+            self.start_application_helm(deployment)
         else:
             self.start_application(deployment)
 

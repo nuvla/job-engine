@@ -8,7 +8,8 @@ from nuvla.api.util.date import utcnow, nuvla_date
 from .utils.deployment_utils import (initialize_connector,
                                      DeploymentBase,
                                      get_connector_name,
-                                     get_connector_class,
+                                     get_connector_module,
+                                     HELM_CONNECTOR_KIND,
                                      get_env)
 from ..actions import action
 
@@ -136,8 +137,9 @@ class DeploymentStateJob(DeploymentBase):
             kwargs['compose_file'] = Deployment.module_content(self.deployment)['docker-compose']
 
         connector_name = get_connector_name(self.deployment)
-        connector_class = get_connector_class(connector_name)
-        connector = initialize_connector(connector_class, self.job, self.deployment)
+        connector_module = get_connector_module(connector_name)
+        connector = initialize_connector(connector_module, self.job,
+                                         self.deployment)
         services = connector.get_services(Deployment.uuid(self.deployment),
                                           get_env(self.deployment.data),
                                           **kwargs)
@@ -146,6 +148,12 @@ class DeploymentStateJob(DeploymentBase):
         self.create_update_ips_output_parameters()
 
         self.application_params_update(services)
+
+        if connector_name == HELM_CONNECTOR_KIND:
+            namespace = Deployment.uuid(self.deployment.data)
+            release_name = connector.helm_release_name(namespace)
+            release = connector.get_helm_release(release_name, namespace=namespace)
+            self.app_helm_release_params_update(release)
 
     def do_work(self):
         log.info('Job started for {}.'.format(self.deployment_id))

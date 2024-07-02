@@ -3,10 +3,13 @@
 import re
 import copy
 import logging
+from types import ModuleType
+from typing import Union
 
 from abc import abstractmethod
 
 from nuvla.api import Api
+from nuvla.api.models import CimiResource
 from nuvla.api.resources import Deployment, DeploymentParameter
 from nuvla.api.resources.base import ResourceNotFound
 
@@ -18,7 +21,11 @@ from ....connector import (docker_service,
 from ....connector.k8s_driver import get_kubernetes_local_endpoint
 
 
-def get_connector_name(deployment):
+HELM_CONNECTOR_KIND = 'helm'
+HELM_APP_SUBTYPE = 'application_helm'
+
+
+def get_connector_name(deployment: Union[dict, CimiResource]):
     if Deployment.is_component(deployment):
         return 'docker_service'
 
@@ -29,16 +36,20 @@ def get_connector_name(deployment):
     elif Deployment.is_application_kubernetes(deployment):
         return 'kubernetes'
 
+    elif Deployment.subtype(deployment) == HELM_APP_SUBTYPE:
+        return HELM_CONNECTOR_KIND
+
     subtype = Deployment.subtype(deployment)
     raise ValueError(f'Unsupported deployment subtype "{subtype}"')
 
 
-def get_connector_class(connector_name):
+def get_connector_module(connector_name):
     return {
         'docker_service': docker_service,
-        'docker_stack':   docker_stack,
+        'docker_stack': docker_stack,
         'docker_compose': docker_compose,
-        'kubernetes':     kubernetes
+        'kubernetes': kubernetes,
+        HELM_CONNECTOR_KIND: kubernetes
     }[connector_name]
 
 
@@ -49,30 +60,31 @@ def get_from_context(job, resource_id):
         raise KeyError(f'{resource_id} not found in job context')
 
 
-def initialize_connector(connector_class, job, deployment):
+def initialize_connector(connector_module: ModuleType, job,
+                         deployment: Union[dict, CimiResource]):
     credential_id = Deployment.credential_id(deployment)
     credential = get_from_context(job, credential_id)
-    infrastructure_service = copy.deepcopy(get_from_context(job, credential['parent']))
-    infrastructure_service_type = infrastructure_service.get('subtype', '')
+    infra_service = copy.deepcopy(get_from_context(job, credential['parent']))
+    infra_service_type = infra_service.get('subtype', '')
 
-    # if you uncomment this, the pull-mode deployment_* will only work with the
-    # NB compute-api. Which means standalone ISs and k8s capable NuvlaBoxes,
-    # are not supported
     if job.is_in_pull_mode:
-        if infrastructure_service_type == 'swarm':
-            infrastructure_service['endpoint'] = None if connector_class is not docker_service \
-                                                 else 'https://compute-api:5000'
-        elif infrastructure_service_type == 'kubernetes':
+        if infra_service_type == 'swarm':
+            infra_service['endpoint'] = None if connector_module is not docker_service \
+                                        else 'https://compute-api:5000'
+        elif infra_service_type == 'kubernetes':
             endpoint = get_kubernetes_local_endpoint()
             if endpoint:
-                infrastructure_service['endpoint'] = endpoint
+                infra_service['endpoint'] = endpoint
+            if Deployment.subtype(deployment) == HELM_APP_SUBTYPE:
+                # FIXME: this is a hack to make sure that the helm connector is used
+                infra_service['subtype'] = HELM_CONNECTOR_KIND
     else:
         # Not in pull mode (mixed or push) but endpoint is local
-        endpoint = infrastructure_service['endpoint']
+        endpoint = infra_service['endpoint']
         if utils.is_endpoint_local(endpoint):
             raise RuntimeError(f'Endpoint is local ({endpoint}) so only "pull" mode is supported')
 
-    return connector_class.instantiate_from_cimi(infrastructure_service, credential)
+    return connector_module.instantiate_from_cimi(infra_service, credential)
 
 
 def get_env(deployment: dict):
@@ -103,7 +115,7 @@ class DeploymentBase(object):
         self.api = job.api
         self.deployment_id = self.job['target-resource']['href']
         self.api_dpl = self.get_deployment_api(self.deployment_id)
-        self.deployment = self.api_dpl.get(self.deployment_id)
+        self.deployment: CimiResource = self.api_dpl.get(self.deployment_id)
 
     def get_from_context(self, resource_id):
         return get_from_context(self.job, resource_id)
@@ -164,6 +176,46 @@ class DeploymentBase(object):
             return list_cred_infra
         else:
             return None
+
+    def helm_repo_cred(self, module_content: dict) -> dict:
+        helm_repo_cred_id = module_content.get('helm-repo-cred')
+        if not helm_repo_cred_id:
+            return {}
+        try:
+            cred = self.job.context[helm_repo_cred_id]
+        except Exception as e:
+            msg = f'Failed getting {helm_repo_cred_id} from context: {e}'
+            self.log.exception(msg, e)
+            raise Exception(msg)
+        return {k: cred.get(k) for k in ('username', 'password')}
+
+    def helm_repo_url(self, module_content: dict) -> str:
+        helm_repo_url_id = module_content.get('helm-repo-url')
+        if not helm_repo_url_id:
+            return ''
+        try:
+            infra = self.job.context[helm_repo_url_id]
+        except Exception as e:
+            msg = f'Failed getting {helm_repo_url_id} from context: {e}'
+            self.log.exception(msg, e)
+            raise Exception(msg)
+        return infra.get('endpoint')
+
+    def app_helm_release_params_set(self, release: dict):
+        deployment_id = Deployment.id(self.deployment)
+        deployment_owner = Deployment.owner(self.deployment)
+        for k, v in release.items():
+            self.create_deployment_parameter(
+                deployment_id, deployment_owner,
+                f'helm-{k}', v)
+
+    def app_helm_release_params_update(self, release: dict):
+        deployment_id = Deployment.id(self.deployment)
+        deployment_owner = Deployment.owner(self.deployment)
+        for k, v in release.items():
+            self.create_update_deployment_parameter(
+                deployment_id, deployment_owner,
+                f'helm-{k}', v)
 
     def create_deployment_parameter(self, deployment_id, user_id,
                                     param_name, param_value=None,
