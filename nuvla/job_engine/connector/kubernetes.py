@@ -167,9 +167,9 @@ class HelmAppMgmt(Connector, ABC):
         helm_release = self.helm_release_name(namespace)
 
         helm_repo_cred = kwargs.get('helm_repo_cred')
+        helm_repo_url = kwargs.get('helm_repo_url')
 
         app_content = Deployment.module_content(deployment)
-        helm_repo_url = app_content.get('helm-repo-url')
         chart_name = app_content.get('helm-chart-name')
         version = app_content.get('helm-chart-version')
         helm_absolute_url = app_content.get('helm-absolute-url')
