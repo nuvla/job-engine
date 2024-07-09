@@ -75,7 +75,6 @@ class Kubernetes:
         self._endpoint = kwargs['endpoint']
 
         self._kube_config_file = None
-        self._delete_creds = kwargs.get('delete_creds', False)
 
         self._namespace = None
 
@@ -133,7 +132,7 @@ users:
     client-key-data: {self._key_base64}
 """
         log.debug('Kubeconfig: %s', kube_config)
-        self._kube_config_file = create_tmp_file(kube_config, self._delete_creds)
+        self._kube_config_file = create_tmp_file(kube_config)
 
     def clear_connection(self, _connect_result):
         if self._kube_config_file:
