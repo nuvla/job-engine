@@ -7,6 +7,6 @@ from .utils.bulk_deployment_set_apply import BulkDeploymentSetApply
 @action('bulk_deployment_set_update')
 class BulkDeploymentSetUpdateJob(BulkDeploymentSetApply):
 
-    def __init__(self, _, job):
-        super().__init__(_, job)
+    def __init__(self, job):
+        super().__init__(job)
         self.action_name = 'update'

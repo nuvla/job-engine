@@ -5,6 +5,7 @@ import logging
 import os
 import random
 import signal
+import sys
 import threading
 
 from nuvla.api import Api
@@ -186,4 +187,4 @@ def main(command):
         command().execute()
     except Exception as e:
         logging.exception(e)
-        exit(2)
+        sys.exit(2)

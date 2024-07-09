@@ -6,7 +6,7 @@ from ..actions import action
 @action('nuvlabox_cluster_cleanup')
 class NBClusterCleanupJob(object):
 
-    def __init__(self, _, job):
+    def __init__(self, job):
         self.job = job
         self.api = job.api
 

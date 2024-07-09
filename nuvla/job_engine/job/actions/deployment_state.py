@@ -20,8 +20,8 @@ log = logging.getLogger(action_name)
 @action(action_name, True)
 class DeploymentStateJob(DeploymentBase):
 
-    def __init__(self, _, job):
-        super().__init__(_, job, log)
+    def __init__(self, job):
+        super().__init__(job, log)
 
     def get_component_state(self):
         connector = initialize_connector(docker_service, self.job,
