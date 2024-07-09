@@ -49,10 +49,6 @@ def unique_id(*args):
     return hashlib.sha256(':'.join(map(str, args)).encode()).hexdigest()
 
 
-def unique_id_short(*args, take=8):
-    return hashlib.sha256(':'.join(map(str, args)).encode()).hexdigest()[:take]
-
-
 def md5sum(s: str) -> str:
     return hashlib.md5(s.encode()).hexdigest()
 
@@ -97,8 +93,8 @@ def join_stderr_stdout(process_result: CompletedProcess):
     return f'StdOut: \n{process_result.stdout} \n\nStdErr: \n{process_result.stderr}'
 
 
-def create_tmp_file(content, delete=True):
-    file = NamedTemporaryFile(delete=delete)
+def create_tmp_file(content):
+    file = NamedTemporaryFile(delete=True)
     file.write(content.encode())
     file.flush()
     return file
