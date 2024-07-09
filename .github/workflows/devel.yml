@@ -23,6 +23,9 @@ on:
 jobs:
   run-unittests:
     runs-on: ubuntu-latest
+    permissions:
+      checks: write
+      pull-requests: write
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -148,6 +151,11 @@ jobs:
           username: ${{ secrets.SIXSQ_DOCKER_USERNAME }}
           password: ${{ secrets.SIXSQ_DOCKER_PASSWORD }}
 
+      - name: Extract branch name and substitute slashes
+        shell: bash
+        run: echo "branch=${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}" | tr '/' '-' >> $GITHUB_OUTPUT
+        id: extract_branch
+
       - name: Build and push
         uses: docker/build-push-action@v4
         with:
@@ -165,6 +173,6 @@ jobs:
             PACKAGE_TAG=latest
           push: true
           tags: >
-            nuvladev/job:${{ github.head_ref || github.ref_name }}
+            nuvladev/job:${{ steps.extract_branch.outputs.branch }}
           cache-from: type=gha
           cache-to: type=gha,mode=max

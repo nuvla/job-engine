@@ -1,8 +1,14 @@
-from importlib_metadata import version, PackageNotFoundError
+import importlib_metadata
+import logging
+import os
 
+logger = logging.getLogger(__name__)
 
 package_name = "nuvla-job-engine"
-try:
-    version = version(package_name)
-except PackageNotFoundError:
-    version = None
+version = os.getenv('JOB_ENGINE_VERSION')
+if not version:
+    try:
+        version = importlib_metadata.version(package_name)
+    except importlib_metadata.PackageNotFoundError:
+        logger.warning('Cannot retrieve Job-engine version')
+        version = None

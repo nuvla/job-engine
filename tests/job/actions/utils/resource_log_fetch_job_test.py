@@ -15,8 +15,8 @@ from nuvla.job_engine.job.actions.utils.resource_log_fetch import \
 
 class ImplementResourceLogFetchJob(ResourceLogFetchJob):
 
-    def __init__(self, executor, job):
-        super().__init__(executor, job)
+    def __init__(self, job):
+        super().__init__(job)
 
     @property
     def connector(self):
@@ -46,7 +46,7 @@ class TestResourceLogFetchJob(unittest.TestCase):
         self.date2_reduced = '2022-02-15T15:56:58.194Z'
 
     def setUp(self) -> None:
-        self.obj = ImplementResourceLogFetchJob('', MagicMock())
+        self.obj = ImplementResourceLogFetchJob(MagicMock())
 
     def test_get_last_line_timestamp(self):
         self.assertIsNone(get_last_line_timestamp([]))

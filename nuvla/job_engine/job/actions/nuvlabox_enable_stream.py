@@ -9,7 +9,7 @@ from ...connector.nuvlabox import NuvlaBox
 @action('enable-stream', True)
 class NBEnableStreamJob(object):
 
-    def __init__(self, _, job):
+    def __init__(self, job):
         self.job = job
         self.api = job.api
 

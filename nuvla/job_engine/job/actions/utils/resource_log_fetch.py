@@ -31,7 +31,7 @@ def build_update_resource_log(log: dict) -> dict:
 
 class ResourceLogFetchJob(ABC):
 
-    def __init__(self, _, job):
+    def __init__(self, job):
         self._log = None
         self._connector = None
         self.job = job

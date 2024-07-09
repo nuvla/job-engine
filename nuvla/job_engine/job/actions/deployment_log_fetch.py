@@ -17,8 +17,8 @@ action_name = 'fetch_deployment_log'
 @action(action_name, True)
 class DeploymentLogFetchJob(ResourceLogFetchJob):
 
-    def __init__(self, executor, job):
-        super().__init__(executor, job)
+    def __init__(self, job):
+        super().__init__(job)
         self.api_dpl = Deployment(self.api)
         self.deployment = self.api_dpl.get(self.resource_log_parent)
         self._connector_name = None

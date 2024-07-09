@@ -9,7 +9,7 @@ from ...connector import nuvlabox as NB
 @action('check_nuvlabox_api', True)
 class NBCheckJob(object):
 
-    def __init__(self, _, job):
+    def __init__(self, job):
         self.job = job
         self.api = job.api
 
