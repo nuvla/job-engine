@@ -254,7 +254,7 @@ users:
                               'resources': ['manifest.yml', 'namespace.yml']}
 
         if files:
-            store_files(files, directory_path)
+            store_files(files, dir_path=directory_path)
 
         if registries_auth:
             secret_registries_fn = \

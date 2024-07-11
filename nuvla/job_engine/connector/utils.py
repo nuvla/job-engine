@@ -12,7 +12,7 @@ from typing import List
 from contextlib import contextmanager
 from datetime import datetime, timedelta
 from subprocess import run, STDOUT, PIPE, TimeoutExpired, CompletedProcess
-from tempfile import NamedTemporaryFile
+from tempfile import NamedTemporaryFile, TemporaryDirectory
 
 log = logging.getLogger('connector_utils')
 
@@ -106,21 +106,52 @@ def string_interpolate_env_vars(string: str, env: dict) -> str:
     return execute_cmd(cmd, env=env, input=string).stdout
 
 
-def store_files(files, directory_path='.'):
+def store_files(files: list, dir_path='.') -> List[str]:
+    """Store `files` in the `dir_path`. Return the list of file paths.
+
+    `files`: list of dictionaries with keys 'file-name' and 'file-content'.
+
+    NB! It's the responsibility of the caller to delete the files after use.
+        Either by using the returned file paths or by deleting the `dir_path`.
+    """
+    file_paths = []
     for file_info in files:
-        file_path = os.path.join(directory_path, file_info['file-name'])
+        file_path = os.path.join(dir_path, file_info['file-name'])
         f = open(file_path, 'w')
         f.write(file_info['file-content'])
         f.close()
+        file_paths.append(file_path)
+    return file_paths
 
 
-def interpolate_and_store_files(env: dict, files: List[dict]):
+def interpolate_and_store_files(env: dict, files: List[dict], dir_path='.') -> List[str]:
+    """
+    Interpolate environment variables from `env` in `files` and store them
+    under `dir_path`.
+    """
     files_store = []
     for file in files or []:
         content = string_interpolate_env_vars(file['file-content'], env)
         files_store.append({'file-name': file['file-name'],
                             'file-content': content})
-    store_files(files_store)
+    return store_files(files_store, dir_path=dir_path)
+
+
+def run_in_tmp_dir(func):
+    """Decorator to run a function with the temporary directory provided as a
+    keyword argument 'work_dir'. The temporary directory is deleted after the
+    function is executed. The current working directory is changed to the
+    temporary directory before the function is executed and changed back after.
+    """
+    def wrapper(*args, **kwargs):
+        curr_dir = os.getcwd()
+        with TemporaryDirectory() as dir_name:
+            os.chdir(dir_name)
+            kwargs.update({'work_dir': dir_name})
+            res = func(*args, **kwargs)
+            os.chdir(curr_dir)
+            return res
+    return wrapper
 
 
 def to_base64(s: str, encoding='utf-8') -> str:

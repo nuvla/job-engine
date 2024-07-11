@@ -17,13 +17,12 @@ from .connector import Connector, should_connect
 from .helm_driver import Helm
 from .k8s_driver import Kubernetes
 from .utils import join_stderr_stdout, interpolate_and_store_files, \
-    string_interpolate_env_vars
+    string_interpolate_env_vars, run_in_tmp_dir
 
 log = logging.getLogger('k8s_connector')
 
 
-_NUVLAEDGE_SHARED_PATH = "/srv/nuvlaedge/shared"
-NUVLAEDGE_STATUS_FILE = os.path.join(_NUVLAEDGE_SHARED_PATH, '.nuvlabox_status')
+_NUVLAEDGE_SHARED_PATH = "/var/lib/nuvlaedge"
 
 
 NE_STATUS_COLLECTION = 'nuvlabox-status'
@@ -161,6 +160,7 @@ class HelmAppMgmt(Connector, ABC):
                     f'namespace {namespace}.')
         return release
 
+    @run_in_tmp_dir
     def _op_install_upgrade(self, op: str, deployment: dict, **kwargs) -> \
             [str, List[dict], dict]:
         namespace = kwargs['name']
@@ -168,6 +168,7 @@ class HelmAppMgmt(Connector, ABC):
 
         helm_repo_cred = kwargs.get('helm_repo_cred')
         helm_repo_url = kwargs.get('helm_repo_url')
+        work_dir = kwargs.get('work_dir', '.')
 
         app_content = Deployment.module_content(deployment)
         chart_name = app_content.get('helm-chart-name')
@@ -177,7 +178,7 @@ class HelmAppMgmt(Connector, ABC):
 
         env = kwargs.get('env')
 
-        interpolate_and_store_files(env, kwargs.get('files'))
+        interpolate_and_store_files(env, kwargs.get('files'), dir_path=work_dir)
 
         if chart_values_yaml and env:
             chart_values_yaml = string_interpolate_env_vars(chart_values_yaml, env)
