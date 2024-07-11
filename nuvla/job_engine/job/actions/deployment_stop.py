@@ -23,8 +23,8 @@ log = logging.getLogger(action_name)
 @action(action_name, True)
 class DeploymentStopJob(DeploymentBase):
 
-    def __init__(self, _, job):
-        super().__init__(_, job, log)
+    def __init__(self, job):
+        super().__init__(job, log)
 
     def try_delete_deployment_credentials(self, deployment_id):
         cred_api = Credential(self.api, subtype='dummy')

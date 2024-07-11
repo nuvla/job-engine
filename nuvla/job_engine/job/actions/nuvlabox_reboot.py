@@ -11,7 +11,7 @@ from ...job.job import Job
 @action('reboot_nuvlabox', True)
 class NBRebootJob(object):
 
-    def __init__(self, _, job: Job):
+    def __init__(self, job: Job):
         self.job = job
         self.api = job.api
 

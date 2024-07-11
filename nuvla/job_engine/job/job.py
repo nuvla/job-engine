@@ -1,12 +1,11 @@
 # -*- coding: utf-8 -*-
 
-import time
+import json
 import logging
 import re
-import json
+import time
 
 from nuvla.api import Api, NuvlaError, ConnectionError
-
 from nuvla.job_engine.job.util import retry_kazoo_queue_op
 
 from .version import version as engine_version
@@ -56,14 +55,19 @@ class Job(dict):
 
         self._context = None
         self._payload = None
-        self._engine_version = version_to_tuple(engine_version)
-        if self._engine_version[0] < 2:
-            self._engine_version_min = (0, 0, 1)
-        elif self._engine_version[0] == 4:
-            # For job-engine 4.x, we support jobs with version 2.x and 3.x
-            self._engine_version_min = (self._engine_version[0] - 2, 0, 0)
-        else:
-            self._engine_version_min = (self._engine_version[0] - 1, 0, 0)
+
+        self._engine_version = None
+        self._engine_version_min = None
+
+        if engine_version:
+            self._engine_version = version_to_tuple(engine_version)
+            if self._engine_version[0] < 2:
+                self._engine_version_min = (0, 0, 1)
+            elif self._engine_version[0] == 4:
+                # For job-engine 4.x, we support jobs with version 2.x and 3.x
+                self._engine_version_min = (self._engine_version[0] - 2, 0, 0)
+            else:
+                self._engine_version_min = (self._engine_version[0] - 1, 0, 0)
         self._init()
 
     def _init(self):
@@ -115,6 +119,11 @@ class Job(dict):
         """
         job_version_str = str(self.get('version', '0.0.1'))
         job_version = version_to_tuple(job_version_str)
+
+        if self._engine_version is None:
+            log.warning("Job-Engine version is not known. Ignoring version checks")
+            return
+
         if job_version < self._engine_version_min:
             evm_str = '.'.join(map(str, self._engine_version_min))
             msg = f"Job version {job_version_str} is smaller than min supported {evm_str}"

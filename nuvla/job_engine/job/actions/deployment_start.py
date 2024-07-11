@@ -23,8 +23,8 @@ log = logging.getLogger(action_name)
 @action(action_name, True)
 class DeploymentStartJob(DeploymentBase):
 
-    def __init__(self, _, job):
-        super().__init__(_, job, log)
+    def __init__(self, job):
+        super().__init__(job, log)
 
     def start_component(self, deployment: dict):
         connector = initialize_connector(docker_service, self.job, deployment)

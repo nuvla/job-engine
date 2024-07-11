@@ -21,7 +21,7 @@ EXPIRY_FROM_NOW_SEC = 24 * 3600
 @action(action_name)
 class ServiceImageState(object):
 
-    def __init__(self, _, job):
+    def __init__(self, job):
         self.job = job
         self.api = job.api
         self.api_dpl = Deployment(self.api)

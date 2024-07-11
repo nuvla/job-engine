@@ -37,7 +37,7 @@ def find_in_dict(obj, key):
 @action(action_name)
 class DockerContentTrustCheck(object):
 
-    def __init__(self, _, job):
+    def __init__(self, job):
         self.job = job
         self.api = job.api
 

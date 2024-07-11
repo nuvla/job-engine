@@ -10,7 +10,7 @@ import logging
 @action('cleanup_jobs')
 class JobsCleanupJob(object):
 
-    def __init__(self, _, job):
+    def __init__(self, job):
         self.job = job
         self.nuvla: Nuvla = self.job.api
 

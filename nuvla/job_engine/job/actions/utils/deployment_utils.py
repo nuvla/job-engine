@@ -109,7 +109,7 @@ def get_env(deployment: dict):
 
 class DeploymentBase(object):
 
-    def __init__(self, _, job, log=None):
+    def __init__(self, job, log=None):
         self.log = log if log else logging.getLogger(self.__class__.__name__)
         self.job = job
         self.api = job.api
