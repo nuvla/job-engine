@@ -91,6 +91,12 @@ class Kubernetes:
                                        f'{self.ne_image_org}/{self.ne_image_repo}')
         self.base_image = f'{self.ne_image_registry}{self.ne_image_name}:{self.ne_image_tag}'
 
+    def __repr__(self):
+        return (f'{self.__class__.__name__}(endpoint={self._endpoint}, '
+                f'ca_md5={md5sum(from_base64(self._ca_base64))}, '
+                f'user_cert_md5={md5sum(from_base64(self._cert_base64))}, '
+                f'user_key_md5={md5sum(from_base64(self._key_base64))})')
+
     @staticmethod
     def from_path_to_k8s_creds(path_to_k8s_creds: str, **kwargs):
         params = {
@@ -100,13 +106,6 @@ class Kubernetes:
             'endpoint': get_kubernetes_local_endpoint()}
         params.update(kwargs)
         return Kubernetes(**params)
-
-    def state_debug(self):
-        log.debug('Kubernetes object state:')
-        log.debug('CA %s', from_base64(self._ca_base64))
-        log.debug('User certificate %s', from_base64(self._cert_base64))
-        log.debug('User key md5sum: %s', md5sum(from_base64(self._key_base64)))
-        log.debug('Kubernetes endpoint %s', self._endpoint)
 
     @property
     def connector_type(self):

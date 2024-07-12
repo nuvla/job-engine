@@ -616,9 +616,8 @@ class K8sSSHKey:
 
         self.nuvlabox_resource = self.api.get(kwargs.get("nuvlabox_id"))
 
-        self.k8s = Kubernetes.from_path_to_k8s_creds(_NUVLAEDGE_SHARED_PATH)
-
-        self.k8s.state_debug()
+        self.k8s = Kubernetes.from_path_to_k8s_creds(job.nuvlaedge_shared_path)
+        log.debug(self.k8s)
 
     def connect(self):
         self.k8s.connect()
@@ -808,9 +807,9 @@ spec:
 
 class K8sLogging:
 
-    def __init__(self):
-        self.k8s = Kubernetes.from_path_to_k8s_creds(_NUVLAEDGE_SHARED_PATH)
-        self.k8s.state_debug()
+    def __init__(self, job: Job):
+        self.k8s = Kubernetes.from_path_to_k8s_creds(job.nuvlaedge_shared_path)
+        log.debug(self.k8s)
 
     def log(self, component: str, since: str, lines: int, namespace='') -> str:
         """
