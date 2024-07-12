@@ -1,13 +1,15 @@
 # -*- coding: utf-8 -*-
 import json
 import logging
+import os
 from datetime import datetime
 from tempfile import TemporaryDirectory
 from .utils import (create_tmp_file,
                     execute_cmd,
                     generate_registry_config,
                     join_stderr_stdout,
-                    LOCAL)
+                    LOCAL,
+                    store_files)
 from .connector import Connector, should_connect
 
 log = logging.getLogger('docker_stack')
@@ -69,23 +71,16 @@ class DockerStack(Connector):
         registries_auth = kwargs['registries_auth']
 
         with TemporaryDirectory() as tmp_dir_name:
-            compose_file_path = tmp_dir_name + "/docker-compose.yaml"
-            compose_file = open(compose_file_path, 'w')
-            compose_file.write(docker_compose)
-            compose_file.close()
+            compose_file_path = os.path.join(tmp_dir_name, 'docker-compose.yaml')
+            with open(compose_file_path, 'w') as fd:
+                fd.write(docker_compose)
 
             if files:
-                for file_info in files:
-                    file_path = tmp_dir_name + "/" + file_info['file-name']
-                    file = open(file_path, 'w')
-                    file.write(file_info['file-content'])
-                    file.close()
+                store_files(files, tmp_dir_name)
 
             if registries_auth:
-                config_path = tmp_dir_name + "/config.json"
-                config = open(config_path, 'w')
-                config.write(generate_registry_config(registries_auth))
-                config.close()
+                with open(os.path.join(tmp_dir_name, 'config.json'), 'w') as fd:
+                    fd.write(generate_registry_config(registries_auth))
 
             cmd_deploy = self.build_cmd_line(
                 ['--config', tmp_dir_name, 'stack', 'deploy',

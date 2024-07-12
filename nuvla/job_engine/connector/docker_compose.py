@@ -13,7 +13,8 @@ from .utils import (create_tmp_file,
                     generate_registry_config,
                     join_stderr_stdout,
                     LOCAL,
-                    remove_protocol_from_url)
+                    remove_protocol_from_url,
+                    store_files)
 
 log = logging.getLogger('docker_compose')
 
@@ -91,25 +92,18 @@ class DockerCompose(Connector):
         docker_timeout = os.getenv('JOB_DOCKER_TIMEOUT') or DEFAULT_DOCKER_TIMEOUT
 
         with TemporaryDirectory() as tmp_dir_name:
-            compose_file_path = f'{tmp_dir_name}/{docker_compose_filename}'
-            compose_file = open(compose_file_path, 'w')
-            compose_file.write(docker_compose)
-            compose_file.close()
+            compose_file_path = os.path.join(tmp_dir_name, docker_compose_filename)
+            with open(compose_file_path, 'w') as fd:
+                fd.write(docker_compose)
 
             if registries_auth:
-                config_path = tmp_dir_name + "/config.json"
-                config = open(config_path, 'w')
-                config.write(generate_registry_config(registries_auth))
-                config.close()
+                with open(os.path.join(tmp_dir_name, 'config.json'), 'w') as fd:
+                    fd.write(generate_registry_config(registries_auth))
                 env['DOCKER_CONFIG'] = tmp_dir_name
 
             files = kwargs['files']
             if files:
-                for file_info in files:
-                    file_path = tmp_dir_name + "/" + file_info['file-name']
-                    file = open(file_path, 'w')
-                    file.write(file_info['file-content'])
-                    file.close()
+                store_files(files, tmp_dir_name)
 
             cmd_pull = self.build_cmd_line(
                 ['-p', project_name, '-f', compose_file_path, 'pull'])
