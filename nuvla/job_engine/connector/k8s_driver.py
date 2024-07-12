@@ -43,8 +43,13 @@ def k8s_secret_image_registries_auths(registries_auth: list,
             'type': 'kubernetes.io/dockerconfigjson'}
 
 
-def store_yaml_file(data: dict, file_name, directory_path='.',
-                    allow_unicode=True) -> str:
+def store_as_yaml(data: dict, file_name, directory_path='.', allow_unicode=True) -> str:
+    """
+    Provided `directory_path` must exist and be writable.
+
+    NB! It's the responsibility of the caller to delete the files after use.
+        Either by using the returned file path or by deleting the `directory_path`.
+    """
     file_path = os.path.join(directory_path, file_name)
     with open(file_path, 'w') as fd:
         yaml.safe_dump(data, fd, allow_unicode=allow_unicode)
@@ -58,7 +63,7 @@ def store_k8s_secret_registries_auths_file(registries_auths: list,
                                            directory_path='.',
                                            file_name=REGISTRIES_AUTHS_FN) -> str:
     data = k8s_secret_image_registries_auths(registries_auths)
-    return store_yaml_file(data, file_name, directory_path=directory_path)
+    return store_as_yaml(data, file_name, directory_path=directory_path)
 
 
 class Kubernetes:
@@ -235,39 +240,33 @@ users:
     def _create_deployment_context(directory_path, namespace, manifest,
                                    files, registries_auth: list,
                                    common_labels: Dict[str, str] = None):
-        manifest_file_path = directory_path + '/manifest.yml'
-        with open(manifest_file_path, 'w') as manifest_file:
-            manifest_file.write(manifest)
+        manifest_fn = 'manifest.yml'
+        with open(os.path.join(directory_path, manifest_fn), 'w') as fd:
+            fd.write(manifest)
 
-        namespace_file_path = directory_path + '/namespace.yml'
-        with open(namespace_file_path, 'w') as namespace_file:
-            namespace_data = {'apiVersion': 'v1',
-                              'kind': 'Namespace',
-                              'metadata': {'name': namespace}}
-            log.debug('Namespace data: %s', namespace_data)
-            yaml.safe_dump(namespace_data, namespace_file, allow_unicode=True)
+        namespace_data = {'apiVersion': 'v1',
+                          'kind': 'Namespace',
+                          'metadata': {'name': namespace}}
+        log.debug('Namespace data: %s', namespace_data)
+        namespace_fn = 'namespace.yml'
+        store_as_yaml(namespace_data, namespace_fn, directory_path)
+
+        if files:
+            store_files(files, dir_path=directory_path)
 
         # NB! We have to place the objects from the manifest into a namespace,
         # otherwise we will get them deployed into the namespace of the job.
         kustomization_data = {'namespace': namespace,
                               'commonLabels': common_labels,
-                              'resources': ['manifest.yml', 'namespace.yml']}
-
-        if files:
-            store_files(files, dir_path=directory_path)
-
+                              'resources': [manifest_fn, namespace_fn]}
         if registries_auth:
-            secret_registries_fn = \
-                store_k8s_secret_registries_auths_file(
+            secret_registries_fn = store_k8s_secret_registries_auths_file(
                     registries_auth, directory_path=directory_path)
             kustomization_data.setdefault('resources', []) \
                 .append(secret_registries_fn)
-
         log.debug('Kustomization data: %s', kustomization_data)
-
-        kustomization_file_path = directory_path + '/kustomization.yml'
-        with open(kustomization_file_path, 'w') as fd:
-            yaml.safe_dump(kustomization_data, fd, allow_unicode=True)
+        store_as_yaml(kustomization_data, 'kustomization.yml',
+                      directory_path)
 
     @should_connect
     def delete_namespace(self, namespace: str) -> CompletedProcess:
