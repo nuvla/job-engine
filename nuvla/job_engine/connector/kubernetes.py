@@ -33,14 +33,14 @@ class OperationNotAllowed(Exception):
 
 
 def instantiate_from_cimi(api_infrastructure_service, api_credential):
-    d = dict(ca=api_credential.get('ca', '').replace("\\n", "\n"),
-             cert=api_credential.get('cert', '').replace("\\n", "\n"),
-             key=api_credential.get('key', '').replace("\\n", "\n"),
-             endpoint=api_infrastructure_service.get('endpoint'))
+    kwargs = dict(ca=api_credential.get('ca', '').replace("\\n", "\n"),
+                  cert=api_credential.get('cert', '').replace("\\n", "\n"),
+                  key=api_credential.get('key', '').replace("\\n", "\n"),
+                  endpoint=api_infrastructure_service.get('endpoint'))
     if api_infrastructure_service.get('subtype') == 'kubernetes':
-        return K8sAppMgmt(**d)
+        return K8sAppMgmt(**kwargs)
     elif api_infrastructure_service.get('subtype') == 'helm':
-        return HelmAppMgmt(**d)
+        return HelmAppMgmt(**kwargs)
 
 
 class K8sAppMgmt(Connector, ABC):
