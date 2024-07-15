@@ -28,7 +28,10 @@ class ApplicationDockerComposeValidate(object):
                          'NUVLA_DEPLOYMENT_GROUP_UUID': str(aux_port_value),
                          'NUVLA_API_KEY': str(aux_port_value),
                          'NUVLA_API_SECRET': str(aux_port_value),
-                         'NUVLA_ENDPOINT': str(aux_port_value)}
+                         'NUVLA_ENDPOINT': str(aux_port_value),
+                         'DATE_TIME': '010203123456',
+                         'TIMESTAMP': '0123456789',
+        }
 
         compose_dict = yaml.safe_load(module_content['docker-compose'])
 

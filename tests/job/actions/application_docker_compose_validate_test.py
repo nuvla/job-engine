@@ -13,6 +13,8 @@ def clean_return(ret: dict):
     ret.pop('NUVLA_API_KEY')
     ret.pop('NUVLA_API_SECRET')
     ret.pop('NUVLA_ENDPOINT')
+    ret.pop('DATE_TIME')
+    ret.pop('TIMESTAMP')
     return ret
 
 
