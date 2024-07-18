@@ -4,7 +4,7 @@ import logging
 
 from ..actions import action
 from ...connector.nuvlabox import NuvlaBox
-from ...connector.kubernetes import K8sEdgeMgmt
+from ...connector.kubernetes import NuvlaEdgeMgmtK8s
 from ...job.job import Job
 
 
@@ -36,7 +36,7 @@ class NBRebootJob(object):
         return connector.reboot()
 
     def _reboot_k8s(self) -> str:
-        connector = K8sEdgeMgmt(self.job)
+        connector = NuvlaEdgeMgmtK8s(self.job)
         self.job.set_progress(10)
         ret = connector.reboot()
         self.job.set_progress(90)

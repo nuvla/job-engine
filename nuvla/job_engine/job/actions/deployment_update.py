@@ -1,110 +1,56 @@
 # -*- coding: utf-8 -*-
 import logging
 
-from nuvla.api.resources import Deployment
+from ..util import override
 from ..actions import action
-from .utils.deployment_utils import (DeploymentBase,
-                                     get_env,
-                                     get_connector_module,
-                                     get_connector_name,
-                                     initialize_connector,
-                                     HELM_CONNECTOR_KIND)
+from .utils.deployment_utils import (get_connector_name,
+                                     CONNECTOR_KIND_HELM,
+                                     DeploymentBaseStartUpdate)
 
 action_name = 'update_deployment'
 
-log = logging.getLogger(action_name)
+# TODO: The implementation is the same as in DeploymentStartJob. Refactor!
 
 
 @action(action_name, True)
-class DeploymentUpdateJob(DeploymentBase):
+class DeploymentUpdateJob(DeploymentBaseStartUpdate):
 
     def __init__(self, job):
-        super().__init__(job, log)
+        super().__init__(job, logging.getLogger(action_name))
 
-    @staticmethod
-    def get_update_params_docker_service(deployment, registries_auth):
-        module_content = Deployment.module_content(deployment)
-        restart_policy = module_content.get('restart-policy', {})
-        module_ports = module_content.get('ports')
-        kwargs = {'name': Deployment.uuid(deployment),
-                  'env': get_env(deployment),
-                  'image': module_content['image'],
-                  'mounts_opt': module_content.get('mounts'),
-                  'cpu_ratio': module_content.get('cpus'),
-                  'memory': module_content.get('memory'),
-                  'ports_opt': module_ports,
-                  'registries_auth': registries_auth,
-                  'restart_policy_condition': restart_policy.get('condition'),
-                  'restart_policy_delay': restart_policy.get('delay'),
-                  'restart_policy_max_attempts': restart_policy.get('max-attempts'),
-                  'restart_policy_window': restart_policy.get('window')}
-        return kwargs
-
-    @staticmethod
-    def get_update_params_docker_stack(deployment, registries_auth):
-        module_content = Deployment.module_content(deployment)
-        return {'env': get_env(deployment),
-                'files': module_content.get('files'),
-                'name': Deployment.uuid(deployment),
-                'docker_compose': module_content['docker-compose'],
-                'registries_auth': registries_auth}
-
-    def get_update_params_docker_compose(self, deployment, registries_auth):
-        return self.get_update_params_docker_stack(deployment, registries_auth)
-
-    def get_update_params_kubernetes(self, deployment, registries_auth):
-        return self.get_update_params_docker_stack(deployment, registries_auth)
-
-    def get_update_params_helm(self, deployment, registries_auth):
-        module_content = Deployment.module_content(deployment)
-        helm_repo_cred = self.helm_repo_cred(module_content)
-        return {'env': get_env(deployment),
-                'files': module_content.get('files'),
-                'name': Deployment.uuid(deployment),
-                'registries_auth': registries_auth,
-                'helm_repo_cred': helm_repo_cred}
-
-    def handle_deployment(self):
-        log.info(f'Job update_deployment started for {self.deployment_id}.')
-        self.job.set_progress(10)
-
+    def update_application(self):
         deployment = self.deployment.data
         connector_name = get_connector_name(deployment)
-        connector_class = get_connector_module(connector_name)
-        registries_auth = self.private_registries_auth()
-        connector = initialize_connector(connector_class, self.job, self.deployment)
+        connector = self._get_connector(deployment, connector_name)
 
-        self.create_user_output_params()
-
-        self.job.set_progress(20)
-
-        kwargs = {
-            'docker_service': self.get_update_params_docker_service,
-            'docker_stack': self.get_update_params_docker_stack,
-            'docker_compose': self.get_update_params_docker_compose,
-            'kubernetes': self.get_update_params_kubernetes,
-            HELM_CONNECTOR_KIND: self.get_update_params_helm
-        }[connector_name](deployment, registries_auth)
-
-        if connector_name == HELM_CONNECTOR_KIND:
-            result, services, release = connector.update(deployment, **kwargs)
-            self.app_helm_release_params_update(release)
-        else:
-            result, services = connector.update(**kwargs)
+        kwargs = self._get_action_kwargs(deployment)
+        result, services, extra = connector.update(**kwargs)
+        if extra and connector_name == CONNECTOR_KIND_HELM:
+            # FIXME: maybe this can be done as callback to the connector start
+            #  method?
+            self.app_helm_release_params_update(extra)
         if result:
             self.job.set_status_message(result)
-        self.job.set_progress(80)
+        self.application_params_update(services)
 
-        if connector_name == 'docker_service':
-            # immediately update any port mappings that are already available
-            ports_mapping = connector.extract_vm_ports_mapping(services[0])
-            if ports_mapping:
-                self.api_dpl.update_port_parameters(deployment, ports_mapping)
-        else:
-            self.application_params_update(services)
+        self.job.set_progress(90)
+
+    @override
+    def handle_deployment(self):
+        self.create_user_output_params()
+        self.update_application()
+
+    def update_deployment(self):
+
+        self.log.info(f'{action_name} job started for {self.deployment_id}.')
+
+        self.job.set_progress(10)
+
+        self.try_handle_raise_exception()
 
         self.api_dpl.set_state_started(self.deployment_id)
+
         return 0
 
     def do_work(self):
-        return self.try_handle_raise_exception()
+        return self.update_deployment()

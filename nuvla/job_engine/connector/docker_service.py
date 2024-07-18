@@ -8,9 +8,9 @@ from tempfile import NamedTemporaryFile
 
 import requests
 
-from .connector import Connector, ConnectorError, should_connect
+from .connector import ConnectorCOE, ConnectorError, should_connect
 from .registry import image_dict_to_str
-from .utils import timestr2dtime, extract_host_from_url
+from .utils import timestr2dtime
 
 """
 Service is a set of tasks. Service doesn't have a state, but tasks do.
@@ -38,10 +38,10 @@ def tree():
     return defaultdict(tree)
 
 
-def instantiate_from_cimi(api_infrastructure_service, api_credential):
+def instantiate_from_cimi(api_infra_service, api_credential, **_):
     return DockerService(cert=api_credential.get('cert').replace("\\n", "\n"),
                          key=api_credential.get('key').replace("\\n", "\n"),
-                         endpoint=api_infrastructure_service.get('endpoint'))
+                         endpoint=api_infra_service.get('endpoint'))
 
 
 def convert_filters(filters):
@@ -58,7 +58,7 @@ def convert_filters(filters):
     return json.dumps(result)
 
 
-class DockerService(Connector):
+class DockerService(ConnectorCOE):
 
     @staticmethod
     def service_image_digest(service):
@@ -93,7 +93,8 @@ class DockerService(Connector):
 
         self.docker_api = requests.Session()
         self.docker_api.verify = False
-        self.docker_api.headers = {'Content-Type': 'application/json', 'Accept': 'application/json'}
+        self.docker_api.headers = {'Content-Type': 'application/json',
+                                   'Accept': 'application/json'}
 
     @property
     def connector_type(self):
@@ -220,7 +221,7 @@ class DockerService(Connector):
 
         self.validate_action(service)
 
-        return None, service
+        return None, service, None
 
     @should_connect
     def stop(self, **kwargs):
@@ -247,23 +248,26 @@ class DockerService(Connector):
         if len(services) >= 1:
             service = services[0]
         else:
-            raise ConnectorError('No service named {} when updating service.'.format(service_name))
+            raise ConnectorError(f'No service named {service_name} when '
+                                 f'updating service.')
 
-        service_id      = service['ID']
+        service_id = service['ID']
         service_version = service['Version']['Index']
 
         service_spec = self.service_dict(**kwargs)
 
-        response = self.docker_api.post(self._get_full_url('services/{}/update'.format(service_id)),
-                                        params=[('version', service_version)],
-                                        json=service_spec).json()
+        response = self.docker_api.post(
+            self._get_full_url(f'services/{service_id}/update'),
+            params=[('version', service_version)],
+            json=service_spec).json()
         self.validate_action(response)
 
         services = self._list(filters={'name': service_name})
         if len(services) >= 1:
-            return None, [services[0]]
+            return None, [services[0]], None
         else:
-            raise ConnectorError('No service named {} after service update.'.format(service_name))
+            raise ConnectorError(f'No service named {service_name} after '
+                                 f'service update.')
 
     @should_connect
     def list(self, filters=None):
@@ -375,7 +379,8 @@ class DockerService(Connector):
     def nodes_list_active(self):
         return self.nodes_list(availability='active')
 
-    def extract_vm_ports_mapping(self, vm):
+    @staticmethod
+    def extract_vm_ports_mapping(vm):
         published_ports_list = [":".join([str(pp.get("Protocol")),
                                           str(pp.get('PublishedPort')),
                                           str(pp.get('TargetPort'))])

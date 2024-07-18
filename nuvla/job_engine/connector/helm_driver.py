@@ -10,6 +10,9 @@ log = logging.getLogger('helm_driver')
 
 
 class Helm:
+    """
+    Class to interact with Helm CLI.
+    """
     def __init__(self, path_to_k8s_creds: str, **kwargs):
         self.k8s = Kubernetes.from_path_to_k8s_creds(path_to_k8s_creds, **kwargs)
         log.debug(self.k8s)

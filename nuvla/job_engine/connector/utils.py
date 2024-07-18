@@ -19,7 +19,7 @@ log = logging.getLogger('connector_utils')
 LOCAL = 'local'
 
 
-def is_endpoint_local(endpoint):
+def is_docker_endpoint_local(endpoint):
     is_local = isinstance(endpoint, str) and (endpoint.startswith('unix://') or endpoint == LOCAL)
     return not endpoint or is_local
 

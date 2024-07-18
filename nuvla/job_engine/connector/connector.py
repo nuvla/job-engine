@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 
-from abc import abstractmethod, abstractproperty
+from abc import abstractmethod
 from functools import wraps
+from typing import Tuple, List, Any
 
 
 def should_connect(f):
@@ -32,7 +33,8 @@ class Connector(object):
     def __init__(self, **kwargs):
         self.kwargs = kwargs
 
-    @abstractproperty
+    @property
+    @abstractmethod
     def connector_type(self):
         pass
 
@@ -44,9 +46,12 @@ class Connector(object):
     def clear_connection(self, connect_result):
         pass
 
+
+class ConnectorCOE(Connector):
+
     @abstractmethod
     @should_connect
-    def start(self, **kwargs):
+    def start(self, **kwargs) -> Tuple[str, List[dict], Any]:
         pass
 
     @abstractmethod
@@ -56,7 +61,7 @@ class Connector(object):
 
     @abstractmethod
     @should_connect
-    def update(self, **kwargs):
+    def update(self, **kwargs) -> Tuple[str, List[dict], Any]:
         pass
 
     @abstractmethod

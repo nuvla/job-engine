@@ -10,8 +10,8 @@ from .utils.deployment_utils import (DeploymentBase,
                                      get_connector_name,
                                      get_env,
                                      initialize_connector,
-                                     HELM_APP_SUBTYPE,
-                                     HELM_CONNECTOR_KIND)
+                                     APP_SUBTYPE_HELM,
+                                     CONNECTOR_KIND_HELM)
 from ..util import override
 from ..actions import action
 
@@ -35,54 +35,49 @@ class DeploymentStopJob(DeploymentBase):
             except (NuvlaError, ConnectionError):
                 pass
 
-    def stop_component(self):
-        deployment_id = Deployment.id(self.deployment)
+    @staticmethod
+    def _get_action_params_base(deployment: dict) -> dict:
+        return dict(name=Deployment.uuid(deployment))
 
-        connector = initialize_connector(docker_service, self.job, self.deployment)
-        filter_params = 'parent="{}" and name="service-id"'.format(deployment_id)
+    def _get_action_params(self, deployment: dict) -> dict:
+        env = get_env(deployment)
+        docker_compose = Deployment.module_content(deployment)['docker-compose']
+        return {
+            **self._get_action_params_base(deployment),
+            **dict(env=env, docker_compose=docker_compose)
+        }
 
-        deployment_params = self.api.search('deployment-parameter', filter=filter_params,
-                                            select='id,node-id,name,value').resources
+    def _get_action_params_helm(self, deployment: dict) -> dict:
+        return self._get_action_params_base(deployment)
 
-        if len(deployment_params) > 0:
-            service_id = deployment_params[0].data.get('value')
-            if service_id is not None:
-                connector.stop(service_id=service_id,
-                               env=get_env(self.deployment.data))
-            else:
-                self.job.set_status_message("Deployment parameter {} doesn't have a value!"
-                                            .format(deployment_params[0].data.get('id')))
-        else:
-            self.job.set_status_message('No deployment parameters with service ID found!')
+    def _get_action_kwargs(self, deployment: dict) -> dict:
+        # TODO: Getting action params should be based on the connector
+        #  instance. By this moment we have already instantiated the
+        #  connector. We should refactor this.
+        connector_name = get_connector_name(deployment)
+        match connector_name:
+            case 'docker_stack' | 'docker_compose' | 'kubernetes':
+                return self._get_action_params(deployment)
+            case 'helm':
+                return self._get_action_params_helm(deployment)
+            case _:
+                msg = f'Unsupported connector kind: {connector_name}'
+                self.log.error(msg)
+                raise ValueError(msg)
 
     def stop_application(self):
-        env = get_env(self.deployment.data)
-        name = Deployment.uuid(self.deployment)
-        connector_name = get_connector_name(self.deployment)
-        connector_module = get_connector_module(connector_name)
-        connector = initialize_connector(connector_module, self.job, self.deployment)
-        docker_compose = Deployment.module_content(self.deployment)['docker-compose']
+        deployment = self.deployment.data
+        connector = self._get_connector(deployment,
+                                        get_connector_name(deployment))
 
-        result = connector.stop(name=name, env=env, docker_compose=docker_compose)
-
-        self.job.set_status_message(result)
-
-    def stop_application_helm(self):
-        connector_module = get_connector_module(HELM_CONNECTOR_KIND)
-        connector = initialize_connector(connector_module, self.job, self.deployment)
-        name = Deployment.uuid(self.deployment)
-        result = connector.stop(self.deployment.data, name=name)
+        kwargs = self._get_action_kwargs(deployment)
+        result = connector.stop(**kwargs)
 
         self.job.set_status_message(result)
 
     @override
     def handle_deployment(self):
-        if Deployment.is_component(self.deployment):
-            self.stop_component()
-        elif Deployment.subtype(self.deployment) == HELM_APP_SUBTYPE:
-            self.stop_application_helm()
-        else:
-            self.stop_application()
+        self.stop_application()
 
     def stop_deployment(self):
         log.info('Job started for {}.'.format(self.deployment_id))

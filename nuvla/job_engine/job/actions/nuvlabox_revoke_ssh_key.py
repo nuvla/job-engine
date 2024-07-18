@@ -6,7 +6,7 @@ import json
 
 from ..actions import action
 from ...connector import nuvlabox as NB
-from ...connector.kubernetes import K8sSSHKey
+from ...connector.kubernetes import NuvlaEdgeMgmtK8sSSHKey
 
 @action('nuvlabox_revoke_ssh_key', True)
 class NBRevokeSSHKey(object):
@@ -40,8 +40,8 @@ class NBRevokeSSHKey(object):
             self.job.set_progress(10)
             if os.getenv('KUBERNETES_SERVICE_HOST'):
                 logging.debug('Using Kubernetes on NuvlaEdge: %s', nuvlabox_id)
-                connector = K8sSSHKey(job=self.job, nuvlabox_id=nuvlabox_id)
-                connector.manage_ssh_key(K8sSSHKey.ACTION_REVOKE, public_key,
+                connector = NuvlaEdgeMgmtK8sSSHKey(job=self.job, nuvlabox_id=nuvlabox_id)
+                connector.manage_ssh_key(NuvlaEdgeMgmtK8sSSHKey.ACTION_REVOKE, public_key,
                                          credential_id, nuvlabox_id=nuvlabox_id)
             else:
                 connector = NB.NuvlaBox(api=self.api, nuvlabox_id=nuvlabox_id, job=self.job)

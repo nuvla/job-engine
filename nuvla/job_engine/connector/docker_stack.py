@@ -10,19 +10,19 @@ from .utils import (create_tmp_file,
                     join_stderr_stdout,
                     LOCAL,
                     store_files)
-from .connector import Connector, should_connect
+from .connector import ConnectorCOE, should_connect
 
 log = logging.getLogger('docker_stack')
 
 
-def instantiate_from_cimi(api_infrastructure_service, api_credential):
+def instantiate_from_cimi(api_infra_service, api_credential, **_):
     return DockerStack(
         cert=api_credential.get('cert').replace("\\n", "\n"),
         key=api_credential.get('key').replace("\\n", "\n"),
-        endpoint=api_infrastructure_service.get('endpoint'))
+        endpoint=api_infra_service.get('endpoint'))
 
 
-class DockerStack(Connector):
+class DockerStack(ConnectorCOE):
 
     def __init__(self, **kwargs):
         super(DockerStack, self).__init__(**kwargs)
@@ -91,7 +91,7 @@ class DockerStack(Connector):
 
             services = self._stack_services(stack_name)
 
-            return result, services
+            return result, services, None
 
     @should_connect
     def stop(self, **kwargs):

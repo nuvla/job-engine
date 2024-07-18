@@ -7,7 +7,7 @@ import yaml
 from datetime import datetime
 from tempfile import TemporaryDirectory
 
-from .connector import Connector, should_connect
+from .connector import ConnectorCOE, should_connect
 from .utils import (create_tmp_file,
                     execute_cmd,
                     generate_registry_config,
@@ -24,14 +24,14 @@ DEFAULT_PULL_TIMEOUT = "1200"  # Default timeout for docker compose pull command
 DEFAULT_DOCKER_TIMEOUT = "300"  # Default timeout for docker commands
 
 
-def instantiate_from_cimi(api_infrastructure_service, api_credential):
+def instantiate_from_cimi(api_infra_service, api_credential, **_):
     return DockerCompose(
         cert=api_credential.get('cert').replace("\\n", "\n"),
         key=api_credential.get('key').replace("\\n", "\n"),
-        endpoint=api_infrastructure_service.get('endpoint'))
+        endpoint=api_infra_service.get('endpoint'))
 
 
-class DockerCompose(Connector):
+class DockerCompose(ConnectorCOE):
 
     def __init__(self, **kwargs):
         super(DockerCompose, self).__init__(**kwargs)
@@ -134,7 +134,7 @@ class DockerCompose(Connector):
 
             services = self._get_services(project_name, compose_file_path, env)
 
-            return result, services
+            return result, services, None
 
     @should_connect
     def stop(self, **kwargs):
@@ -155,6 +155,7 @@ class DockerCompose(Connector):
 
     update = start
 
+    # TODO: why this method is empty?
     @should_connect
     def list(self, filters=None):
         pass

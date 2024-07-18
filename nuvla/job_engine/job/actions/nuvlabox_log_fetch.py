@@ -26,7 +26,8 @@ class NuvlaBoxLogFetchJob(ResourceLogFetchJob):
             if os.getenv('KUBERNETES_SERVICE_HOST'):
                 logging.debug("Kubernetes connector used.")
                 try:
-                    self._connector = k8s.K8sLogging(self.job)
+                    self._connector = k8s.NuvlaEdgeMgmtK8sLogging(
+                        self.job.nuvlaedge_shared_path)
                 except Exception as e:
                     logging.error(f'Kubernetes error:\n{str(e)}')
             else:

@@ -9,7 +9,7 @@ from .utils.deployment_utils import (initialize_connector,
                                      DeploymentBase,
                                      get_connector_name,
                                      get_connector_module,
-                                     HELM_CONNECTOR_KIND,
+                                     CONNECTOR_KIND_HELM,
                                      get_env)
 from ..actions import action
 
@@ -149,7 +149,7 @@ class DeploymentStateJob(DeploymentBase):
 
         self.application_params_update(services)
 
-        if connector_name == HELM_CONNECTOR_KIND:
+        if connector_name == CONNECTOR_KIND_HELM:
             namespace = Deployment.uuid(self.deployment.data)
             release_name = connector.helm_release_name(namespace)
             release = connector.get_helm_release(release_name, namespace=namespace)

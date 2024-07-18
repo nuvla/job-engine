@@ -5,45 +5,47 @@ import os
 import re
 import tempfile
 
-from abc import ABC
 from datetime import datetime
 from subprocess import CompletedProcess
-from typing import List, Union
+from typing import List, Union, Tuple, Any
 
 from nuvla.api.resources import Deployment
 
 from ..job.job import Job
-from .connector import Connector, should_connect
+from .connector import ConnectorCOE, should_connect, Connector
 from .helm_driver import Helm
 from .k8s_driver import Kubernetes
 from .utils import join_stderr_stdout, interpolate_and_store_files, \
     string_interpolate_env_vars, run_in_tmp_dir
 
+# TODO: this logger is used for k8s and helm. Refactor is needed.
 log = logging.getLogger('k8s_connector')
 
 
-_NUVLAEDGE_SHARED_PATH = "/var/lib/nuvlaedge"
+#
+# Application management.
+#
+
+def instantiate_from_cimi(api_infra_service, api_credential, **kwargs):
+    """
+    NB! This factory is only used for instantiation of the classes
+    providing application management.
+    """
+    _kwargs = dict(ca=api_credential.get('ca', '').replace("\\n", "\n"),
+                   cert=api_credential.get('cert', '').replace("\\n", "\n"),
+                   key=api_credential.get('key', '').replace("\\n", "\n"),
+                   endpoint=api_infra_service.get('endpoint'))
+    if api_infra_service.get('subtype') == 'kubernetes':
+        return AppMgmtK8s(**_kwargs)
+    elif api_infra_service.get('subtype') == 'helm':
+        job = kwargs.get('job')
+        if not job:
+            raise ValueError('Job object is required for AppMgmtHelm '
+                             'instantiation.')
+        return AppMgmtHelm(job.nuvlaedge_shared_path, **_kwargs)
 
 
-NE_STATUS_COLLECTION = 'nuvlabox-status'
-
-
-class OperationNotAllowed(Exception):
-    pass
-
-
-def instantiate_from_cimi(api_infrastructure_service, api_credential):
-    kwargs = dict(ca=api_credential.get('ca', '').replace("\\n", "\n"),
-                  cert=api_credential.get('cert', '').replace("\\n", "\n"),
-                  key=api_credential.get('key', '').replace("\\n", "\n"),
-                  endpoint=api_infrastructure_service.get('endpoint'))
-    if api_infrastructure_service.get('subtype') == 'kubernetes':
-        return K8sAppMgmt(**kwargs)
-    elif api_infrastructure_service.get('subtype') == 'helm':
-        return HelmAppMgmt(**kwargs)
-
-
-class K8sAppMgmt(Connector, ABC):
+class AppMgmtK8s(ConnectorCOE):
     """Class providing application management functionalities on Kubernetes.
     """
 
@@ -62,7 +64,7 @@ class K8sAppMgmt(Connector, ABC):
     def clear_connection(self, connect_result):
         self.k8s.clear_connection(connect_result)
 
-    def start(self, **kwargs) -> [str, List[dict]]:
+    def start(self, **kwargs) -> Tuple[str, List[dict], Any]:
         env = kwargs['env']
         files = kwargs['files']
         manifest = kwargs['docker_compose']
@@ -88,7 +90,7 @@ class K8sAppMgmt(Connector, ABC):
 
         objects = self._get_k8s_objects(deployment_uuid)
 
-        return result, objects
+        return result, objects, {}
 
     update = start
 
@@ -140,12 +142,18 @@ class K8sAppMgmt(Connector, ABC):
         return self.k8s.log(component, since, lines, namespace)
 
 
-class HelmAppMgmt(Connector, ABC):
+class AppMgmtHelm(ConnectorCOE):
     """Class providing Helm-based application management functionalities.
     """
-    def __init__(self, **kwargs):
+
+    def __init__(self, ne_db: str, **kwargs):
+        """
+        :param ne_db: path to NuvlaEdge local filesystem database.
+        :param kwargs:
+        """
         super().__init__(**kwargs)
-        self.helm = Helm(_NUVLAEDGE_SHARED_PATH, **kwargs)
+
+        self.helm = Helm(ne_db, **kwargs)
 
     @staticmethod
     def helm_release_name(string: str):
@@ -161,8 +169,9 @@ class HelmAppMgmt(Connector, ABC):
         return release
 
     @run_in_tmp_dir
-    def _op_install_upgrade(self, op: str, deployment: dict, **kwargs) -> \
-            [str, List[dict], dict]:
+    def _op_install_upgrade(self, op: str, **kwargs) \
+            -> Tuple[str, List[dict], dict]:
+        deployment = kwargs['deployment']
         namespace = kwargs['name']
         helm_release = self.helm_release_name(namespace)
 
@@ -212,21 +221,20 @@ class HelmAppMgmt(Connector, ABC):
 
         return result.stdout, objects, release
 
-    def start(self, deployment: dict, **kwargs) -> [str, List[dict], dict]:
-        return self._op_install_upgrade('install', deployment, **kwargs)
+    def start(self, **kwargs) -> Tuple[str, List[dict], dict]:
+        return self._op_install_upgrade('install', **kwargs)
 
-    def update(self, deployment: dict, **kwargs) -> [str, List[dict], dict]:
+    def update(self, **kwargs) -> Tuple[str, List[dict], dict]:
         try:
-            return self._op_install_upgrade('upgrade', deployment, **kwargs)
+            return self._op_install_upgrade('upgrade', **kwargs)
         except Exception as ex:
             if 'UPGRADE FAILED' in ex.args[0]:
                 if 'has no deployed releases' in ex.args[0]:
                     log.warning('No release found. Run installation instead.')
-                    return self._op_install_upgrade('install', deployment,
-                                                    **kwargs)
+                    return self._op_install_upgrade('install', **kwargs)
             raise ex
 
-    def stop(self, deployment: dict, **kwargs) -> str:
+    def stop(self, **kwargs) -> str:
         namespace = kwargs['name']
         helm_release = self.helm_release_name(namespace)
         try:
@@ -238,6 +246,12 @@ class HelmAppMgmt(Connector, ABC):
                 return ex.args[0]
             raise ex
         return result.stdout
+
+    def list(self):
+        """
+        This method is here to simply follow the interface. It is not used.
+        """
+        pass
 
     def get_services(self, deployment_uuid: str, _, **kwargs) -> list:
         """
@@ -253,11 +267,24 @@ class HelmAppMgmt(Connector, ABC):
         return self.helm.k8s.get_objects(deployment_uuid, objects)
 
 
-class K8sEdgeMgmt:
+#
+# NuvlaEdge management.
+#
+
+NE_STATUS_COLLECTION = 'nuvlabox-status'
+
+
+class OperationNotAllowed(Exception):
+    pass
+
+
+class NuvlaEdgeMgmtK8s(Connector):
 
     NE_HELM_NAMESPACE = 'default'
 
-    def __init__(self, job: Job):
+    def __init__(self, job: Job, **kwargs):
+
+        super().__init__(**kwargs)
 
         if not job.is_in_pull_mode:
             raise OperationNotAllowed(
@@ -271,16 +298,20 @@ class K8sEdgeMgmt:
         self._nuvlabox = None
         self._nuvlabox_status = None
 
-        self.k8s = Kubernetes.from_path_to_k8s_creds(_NUVLAEDGE_SHARED_PATH)
-        self.k8s.state_debug()
+        self.k8s = Kubernetes.from_path_to_k8s_creds(job.nuvlaedge_shared_path)
+        log.debug(self.k8s)
 
-        self.helm = Helm(_NUVLAEDGE_SHARED_PATH)
+        self.helm = Helm(job.nuvlaedge_shared_path)
 
     def connect(self):
         self.k8s.connect()
 
     def clear_connection(self, connect_result):
         self.k8s.clear_connection(connect_result)
+
+    @property
+    def connector_type(self):
+        return 'nuvlabox-kubernetes'
 
     @property
     def nuvlabox(self):
@@ -602,7 +633,7 @@ spec:
             return nb_status_data['installation-parameters']['project-name']
 
 
-class K8sSSHKey:
+class NuvlaEdgeMgmtK8sSSHKey:
     """
     Class to handle SSH keys. Adding and revoking
     """
@@ -805,10 +836,13 @@ spec:
         return 2
 
 
-class K8sLogging:
+class NuvlaEdgeMgmtK8sLogging:
 
-    def __init__(self, job: Job):
-        self.k8s = Kubernetes.from_path_to_k8s_creds(job.nuvlaedge_shared_path)
+    def __init__(self, ne_db: str):
+        """
+        :param ne_db: path to NuvlaEdge local filesystem database.
+        """
+        self.k8s = Kubernetes.from_path_to_k8s_creds(ne_db)
         log.debug(self.k8s)
 
     def log(self, component: str, since: str, lines: int, namespace='') -> str:

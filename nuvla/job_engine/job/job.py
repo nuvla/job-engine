@@ -169,7 +169,7 @@ class Job(dict):
 
         self._edit_job('progress', progress)
 
-    def set_status_message(self, status_message):
+    def set_status_message(self, status_message: str):
         if not status_message:
             status_message = '< status message empty >'
         self._edit_job('status-message', str(status_message))
