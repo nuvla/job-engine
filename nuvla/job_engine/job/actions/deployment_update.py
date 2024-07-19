@@ -31,6 +31,7 @@ class DeploymentUpdateJob(DeploymentBaseStartUpdate):
             self.app_helm_release_params_update(extra)
         if result:
             self.job.set_status_message(result)
+
         self.application_params_update(services)
 
         self.job.set_progress(90)
@@ -41,7 +42,6 @@ class DeploymentUpdateJob(DeploymentBaseStartUpdate):
         self.update_application()
 
     def update_deployment(self):
-
         self.log.info(f'{action_name} job started for {self.deployment_id}.')
 
         self.job.set_progress(10)

@@ -12,14 +12,12 @@ from ..actions import action
 
 action_name = 'stop_deployment'
 
-log = logging.getLogger(action_name)
-
 
 @action(action_name, True)
 class DeploymentStopJob(DeploymentBase):
 
     def __init__(self, job):
-        super().__init__(job, log)
+        super().__init__(job, logging.getLogger(action_name))
 
     def try_delete_deployment_credentials(self, deployment_id):
         cred_api = Credential(self.api, subtype='dummy')
@@ -74,7 +72,7 @@ class DeploymentStopJob(DeploymentBase):
         self.stop_application()
 
     def stop_deployment(self):
-        log.info('Job started for {}.'.format(self.deployment_id))
+        self.log.info(f'{action_name} job started for {self.deployment_id}.')
 
         self.job.set_progress(10)
 

@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-
 import logging
 
 from ..util import override
@@ -43,7 +42,6 @@ class DeploymentStartJob(DeploymentBaseStartUpdate):
         self.start_application()
 
     def start_deployment(self):
-
         self.log.info(f'{action_name} job started for {self.deployment_id}.')
 
         self.job.set_progress(10)
