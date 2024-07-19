@@ -4,8 +4,8 @@ import os
 import logging
 
 from ..actions import action
-from ...connector import nuvlabox as NB
-from ...connector.kubernetes import NuvlaEdgeMgmtK8s
+from ...connector import nuvlaedge_docker as NB
+from ...connector.nuvlaedge_k8s import NuvlaEdgeMgmtK8s
 from ...job.job import Job
 
 @action('nuvlabox_update', True)

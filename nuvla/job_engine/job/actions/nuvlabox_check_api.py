@@ -3,7 +3,7 @@
 import logging,os
 
 from ..actions import action
-from ...connector import nuvlabox as NB
+from ...connector import nuvlaedge_docker as NB
 
 
 @action('check_nuvlabox_api', True)

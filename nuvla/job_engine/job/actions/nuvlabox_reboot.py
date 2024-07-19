@@ -3,8 +3,8 @@ import os
 import logging
 
 from ..actions import action
-from ...connector.nuvlabox import NuvlaBox
-from ...connector.kubernetes import NuvlaEdgeMgmtK8s
+from ...connector.nuvlaedge_docker import NuvlaBox
+from ...connector.nuvlaedge_k8s import NuvlaEdgeMgmtK8s
 from ...job.job import Job
 
 

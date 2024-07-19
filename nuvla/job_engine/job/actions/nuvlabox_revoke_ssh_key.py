@@ -5,8 +5,9 @@ import logging
 import json
 
 from ..actions import action
-from ...connector import nuvlabox as NB
-from ...connector.kubernetes import NuvlaEdgeMgmtK8sSSHKey
+from ...connector import nuvlaedge_docker as NB
+from ...connector.nuvlaedge_k8s import NuvlaEdgeMgmtK8sSSHKey
+
 
 @action('nuvlabox_revoke_ssh_key', True)
 class NBRevokeSSHKey(object):

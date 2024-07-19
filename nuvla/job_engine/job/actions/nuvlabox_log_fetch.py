@@ -3,12 +3,13 @@
 import os
 import logging
 
-from ...connector import nuvlabox as nb
-from ...connector import kubernetes as k8s
+from ...connector import nuvlaedge_docker as nb
+from ...connector import nuvlaedge_k8s as k8s
 from ..actions import action
 from .utils.resource_log_fetch import ResourceLogFetchJob
 
 action_name = 'fetch_nuvlabox_log'
+
 
 @action(action_name, True)
 class NuvlaBoxLogFetchJob(ResourceLogFetchJob):

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 from ..actions import action
-from ...connector import nuvlabox as NB
+from ...connector import nuvlaedge_docker as NB
 
 
 @action('nuvlabox_cluster', True)
