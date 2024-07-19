@@ -14,8 +14,7 @@ from nuvla.api.resources import Deployment, DeploymentParameter
 from nuvla.api.resources.base import ResourceNotFound
 
 from ... import Job
-from ....connector import (docker_service,
-                           docker_stack,
+from ....connector import (docker_stack,
                            docker_compose,
                            kubernetes,
                            utils)
@@ -28,10 +27,7 @@ APP_SUBTYPE_HELM = 'application_helm'
 
 
 def get_connector_name(deployment: Union[dict, CimiResource]):
-    if Deployment.is_component(deployment):
-        return 'docker_service'
-
-    elif Deployment.is_application(deployment):
+    if Deployment.is_application(deployment):
         is_compose = Deployment.is_compatibility_docker_compose(deployment)
         return 'docker_compose' if is_compose else 'docker_stack'
 
@@ -47,8 +43,6 @@ def get_connector_name(deployment: Union[dict, CimiResource]):
 
 def get_connector_module(connector_name):
     match connector_name:
-        case 'docker_service':
-            return docker_service
         case 'docker_stack':
             return docker_stack
         case 'docker_compose':
@@ -70,10 +64,7 @@ def update_infra_service_endpoint_for_pull_mode(connector_module,
                                                 infra_service):
     infra_service_type = infra_service.get('subtype', '')
     if infra_service_type == 'swarm':
-        if connector_module is docker_service:
-            infra_service['endpoint'] = 'https://compute-api:5000'
-        else:
-            infra_service['endpoint'] = None
+        infra_service['endpoint'] = None
     elif infra_service_type == 'kubernetes':
         endpoint = get_kubernetes_local_endpoint()
         if not endpoint:
@@ -380,14 +371,13 @@ class DeploymentBaseStartUpdate(DeploymentBase, ABC):
         # TODO: Getting action params should be based on the connector
         #  instance. By this moment we have already instantiated the
         #  connector. We should refactor this.
-        connector_name = get_connector_name(deployment)
         registries_auth = self.private_registries_auth()
-        match connector_name:
+        match get_connector_name(deployment):
             case 'docker_stack' | 'docker_compose' | 'kubernetes':
                 return self._get_action_params(deployment, registries_auth)
             case 'helm':
                 return self._get_action_params_helm(deployment, registries_auth)
-            case _:
+            case connector_name:
                 msg = f'Unsupported connector kind: {connector_name}'
                 self.log.error(msg)
                 raise ValueError(msg)

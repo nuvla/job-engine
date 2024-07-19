@@ -2,16 +2,11 @@
 
 import logging
 
-from ...connector import docker_service
 from nuvla.api import NuvlaError, ConnectionError
 from nuvla.api.resources import Deployment, Credential
 from .utils.deployment_utils import (DeploymentBase,
-                                     get_connector_module,
                                      get_connector_name,
-                                     get_env,
-                                     initialize_connector,
-                                     APP_SUBTYPE_HELM,
-                                     CONNECTOR_KIND_HELM)
+                                     get_env)
 from ..util import override
 from ..actions import action
 
@@ -54,13 +49,12 @@ class DeploymentStopJob(DeploymentBase):
         # TODO: Getting action params should be based on the connector
         #  instance. By this moment we have already instantiated the
         #  connector. We should refactor this.
-        connector_name = get_connector_name(deployment)
-        match connector_name:
+        match get_connector_name(deployment):
             case 'docker_stack' | 'docker_compose' | 'kubernetes':
                 return self._get_action_params(deployment)
             case 'helm':
                 return self._get_action_params_helm(deployment)
-            case _:
+            case connector_name:
                 msg = f'Unsupported connector kind: {connector_name}'
                 self.log.error(msg)
                 raise ValueError(msg)

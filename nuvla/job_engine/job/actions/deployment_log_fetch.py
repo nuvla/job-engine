@@ -26,10 +26,7 @@ class DeploymentLogFetchJob(ResourceLogFetchJob):
     @property
     def connector(self):
         if not self._connector:
-            if self.connector_name == 'docker_service':
-                connector_module = docker_stack
-            else:
-                connector_module = get_connector_module(self.connector_name)
+            connector_module = get_connector_module(self.connector_name)
             self._connector = initialize_connector(connector_module, self.job,
                                                    self.deployment)
         return self._connector
@@ -54,16 +51,12 @@ class DeploymentLogFetchJob(ResourceLogFetchJob):
         )
 
     def get_docker_stack_log(self, component, since, lines):
-        if self.connector_name == 'docker_service':
-            name = Deployment.uuid(self.deployment)
-        else:
-            name = f'{Deployment.uuid(self.deployment)}_{component}'
+        name = f'{Deployment.uuid(self.deployment)}_{component}'
         return self.connector.log(name, since, lines)
 
     def get_component_logs(self, component: str, since: datetime,
                            lines: int) -> str:
         return {
-            'docker_service': self.get_docker_stack_log,
             'docker_stack': self.get_docker_stack_log,
             'docker_compose': self.get_docker_compose_log,
             'kubernetes': self.get_kubernetes_log
