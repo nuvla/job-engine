@@ -14,6 +14,7 @@ from nuvla.api.resources import Deployment, DeploymentParameter
 from nuvla.api.resources.base import ResourceNotFound
 
 from ... import Job
+from ...util import override
 from ....connector import (docker_stack,
                            docker_compose,
                            kubernetes,
@@ -337,8 +338,12 @@ class DeploymentBase(object):
 
 class DeploymentBaseStartUpdate(DeploymentBase, ABC):
 
-    def __init__(self, job: Job, log):
+    def __init__(self, action: str, job: Job, log):
         super().__init__(job, log)
+
+        assert action in ('start_deployment',
+                          'update_deployment')
+        self._action = action
 
     @staticmethod
     def _get_action_params_base(deployment: dict, registries_auth) -> dict:
@@ -381,3 +386,49 @@ class DeploymentBaseStartUpdate(DeploymentBase, ABC):
                 msg = f'Unsupported connector kind: {connector_name}'
                 self.log.error(msg)
                 raise ValueError(msg)
+
+    def action_on_application(self):
+        deployment = self.deployment.data
+        connector_name = get_connector_name(deployment)
+        connector = self._get_connector(deployment, connector_name)
+
+        kwargs = self._get_action_kwargs(deployment)
+        match self._action:
+            case 'start_deployment':
+                result, services, extra = connector.start(**kwargs)
+            case 'update_deployment':
+                result, services, extra = connector.update(**kwargs)
+            case _:
+                msg = f'Unsupported deployment action: {self._action}'
+                self.log.error(msg)
+                raise ValueError(msg)
+        if extra and connector_name == CONNECTOR_KIND_HELM:
+            # TODO: maybe this can be done as callback to the connector action
+            #  method?
+            self.app_helm_release_params_update(extra)
+        if result:
+            self.job.set_status_message(result)
+
+        self.application_params_update(services)
+
+        self.job.set_progress(90)
+
+    @override
+    def handle_deployment(self):
+        self.create_user_output_params()
+        self.action_on_application()
+
+    def action_on_deployment(self):
+        self.log.info(
+            f'{self._action} job started for {self.deployment_id}.')
+
+        self.job.set_progress(10)
+
+        self.try_handle_raise_exception()
+
+        self.api_dpl.set_state_started(self.deployment_id)
+
+        return 0
+
+    def do_work(self):
+        return self.action_on_deployment()
