@@ -6,6 +6,8 @@ import base64
 import hashlib
 import logging
 import signal
+import threading
+
 from contextlib import contextmanager
 from datetime import datetime, timedelta
 from subprocess import run, STDOUT, PIPE, TimeoutExpired, CompletedProcess
@@ -104,6 +106,11 @@ def generate_registry_config(registries_auth: list):
 
 @contextmanager
 def timeout(deadline):
+    if threading.current_thread() is not threading.main_thread():
+        log.warning("timeout context manager doesn't work in a thread. It will be ignored", stack_info=True)
+        yield
+        return
+
     # Register a function to raise a TimeoutError on the signal.
     signal.signal(signal.SIGALRM, raise_timeout)
     # Schedule the signal to be sent after ``time``.
