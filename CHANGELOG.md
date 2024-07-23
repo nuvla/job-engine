@@ -6,6 +6,20 @@
 
 ## Released
 
+## [4.2.1](https://github.com/nuvla/job-engine/compare/4.2.0...4.2.1) (2024-07-22)
+
+
+### Bug Fixes
+
+* timeout context manager: ignore timeout with a warning if not used from the main thread ([72cc9d1](https://github.com/nuvla/job-engine/commit/72cc9d1266b8888810a3f03f3cbae537c896757d))
+
+## [4.2.0](https://github.com/nuvla/job-engine/compare/4.1.1...4.2.0) (2024-07-19)
+
+
+### Features
+
+* **deployments:** add TIMESTAMP and DATE_TIME environment variables ([7a4ea35](https://github.com/nuvla/job-engine/commit/7a4ea3504aae4fec9da2cd932d121c85713ea38b))
+
 ## [4.1.1](https://github.com/nuvla/job-engine/compare/4.1.0...4.1.1) (2024-07-01)
 
 

@@ -2,6 +2,7 @@
 
 import re
 import copy
+import datetime
 import logging
 from types import ModuleType
 from typing import Union, List
@@ -108,12 +109,16 @@ def raise_not_pull_mode_on_local_infra_service(job: Job, infra_service: dict):
 
 
 def get_env(deployment: dict):
+    d = datetime.datetime.now(datetime.UTC)
     env_variables = {
         'NUVLA_DEPLOYMENT_UUID': deployment['id'].split('/')[-1],
         'NUVLA_DEPLOYMENT_ID': deployment['id'],
         'NUVLA_API_KEY': deployment['api-credentials']['api-key'],
         'NUVLA_API_SECRET': deployment['api-credentials']['api-secret'],
-        'NUVLA_ENDPOINT': deployment['api-endpoint']}
+        'NUVLA_ENDPOINT': deployment['api-endpoint'],
+        'DATE_TIME': d.strftime(r'%y%m%d%H%M%S'),
+        'TIMESTAMP': d.strftime(r'%s'),
+    }
     deployment_group_id = deployment.get('deployment-set')
     if deployment_group_id:
         env_variables['NUVLA_DEPLOYMENT_GROUP_ID'] = deployment_group_id
