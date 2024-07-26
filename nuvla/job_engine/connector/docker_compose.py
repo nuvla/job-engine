@@ -7,13 +7,14 @@ import yaml
 from datetime import datetime
 from tempfile import TemporaryDirectory
 
-from .connector import Connector, should_connect
+from .connector import ConnectorCOE, should_connect
 from .utils import (create_tmp_file,
                     execute_cmd,
                     generate_registry_config,
                     join_stderr_stdout,
                     LOCAL,
-                    remove_protocol_from_url)
+                    remove_protocol_from_url,
+                    store_files)
 
 log = logging.getLogger('docker_compose')
 
@@ -23,14 +24,14 @@ DEFAULT_PULL_TIMEOUT = "1200"  # Default timeout for docker compose pull command
 DEFAULT_DOCKER_TIMEOUT = "300"  # Default timeout for docker commands
 
 
-def instantiate_from_cimi(api_infrastructure_service, api_credential):
+def instantiate_from_cimi(api_infra_service, api_credential, **_):
     return DockerCompose(
         cert=api_credential.get('cert').replace("\\n", "\n"),
         key=api_credential.get('key').replace("\\n", "\n"),
-        endpoint=api_infrastructure_service.get('endpoint'))
+        endpoint=api_infra_service.get('endpoint'))
 
 
-class DockerCompose(Connector):
+class DockerCompose(ConnectorCOE):
 
     def __init__(self, **kwargs):
         super(DockerCompose, self).__init__(**kwargs)
@@ -91,25 +92,18 @@ class DockerCompose(Connector):
         docker_timeout = os.getenv('JOB_DOCKER_TIMEOUT') or DEFAULT_DOCKER_TIMEOUT
 
         with TemporaryDirectory() as tmp_dir_name:
-            compose_file_path = f'{tmp_dir_name}/{docker_compose_filename}'
-            compose_file = open(compose_file_path, 'w')
-            compose_file.write(docker_compose)
-            compose_file.close()
+            compose_file_path = os.path.join(tmp_dir_name, docker_compose_filename)
+            with open(compose_file_path, 'w') as fd:
+                fd.write(docker_compose)
 
             if registries_auth:
-                config_path = tmp_dir_name + "/config.json"
-                config = open(config_path, 'w')
-                config.write(generate_registry_config(registries_auth))
-                config.close()
+                with open(os.path.join(tmp_dir_name, 'config.json'), 'w') as fd:
+                    fd.write(generate_registry_config(registries_auth))
                 env['DOCKER_CONFIG'] = tmp_dir_name
 
             files = kwargs['files']
             if files:
-                for file_info in files:
-                    file_path = tmp_dir_name + "/" + file_info['file-name']
-                    file = open(file_path, 'w')
-                    file.write(file_info['file-content'])
-                    file.close()
+                store_files(files, tmp_dir_name)
 
             cmd_pull = self.build_cmd_line(
                 ['-p', project_name, '-f', compose_file_path, 'pull'])
@@ -140,7 +134,7 @@ class DockerCompose(Connector):
 
             services = self._get_services(project_name, compose_file_path, env)
 
-            return result, services
+            return result, services, None
 
     @should_connect
     def stop(self, **kwargs):
@@ -161,6 +155,7 @@ class DockerCompose(Connector):
 
     update = start
 
+    # TODO: why this method is empty?
     @should_connect
     def list(self, filters=None):
         pass

@@ -3,7 +3,7 @@
 import logging
 
 from ..actions import action
-from ...connector.nuvlabox import NuvlaBox
+from ...connector.nuvlaedge_docker import NuvlaBox
 
 
 @action('enable-stream', True)

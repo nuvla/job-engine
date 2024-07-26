@@ -3,12 +3,13 @@
 import os
 import logging
 
-from ...connector import nuvlabox as nb
-from ...connector import kubernetes as k8s
+from ...connector import nuvlaedge_docker as nb
+from ...connector import nuvlaedge_k8s as k8s
 from ..actions import action
 from .utils.resource_log_fetch import ResourceLogFetchJob
 
 action_name = 'fetch_nuvlabox_log'
+
 
 @action(action_name, True)
 class NuvlaBoxLogFetchJob(ResourceLogFetchJob):
@@ -26,7 +27,8 @@ class NuvlaBoxLogFetchJob(ResourceLogFetchJob):
             if os.getenv('KUBERNETES_SERVICE_HOST'):
                 logging.debug("Kubernetes connector used.")
                 try:
-                    self._connector = k8s.K8sLogging(self.job)
+                    self._connector = k8s.NuvlaEdgeMgmtK8sLogging(
+                        self.job.nuvlaedge_shared_path)
                 except Exception as e:
                     logging.error(f'Kubernetes error:\n{str(e)}')
             else:

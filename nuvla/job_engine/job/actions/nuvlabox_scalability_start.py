@@ -4,7 +4,7 @@ import json
 import logging
 
 from ..actions import action
-from nuvla.job_engine.connector import nuvlabox as NB
+from nuvla.job_engine.connector import nuvlaedge_docker as NB
 
 
 action_name = 'nuvlabox_scalability_start'

@@ -1,23 +1,22 @@
-import base64
 import json
 import logging
 import os
 import random
 import string
 import time
+import yaml
+
 from datetime import datetime
 from subprocess import CompletedProcess
 from tempfile import TemporaryDirectory
 from typing import List, Dict
 
-import yaml
-
 from nuvla.job_engine.connector.connector import should_connect
 from nuvla.job_engine.connector.utils import create_tmp_file, execute_cmd, \
-    join_stderr_stdout, generate_registry_config
+    generate_registry_config, to_base64, from_base64, md5sum, store_files, \
+    string_interpolate_env_vars
 
 log = logging.getLogger('k8s_driver')
-log.setLevel(logging.DEBUG)
 
 
 def get_pem_content(path, name):
@@ -34,10 +33,37 @@ def get_kubernetes_local_endpoint():
     return ''
 
 
-def manifest_interpolate_env_vars(manifest: str, env: dict) -> str:
-    envsubst_shell_format = ' '.join([f'${k}' for k in env.keys()])
-    cmd = ['envsubst', envsubst_shell_format]
-    return execute_cmd(cmd, env=env, input=manifest).stdout
+def k8s_secret_image_registries_auths(registries_auth: list,
+                                      secret_name='registries-credentials'):
+    config = generate_registry_config(registries_auth)
+    return {'apiVersion': 'v1',
+            'kind': 'Secret',
+            'metadata': {'name': secret_name},
+            'data': {'.dockerconfigjson': to_base64(config)},
+            'type': 'kubernetes.io/dockerconfigjson'}
+
+
+def store_as_yaml(data: dict, file_name, directory_path='.', allow_unicode=True) -> str:
+    """
+    Provided `directory_path` must exist and be writable.
+
+    NB! It's the responsibility of the caller to delete the files after use.
+        Either by using the returned file path or by deleting the `directory_path`.
+    """
+    file_path = os.path.join(directory_path, file_name)
+    with open(file_path, 'w') as fd:
+        yaml.safe_dump(data, fd, allow_unicode=allow_unicode)
+    return file_path
+
+
+REGISTRIES_AUTHS_FN: str = 'secret-image-registries-auths.yml'
+
+
+def store_k8s_secret_registries_auths_file(registries_auths: list,
+                                           directory_path='.',
+                                           file_name=REGISTRIES_AUTHS_FN) -> str:
+    data = k8s_secret_image_registries_auths(registries_auths)
+    return store_as_yaml(data, file_name, directory_path=directory_path)
 
 
 class Kubernetes:
@@ -47,15 +73,13 @@ class Kubernetes:
     def __init__(self, **kwargs):
 
         # Mandatory kwargs
-        self.ca = kwargs['ca']
-        self.cert = kwargs['cert']
-        self.key = kwargs['key']
+        self._ca_base64 = to_base64(kwargs['ca'])
+        self._cert_base64 = to_base64(kwargs['cert'])
+        self._key_base64 = to_base64(kwargs['key'])
 
-        self.endpoint = kwargs['endpoint']
+        self._endpoint = kwargs['endpoint']
 
-        self.ca_file = None
-        self.cert_file = None
-        self.key_file = None
+        self._kube_config_file = None
 
         self._namespace = None
 
@@ -67,41 +91,57 @@ class Kubernetes:
                                        f'{self.ne_image_org}/{self.ne_image_repo}')
         self.base_image = f'{self.ne_image_registry}{self.ne_image_name}:{self.ne_image_tag}'
 
-    @staticmethod
-    def from_path_to_k8s_creds(path_to_k8s_creds: str):
-        return Kubernetes(**{
-                'cert': get_pem_content(path_to_k8s_creds, 'cert'),
-                'key': get_pem_content(path_to_k8s_creds, 'key'),
-                'ca': get_pem_content(path_to_k8s_creds, 'ca'),
-                'endpoint': get_kubernetes_local_endpoint()})
+    def __repr__(self):
+        return (f'{self.__class__.__name__}(endpoint={self._endpoint}, '
+                f'ca_md5={md5sum(from_base64(self._ca_base64))}, '
+                f'user_cert_md5={md5sum(from_base64(self._cert_base64))}, '
+                f'user_key_md5={md5sum(from_base64(self._key_base64))})')
 
-    def state_debug(self):
-        log.debug('Kubernetes object state:')
-        log.debug('CA file %s ', self.ca)
-        log.debug('User certificate file %s ', self.cert)
-        log.debug('User key file %s ', self.key)
-        log.debug('Endpoint %s ', self.endpoint)
+    @staticmethod
+    def from_path_to_k8s_creds(path_to_k8s_creds: str, **kwargs):
+        params = {
+            'cert': get_pem_content(path_to_k8s_creds, 'cert'),
+            'key': get_pem_content(path_to_k8s_creds, 'key'),
+            'ca': get_pem_content(path_to_k8s_creds, 'ca'),
+            'endpoint': get_kubernetes_local_endpoint()}
+        params.update(kwargs)
+        return Kubernetes(**params)
 
     @property
     def connector_type(self):
         return 'Kubernetes-cli'
 
+    def kubeconfig(self) -> str:
+        return self._kube_config_file.name
+
     def connect(self):
-        log.info(f'Kubernetes endpoint: {self.endpoint}')
-        self.ca_file = create_tmp_file(self.ca)
-        self.cert_file = create_tmp_file(self.cert)
-        self.key_file = create_tmp_file(self.key)
+        kube_config: str = f"""
+apiVersion: v1
+clusters:
+- cluster:
+    certificate-authority-data: {self._ca_base64}
+    server: {self._endpoint}
+  name: ne-cluster-name
+contexts:
+- context:
+    cluster: ne-cluster-name
+    user: ne-user-name
+  name: ne-context-name
+current-context: ne-context-name
+kind: Config
+users:
+- name: ne-user-name
+  user:
+    client-certificate-data: {self._cert_base64}
+    client-key-data: {self._key_base64}
+"""
+        log.debug('Kubeconfig: %s', kube_config)
+        self._kube_config_file = create_tmp_file(kube_config)
 
     def clear_connection(self, _connect_result):
-        if self.ca_file:
-            self.ca_file.close()
-            self.ca_file = None
-        if self.cert_file:
-            self.cert_file.close()
-            self.cert_file = None
-        if self.key_file:
-            self.key_file.close()
-            self.key_file = None
+        if self._kube_config_file:
+            self._kube_config_file.close()
+            self._kube_config_file = None
 
     def build_cmd_line(self, cmd: list) -> list:
         """
@@ -110,10 +150,7 @@ class Kubernetes:
         Arguments:
            cmd: a list containing the kubectl command line and arguments
         """
-        return ['kubectl', '-s', self.endpoint,
-                '--client-certificate', self.cert_file.name,
-                '--client-key', self.key_file.name,
-                '--certificate-authority', self.ca_file.name] \
+        return ['kubectl', '--kubeconfig', self.kubeconfig()] \
             + cmd
 
     @staticmethod
@@ -136,7 +173,8 @@ class Kubernetes:
             cmd = ['apply', '-f', manifest_path]
             if namespace:
                 cmd = ['-n', namespace] + cmd
-            result = execute_cmd(self.build_cmd_line(cmd))
+            cmd_exec = self.build_cmd_line(cmd)
+            result = execute_cmd(cmd_exec)
             log.debug('The result of applying manifest: %s', result)
 
         return result
@@ -146,7 +184,7 @@ class Kubernetes:
                                     files: List[dict],
                                     registries_auth: list) -> CompletedProcess:
         if env:
-            manifest = manifest_interpolate_env_vars(manifest, env)
+            manifest = string_interpolate_env_vars(manifest, env)
 
         common_labels = {'nuvla.application.name': namespace,
                          'nuvla.deployment.uuid': env['NUVLA_DEPLOYMENT_UUID']}
@@ -201,56 +239,33 @@ class Kubernetes:
     def _create_deployment_context(directory_path, namespace, manifest,
                                    files, registries_auth: list,
                                    common_labels: Dict[str, str] = None):
-        manifest_file_path = directory_path + '/manifest.yml'
-        with open(manifest_file_path, 'w') as manifest_file:
-            manifest_file.write(manifest)
+        manifest_fn = 'manifest.yml'
+        with open(os.path.join(directory_path, manifest_fn), 'w') as fd:
+            fd.write(manifest)
 
-        namespace_file_path = directory_path + '/namespace.yml'
-        with open(namespace_file_path, 'w') as namespace_file:
-            namespace_data = {'apiVersion': 'v1',
-                              'kind': 'Namespace',
-                              'metadata': {'name': namespace}}
-            log.debug('Namespace data: %s', namespace_data)
-            yaml.safe_dump(namespace_data, namespace_file, allow_unicode=True)
+        namespace_data = {'apiVersion': 'v1',
+                          'kind': 'Namespace',
+                          'metadata': {'name': namespace}}
+        log.debug('Namespace data: %s', namespace_data)
+        namespace_fn = 'namespace.yml'
+        store_as_yaml(namespace_data, namespace_fn, directory_path)
+
+        if files:
+            store_files(files, dir_path=directory_path)
 
         # NB! We have to place the objects from the manifest into a namespace,
         # otherwise we will get them deployed into the namespace of the job.
         kustomization_data = {'namespace': namespace,
                               'commonLabels': common_labels,
-                              'resources': ['manifest.yml', 'namespace.yml']}
-
-        if files:
-            for file_info in files:
-                file_path = directory_path + "/" + file_info['file-name']
-                f = open(file_path, 'w')
-                f.write(file_info['file-content'])
-                f.close()
-
+                              'resources': [manifest_fn, namespace_fn]}
         if registries_auth:
-            config = generate_registry_config(registries_auth)
-            config_b64 = base64.b64encode(config.encode('ascii')).decode(
-                'utf-8')
-            secret_registries_fn = 'secret-registries-credentials.yml'
-            secret_registries_path = os.path.join(directory_path,
-                                                  secret_registries_fn)
-            with open(secret_registries_path, 'w') as secret_registries_file:
-                secret_registries_data = {'apiVersion': 'v1',
-                                          'kind': 'Secret',
-                                          'metadata': {
-                                              'name': 'registries-credentials'},
-                                          'data': {
-                                              '.dockerconfigjson': config_b64},
-                                          'type': 'kubernetes.io/dockerconfigjson'}
-                yaml.safe_dump(secret_registries_data, secret_registries_file,
-                               allow_unicode=True)
+            secret_registries_fn = store_k8s_secret_registries_auths_file(
+                    registries_auth, directory_path=directory_path)
             kustomization_data.setdefault('resources', []) \
                 .append(secret_registries_fn)
-
         log.debug('Kustomization data: %s', kustomization_data)
-
-        kustomization_file_path = directory_path + '/kustomization.yml'
-        with open(kustomization_file_path, 'w') as fd:
-            yaml.safe_dump(kustomization_data, fd, allow_unicode=True)
+        store_as_yaml(kustomization_data, 'kustomization.yml',
+                      directory_path)
 
     @should_connect
     def delete_namespace(self, namespace: str) -> CompletedProcess:
@@ -603,7 +618,7 @@ class Kubernetes:
             return f'{self._timestamp_now_utc()} {msg}\n'
 
     @staticmethod
-    def _extract_object_info(kube_resource):
+    def _extract_object_info(kube_resource) -> dict:
         resource_kind = kube_resource['kind']
         node_id = '.'.join([resource_kind,
                             kube_resource['metadata']['name']])
@@ -654,7 +669,7 @@ class Kubernetes:
     DEFAULT_OBJECTS = ['deployments', 'services']
 
     @should_connect
-    def get_objects(self, deployment_uuid, object_kinds: List[str]):
+    def get_objects(self, deployment_uuid, object_kinds: List[str]) -> List[dict]:
 
         object_kinds = object_kinds or self.DEFAULT_OBJECTS
 
@@ -685,10 +700,11 @@ class Kubernetes:
         version = execute_cmd(cmd, timeout=5).stdout
         return json.loads(version)
 
-    @staticmethod
-    def _get_namespace_local():
-        cmd = ['cat', '/var/run/secrets/kubernetes.io/serviceaccount/namespace']
-        return execute_cmd(cmd).stdout.strip()
+    NAMESPACE_FILE = '/var/run/secrets/kubernetes.io/serviceaccount/namespace'
+
+    @classmethod
+    def _get_namespace_local(cls):
+        return execute_cmd(['cat', cls.NAMESPACE_FILE]).stdout.strip()
 
     @property
     def namespace(self):
@@ -740,3 +756,26 @@ class Kubernetes:
         self._wait_workload_succeeded(self.K8S_JOB + job_name,
                                       namespace,
                                       timeout_min)
+
+    @should_connect
+    def create_namespace(self, namespace: str, exists_ok=False) -> CompletedProcess:
+        cmd = self.build_cmd_line(['create', 'namespace', namespace])
+        log.debug('Command line to create namespace: %s', cmd)
+        try:
+            return execute_cmd(cmd)
+        except Exception as ex:
+            if exists_ok and 'AlreadyExists' in ex.args[0]:
+                log.warning(f'Namespace {namespace} already exists.')
+                return CompletedProcess(cmd, 1, None, ex.args[0])
+            raise ex
+
+    @should_connect
+    def add_secret_image_registries_auths(self, registries_auths: list,
+                                          namespace=None) -> CompletedProcess:
+        secret_data = k8s_secret_image_registries_auths(registries_auths)
+        cmd_base = ['apply', '-f', '-']
+        if namespace:
+            cmd_base = ['-n', namespace, ] + cmd_base
+        cmd = self.build_cmd_line(cmd_base)
+        log.debug('Command line to add secret image registries auths: %s', cmd)
+        return execute_cmd(cmd, input=yaml.dump(secret_data))

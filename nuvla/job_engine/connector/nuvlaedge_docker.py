@@ -705,7 +705,6 @@ class NuvlaBox(Connector):
 
         return result, exit_code
 
-    # @should_connect
     def update(self, payload, **kwargs):
         """ Updates the NuvlaEdge resource with the provided payload
         :param payload: content to be updated in the NuvlaEdge resource
@@ -716,7 +715,6 @@ class NuvlaBox(Connector):
 
         self.job.set_progress(100)
 
-    # @should_connect
     def commission(self, payload, **kwargs):
         """ Updates the NuvlaEdge resource with the provided payload
         :param payload: content to be updated in the NuvlaEdge resource

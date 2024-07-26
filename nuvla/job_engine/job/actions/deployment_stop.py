@@ -2,27 +2,22 @@
 
 import logging
 
-from ...connector import docker_service
 from nuvla.api import NuvlaError, ConnectionError
 from nuvla.api.resources import Deployment, Credential
 from .utils.deployment_utils import (DeploymentBase,
-                                     get_connector_class,
                                      get_connector_name,
-                                     get_env,
-                                     initialize_connector)
+                                     get_env)
 from ..util import override
 from ..actions import action
 
 action_name = 'stop_deployment'
-
-log = logging.getLogger(action_name)
 
 
 @action(action_name, True)
 class DeploymentStopJob(DeploymentBase):
 
     def __init__(self, job):
-        super().__init__(job, log)
+        super().__init__(job, logging.getLogger(action_name))
 
     def try_delete_deployment_credentials(self, deployment_id):
         cred_api = Credential(self.api, subtype='dummy')
@@ -33,47 +28,51 @@ class DeploymentStopJob(DeploymentBase):
             except (NuvlaError, ConnectionError):
                 pass
 
-    def stop_component(self):
-        deployment_id = Deployment.id(self.deployment)
+    @staticmethod
+    def _get_action_params_base(deployment: dict) -> dict:
+        return dict(name=Deployment.uuid(deployment))
 
-        connector = initialize_connector(docker_service, self.job, self.deployment)
-        filter_params = 'parent="{}" and name="service-id"'.format(deployment_id)
+    def _get_action_params(self, deployment: dict) -> dict:
+        env = get_env(deployment)
+        docker_compose = Deployment.module_content(deployment)['docker-compose']
+        return {
+            **self._get_action_params_base(deployment),
+            **dict(env=env, docker_compose=docker_compose)
+        }
 
-        deployment_params = self.api.search('deployment-parameter', filter=filter_params,
-                                            select='id,node-id,name,value').resources
+    def _get_action_params_helm(self, deployment: dict) -> dict:
+        return self._get_action_params_base(deployment)
 
-        if len(deployment_params) > 0:
-            service_id = deployment_params[0].data.get('value')
-            if service_id is not None:
-                connector.stop(service_id=service_id,
-                               env=get_env(self.deployment))
-            else:
-                self.job.set_status_message("Deployment parameter {} doesn't have a value!"
-                                            .format(deployment_params[0].data.get('id')))
-        else:
-            self.job.set_status_message('No deployment parameters with service ID found!')
+    def _get_action_kwargs(self, deployment: dict) -> dict:
+        # TODO: Getting action params should be based on the connector
+        #  instance. By this moment we have already instantiated the
+        #  connector. We should refactor this.
+        match get_connector_name(deployment):
+            case 'docker_stack' | 'docker_compose' | 'kubernetes':
+                return self._get_action_params(deployment)
+            case 'helm':
+                return self._get_action_params_helm(deployment)
+            case connector_name:
+                msg = f'Unsupported connector kind: {connector_name}'
+                self.log.error(msg)
+                raise ValueError(msg)
 
     def stop_application(self):
-        env  = get_env(self.deployment.data)
-        name = Deployment.uuid(self.deployment)
-        connector_name  = get_connector_name(self.deployment)
-        connector_class = get_connector_class(connector_name)
-        connector = initialize_connector(connector_class, self.job, self.deployment)
-        docker_compose = Deployment.module_content(self.deployment)['docker-compose']
+        deployment = self.deployment.data
+        connector = self._get_connector(deployment,
+                                        get_connector_name(deployment))
 
-        result = connector.stop(name=name, env=env, docker_compose=docker_compose)
+        kwargs = self._get_action_kwargs(deployment)
+        result = connector.stop(**kwargs)
 
         self.job.set_status_message(result)
 
     @override
     def handle_deployment(self):
-        if Deployment.is_component(self.deployment):
-            self.stop_component()
-        else:
-            self.stop_application()
+        self.stop_application()
 
     def stop_deployment(self):
-        log.info('Job started for {}.'.format(self.deployment_id))
+        self.log.info(f'{action_name} job started for {self.deployment_id}.')
 
         self.job.set_progress(10)
 
