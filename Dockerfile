@@ -22,15 +22,21 @@ LABEL git.build.time=${GIT_BUILD_TIME}
 
 # Docker and docker compose CLIs
 COPY --from=docker /usr/local/bin/docker /usr/bin/docker
-COPY --from=docker /usr/local/libexec/docker/cli-plugins/docker-compose \
-                   /usr/local/libexec/docker/cli-plugins/docker-compose
-
+#COPY --from=docker /usr/local/libexec/docker/cli-plugins/docker-compose \
+#                   /usr/local/libexec/docker/cli-plugins/docker-compose
 
 # Need scp (openssh) for docker-machine to transfer files to machines.
-RUN apk --no-cache add gettext bash openssl openssh \
+RUN apk --no-cache add gettext bash openssl openssh curl ca-certificates \
     "helm~${HELM_VERSION}"
 RUN apk --no-cache add --repository https://dl-cdn.alpinelinux.org/alpine/edge/community \
     "kubectl~${KUBECTL_VERSION}"
+
+# Docker Compose
+RUN set -eux; \
+    apkArch="$(apk --print-arch)"; \
+    curl -L -o /usr/local/libexec/docker/cli-plugins/docker-compose --create-dirs \
+         https://github.com/SixSq/docker-compose/releases/download/v2.29.0-sixsq/docker-compose-linux-${apkArch} && \
+    chmod +x /usr/local/libexec/docker/cli-plugins/docker-compose
 
 
 COPY --link dist/requirements.txt /tmp/build/requirements.txt
@@ -45,7 +51,6 @@ RUN chmod -R +x /app/
 RUN rm -rf /tmp/build/
 
 # inherited from docker:18.09 Dockerfile
-RUN apk add --no-cache ca-certificates curl
 RUN [ ! -e /etc/nsswitch.conf ] && echo 'hosts: files dns' > /etc/nsswitch.conf || true
 
 ENV PYTHONWARNINGS "ignore:Unverified HTTPS request"
