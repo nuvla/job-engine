@@ -6,6 +6,23 @@
 
 ## Released
 
+## [4.3.0](https://github.com/nuvla/job-engine/compare/4.2.1...4.3.0) (2024-08-07)
+
+
+### Features
+
+* add management of Helm applications ([#354](https://github.com/nuvla/job-engine/issues/354)) ([d23844a](https://github.com/nuvla/job-engine/commit/d23844ad4020a0d424b5a61285bee5247893a247))
+
+
+### Bug Fixes
+
+* **cleanup_jobs:** Update action to remove canceled jobs and enhance filter string ([8b298a5](https://github.com/nuvla/job-engine/commit/8b298a5c0bd72e216da441197e5e187de639791b))
+
+
+### Dependencies
+
+* **docker-compose:** get docker compose from our own build to support docker config properly ([c1a725d](https://github.com/nuvla/job-engine/commit/c1a725d64ff6cabfd70e464821db32c1de0d4fcf))
+
 ## [4.2.1](https://github.com/nuvla/job-engine/compare/4.2.0...4.2.1) (2024-07-22)
 
 
