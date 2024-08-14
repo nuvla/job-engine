@@ -11,9 +11,8 @@ class NuvlaboxBulkUpdateJob(NuvlaboxBulkJob):
     def __init__(self, job):
         super().__init__(job)
 
-    def deployment_action(self, deployment):
-        self.user_api.operation(deployment,
-                                'stop',
+    def nuvlabox_action(self, nuvlabox):
+        self.user_api.operation(nuvlabox, 'update',
                                 {'parent-job': self.job.id})
 
     def do_work(self):
