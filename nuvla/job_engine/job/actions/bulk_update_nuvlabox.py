@@ -12,8 +12,9 @@ class NuvlaboxBulkUpdateJob(NuvlaboxBulkJob):
         super().__init__(job)
 
     def nuvlabox_action(self, nuvlabox):
-        self.user_api.operation(nuvlabox, 'update',
-                                {'parent-job': self.job.id})
+        data = self.job.payload
+        data['parent-job'] = self.job.id
+        self.user_api.operation(nuvlabox, 'update-nuvlabox', data)
 
     def do_work(self):
         logging.info(f'Start bulk nuvlabox update {self.job.id}')
