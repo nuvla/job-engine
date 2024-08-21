@@ -389,13 +389,16 @@ class NuvlaBox(Connector):
             if '409' in str(e) and container_name in str(e):
                 try:
                     existing = self.infer_docker_client().containers.get(container_name)
-                    if existing.status.lower() != 'running':
+                    status = existing.status.lower()
+                    if status != 'running':
                         logging.info(f'Deleting old {container_name} container because its status is {existing.status}')
                         existing.remove(force=True)
                         self.run_container_from_installer(image, detach,
                                                           container_name,
                                                           volumes, command,
                                                           container_env)
+                    else:
+                        raise Exception(f'container {container_name} already exists in state {status}')
                 except Exception as ee:
                     raise Exception(f'Operation is already taking place and could not stop it: {str(e)} | {str(ee)}')
             else:
@@ -497,7 +500,7 @@ class NuvlaBox(Connector):
 
         detach = True
         # container name
-        container_name = f'cluster-nuvlabox'
+        container_name = 'clustering-nuvlaedge'
 
         # volumes
         volumes = {
@@ -570,9 +573,6 @@ class NuvlaBox(Connector):
         # 2nd - set the Docker args
         detach = True
 
-        # container name
-        container_name = 'installer'
-
         # volumes
         volumes = {
             '/var/run/docker.sock': {
@@ -619,6 +619,9 @@ class NuvlaBox(Connector):
         project_name = get_install_params('project-name')
         command.append(f'--project={project_name}')
 
+         # container name
+        container_name = f'{project_name}-installer'
+        
         config_files = get_install_params('config-files')
         compose_files = ','.join(config_files)
         command.append(f'--compose-files={compose_files}')
