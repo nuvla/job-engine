@@ -6,6 +6,19 @@
 
 ## Released
 
+## [4.3.1](https://github.com/nuvla/job-engine/compare/4.3.0...4.3.1) (2024-08-21)
+
+
+### Bug Fixes
+
+* **nuvlaedge_docker.py:** allow to update/cluster several NEs at the same time on the same docker  ([32ea4b1](https://github.com/nuvla/job-engine/commit/32ea4b1ed916c1581539bbdc50dbb0297c520d98))
+
+
+### Dependencies
+
+* nuvla-api ^4.0.2 ([1235958](https://github.com/nuvla/job-engine/commit/123595827f37b0b41a463886df874abeaca09cd6))
+* updated indirect dependencies ([1235958](https://github.com/nuvla/job-engine/commit/123595827f37b0b41a463886df874abeaca09cd6))
+
 ## [4.3.0](https://github.com/nuvla/job-engine/compare/4.2.1...4.3.0) (2024-08-07)
 
 
