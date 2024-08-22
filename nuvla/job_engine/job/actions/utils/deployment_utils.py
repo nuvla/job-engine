@@ -62,8 +62,7 @@ def get_from_context(job, resource_id):
         raise KeyError(f'{resource_id} not found in job context')
 
 
-def update_infra_service_endpoint_for_pull_mode(connector_module,
-                                                infra_service):
+def update_infra_service_endpoint_for_pull_mode(infra_service):
     infra_service_type = infra_service.get('subtype', '')
     if infra_service_type == 'swarm':
         infra_service['endpoint'] = None
@@ -88,8 +87,7 @@ def initialize_connector(connector_module: ModuleType, job: Job,
     raise_not_pull_mode_on_local_infra_service(job, infra_service)
 
     if job.is_in_pull_mode:
-        update_infra_service_endpoint_for_pull_mode(connector_module,
-                                                    infra_service)
+        update_infra_service_endpoint_for_pull_mode(infra_service)
 
     # FIXME: this is a hack to make sure that the helm connector is used.
     if Deployment.subtype(deployment) == APP_SUBTYPE_HELM:
