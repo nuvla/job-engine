@@ -6,6 +6,36 @@
 
 ## Released
 
+## [4.3.1](https://github.com/nuvla/job-engine/compare/4.3.0...4.3.1) (2024-08-21)
+
+
+### Bug Fixes
+
+* **nuvlaedge_docker.py:** allow to update/cluster several NEs at the same time on the same docker  ([32ea4b1](https://github.com/nuvla/job-engine/commit/32ea4b1ed916c1581539bbdc50dbb0297c520d98))
+
+
+### Dependencies
+
+* nuvla-api ^4.0.2 ([1235958](https://github.com/nuvla/job-engine/commit/123595827f37b0b41a463886df874abeaca09cd6))
+* updated indirect dependencies ([1235958](https://github.com/nuvla/job-engine/commit/123595827f37b0b41a463886df874abeaca09cd6))
+
+## [4.3.0](https://github.com/nuvla/job-engine/compare/4.2.1...4.3.0) (2024-08-07)
+
+
+### Features
+
+* add management of Helm applications ([#354](https://github.com/nuvla/job-engine/issues/354)) ([d23844a](https://github.com/nuvla/job-engine/commit/d23844ad4020a0d424b5a61285bee5247893a247))
+
+
+### Bug Fixes
+
+* **cleanup_jobs:** Update action to remove canceled jobs and enhance filter string ([8b298a5](https://github.com/nuvla/job-engine/commit/8b298a5c0bd72e216da441197e5e187de639791b))
+
+
+### Dependencies
+
+* **docker-compose:** get docker compose from our own build to support docker config properly ([c1a725d](https://github.com/nuvla/job-engine/commit/c1a725d64ff6cabfd70e464821db32c1de0d4fcf))
+
 ## [4.2.1](https://github.com/nuvla/job-engine/compare/4.2.0...4.2.1) (2024-07-22)
 
 
