@@ -14,8 +14,9 @@ from statsd import StatsClient
 
 STATSD_PORT = 8125
 
-names = ['Cartman', 'Kenny', 'Stan', 'Kyle', 'Butters', 'Token', 'Timmy', 'Wendy', 'M. Garrison',
-         'Chef', 'Randy', 'Ike', 'Mr. Mackey', 'Mr. Slave', 'Tweek', 'Craig']
+names = ['Cartman', 'Kenny', 'Stan', 'Kyle', 'Butters', 'Token', 'Timmy',
+         'Wendy', 'M. Garrison', 'Chef', 'Randy', 'Ike', 'Mr. Mackey',
+         'Mr. Worker', 'Tweek', 'Craig']
 
 
 class Base(object):
