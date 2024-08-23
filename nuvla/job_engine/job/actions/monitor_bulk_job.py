@@ -19,6 +19,7 @@ class MonitorBulkJob(object):
         self.api = job.api
         self.bulk_job_id = None
         self.bulk_job = None
+        self.jobs_count = None
         self.progress = 20
         self.jobs_in_progress = None
         self.jobs_done = None
@@ -42,23 +43,27 @@ class MonitorBulkJob(object):
         filter_parent = f'parent-job="{self.bulk_job_id}"'
         filter_states = f'state={states}'
         filter_str = filter_and([filter_parent, filter_states])
-        return self.api.search('job', filter=filter_str,
+        return self.api.search('job', filter=filter_str, last=10000,
                                select='id, target-resource, state').resources
 
     def update_progress(self):
         count_done = len(self.jobs_done)
         count_in_progress = len(self.jobs_in_progress)
-        total_count = count_done + len(self.jobs_in_progress)
+        self.jobs_count = count_done + len(self.jobs_in_progress)
         logging.info(f'{action_name} {self.bulk_job_id}: '
-                     f'{count_in_progress} jobs left over {total_count}')
+                     f'{count_in_progress} jobs left over {self.jobs_count}')
         progress_left = (100 - self.progress)
-        if total_count > 0:
-            progress_increment = progress_left / total_count
+        if self.jobs_count > 0:
+            progress_increment = progress_left / self.jobs_count
             self.progress += int(count_done * progress_increment)
         else:
             self.progress += progress_left
 
     def update_result(self):
+        self.result['JOBS_COUNT'] = self.jobs_count
+        self.result['JOBS_DONE'] = len(self.jobs_done)
+        self.result['QUEUED'] = [j.data['target-resource']['href'] for j in self.jobs_in_progress if j.data['state'] == JOB_QUEUED]
+        self.result['RUNNING'] = [j.data['target-resource']['href'] for j in self.jobs_in_progress if j.data['state'] == JOB_RUNNING]
         for job in self.jobs_done:
             resource_id = job.data['target-resource']['href']
             state = job.data['state']
