@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import abc
 import json
+import logging
 
 
 class BulkAction(object):
@@ -13,6 +14,7 @@ class BulkAction(object):
             'bootstrap-exceptions': {},
             'FAILED': [],
             'SUCCESS': [],
+            'QUEUED': [],
             'ACTIONS_CALLED': 0}
         self.todo = None
         self.progress = self.job.get('progress', 0)
@@ -39,9 +41,32 @@ class BulkAction(object):
     def action(self, todo_el):
         pass
 
+    def todo_resource_id(self, todo_el):
+        return todo_el
+
+    def try_action(self, todo_el):
+        resource_id = self.todo_resource_id(todo_el)
+        try:
+            response = self.action(todo_el)
+            status = response.data.get('status')
+            if status == 202:
+                job_id = response.data.get('location')
+                self.result['QUEUED'].append(job_id)
+            elif status == 200:
+                self.result['SUCCESS'].append(resource_id)
+            elif status == 201:
+                resource_id = response.data.get('resource-id')
+                self.result['SUCCESS'].append(resource_id)
+            else:
+                logging.error(f'Unexpected status code {status}')
+        except Exception as ex:
+            if resource_id:
+                self.result['bootstrap-exceptions'][resource_id] = repr(ex)
+                self.result['FAILED'].append(resource_id)
+
     def bulk_operation(self):
         for todo_el in self.todo[:]:
-            self.action(todo_el)
+            self.try_action(todo_el)
             self.result['ACTIONS_CALLED'] += 1
             self.progress += self.progress_increment
             self.job.update_job(status_message=json.dumps(self.result),

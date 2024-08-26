@@ -122,11 +122,12 @@ class BulkDeploymentSetApply(BulkAction):
             self._update_regs_creds_deployment(deployment_data, application)
             deployment = self.user_api.edit(deployment_id, deployment_data)
             self.log.debug(f'{self.dep_set_id} - starting deployment: {deployment_id}')
-            self.user_api.operation(deployment, 'start',
-                                    {'low-priority': True,
-                                     'parent-job': self.job.id})
+            return self.user_api.operation(deployment, 'start',
+                                           {'low-priority': True,
+                                            'parent-job': self.job.id})
         except Exception as ex:
             self.log.error(f'{self.dep_set_id} - Failed to add deployment {deployment_to_add}: {repr(ex)}')
+            raise ex
 
     def _update_deployment(self, deployment_to_update):
         try:
@@ -140,33 +141,44 @@ class BulkDeploymentSetApply(BulkAction):
             deployment = self.user_api.edit(deployment_id, deployment_data)
             action = 'update' if deployment.operations.get('update') else 'start'
             self.log.debug(f'{self.dep_set_id} - {action}ing deployment: {deployment_id}')
-            self.user_api.operation(deployment, action,
-                                    {'low-priority': True,
-                                     'parent-job': self.job.id})
+            return self.user_api.operation(deployment, action,
+                                           {'low-priority': True,
+                                            'parent-job': self.job.id})
         except Exception as ex:
             self.log.error(f'{self.dep_set_id} - Failed to update deployment {deployment_to_update}: {repr(ex)}')
+            raise ex
 
     def _remove_deployment(self, deployment_id):
         try:
             self.log.info(f'{self.dep_set_id} - Remove deployment: {deployment_id}')
             deployment = self.user_api.get(deployment_id)
             if deployment.data['state'] == 'STOPPED':
-                self.user_api.delete(deployment_id)
                 self.log.debug(f'{self.dep_set_id} - deleted deployment: {deployment_id}')
+                return self.user_api.delete(deployment_id)
             else:
                 self.log.debug(f'{self.dep_set_id} - stopping/delete deployment: {deployment_id}')
-                self.user_api.operation(deployment, 'stop',
-                                        data={'low-priority': True,
-                                              'parent-job': self.job.id,
-                                              'delete': True})
+                return self.user_api.operation(deployment, 'stop',
+                                               data={'low-priority': True,
+                                                     'parent-job': self.job.id,
+                                                     'delete': True})
         except Exception as ex:
             self.log.error(f'{self.dep_set_id} - Failed to remove {deployment_id}: {repr(ex)}')
+            raise ex
 
     def _get_operation(self, operation_name: str):
         func = self.operations.get(operation_name)
         if not func:
             raise KeyError(f'Unknown deployment set operation name: {operation_name}')
         return func
+
+    def todo_resource_id(self, todo_el):
+        action_name, data = todo_el
+        if action_name == self.KEY_DEPLOYMENTS_TO_ADD:
+            return None
+        elif action_name == self.KEY_DEPLOYMENTS_TO_REMOVE:
+            return data
+        elif action_name == self.KEY_DEPLOYMENTS_TO_UPDATE:
+            return data[0]['id']
 
     def action(self, todo_el):
         action_name, data = todo_el

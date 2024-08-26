@@ -17,8 +17,8 @@ class DeploymentBulkUpdateJob(DeploymentBulkJob):
             self.user_api.operation(deployment,
                                     'fetch-module',
                                     {'module-href': module_href})
-        self.user_api.operation(deployment, 'update', {'low-priority': True,
-                                                       'parent-job': self.job.id})
+        return self.user_api.operation(deployment, 'update', {'low-priority': True,
+                                                              'parent-job': self.job.id})
 
     def do_work(self):
         logging.info(f'Start bulk deployment update {self.job.id}')

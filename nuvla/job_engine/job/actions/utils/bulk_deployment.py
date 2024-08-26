@@ -20,9 +20,4 @@ class DeploymentBulkJob(BulkAction, abc.ABC):
         pass
 
     def action(self, resource_id):
-        try:
-            return self.deployment_action(self.user_api.get(resource_id))
-        except Exception as ex:
-            self.result['bootstrap-exceptions'][resource_id] = repr(ex)
-            self.result['FAILED'].append(resource_id)
-            self._push_result()
+        return self.deployment_action(self.user_api.get(resource_id))
