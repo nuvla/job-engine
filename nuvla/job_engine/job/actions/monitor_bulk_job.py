@@ -4,6 +4,7 @@ import json
 import logging
 from ..actions import action
 from ..job import JOB_QUEUED, JOB_RUNNING, JOB_SUCCESS, JOB_FAILED, JOB_CANCELED
+from ..actions.utils.bulk_action import BulkAction
 from nuvla.api.util.filter import filter_and
 
 action_name = 'monitor_bulk_job'
@@ -35,9 +36,9 @@ class MonitorBulkJob(object):
         try:
             return json.loads(self.bulk_job.data.get('status-message'))
         except Exception:
-            return {'bootstrap-exceptions': {},
-                    'FAILED': [],
-                    'SUCCESS': []}
+            return {BulkAction.RESULT_BOOTSTRAP_EXCEPTIONS: {},
+                    BulkAction.RESULT_FAILED: [],
+                    BulkAction.RESULT_SUCCESS: []}
 
     def query_jobs(self, states):
         filter_parent = f'parent-job="{self.bulk_job_id}"'
@@ -60,17 +61,19 @@ class MonitorBulkJob(object):
             self.progress += progress_left
 
     def update_result(self):
-        self.result['JOBS_COUNT'] = self.jobs_count
-        self.result['JOBS_DONE'] = len(self.jobs_done)
-        self.result['QUEUED'] = [j.data['target-resource']['href'] for j in self.jobs_in_progress if j.data['state'] == JOB_QUEUED]
-        self.result['RUNNING'] = [j.data['target-resource']['href'] for j in self.jobs_in_progress if j.data['state'] == JOB_RUNNING]
+        self.result[BulkAction.RESULT_JOBS_COUNT] = self.jobs_count
+        self.result[BulkAction.RESULT_JOBS_DONE] = len(self.jobs_done)
+        self.result[BulkAction.RESULT_QUEUED] = [j.data['target-resource']['href']
+                                                 for j in self.jobs_in_progress if j.data['state'] == JOB_QUEUED]
+        self.result[BulkAction.RESULT_RUNNING] = [j.data['target-resource']['href']
+                                                  for j in self.jobs_in_progress if j.data['state'] == JOB_RUNNING]
         for job in self.jobs_done:
             resource_id = job.data['target-resource']['href']
             state = job.data['state']
-            if state == JOB_SUCCESS and resource_id not in self.result['SUCCESS']:
-                self.result['SUCCESS'].append(resource_id)
-            if state == JOB_FAILED and resource_id not in self.result['FAILED']:
-                self.result['FAILED'].append(resource_id)
+            if state == JOB_SUCCESS and resource_id not in self.result[BulkAction.RESULT_SUCCESS]:
+                self.result[BulkAction.RESULT_SUCCESS].append(resource_id)
+            if state == JOB_FAILED and resource_id not in self.result[BulkAction.RESULT_FAILED]:
+                self.result[BulkAction.RESULT_FAILED].append(resource_id)
 
     def build_update_job_body(self):
         update_job_body = {'progress': self.progress,
