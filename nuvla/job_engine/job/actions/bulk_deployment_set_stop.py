@@ -21,20 +21,13 @@ class BulkDeploymentSetStopJob(BulkAction):
         return [deployment.id for deployment in deployments]
 
     def _stop_deployment(self, deployment_id):
-        try:
-            deployment = self.user_api.get(deployment_id)
-            self.user_api.operation(deployment, 'stop',
-                                    {'low-priority': True,
-                                     'parent-job': self.job.id})
-            logging.info(f'Deployment stopped: {deployment_id}')
-        except Exception as ex:
-            logging.error(f'Failed to stop {deployment_id}: {repr(ex)}')
-            self.result['bootstrap-exceptions'][deployment_id] = repr(ex)
-            self.result['FAILED'].append(deployment_id)
-            self._push_result()
+        deployment = self.user_api.get(deployment_id)
+        return self.user_api.operation(deployment, 'stop',
+                                       {'low-priority': True,
+                                        'parent-job': self.job.id})
 
     def action(self, deployment_id):
-        self._stop_deployment(deployment_id)
+        return self._stop_deployment(deployment_id)
 
     def do_work(self):
         logging.info(f'Start bulk deployment set stop {self.job.id}')

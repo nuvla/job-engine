@@ -160,13 +160,7 @@ class Job(dict):
     def _is_bulk(self):
         return self.get('action', '').startswith("bulk")
 
-    def set_progress(self, progress):
-        if not isinstance(progress, int):
-            raise TypeError('progress should be int not {}'.format(type(progress)))
-
-        if not (0 <= progress <= 100):
-            raise ValueError('progress should be between 0 and 100 not {}'.format(progress))
-
+    def set_progress(self, progress: int):
         self._edit_job('progress', progress)
 
     def set_status_message(self, status_message: str):
@@ -213,7 +207,7 @@ class Job(dict):
     def add_nested_jobs(self, nested_jobs):
         self._add_resources_to_list('nested-jobs', nested_jobs, False)
 
-    def update_job(self, state=None, return_code=None, status_message=None):
+    def update_job(self, state=None, return_code=None, status_message=None, progress: int = None):
         attributes = {}
 
         if state is not None:
@@ -224,6 +218,9 @@ class Job(dict):
 
         if status_message is not None:
             attributes['status-message'] = status_message
+
+        if progress is not None:
+            attributes['progress'] = progress
 
         if attributes:
             self._edit_job_multi(attributes)
