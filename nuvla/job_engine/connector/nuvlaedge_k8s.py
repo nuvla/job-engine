@@ -3,16 +3,40 @@ import logging
 import os
 import re
 import tempfile
-from subprocess import CompletedProcess
-from typing import Union
 
 from nuvla.job_engine.connector.connector import Connector, should_connect
 from nuvla.job_engine.connector.helm_driver import Helm
 from nuvla.job_engine.connector.k8s_driver import Kubernetes
-from nuvla.job_engine.connector.kubernetes import log
+from nuvla.job_engine.connector.utils import execute_cmd
 from nuvla.job_engine.job import Job
 
 NE_STATUS_COLLECTION = 'nuvlabox-status'
+NE_HOST_USER_HOME = '/root'
+
+log = logging.getLogger('ne_mgmt_k8s')
+
+
+# FIXME: this needs to be extracted and used for both K8s and Docker.
+def _get_user_home(nuvlabox_status: dict) -> str:
+    """
+    Get the user home directory.
+
+    Arguments:
+    nuvlabox_status: object containing the status of the nuvlabox.
+    """
+
+    user_home = nuvlabox_status.get('host-user-home')
+    if user_home:
+        log.debug(f'User home was taken from NuvlaEdge status: {user_home}')
+        return user_home
+
+    user_home = os.getenv('HOME')
+    if user_home:
+        log.warning(f'User home was set from $HOME: {user_home}')
+        return user_home
+
+    log.warning(f'Default user home used: {NE_HOST_USER_HOME}')
+    return NE_HOST_USER_HOME
 
 
 class OperationNotAllowed(Exception):
@@ -22,6 +46,8 @@ class OperationNotAllowed(Exception):
 class NuvlaEdgeMgmtK8s(Connector):
 
     NE_HELM_NAMESPACE = 'default'
+    NE_HELM_CHARTNAME = 'nuvlaedge'
+    NE_HELM_REPO = 'https://nuvlaedge.github.io/deployment'
 
     def __init__(self, job: Job, **kwargs):
 
@@ -66,6 +92,10 @@ class NuvlaEdgeMgmtK8s(Connector):
             nuvlabox_status_id = self.nuvlabox.get(NE_STATUS_COLLECTION)
             self._nuvlabox_status = self.api.get(nuvlabox_status_id).data
         return self._nuvlabox_status
+
+    #
+    # Reboot NuvlaEdge.
+    #
 
     def _build_reboot_job(self) -> str:
         image_name = self.k8s.base_image
@@ -117,6 +147,10 @@ spec:
 
         return 'Reboot ongoing'
 
+    #
+    # Update NuvlaEdge.
+    #
+
     # FIXME: this can be extracted and used for both K8s and Docker.
     def _deployed_components(self) -> list:
         """Get the list of deployed components from the NuvlaEdge status.
@@ -137,241 +171,170 @@ spec:
             return nb_status_data.get('components', [])
         return []
 
-    def check_multiple_nuvlaedges(self, helm_name):
-        """
-        Check if the deployment is part of a multiple NuvlaEdge deployments
-        on the same COE.
-        """
-        # FIXME: Join helm.run_command and k8s.read_job_log.
-        # FIXME: Be more surgical in getting SET_MULTIPLE.
-        job_name = self.k8s.create_object_name('check-multiple-NEs')
-        cmd = (f'helm status -n {self.NE_HELM_NAMESPACE} {helm_name} '
-               f'--show-resources -o json')
-        cmd_result = self.helm.run_command(cmd, job_name)
-
-        if cmd_result.returncode == 0 and not cmd_result.stderr:
-            helm_log_result = self.k8s.read_job_log(job_name)
-            log.debug('Helm status result: %s', helm_log_result)
-            if 'SET_MULTIPLE' in helm_log_result.stdout:
-                result = 'This deployment is part of a multiple \
-                    deployment. It is not envisaged to run \
-                    updates in such a test environment. Will not proceed.'
-                log.info(result)
-                return result, 95
-
-        return None, cmd_result.returncode
-
-    def _get_project_name(self) -> str:
+    def _project_name(self) -> str:
         return json.loads(self.job.get('payload', '{}'))['project-name']
+
+    @should_connect
+    def _get_target_node_name(self):
+        node_selector_cmd = self.k8s.build_cmd_line(
+            ['get', 'deployments.apps', 'agent', '-o',
+             "jsonpath='{.spec.template.spec.nodeSelector.kubernetes\.io/hostname}'"])
+        log.debug('Node selector command: %s', ' '.join(node_selector_cmd))
+        cmd_res = execute_cmd(node_selector_cmd)
+        if cmd_res.returncode != 0:
+            msg = (f'Failed to find target node name. Error getting node '
+                   f'selector: {cmd_res.stderr}')
+            log.error(msg)
+            raise Exception(msg)
+        if not cmd_res.stdout:
+            msg = 'Failed to find target node name. Empty node selector.'
+            log.error(msg)
+            raise Exception(msg)
+        return cmd_res.stdout
+
+    @staticmethod
+    def _env_to_vars(envs: dict) -> list:
+        """
+        Parse the environment variables and convert them to helm --set vars.
+        """
+
+        env_pair_pattern = r'^\w+=\w+$'
+
+        set_vars = []
+        for env_pair in envs:
+            log.debug('Environment pair: %s', env_pair)
+            env_pair_mod = ''.join(env_pair.split())
+            re_result = re.match(env_pair_pattern, env_pair_mod)
+            log.debug('Matching result: %s', re_result)
+            if re_result:
+                set_vars.extend(['--set ', env_pair_mod])
+                log.debug('Current env vars: %s', set_vars)
+
+        log.info('Environment arguments: %s', set_vars)
+
+        return set_vars
+
+    @staticmethod
+    def _extra_modules(modules: list) -> list:
+        """
+        Generate the correct helm-specific strings for the upgrade command
+        """
+        peripherals = []
+
+        possible_modules = [
+            'USB',
+            'Bluetooth',
+            'GPU',
+            'Modbus',
+            'Network',
+            'security']
+
+        for module in modules:
+            for m in possible_modules:
+                if m.lower() in module.lower():
+                    if 'security' in m:
+                        peripherals.extend(['--set', 'security=true'])
+                    else:
+                        peripherals.extend(
+                            ['--set', f'peripheralManager{m}=true'])
+
+        log.info('Found peripherals list: %s', peripherals)
+        return peripherals
+
+    def _build_helm_upgrade_cmd(self, target_release) -> list:
+        """
+        Generate the helm command that will run the update
+
+        target_release: the new chart version
+        """
+
+        install_params = json.loads(self.job.get('payload', '{}'))
+        log.debug('Installation params: %s', install_params)
+
+        project_name = install_params['project-name']
+        if not project_name:
+            msg = 'Project name not provided. Cannot proceed.'
+            log.error(msg)
+            raise Exception(msg)
+
+        cmd = [
+            'upgrade',
+            project_name,
+            # FIXME: chart name and repo should be allowed to be overridden.
+            self.NE_HELM_CHARTNAME,
+            '--repo', self.NE_HELM_REPO,
+            '-n', 'default',
+            '--version', target_release]
+
+        # Variables to be set in the helm command.
+        ne_id = self.nuvlabox_status['parent']
+        home_dir = _get_user_home(self.nuvlabox_status)
+        target_node_name = self._get_target_node_name()
+        cmd.extend([
+            '--set', f'HOME={home_dir}',
+            # FIXME: NUVLAEDGE_ID should be used instead of NUVLAEDGE_UUID.
+            '--set', f'NUVLAEDGE_UUID={ne_id}',
+            '--set', f'NUVLAEDGE_ID={ne_id}',
+            '--set', f'NUVLA_ENDPOINT={self.api.endpoint}',
+            '--set', f'NUVLA_ENDPOINT_INSECURE={not self.api.session.verify}',
+            '--set', f'kubernetesNode={target_node_name}'])
+
+        if 'vpn-client' in self._deployed_components():
+            cmd.extend(['--set', 'vpnClient=true'])
+
+        cmd.extend(
+            self._extra_modules(install_params['config-files']))
+
+        cmd.extend(
+            self._env_to_vars(install_params['environment']))
+
+        if any(param is None for param in cmd):
+            msg = ('Some params of the helm command are not defined. Cannot '
+                   'proceed. Params: %s' % cmd)
+            log.error(msg)
+            raise Exception(msg)
+
+        log.info(f'NuvlaEdge Helm upgrade command: {" ".join(cmd)}')
+
+        return cmd
 
     def update_nuvlabox_engine(self, **kwargs):
         """
-        Updates a Kubernetes deployed NuvlaEdge.
+        Updates NuvlaEdge deployed on Kubernetes.
 
         The update is done by running a Helm upgrade command.
         """
 
         target_release = kwargs.get('target_release')
         log.debug('Target release: %s', target_release)
+        if not target_release:
+            result = 'Target release not provided. Cannot proceed.'
+            log.error(result)
+            return result, 99
 
         if not self.nuvlabox_status:
-            result = 'The nuvlabox status could not be retrieved. Cannot proceed.'
-            log.warning(result)
+            result = ('The NuvlaEdge status could not be retrieved. Cannot '
+                      'proceed.')
+            log.error(result)
             return result, 99
 
         log.debug('NuvlaEdge status: %s', self.nuvlabox_status)
 
-        # Check said deployment is running.
-        job_name = self.k8s.create_object_name('helm-ver-check')
-        helm_command = 'helm list -n default --no-headers -o json'
-        job_result = self.helm.run_command(helm_command, job_name)
-        if job_result.returncode != 0:
-            result = f'The helm list command gave error: {job_result.stderr}'
-            return result, job_result.returncode
-        log.info('Helm list result stdout: %s', job_result.stdout)
+        upgrade_cmd = self._build_helm_upgrade_cmd(target_release)
+        upgrade_result = self.helm.run_command(upgrade_cmd)
+        if upgrade_result.returncode != 0:
+            log.error(f'NuvlaEdge update failed: {upgrade_result}')
+            return upgrade_result.stderr, upgrade_result.returncode
 
-        project_name = self._get_project_name()
-        helm_log_result = self.k8s.read_job_log(job_name)
-        if not self._check_project_name(helm_log_result, project_name):
-            return f'Project name {project_name} does not match \
-                between helm on NuvlaEdge and Nuvla', 97
+        log.info(f'NuvlaEdge update successful: {upgrade_result}')
 
-        helm_update_job_name = self.k8s.create_object_name('helm-update')
-        helm_update_cmd = self._helm_gen_update_cmd_repo(target_release)
-        helm_update_result = self.helm.run_command(helm_update_cmd,
-                                                   helm_update_job_name)
-        log.info(f'Helm update result: {helm_update_result}')
         current_version = json.loads(
             self.job.get('payload', '{}'))['current-version']
-        result = self._check_target_release(helm_log_result, target_release,
-                                            current_version)
-        result = result + "\n" + helm_update_result.stdout
+        result = \
+            f'Updated from {current_version} to {target_release}\n' + \
+            upgrade_result.stdout
 
-        return result, helm_update_result.returncode
-
-    def get_helm_project_name(self) -> Union[str, None]:
-        """
-        Get the helm project name from the payload to make sure it exists.
-        """
-        project_name = self._get_project_name()
-
-        # check that helm knows about the project name
-        job_name = self.k8s.create_object_name('helm-name-check')
-        job_cmd = f'helm list -n default --no-headers | grep {project_name}'
-        job_result = self.helm.run_command(job_cmd, job_name)
-        log.info(f'Helm name check result:\n {job_result}')
-
-        if job_result.returncode == 0 and not job_result.stderr:
-            helm_job_log_result = self.k8s.read_job_log(job_name)
-            if project_name in helm_job_log_result.stdout:
-                log.info(f'Found helm name: {project_name}')
-                return project_name
-        return None
-
-    def _helm_gen_update_cmd_repo(self, target_release):
-        """
-        Generate the helm command that will run the update
-        target_release: the new chart version
-
-        This version generates the command based on the nuvlaedge/nuvlaedge repository
-        """
-
-        helm_repository = 'nuvlaedge/nuvlaedge'
-
-        install_params_from_payload = json.loads(self.job.get('payload', '{}'))
-        log.debug('Installation params: %s', install_params_from_payload)
-
-        modules = install_params_from_payload['config-files']
-        for module in modules:
-            log.debug('Found module: %s', module)
-
-        project_name = install_params_from_payload['project-name']
-        project_uuid = ''
-        if 'nuvlaedge-' in project_name:
-            log.debug(f"project name index : {len('nuvlaedge-')}")
-            project_uuid = project_name[len('nuvlaedge-'):]
-            log.debug(f'Found UUID : {project_uuid}')
-        peripherals = self.get_helm_peripherals(modules)
-        env_vars = self.get_env_vars_string(install_params_from_payload)
-        working_dir = self.get_working_dir(install_params_from_payload)
-
-        mandatory_args = f' --set HOME={working_dir} \
-            --set NUVLAEDGE_UUID=nuvlabox/{project_uuid} \
-            --set kubernetesNode=$HOST_NODE_NAME'
-
-        vpn_client_cmd = ''
-
-        if 'vpn-client' in self._deployed_components():
-            vpn_client_cmd = ' --set vpnClient=true'
-
-        helm_namespace = ' -n default'
-
-        helm_update_cmd = f'helm upgrade {project_name} \
-            {helm_repository} \
-            {helm_namespace} \
-            --version {target_release} \
-            {mandatory_args} \
-            {vpn_client_cmd} \
-            {peripherals} \
-            {env_vars}'
-
-        log.info(f'NuvlaEdge Helm upgrade command: {helm_update_cmd}')
-
-        return helm_update_cmd
-
-    @staticmethod
-    def get_working_dir(install_params_from_payload):
-        """
-        Parse the payload and return a formatted string of helm environment variables
-        """
-        working_dir = "/root"
-
-        if install_params_from_payload['working-dir']:
-            return install_params_from_payload['working-dir']
-        # do we test that the working dir exists?
-
-        return working_dir
-
-    @staticmethod
-    def get_env_vars_string(install_params_from_payload: dict):
-        """
-        Parse the payload and return a formatted string of helm environment variables
-        """
-
-        new_vars_string = ''
-        env_pair_pattern = r"^\w+=\w+$"
-
-        envs = install_params_from_payload['environment']
-        for env_pair in envs:
-            log.debug(f"Environment pair: {env_pair}")
-            env_pair_mod = "".join(env_pair.split())
-            re_result = re.match(env_pair_pattern, env_pair_mod)
-            log.debug(f"Matching result: {re_result}")
-            if re_result:
-                new_vars_string = new_vars_string + " --set " + env_pair_mod
-                log.debug(f"Current env var string: \n{new_vars_string}")
-
-        log.info('Environment list arguments: %s', new_vars_string)
-
-        return new_vars_string
-
-    @staticmethod
-    def _check_target_release(helm_log_result, target_release, current_version):
-        """
-        Check the status of the target release
-        """
-
-        message = f"chart version from {current_version} to {target_release}"
-        if target_release not in helm_log_result.stdout:
-            result = "Updating " + message
-            log.info(result)
-        else:
-            result = "No change of " + message
-            log.info(result)
-        return result
-
-    @staticmethod
-    def _check_project_name(helm_log_result: CompletedProcess, project_name: str):
-        """
-        Check the status of the project name (namespace)
-        """
-        if project_name not in helm_log_result.stdout:
-            log.info(
-                f'Project namespace does not match between helm and nuvla {project_name}')
-            return False
-
-        return True
-
-    @staticmethod
-    def get_helm_peripherals(modules: list):
-        """
-        Generate the correct helm-specific strings for the update command
-        """
-        peripherals = ""
-
-        possible_modules = ["USB", "Bluetooth", "GPU", "Modbus", "Network",
-                            "security"]
-        for module in modules:
-            log.info(f"JSW: Current module -> {module}")
-            for module_test in possible_modules:
-                if module_test.lower() in module.lower():
-                    if "security" not in module_test.lower():
-                        peripherals = peripherals + " --set peripheralManager" \
-                                      + module_test + "=true "
-                    else:
-                        peripherals = peripherals + " --set " + module_test.lower() + "=true "
-
-        log.info("Found peripherals list: %s", peripherals)
-        return peripherals
-
-    def get_project_name(self) -> str:
-        ne_statuses = \
-            self.api.search(NE_STATUS_COLLECTION,
-                            filter=f'parent="{self.nuvlabox_id}"',
-                            select='installation-parameters').resources
-        for ne_status in ne_statuses:
-            nb_status_data = self.api.get(ne_status.id).data
-            return nb_status_data['installation-parameters']['project-name']
+        return result, upgrade_result.returncode
 
 
 class NuvlaEdgeMgmtK8sSSHKey:
@@ -397,26 +360,6 @@ class NuvlaEdgeMgmtK8sSSHKey:
     def clear_connection(self, _):
         self.k8s.clear_connection(None)
 
-    # FIXME: this needs to be extracted and used for both K8s and Docker.
-    @staticmethod
-    def _get_user_home(nuvlabox_status):
-        """
-        Get the user home directory
-
-        Arguments:
-        nuvlabox_status: object containing the status of the nuvlabox
-        """
-        user_home = nuvlabox_status.get('host-user-home')
-        if not user_home:
-            user_home = os.getenv('HOME')
-            if not user_home:
-                user_home = "/root"
-                # this could be interesting point to e.g. create a generic user edge_login and add ssh key?
-                logging.info('Attention: The user home has been set to: %s ',
-                             user_home)
-        return user_home
-
-    # FIXME: pull this up into future parent class.
     @should_connect
     def commission(self, payload):
         """ Updates the NuvlaEdge resource with the provided payload
@@ -565,7 +508,7 @@ spec:
 
         nuvlaedge_status = self.api.get(NE_STATUS_COLLECTION).data
         log.debug('NuvlaEdge status: %s', nuvlaedge_status)
-        user_home = self._get_user_home(nuvlaedge_status)
+        user_home = _get_user_home(nuvlaedge_status)
         result = self._ssh_key_add_revoke(action, pubkey, user_home)
 
         if result.returncode == 0 and not result.stderr:
