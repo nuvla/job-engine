@@ -129,6 +129,10 @@ jobs:
     needs: build-package
     runs-on: ubuntu-latest
     steps:
+      - name: Set env
+        shell: bash
+        run: echo "BUILD_TIME=$(date --utc +%FT%T.%3NZ)" >> $GITHUB_ENV
+
       - name: Checkout
         uses: actions/checkout@v4
 
@@ -164,7 +168,7 @@ jobs:
           platforms: linux/amd64,linux/arm/v7,linux/arm64/v8
           build-args: |
             GIT_BRANCH=${{ github.head_ref || github.ref_name }}
-            GIT_BUILD_TIME=$(date --utc +%FT%T.%3NZ)
+            GIT_BUILD_TIME=${{ env.BUILD_TIME }}
             GIT_COMMIT_ID=${{ github.sha }}
             GITHUB_RUN_NUMBER=${{ github.run_number }}
             GITHUB_RUN_ID=${{ github.run_id }}
