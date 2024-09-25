@@ -6,6 +6,24 @@
 
 ## Released
 
+## [4.4.0](https://github.com/nuvla/job-engine/compare/4.3.1...4.4.0) (2024-09-25)
+
+
+### Features
+
+* **bulk_update_nuvlabox:** Support bulk update nuvlabox action ([#378](https://github.com/nuvla/job-engine/issues/378)) ([bf9b77e](https://github.com/nuvla/job-engine/commit/bf9b77ee71c54804643465c8869de10512c34d26))
+
+
+### Bug Fixes
+
+* **bulk_delete_deployment:** Support bulk delete deployment ([#382](https://github.com/nuvla/job-engine/issues/382)) ([22d4740](https://github.com/nuvla/job-engine/commit/22d474050cc35b3da4de576840172999b5d6a225))
+* **bulk-action:** Report queued jobs and update success and failed list based on operation response status ([bf9b77e](https://github.com/nuvla/job-engine/commit/bf9b77ee71c54804643465c8869de10512c34d26))
+* **K8s:** pod logs ([#381](https://github.com/nuvla/job-engine/issues/381)) ([46e532e](https://github.com/nuvla/job-engine/commit/46e532e001e3887472cd8f7b1d2b518eceee3511))
+* **monitor_bulk_job:** Bugfix related to child job queries ([bf9b77e](https://github.com/nuvla/job-engine/commit/bf9b77ee71c54804643465c8869de10512c34d26))
+* **monitor_bulk_job:** More info about what is being executed ([bf9b77e](https://github.com/nuvla/job-engine/commit/bf9b77ee71c54804643465c8869de10512c34d26))
+* **nuvlaedge_k8s:** working upgrade of NE on K8s ([#385](https://github.com/nuvla/job-engine/issues/385)) ([81df7c7](https://github.com/nuvla/job-engine/commit/81df7c73d59f92e6f4b8a3636eeff640d995bf37))
+* **workflows:** fix GIT_BUILD_TIME ([2adc27a](https://github.com/nuvla/job-engine/commit/2adc27ac891a9603b2fe2f55af10016248dad2c0))
+
 ## [4.3.1](https://github.com/nuvla/job-engine/compare/4.3.0...4.3.1) (2024-08-21)
 
 
