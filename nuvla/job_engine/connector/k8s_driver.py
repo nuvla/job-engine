@@ -355,11 +355,12 @@ users:
                                        container_name,
                                        since,
                                        tail_lines)
-            log.debug('Logs command line: %s', cmd)
+            log.debug('Logs command line: %s', ' '.join(cmd))
 
             pod_container = f'pod/{pod_unique_id}->{container_name}'
 
             try:
+                # FIXME: Only stdout is used. We should also handle stderr.
                 container_logs = execute_cmd(cmd).stdout
             except Exception as ex:
                 log.error('Failed getting logs from %s: %s', pod_container, ex)
@@ -419,18 +420,22 @@ users:
         for obj in objects:
             log.debug('Current object: %s and obj kind: %s', obj,
                       obj['kind'])
+            if 'Pod' == kind and obj['kind'] == kind:
+                if obj['metadata']['name'] == owner_name:
+                    component_pods.append(obj)
+                    continue
             if obj['kind'] == kind and 'ownerReferences' in obj['metadata']:
                 owner = obj['metadata']['ownerReferences'][0]
                 if owner_kind == owner['kind'] and owner_name == owner['name']:
                     component_pods.append(obj)
         return component_pods
 
-    def _exec_stdout_json(self, cmd_params) -> {}:
-        cmd = self.build_cmd_line(cmd_params)
-        log.debug('created JSON command: %s', cmd)
+    def _exec_stdout_json(self, cmd_params: list) -> dict:
+        cmd = self.build_cmd_line(cmd_params) + ['-o', 'json']
         cmd_out = execute_cmd(cmd)
         if cmd_out.stderr:
-            log.warning('JSON command stderr gives: %s', cmd_out.stderr)
+            log.warning('Output JSON command stderr: %s',
+                        cmd_out.stderr)
 
         return json.loads(cmd_out.stdout)
 
@@ -440,7 +445,6 @@ users:
         kind_top_level = 'CronJob'
         pods_owner_kind = 'Job'
         jobs = self._exec_stdout_json(['get', pods_owner_kind,
-                                       '-o', 'json',
                                        '--namespace', namespace])
         jobs_owned_by_cronjob = self._filter_objects_owned(
             jobs.get('items', []),
@@ -457,7 +461,6 @@ users:
         # Find Pods owned by the Jobs.
         pods = []
         all_pods = self._exec_stdout_json(['get', 'pods',
-                                           '-o', 'json',
                                            '--namespace', namespace])
         for pods_owner_name in jobs_names:
             res = self._filter_objects_owned(all_pods['items'],
@@ -492,7 +495,6 @@ users:
         pods_owner_kind = 'ReplicaSet'
 
         replica_sets = self._exec_stdout_json(['get', pods_owner_kind,
-                                               '-o', 'json',
                                                '--namespace', namespace])
 
         owned_rep_sets = self._filter_objects_owned(
@@ -515,7 +517,6 @@ users:
         pods_owner_name = valid_replica_set[0]['metadata']['name']
         # Find Pods owned by the ReplicaSet.
         all_pods = self._exec_stdout_json(['get', 'pods',
-                                           '-o', 'json',
                                            '--namespace', namespace])
         return self._filter_objects_owned(all_pods['items'], 'Pod',
                                           pods_owner_kind, pods_owner_name)
@@ -524,7 +525,6 @@ users:
     def _get_pods_regular(self, namespace, owner_kind, owner_name):
         kind = 'Pod'
         all_pods = self._exec_stdout_json(['get', kind,
-                                           '-o', 'json',
                                            '--namespace', namespace])
         if len(all_pods) < 1:
             log.warning(f'No {kind} in namespace {namespace}.')
@@ -535,12 +535,14 @@ users:
     def _get_pods(self, namespace, obj_kind, obj_name) -> list:
         if 'Deployment' == obj_kind:
             return self._get_pods_deployment(namespace, obj_name)
-
-        if 'CronJob' == obj_kind:
+        elif 'CronJob' == obj_kind:
             return self._get_pods_cronjob(namespace, obj_name)
-
-        if obj_kind in ['Job', 'DaemonSet', 'StatefulSet']:
+        elif obj_kind in ['Pod', 'Job', 'DaemonSet', 'StatefulSet']:
             return self._get_pods_regular(namespace, obj_kind, obj_name)
+        else:
+            log.warning(f'Unsupported object kind {obj_kind} to get pods. No '
+                        f'pods returned.')
+            return []
 
     def _get_component_logs(self,
                             namespace: str,
@@ -561,11 +563,8 @@ users:
         :return: str - logs as string
         """
         pods = self._get_pods(namespace, obj_kind, obj_name)
-        try:
-            return self._get_pods_logs(namespace, pods, since, num_lines)
-        except Exception as ex:
-            log.error('Problem getting logs string: %s ', ex)
-        return ''
+        log.debug('Found pods: %s', pods)
+        return self._get_pods_logs(namespace, pods, since, num_lines)
 
     WORKLOAD_OBJECT_KINDS = \
         ['Deployment',
@@ -592,6 +591,8 @@ users:
         :param namespace:
         :return: str - logs as string
         """
+
+        log.debug('Getting logs for component: %s', component)
 
         if "/" in component:
             obj_kind, obj_name = component.split('/', 1)
