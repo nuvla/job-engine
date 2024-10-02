@@ -6,7 +6,7 @@ ARG DOCKER_VERSION=25-cli
 FROM docker:${DOCKER_VERSION} AS docker
 FROM ${BASE_IMAGE}
 
-ARG KUBECTL_VERSION=1.30
+ARG KUBECTL_VERSION=1.31
 ARG HELM_VERSION=3.14
 ARG GIT_BRANCH
 ARG GIT_COMMIT_ID
@@ -53,8 +53,8 @@ RUN rm -rf /tmp/build/
 # inherited from docker:18.09 Dockerfile
 RUN [ ! -e /etc/nsswitch.conf ] && echo 'hosts: files dns' > /etc/nsswitch.conf || true
 
-ENV PYTHONWARNINGS "ignore:Unverified HTTPS request"
-ENV IMAGE_NAME ${IMAGE_NAME}
+ENV PYTHONWARNINGS="ignore:Unverified HTTPS request"
+ENV IMAGE_NAME=${IMAGE_NAME}
 
 ADD https://raw.githubusercontent.com/docker-library/docker/master/modprobe.sh /usr/local/bin/modprobe
 
