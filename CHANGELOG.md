@@ -6,6 +6,18 @@
 
 ## Released
 
+## [4.5.0](https://github.com/nuvla/job-engine/compare/4.4.0...4.5.0) (2024-10-02)
+
+
+### Features
+
+* add support for Python 3.12 ([#386](https://github.com/nuvla/job-engine/issues/386)) ([10c4689](https://github.com/nuvla/job-engine/commit/10c46897f7739764115eb632eacf58ca12551faa))
+
+
+### Dependencies
+
+* updated dependencies ([10c4689](https://github.com/nuvla/job-engine/commit/10c46897f7739764115eb632eacf58ca12551faa))
+
 ## [4.4.0](https://github.com/nuvla/job-engine/compare/4.3.1...4.4.0) (2024-09-25)
 
 
