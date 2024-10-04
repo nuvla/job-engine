@@ -771,21 +771,11 @@ class NuvlaBox(Connector):
                               tail=lines,
                               since=since.replace(tzinfo=None)).decode()
 
-    @staticmethod
-    def _unsupported_action_job_response(action: str):
-        return {
-            'success': False,
-            'return-code': 0,
-            'message': f"Unsupported action: {action}"
-        }
+    def _unsupported_action_job_response(self, action: str):
+        return self._new_job_response(False, 0, f"Unsupported action: {action}")
 
-    @staticmethod
-    def _unsupported_resource_for_action_job_response(resource: str, action: str):
-        return {
-            'success': False,
-            'return-code': 0,
-            'message': f"Unsupported resource {resource} for action {action}"
-        }
+    def _unsupported_resource_for_action_job_response(self, resource: str, action: str):
+        return self._new_job_response(False, 0, f"Unsupported resource {resource} for action {action}")
 
     @staticmethod
     def _new_job_response(success: bool, return_code: int, message: str):
