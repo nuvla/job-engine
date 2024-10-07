@@ -22,7 +22,7 @@ from ....connector import (docker_stack,
                            utils)
 from ....connector.connector import ConnectorCOE
 from ....connector.k8s_driver import get_kubernetes_local_endpoint
-
+from ....connector.utils import LOCAL
 
 CONNECTOR_KIND_HELM = 'helm'
 APP_SUBTYPE_HELM = 'application_helm'
@@ -69,8 +69,10 @@ def update_infra_service_endpoint_for_pull_mode(infra_service):
     elif infra_service_type == 'kubernetes':
         endpoint = get_kubernetes_local_endpoint()
         if not endpoint:
-            raise ValueError(
-                'Kubernetes local endpoint not found in PULL mode.')
+            infra_service_endpoint = infra_service.get('endpoint')
+            if infra_service_endpoint and infra_service_endpoint != LOCAL:
+                return
+            raise ValueError('Kubernetes local endpoint not found in PULL mode.')
         infra_service['endpoint'] = endpoint
     else:
         logging.info(f'Not updating infra service endpoint for '
