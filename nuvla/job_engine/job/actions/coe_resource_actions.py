@@ -32,7 +32,7 @@ class COEResourceActionsJob:
         results = []
         for coe, actions in actions.items():
             if coe == "docker":
-                connector: NuvlaBox = NuvlaBox(api=self.api, job=self.job)
+                connector: NuvlaBox = NuvlaBox(api=self.api, job=self.job, nuvlabox_id=self.job['target-resource']['href'])
                 connector.connect()
                 result: list[dict] = connector.handle_resources(actions)
                 docker_success = all([r["success"] for r in result])
