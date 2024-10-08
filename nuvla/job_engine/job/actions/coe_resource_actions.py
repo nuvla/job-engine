@@ -15,15 +15,17 @@ class COEResourceActionsJob:
     def __init__(self, job):
         self.job: Job = job
 
-    def _execute_actions(self, actions: dict) -> int:
+    def _execute_actions(self, str_actions: str) -> int:
         """
 
         Args:
-            actions:
+            str_actions:
 
         Returns:
 
         """
+        actions = self._get_actions_from_string(str_actions)
+
         docker_success = True
         k8s_success = True
         results = []
@@ -42,6 +44,22 @@ class COEResourceActionsJob:
         self.job.set_progress(90)
 
         return 0 if docker_success and k8s_success else 1
+
+    @staticmethod
+    def _get_actions_from_string(actions: str) -> dict:
+        """
+
+        Args:
+            actions:
+
+        Returns:
+
+        """
+        try:
+            return json.loads(actions)
+        except json.JSONDecodeError as ex:
+            log.error("Failed to decode actions: {0}".format(ex))
+            raise ex
 
     def do_work(self):
         log.info("Job started for {}.".format(self.job["action"]))
