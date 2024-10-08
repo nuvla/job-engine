@@ -48,7 +48,7 @@ class COEResourceActionsJob:
         self.job.set_progress(10)
 
         try:
-            return self._execute_actions(self.job["actions"])
+            return self._execute_actions(self.job["payload"])
         except Exception as ex:
             log.error("Failed to {0}: {1}".format(self.job["action"], ex))
             self.job.set_status_message(repr(ex))
