@@ -29,19 +29,21 @@ class COEResourceActionsJob:
 
         docker_success = True
         k8s_success = True
-        results = []
+        results = {
+            "docker": [],
+        }
         for coe, actions in actions.items():
             if coe == "docker":
                 connector: NuvlaBox = NuvlaBox(api=self.api, job=self.job, nuvlabox_id=self.job['target-resource']['href'])
                 connector.connect()
                 result: list[dict] = connector.handle_resources(actions)
                 docker_success = all([r["success"] for r in result])
-                results.extend(result)
+                results["docker"].append(result)
 
             if coe == "kubernetes":
                 ...
 
-        self.job.set_status_message(json.dumps([r['message'] for r in results], indent=4))
+        self.job.set_status_message(json.dumps(results, indent=4))
         self.job.set_progress(90)
 
         return 0 if docker_success and k8s_success else 1
