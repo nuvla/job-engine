@@ -14,6 +14,7 @@ log = logging.getLogger(action_name)
 class COEResourceActionsJob:
     def __init__(self, job):
         self.job: Job = job
+        self.api = job.api
 
     def _execute_actions(self, str_actions: str) -> int:
         """
