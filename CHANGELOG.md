@@ -6,6 +6,20 @@
 
 ## Released
 
+## [4.5.2](https://github.com/nuvla/job-engine/compare/4.5.1...4.5.2) (2024-10-07)
+
+
+### Bug Fixes
+
+* **kubernetes:** use endpoint from infrastructure-service when no local endpoint is available ([#390](https://github.com/nuvla/job-engine/issues/390)) ([c3e27f3](https://github.com/nuvla/job-engine/commit/c3e27f37f864433ead233a77e7d5efb44722b5ab))
+
+## [4.5.1](https://github.com/nuvla/job-engine/compare/4.5.0...4.5.1) (2024-10-03)
+
+
+### Minor Changes
+
+* **deps:** allow any 3.x python version above 3.11 ([481b0cb](https://github.com/nuvla/job-engine/commit/481b0cbc3ad8cf9e531b8e210a78a7ec3a8f7ab0))
+
 ## [4.5.0](https://github.com/nuvla/job-engine/compare/4.4.0...4.5.0) (2024-10-02)
 
 

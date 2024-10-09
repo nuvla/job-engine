@@ -380,12 +380,12 @@ test = ["pytest", "pytest-cov"]
 
 [[package]]
 name = "nuvla-api"
-version = "4.2.0"
+version = "4.2.1"
 description = "Nuvla APIServer python client library"
 optional = false
-python-versions = "<3.13,>=3.9"
+python-versions = "<4.0,>=3.9"
 files = [
-    {file = "nuvla_api-4.2.0-py3-none-any.whl", hash = "sha256:915bb1071b909000ac362be000e1ed98045d374cdf8287ce522d9e5789b0d953"},
+    {file = "nuvla_api-4.2.1-py3-none-any.whl", hash = "sha256:8d93d98201e8421afd9bda1bbf4a4c10deb9f878ae59caee1a8f6df079ebfb86"},
 ]
 
 [package.dependencies]
@@ -652,5 +652,5 @@ type = ["pytest-mypy"]
 
 [metadata]
 lock-version = "2.0"
-python-versions = ">=3.11,<3.13"
-content-hash = "d30d1a0d2be665988348b95cc95bfd6882b338c07fa6d7db848f96c2df5e7f2e"
+python-versions = "^3.11"
+content-hash = "c34e2af9d973e6f150970bf07831cc7f431e304aa9eb4b8a208095499c54d27c"
