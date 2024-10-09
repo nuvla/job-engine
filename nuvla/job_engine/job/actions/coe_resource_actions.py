@@ -3,7 +3,7 @@ import logging
 
 from ..job import Job
 from ..actions import action
-from ...connector.nuvlaedge_docker import NuvlaBox
+from ...connector.coe_resources import DockerCoeResources
 
 action_name = "coe_resource_actions"
 
@@ -34,8 +34,7 @@ class COEResourceActionsJob:
         }
         for coe, actions in actions.items():
             if coe == "docker":
-                connector: NuvlaBox = NuvlaBox(api=self.api, job=self.job, nuvlabox_id=self.job['target-resource']['href'])
-                connector.connect()
+                connector: DockerCoeResources = DockerCoeResources()
                 result: list[dict] = connector.handle_resources(actions)
                 docker_success = all([r["success"] for r in result])
                 results["docker"].append(result)
