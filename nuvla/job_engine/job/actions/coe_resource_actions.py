@@ -37,7 +37,7 @@ class COEResourceActionsJob:
                 connector: DockerCoeResources = DockerCoeResources()
                 result: list[dict] = connector.handle_resources(actions)
                 docker_success = all([r["success"] for r in result])
-                results["docker"].append(result)
+                results["docker"].extend(result)
 
             if coe == "kubernetes":
                 ...
