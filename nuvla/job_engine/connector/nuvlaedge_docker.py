@@ -5,6 +5,7 @@ import logging
 import os
 import re
 import time
+from typing import List
 
 import docker
 import docker.errors
@@ -763,3 +764,4 @@ class NuvlaBox(Connector):
         return container.logs(timestamps=True,
                               tail=lines,
                               since=since.replace(tzinfo=None)).decode()
+
