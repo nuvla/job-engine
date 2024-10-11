@@ -6,6 +6,13 @@
 
 ## Released
 
+## [4.6.0](https://github.com/nuvla/job-engine/compare/4.5.2...4.6.0) (2024-10-11)
+
+
+### Features
+
+* **action:** Add COE docker resource management action(s) ([#388](https://github.com/nuvla/job-engine/issues/388)) ([8b35166](https://github.com/nuvla/job-engine/commit/8b35166e4dbebf9c4f0bcba60f81f1c0602295f2))
+
 ## [4.5.2](https://github.com/nuvla/job-engine/compare/4.5.1...4.5.2) (2024-10-07)
 
 
