@@ -25,6 +25,10 @@ class COEResourceActionsJob:
         Returns:
 
         """
+        if not self.job.is_in_pull_mode:
+            self.job.set_status_message("Job is only available in pull mode")
+            return 1
+
         actions = self._get_actions_from_string(str_actions)
 
         docker_success = True
@@ -38,9 +42,20 @@ class COEResourceActionsJob:
                 result: list[dict] = connector.handle_resources(actions)
                 docker_success = all([r["success"] for r in result])
                 results["docker"].extend(result)
+            else:
 
-            if coe == "kubernetes":
-                ...
+                coe = "unknown" if coe is None or coe == "" else coe
+
+                results[coe] = [
+                    {
+                        "success": False,
+                        "return-code": 500,
+                        "message": f"Actions not supported for {coe}"
+                    }
+                ]
+
+            # if coe == "kubernetes":
+            #     ...
 
         self.job.set_status_message(json.dumps(results, indent=4))
         self.job.set_progress(90)
