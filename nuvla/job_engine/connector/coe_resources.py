@@ -95,10 +95,10 @@ class DockerCoeResources:
                 untagged_found = True
 
         if deleted_found:
-            return self._new_job_response(True, 200, f"Image {image_id} deleted successfully")
+            return self._new_job_response(True, 200, f"Image {self._clean_id(image_id)} deleted successfully")
 
         if untagged_found:
-            return self._new_job_response(True, 200, f"Image {image_id} untagged successfully but not removed")
+            return self._new_job_response(True, 200, f"Image {self._clean_id(image_id)} untagged successfully but not removed")
 
         return self._new_job_response(True, 200, "")
 
@@ -110,12 +110,12 @@ class DockerCoeResources:
 
         line = response.splitlines()[-1]
         if "Image is up to date" in line:
-            return self._new_job_response(True, 200, f"Image {image_id} was already present and updated")
+            return self._new_job_response(True, 200, f"Image {self._clean_id(image_id)} was already present and updated")
 
         if "Downloaded newer image" in line:
-            return self._new_job_response(True, 200, f"Image {image_id} downloaded successfully")
+            return self._new_job_response(True, 200, f"Image {self._clean_id(image_id)} downloaded successfully")
 
-        return self._new_job_response(True, 200, f"Image {image_id} successful pulled")
+        return self._new_job_response(True, 200, f"Image {self._clean_id(image_id)} successful pulled")
 
     def _remove_container(self, container_id):
         try:
@@ -124,7 +124,7 @@ class DockerCoeResources:
         except docker.errors.APIError as e:
             return self._get_job_response_from_server_error(e)
 
-        return self._new_job_response(True, 204, f"Container {container_id} removed successfully")
+        return self._new_job_response(True, 204, f"Container {self._clean_id(container_id)} removed successfully")
 
     def _remove_volume(self, volume_id):
         try:
@@ -132,7 +132,7 @@ class DockerCoeResources:
         except docker.errors.APIError as e:
             return self._get_job_response_from_server_error(e)
 
-        return self._new_job_response(True, 204, f"Volume {volume_id} removed successfully")
+        return self._new_job_response(True, 204, f"Volume {self._clean_id(volume_id)} removed successfully")
 
     def _remove_network(self, network_id):
         try:
@@ -140,7 +140,7 @@ class DockerCoeResources:
         except docker.errors.APIError as e:
             return self._get_job_response_from_server_error(e)
 
-        return self._new_job_response(True, 204, f"Network {network_id} removed successfully")
+        return self._new_job_response(True, 204, f"Network {self._clean_id(network_id)} removed successfully")
 
     @staticmethod
     def _get_job_response_from_server_error(error: docker.errors.APIError) -> dict:
@@ -150,6 +150,13 @@ class DockerCoeResources:
             'content': error.response.content.decode('utf-8'),
             'message': _extract_content_message(error.response.content)
         }
+
+    @staticmethod
+    def _clean_id(res_id: str) -> str:
+        return res_id[:12] if is_sha256_hash(res_id) else res_id
+
+def is_sha256_hash(s: str) -> bool:
+    return bool(re.fullmatch(r'[a-fA-F0-9]{64}', s))
 
 def _extract_content_message(content: bytes) -> str:
     try:
