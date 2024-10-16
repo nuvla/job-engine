@@ -167,9 +167,9 @@ class DockerCoeResources:
 
     @staticmethod
     def _clean_id(res_id: str) -> str:
-        # Assume that if the id is a sha256 hash (64 characters long), it is a docker id
         if is_sha256_hash(res_id):
             return res_id[:12]
+        return res_id
 
 def is_sha256_hash(s: str) -> bool:
     return bool(re.fullmatch(r'[a-fA-F0-9]{64}', s))
