@@ -167,9 +167,7 @@ class DockerCoeResources:
 
     @staticmethod
     def _clean_id(res_id: str) -> str:
-        if is_sha256_hash(res_id):
-            return res_id[:12]
-        return res_id
+        return res_id[:12] if is_sha256_hash(res_id) else res_id
 
 def is_sha256_hash(s: str) -> bool:
     return bool(re.fullmatch(r'[a-fA-F0-9]{64}', s))
