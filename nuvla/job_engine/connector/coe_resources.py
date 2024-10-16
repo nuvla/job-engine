@@ -112,7 +112,7 @@ class DockerCoeResources:
         if "Downloaded newer image" in line:
             return self._new_job_response(True, 200, f"Image {image_id} downloaded successfully")
 
-        return self._new_job_response(True, 200, "Image pull successful")
+        return self._new_job_response(True, 200, f"Image {image_id} successful pulled")
 
     def _remove_container(self, container_id):
         try:
@@ -139,13 +139,14 @@ class DockerCoeResources:
 
         return self._new_job_response(True, 204, f"Network {network_id} removed successfully")
 
-    @staticmethod
-    def _get_job_response_from_server_error(resource: str, error: docker.errors.APIError, resource_id: str) -> dict:
+    def _get_job_response_from_server_error(self, resource: str, error: docker.errors.APIError, resource_id: str) -> dict:
         job_response = {
             'success': False,
             'return-code': error.response.status_code,
             'content': str(error)
         }
+
+        resource_id = self._clean_id(resource_id)
 
         match error.response.status_code:
             case 403:
@@ -154,10 +155,15 @@ class DockerCoeResources:
             case 404:
                 job_response['message'] = f"{resource} -- {resource_id} not found"
             case 409:
-                job_response['message'] = f"{resource} is in use. Cannot remove it."
+                job_response['message'] = f"{resource} -- {resource_id} is in use. Cannot remove it."
             case 500:
-                job_response['message'] = f"Server Error {resource} -- {resource}"
+                job_response['message'] = f"Server Error {resource} -- {resource_id}"
             case _:
-                job_response['message'] = f"Unknown error: {error.response.text}"
+                job_response['message'] = f"Unknown error on {resource}-{resource_id}: {error.response.text}"
 
         return job_response
+
+    @staticmethod
+    def _clean_id(res_id: str) -> str:
+        if len(res_id) > 12:
+            return res_id[:12]
