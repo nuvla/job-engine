@@ -143,7 +143,7 @@ class DockerCoeResources:
         job_response = {
             'success': False,
             'return-code': error.response.status_code,
-            'content': str(error)
+            'content': error.response.content.decode('utf-8')
         }
 
         resource_id = self._clean_id(resource_id)
