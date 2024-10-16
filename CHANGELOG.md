@@ -6,6 +6,14 @@
 
 ## Released
 
+## [4.6.1](https://github.com/nuvla/job-engine/compare/4.6.0...4.6.1) (2024-10-16)
+
+
+### Bug Fixes
+
+* Do not fail COE resource action job when some actions fail ([#393](https://github.com/nuvla/job-engine/issues/393)) ([850ec5a](https://github.com/nuvla/job-engine/commit/850ec5a6c71aefaece7d353a430052d7f254ca19))
+* Improve return message when errors occur ([#394](https://github.com/nuvla/job-engine/issues/394)) ([45e0b12](https://github.com/nuvla/job-engine/commit/45e0b12d8a585d09a0c52a9d4f82c3ad20900866))
+
 ## [4.6.0](https://github.com/nuvla/job-engine/compare/4.5.2...4.6.0) (2024-10-11)
 
 
