@@ -165,5 +165,6 @@ class DockerCoeResources:
 
     @staticmethod
     def _clean_id(res_id: str) -> str:
-        if len(res_id) > 12:
+        # Assume that if the id is a sha256 hash (64 characters long), it is a docker id
+        if len(res_id) == 64:
             return res_id[:12]
