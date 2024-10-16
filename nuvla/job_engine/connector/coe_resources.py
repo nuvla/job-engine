@@ -151,11 +151,11 @@ class DockerCoeResources:
         match error.response.status_code:
             case 403:
                 # Only for Network delete operation
-                job_response['message'] = f"Operation not supported for {resource} -- {resource_id}"
+                job_response['message'] = f"Operation not supported for {resource} ({resource_id})"
             case 404:
-                job_response['message'] = f"{resource} -- {resource_id} not found"
+                job_response['message'] = f"{resource} ({resource_id}) not found"
             case 409:
-                job_response['message'] = f"{resource} -- {resource_id} is in use. Cannot remove it."
+                job_response['message'] = f"{resource} ({resource_id}) is in use. Cannot remove it."
             case 500:
                 job_response['message'] = f"Server Error {resource} -- {resource_id}"
             case _:
