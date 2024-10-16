@@ -84,7 +84,7 @@ class DockerCoeResources:
         try:
             response = self.docker_client.api.remove_image(image_id)
         except docker.errors.APIError as e:
-            return self._get_job_response_from_server_error('image', e, image_id)
+            return self._get_job_response_from_server_error(e)
 
         deleted_found = False
         untagged_found = False
@@ -106,7 +106,7 @@ class DockerCoeResources:
         try:
             response = self.docker_client.api.pull(image_id)
         except docker.errors.APIError as e:
-            return self._get_job_response_from_server_error('image', e, image_id)
+            return self._get_job_response_from_server_error(e)
 
         line = response.splitlines()[-1]
         if "Image is up to date" in line:
@@ -122,7 +122,7 @@ class DockerCoeResources:
             self.docker_client.api.remove_container(container_id)
 
         except docker.errors.APIError as e:
-            return self._get_job_response_from_server_error('container', e, container_id)
+            return self._get_job_response_from_server_error(e)
 
         return self._new_job_response(True, 204, f"Container {container_id} removed successfully")
 
@@ -130,7 +130,7 @@ class DockerCoeResources:
         try:
             self.docker_client.api.remove_volume(volume_id)
         except docker.errors.APIError as e:
-            return self._get_job_response_from_server_error('volume', e, volume_id)
+            return self._get_job_response_from_server_error(e)
 
         return self._new_job_response(True, 204, f"Volume {volume_id} removed successfully")
 
@@ -138,41 +138,18 @@ class DockerCoeResources:
         try:
             self.docker_client.api.remove_network(network_id)
         except docker.errors.APIError as e:
-            return self._get_job_response_from_server_error('network', e, network_id)
+            return self._get_job_response_from_server_error(e)
 
         return self._new_job_response(True, 204, f"Network {network_id} removed successfully")
 
-    def _get_job_response_from_server_error(self, resource: str, error: docker.errors.APIError, resource_id: str) -> dict:
+    @staticmethod
+    def _get_job_response_from_server_error(error: docker.errors.APIError) -> dict:
         return {
             'success': False,
             'return-code': error.response.status_code,
             'content': error.response.content.decode('utf-8'),
             'message': _extract_content_message(error.response.content)
         }
-
-        # resource_id = self._clean_id(resource_id)
-        #
-        # match error.response.status_code:
-        #     case 403:
-        #         # Only for Network delete operation
-        #         job_response['message'] = f"Operation not supported for {resource} ({resource_id})"
-        #     case 404:
-        #         job_response['message'] = f"{resource} ({resource_id}) not found"
-        #     case 409:
-        #         job_response['message'] = f"{resource} ({resource_id}) is in use. Cannot remove it."
-        #     case 500:
-        #         job_response['message'] = f"Server Error {resource} -- {resource_id}"
-        #     case _:
-        #         job_response['message'] = f"Unknown error on {resource}-{resource_id}: {error.response.text}"
-
-        # return job_response
-
-    @staticmethod
-    def _clean_id(res_id: str) -> str:
-        return res_id[:12] if is_sha256_hash(res_id) else res_id
-
-def is_sha256_hash(s: str) -> bool:
-    return bool(re.fullmatch(r'[a-fA-F0-9]{64}', s))
 
 def _extract_content_message(content: bytes) -> str:
     try:
