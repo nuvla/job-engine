@@ -17,6 +17,7 @@ class BulkDeploymentSetApply(BulkAction):
         self.operations = {self.KEY_DEPLOYMENTS_TO_ADD: self._add_deployment,
                            self.KEY_DEPLOYMENTS_TO_UPDATE: self._update_deployment,
                            self.KEY_DEPLOYMENTS_TO_REMOVE: self._remove_deployment}
+        self.api_endpoint = None
 
     @property
     def log(self):
@@ -32,6 +33,7 @@ class BulkDeploymentSetApply(BulkAction):
         deployment_set = self.user_api.get(self.dep_set_id)
         operational_status = self.user_api.operation(deployment_set, 'operational-status').data
         self.log.info(f'{self.dep_set_id} - Operational status: {operational_status}')
+        self.api_endpoint = deployment_set.data.get('api-endpoint')
         todo = (self._action_name_todo_el(operational_status, self.KEY_DEPLOYMENTS_TO_ADD) +
                 self._action_name_todo_el(operational_status, self.KEY_DEPLOYMENTS_TO_UPDATE) +
                 self._action_name_todo_el(operational_status, self.KEY_DEPLOYMENTS_TO_REMOVE))
@@ -69,6 +71,10 @@ class BulkDeploymentSetApply(BulkAction):
         app_regs_creds = application.get('registries-credentials')
         if app_regs_creds:
             deployment['registries-credentials'] = app_regs_creds
+
+    def _update_api_endpoint(self, deployment):
+        if self.api_endpoint:
+            deployment['api-endpoint'] = self.api_endpoint
 
     def _get_infra(self, target):
         nuvlabox = self.user_api.get(target).data
@@ -117,6 +123,7 @@ class BulkDeploymentSetApply(BulkAction):
             self.log.info(f'{self.dep_set_id} - Add deployment: {deployment_id}')
             deployment = self.user_api.get(deployment_id)
             deployment_data = deployment.data
+            self._update_api_endpoint(deployment_data)
             self._update_env_deployment(deployment_data, application)
             self._update_files(deployment_data, application)
             self._update_regs_creds_deployment(deployment_data, application)
@@ -135,6 +142,7 @@ class BulkDeploymentSetApply(BulkAction):
             self.log.info(f'{self.dep_set_id} - Update deployment: {deployment_id}')
             application = deployment_to_update[1]["application"]
             deployment_data = self._load_reset_deployment(deployment_id, application)
+            self._update_api_endpoint(deployment_data)
             self._update_env_deployment(deployment_data, application)
             self._update_files(deployment_data, application)
             self._update_regs_creds_deployment(deployment_data, application)
