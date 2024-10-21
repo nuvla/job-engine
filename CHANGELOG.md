@@ -1,9 +1,5 @@
 # Changelog
 
-## Unreleased
-
-### Changed
-
 ## Released
 
 ## [4.6.1](https://github.com/nuvla/job-engine/compare/4.6.0...4.6.1) (2024-10-16)
