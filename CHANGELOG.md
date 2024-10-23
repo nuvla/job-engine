@@ -2,6 +2,13 @@
 
 ## Released
 
+## [4.6.2](https://github.com/nuvla/job-engine/compare/4.6.1...4.6.2) (2024-10-23)
+
+
+### Bug Fixes
+
+* **BulkDeploymentSetApply:** Set api-endpoint attribute for deployments at update time ([#396](https://github.com/nuvla/job-engine/issues/396)) ([0b1e370](https://github.com/nuvla/job-engine/commit/0b1e37082080359ea751ab7c11d411e7d7a8a47c))
+
 ## [4.6.1](https://github.com/nuvla/job-engine/compare/4.6.0...4.6.1) (2024-10-16)
 
 
