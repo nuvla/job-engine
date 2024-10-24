@@ -15,7 +15,8 @@ class DeploymentSetAutomaticUpdateJob(object):
     def _auto_update(self):
         try:
             dep_set = self.api.get(self.dep_set_id)
-            if dep_set.data['state'] in ['STARTED', 'UPDATED', 'PARTIALLY-STARTED', 'PARTIALLY-UPDATED']:
+            operations = map(lambda x: x['rel'], dep_set.data['operations'])
+            if 'auto-update' in operations:
                 self.api.operation(dep_set, 'auto-update')
                 logging.info(f'Deployment set auto updated: {self.dep_set_id}')
         except Exception as ex:

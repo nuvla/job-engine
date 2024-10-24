@@ -26,7 +26,7 @@ class DeploymentSetAutomaticUpdateJobsDistribution(DistributionBase):
                 filter=filter_and(['state=["STARTED","UPDATED","PARTIALLY-STARTED","PARTIALLY-UPDATED"]',
                                    'auto-update=true',
                                    'next-refresh<="now"']),
-                select='id, parent',
+                select='id',
                 last=10000).resources
         except Exception as ex:
             logging.error(f'Failed to search for auto-update dgs: {ex}')
