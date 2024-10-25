@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import argparse
+import base64
 import logging
 import os
 import random
@@ -153,12 +154,14 @@ class Base(object):
 
     @staticmethod
     def _write_cookies(cookie_file, cookies):
+        decoded_cookies = base64.b64decode(cookies.encode('utf-8')).decode('utf-8')
         cookie_dir = os.path.dirname(cookie_file)
         if not os.path.exists(cookie_dir):
             os.mkdir(cookie_dir, stat.S_IRUSR | stat.S_IWUSR | stat.S_IXUSR)
 
         with open(cookie_file, "w") as f:
-            f.write(cookies)
+            logging.info(f"Writing cookies: {decoded_cookies}")
+            f.write(decoded_cookies)
 
     def _init_nuvla_api(self):
         # true unless header authentication is used
