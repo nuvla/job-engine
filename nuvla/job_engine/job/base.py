@@ -158,7 +158,6 @@ class Base(object):
             os.mkdir(cookie_dir, stat.S_IRUSR | stat.S_IWUSR | stat.S_IXUSR)
 
         with open(cookie_file, "w") as f:
-            MozillaCookieJar()
             f.write(cookies)
 
     def _init_nuvla_api(self):
