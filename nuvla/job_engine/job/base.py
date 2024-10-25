@@ -160,7 +160,6 @@ class Base(object):
             os.mkdir(cookie_dir, stat.S_IRUSR | stat.S_IWUSR | stat.S_IXUSR)
 
         with open(cookie_file, "w") as f:
-            logging.info(f"Writing cookies: {decoded_cookies}")
             f.write(decoded_cookies)
 
     def _init_nuvla_api(self):
