@@ -39,6 +39,9 @@ class Executor(Base):
         parser.add_argument('--job-id', dest='job_id', metavar='ID',
                             help='Pull mode single job id to execute')
 
+        parser.add_argument("--cookies", dest="cookies", default=None,
+                            help="Session cookie", metavar="NE_COOKIES")
+
     @staticmethod
     def get_action_instance(job):
         if 'action' not in job:
