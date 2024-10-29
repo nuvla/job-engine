@@ -165,7 +165,7 @@ class Base(object):
     def _init_nuvla_api(self):
         # true unless header authentication is used
         reauthenticate = self.args.api_authn_header is None and self.args.cookies is None
-        persist_cookie = self.args.cookies is not None
+        persist_cookie = os.getenv("JOB_COOKIES", "")
         cookie_file = TMP_COOKIE_FILE if persist_cookie else None
 
         if persist_cookie:
