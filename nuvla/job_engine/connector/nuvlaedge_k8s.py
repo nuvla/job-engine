@@ -178,7 +178,7 @@ spec:
     def _get_target_node_name(self):
         node_selector_cmd = self.k8s.build_cmd_line(
             ['get', 'deployments.apps', 'agent', '-o',
-             "jsonpath='{.spec.template.spec.nodeSelector.kubernetes\.io/hostname}'"])
+             r"jsonpath='{.spec.template.spec.nodeSelector.kubernetes\.io/hostname}'"])
         log.debug('Node selector command: %s', ' '.join(node_selector_cmd))
         cmd_res = execute_cmd(node_selector_cmd)
         if cmd_res.returncode != 0:
