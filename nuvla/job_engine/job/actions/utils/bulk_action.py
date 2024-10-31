@@ -28,7 +28,10 @@ class BulkAction(object):
 
     def _set_progress_increment(self):
         progress_left = self.FINAL_PROGRESS - self.progress
-        self.progress_increment = progress_left / len(self.todo)
+        if len(self.todo) > 0 :
+            self.progress_increment = progress_left / len(self.todo)
+        else:
+            self.progress_increment = 1
 
     @abc.abstractmethod
     def get_todo(self):
