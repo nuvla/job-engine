@@ -84,8 +84,7 @@ spec:
                '--kubeconfig', self.k8s.kubeconfig()] \
             + command
 
-        if log.level == logging.DEBUG:
-            log.debug('Helm command to run %s ', ' '.join(cmd))
+        log.debug('Helm command to run %s ', ' '.join(cmd))
 
         return execute_cmd(cmd, env=env)
 
@@ -107,7 +106,7 @@ spec:
             values_yaml_fd.close()
         return result
 
-    def _from_helm_repo_cred(self, op, helm_repo_url, helm_repo_cred,
+    def _from_helm_repo_cred(self, op, helm_repo_url, helm_repo_cred: dict,
                              chart_name, version, values_yaml, helm_release,
                              namespace):
         repos_config_fd = None
@@ -117,41 +116,11 @@ spec:
         cmd = [op, helm_release, os.path.join(helm_repo_url, chart_name)]
 
         if helm_repo_url.startswith('http'):
-            repo_name = 'helm-repo'
-
-            repos_config = f"""
-apiVersion: ""
-generated: "0001-01-01T00:00:00Z"
-repositories:
-- caFile: ""
-  certFile: ""
-  insecure_skip_tls_verify: false
-  keyFile: ""
-  name: {repo_name}
-  pass_credentials_all: false
-  url: {helm_repo_url}
-  username: {helm_repo_cred['username']}
-  password: {helm_repo_cred['password']}
-"""
-            repos_config_fd = create_tmp_file(repos_config)
-            result = self.run_command(['repo', 'update',
-                                       '--repository-config', repos_config_fd.name])
-            log.debug('Helm repo update command result: %s', result)
-
-            cmd += ['--repository-config', repos_config_fd.name]
+            cmd, repos_config_fd = self.__store_repo_config(
+                cmd, helm_repo_cred, helm_repo_url)
         elif helm_repo_url.startswith('oci'):
-            auth_string = base64.b64encode(
-                f"{helm_repo_cred['username']}:{helm_repo_cred['password']}".encode('utf-8')
-            ).decode('utf-8')
-            registry_config = {
-                "auths": {
-                    urlparse(helm_repo_url).hostname: {
-                        "auth": auth_string
-                    }
-                }
-            }
-            registry_config_fd = create_tmp_file(json.dumps(registry_config))
-            env = {'HELM_REGISTRY_CONFIG': registry_config_fd.name}
+            registry_config_fd = self.__store_registry_config(
+                env, helm_repo_cred, helm_repo_url)
         else:
             raise Exception(f'Unsupported Helm repository URL: {helm_repo_url}')
 
@@ -182,6 +151,48 @@ repositories:
                 values_yaml_fd.close()
 
         return result
+
+    def __store_repo_config(self, cmd: list, helm_repo_cred: dict,
+                            helm_repo_url: str):
+        repo_name = 'helm-repo'
+        repos_config = f"""
+apiVersion: ""
+generated: "0001-01-01T00:00:00Z"
+repositories:
+- caFile: ""
+  certFile: ""
+  insecure_skip_tls_verify: false
+  keyFile: ""
+  name: {repo_name}
+  pass_credentials_all: false
+  url: {helm_repo_url}
+  username: {helm_repo_cred['username']}
+  password: {helm_repo_cred['password']}
+"""
+        repos_config_fd = create_tmp_file(repos_config)
+        result = self.run_command(['repo', 'update',
+                                   '--repository-config', repos_config_fd.name])
+        log.debug('Helm repo update command result: %s', result)
+        cmd += ['--repository-config', repos_config_fd.name]
+        return cmd, repos_config_fd
+
+    @staticmethod
+    def __store_registry_config(env: dict, helm_repo_cred: dict,
+                                helm_repo_url: str):
+        auth_string = base64.b64encode(
+            f"{helm_repo_cred['username']}:{helm_repo_cred['password']}".encode(
+                'utf-8')
+        ).decode('utf-8')
+        registry_config = {
+            "auths": {
+                urlparse(helm_repo_url).hostname: {
+                    "auth": auth_string
+                }
+            }
+        }
+        registry_config_fd = create_tmp_file(json.dumps(registry_config))
+        env.update({'HELM_REGISTRY_CONFIG': registry_config_fd.name})
+        return registry_config_fd
 
     def _from_helm_repo(self, chart_name, helm_release, helm_repo_url,
                         namespace, op, values_yaml, version):
