@@ -251,7 +251,7 @@ spec:
         install_params = json.loads(self.job.get('payload', '{}'))
         log.debug('Installation params: %s', install_params)
 
-        project_name = install_params['project-name']
+        project_name = install_params.get('project-name')
         if not project_name:
             msg = 'Project name not provided. Cannot proceed.'
             log.error(msg)
@@ -283,10 +283,10 @@ spec:
             cmd.extend(['--set', 'vpnClient=true'])
 
         cmd.extend(
-            self._extra_modules(install_params['config-files']))
+            self._extra_modules(install_params.get('config-files', [])))
 
         cmd.extend(
-            self._env_to_vars(install_params['environment']))
+            self._env_to_vars(install_params.get('environment', {})))
 
         if any(param is None for param in cmd):
             msg = ('Some params of the helm command are not defined. Cannot '
