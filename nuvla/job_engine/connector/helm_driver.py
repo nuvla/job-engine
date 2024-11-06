@@ -1,6 +1,9 @@
+import base64
 import json
 import logging
+import os
 from subprocess import CompletedProcess
+from urllib.parse import urlparse
 
 from nuvla.job_engine.connector.connector import should_connect
 from nuvla.job_engine.connector.k8s_driver import Kubernetes
@@ -72,7 +75,7 @@ spec:
         return result
 
     @should_connect
-    def run_command(self, command: list) -> CompletedProcess:
+    def run_command(self, command: list, env: dict = None) -> CompletedProcess:
         """
         Generic to run a container with a Helm command.
         """
@@ -81,9 +84,9 @@ spec:
                '--kubeconfig', self.k8s.kubeconfig()] \
             + command
 
-        log.debug('Helm command to run %s ', cmd)
+        log.debug('Helm command to run %s ', ' '.join(cmd))
 
-        return execute_cmd(cmd)
+        return execute_cmd(cmd, env=env)
 
     def _from_absolute_url(self, op: str, release: str,
                            absolute_url: str, namespace: str, values_yaml=None):
@@ -103,35 +106,25 @@ spec:
             values_yaml_fd.close()
         return result
 
-    def _from_helm_repo_cred(self, op, helm_repo, helm_repo_cred, chart_name,
-                             version, values_yaml, helm_release, namespace):
-        repo_name = 'helm-repo'
+    def _from_helm_repo_cred(self, op, helm_repo_url, helm_repo_cred: dict,
+                             chart_name, version, values_yaml, helm_release,
+                             namespace):
+        repos_config_fd = None
+        registry_config_fd = None
+        env = {}
 
-        repos_config = f"""
-apiVersion: ""
-generated: "0001-01-01T00:00:00Z"
-repositories:
-- caFile: ""
-  certFile: ""
-  insecure_skip_tls_verify: false
-  keyFile: ""
-  name: {repo_name}
-  pass_credentials_all: false
-  url: {helm_repo}
-  username: {helm_repo_cred['username']}
-  password: {helm_repo_cred['password']}
-"""
-        repos_config_fd = create_tmp_file(repos_config)
+        cmd = [op, helm_release, os.path.join(helm_repo_url, chart_name)]
 
-        result = self.run_command(['repo', 'update',
-                                   '--repository-config', repos_config_fd.name])
-        log.debug('Helm repo update command result: %s', result)
+        if helm_repo_url.startswith('http'):
+            cmd, repos_config_fd = self.__store_repo_config(
+                cmd, helm_repo_cred, helm_repo_url)
+        elif helm_repo_url.startswith('oci'):
+            registry_config_fd = self.__store_registry_config(
+                env, helm_repo_cred, helm_repo_url)
+        else:
+            raise Exception(f'Unsupported Helm repository URL: {helm_repo_url}')
 
-        cmd = [op, helm_release,
-               f'{repo_name}/{chart_name}',
-               '--repository-config', repos_config_fd.name,
-               '--namespace', namespace]
-
+        cmd += ['--namespace', namespace]
         if op == 'install' and namespace:
             cmd += ['--create-namespace']
 
@@ -144,7 +137,7 @@ repositories:
             cmd += ['--values', values_yaml_fd.name]
 
         try:
-            result = self.run_command(cmd)
+            result = self.run_command(cmd, env=env)
             log.debug('Helm %s command result: %s', op, result)
         except Exception as e:
             log.error(f'Error running helm {op}: {e}')
@@ -152,38 +145,92 @@ repositories:
         else:
             if repos_config_fd:
                 repos_config_fd.close()
+            if registry_config_fd:
+                registry_config_fd.close()
             if values_yaml_fd:
                 values_yaml_fd.close()
 
+        return result
+
+    def __store_repo_config(self, cmd: list, helm_repo_cred: dict,
+                            helm_repo_url: str):
+        repo_name = 'helm-repo'
+        repos_config = f"""
+apiVersion: ""
+generated: "0001-01-01T00:00:00Z"
+repositories:
+- caFile: ""
+  certFile: ""
+  insecure_skip_tls_verify: false
+  keyFile: ""
+  name: {repo_name}
+  pass_credentials_all: false
+  url: {helm_repo_url}
+  username: {helm_repo_cred['username']}
+  password: {helm_repo_cred['password']}
+"""
+        repos_config_fd = create_tmp_file(repos_config)
+        result = self.run_command(['repo', 'update',
+                                   '--repository-config', repos_config_fd.name])
+        log.debug('Helm repo update command result: %s', result)
+        cmd += ['--repository-config', repos_config_fd.name]
+        return cmd, repos_config_fd
+
+    @staticmethod
+    def __store_registry_config(env: dict, helm_repo_cred: dict,
+                                helm_repo_url: str):
+        auth_string = base64.b64encode(
+            f"{helm_repo_cred['username']}:{helm_repo_cred['password']}".encode(
+                'utf-8')
+        ).decode('utf-8')
+        registry_config = {
+            "auths": {
+                urlparse(helm_repo_url).hostname: {
+                    "auth": auth_string
+                }
+            }
+        }
+        registry_config_fd = create_tmp_file(json.dumps(registry_config))
+        env.update({'HELM_REGISTRY_CONFIG': registry_config_fd.name})
+        return registry_config_fd
+
+    def _from_helm_repo(self, chart_name, helm_release, helm_repo_url,
+                        namespace, op, values_yaml, version):
+        if helm_repo_url.startswith('http'):
+            cmd = [op, '--repo', helm_repo_url, helm_release, chart_name]
+        elif helm_repo_url.startswith('oci'):
+            cmd = [op, helm_release, os.path.join(helm_repo_url, chart_name)]
+        else:
+            raise Exception(f'Unsupported Helm repository URL: {helm_repo_url}')
+        cmd += ['--namespace', namespace]
+        if op == 'install' and namespace:
+            cmd += ['--create-namespace']
+        if version:
+            cmd += ['--version', version]
+        values_yaml_fd = None
+        if values_yaml:
+            values_yaml_fd = create_tmp_file(values_yaml)
+            cmd += ['--values', values_yaml_fd.name]
+        result = self.run_command(cmd)
+        log.debug('Helm %s command result: %s', op, result)
+        if values_yaml_fd:
+            values_yaml_fd.close()
         return result
 
     def op_install_upgrade(self, op, helm_release, helm_repo_url, helm_repo_cred,
                            helm_absolute_url, chart_name, version, namespace,
                            values_yaml):
         if helm_absolute_url:
-            result = self._from_absolute_url(op, helm_release,
-                                             helm_absolute_url, namespace)
+            return self._from_absolute_url(op, helm_release, helm_absolute_url,
+                                           namespace)
         elif helm_repo_cred:
-            result = self._from_helm_repo_cred(op, helm_repo_url, helm_repo_cred,
-                                               chart_name, version, values_yaml,
-                                               helm_release, namespace)
+            return self._from_helm_repo_cred(op, helm_repo_url, helm_repo_cred,
+                                             chart_name, version, values_yaml,
+                                             helm_release, namespace)
         else:
-            cmd = [op, '--repo', helm_repo_url,
-                   helm_release, chart_name,
-                   '--namespace', namespace]
-            if op == 'install' and namespace:
-                cmd += ['--create-namespace']
-            if version:
-                cmd += ['--version', version]
-            values_yaml_fd = None
-            if values_yaml:
-                values_yaml_fd = create_tmp_file(values_yaml)
-                cmd += ['--values', values_yaml_fd.name]
-            result = self.run_command(cmd)
-            log.debug('Helm %s command result: %s', op, result)
-            if values_yaml_fd:
-                values_yaml_fd.close()
-        return result
+            return self._from_helm_repo(chart_name, helm_release,
+                                        helm_repo_url, namespace, op,
+                                        values_yaml, version)
 
     def install(self, helm_repo, helm_release, chart_name, namespace,
                 version=None, helm_repo_cred=dict, helm_absolute_url=None,
