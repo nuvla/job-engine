@@ -10,7 +10,7 @@ import stat
 import sys
 import threading
 from http.cookiejar import MozillaCookieJar
-from io import BytesIO, StringIO
+from io import StringIO
 
 from nuvla.api import Api
 from requests.exceptions import ConnectionError
@@ -154,48 +154,29 @@ class Base(object):
                 logging.error(f'Failed to initialise StatsD client for {self.args.statsd}: {ex}')
 
     @staticmethod
-    def _write_cookies(cookie_file, cookies):
-        decoded_cookies = base64.b64decode(cookies.encode('utf-8')).decode('utf-8')
-        cookie_dir = os.path.dirname(cookie_file)
-        if not os.path.exists(cookie_dir):
-            os.mkdir(cookie_dir, stat.S_IRUSR | stat.S_IWUSR | stat.S_IXUSR)
-
-        with open(cookie_file, "w") as f:
-            f.write(decoded_cookies)
-
-    @staticmethod
     def _set_cookies(api: Api, cookies: str):
         """
-
         Args:
             api: NuvlaAPI to set the cookies on
             cookies: base64 encoded cookies
-
-        Returns:
-            None
         """
-        api.session.persist_cookie = True
         api.session.cookies = MozillaCookieJar()
-        decoded = base64.b64decode(cookies.encode('utf-8')).decode('utf-8')
+        cookies_bytes = base64.b64decode(cookies.encode('utf-8')).decode('utf-8')
 
         # Cookie file is only used for logging in _really_load method
-        api.session.cookies._really_load(StringIO(decoded), "cookies.txt", ignore_discard=True, ignore_expires=True)
-
+        api.session.cookies._really_load(StringIO(cookies_bytes), "cookies.txt", ignore_discard=True, ignore_expires=True)
 
     def _init_nuvla_api(self):
         # true unless header authentication is used
         cookies = os.getenv("JOB_COOKIES", "")
-        persist_cookie = bool(cookies)
 
-        reauthenticate = self.args.api_authn_header is None and not persist_cookie
+        reauthenticate = self.args.api_authn_header is None and not cookies
 
-        # Set Persist Cookie to False on the constructor to avoid the cookie file to be created
-        # It will be set to True if the cookies are passed afterwards
         self.api = Api(endpoint=self.args.api_url, insecure=self.args.api_insecure,
                        persist_cookie=False, reauthenticate=reauthenticate,
                        authn_header=self.args.api_authn_header)
 
-        if persist_cookie:
+        if cookies:
             self._set_cookies(self.api, cookies)
 
         try:
