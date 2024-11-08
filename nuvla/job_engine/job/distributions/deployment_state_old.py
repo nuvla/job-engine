@@ -2,7 +2,7 @@
 
 import logging
 
-from ..util import override
+from ..util import override, version_smaller
 from ..distributions import distribution
 from .deployment_state import DeploymentStateJobsDistribution
 
@@ -32,14 +32,30 @@ class DeploymentStateOldJobsDistribution(DeploymentStateJobsDistribution):
         else:
             return set()
 
-    def _with_parent(self, deployments, with_parent):
+    def filter_deployments_without_parents(self, deployments):
         existing_parents = self._get_existing_parents(deployments)
-        for r in deployments:
-            p_id = r.data.get('parent')
+        deployments_filtered = []
+        for deployment in deployments:
+            p_id = deployment.data.get('parent')
             if p_id in existing_parents:
-                with_parent.append(r)
+                deployments_filtered.append(deployment)
             else:
-                logging.warning(f'Parent {p_id} is missing for {r.id}')
+                logging.warning(f'Parent {p_id} is missing for {deployment.id}')
+        return deployments_filtered
+
+    def _get_ne_not_supporting_coe_resources(self, deployments: list):
+        ne_ids = [d['nuvlabox'] for d in deployments if d.get('nuvlabox')]
+        if len(ne_ids) > 0:
+            filter_edges = f'id={ne_ids} and nuvlabox-engine-version!=null'
+            resp = self.distributor.api.search(
+                'credential', filter=filter_edges, select='id, nuvlabox-engine-version', last=10000)
+            return {ne.id for ne in resp.resources if version_smaller(ne.get('nuvlabox-engine-version'), (2, 16, 2))}
+        else:
+            return set()
+
+    def filter_deployments_ne_support_coe_resources(self, deployments: list):
+        ne_ids = self._get_ne_not_supporting_coe_resources(deployments)
+        return [d for d in deployments if d.get('nuvlabox') is None or d.get('nuvlabox') in ne_ids]
 
     @override
     def _publish_metric(self, name, value):
@@ -53,8 +69,9 @@ class DeploymentStateOldJobsDistribution(DeploymentStateJobsDistribution):
         deployments_resp = self.distributor.api.search('deployment', filter=filters, select=select)
         self._publish_metric('in_started', deployments_resp.count)
         logging.info(f'Deployments in STARTED: {deployments_resp.count}')
-        with_parent = []
-        self._with_parent(deployments_resp.resources, with_parent)
-        self._publish_metric('in_started_with_parent', len(with_parent))
-        logging.info(f'Deployments in STARTED with parent: {len(with_parent)}')
-        return with_parent
+        deployments_with_parents = self.filter_deployments_without_parents(deployments_resp.resources)
+        self._publish_metric('in_started_with_parent', len(deployments_with_parents))
+        logging.info(f'Deployments in STARTED with parent: {len(deployments_with_parents)}')
+        deployments = self.filter_deployments_ne_support_coe_resources(deployments_with_parents)
+        logging.info(f'Deployments in STARTED with parent and not supporting coe resources: {len(deployments)}')
+        return deployments
