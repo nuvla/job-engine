@@ -1,18 +1,23 @@
 # -*- coding: utf-8 -*-
 
 import argparse
+import base64
 import logging
 import os
 import random
 import signal
+import stat
 import sys
 import threading
+from http.cookiejar import MozillaCookieJar
+from io import StringIO
 
 from nuvla.api import Api
 from requests.exceptions import ConnectionError
 from statsd import StatsClient
 
 STATSD_PORT = 8125
+TMP_COOKIE_FILE = '/tmp/nuvla-cookies/cookies.txt'
 
 names = ['Cartman', 'Kenny', 'Stan', 'Kyle', 'Butters', 'Token', 'Timmy',
          'Wendy', 'M. Garrison', 'Chef', 'Randy', 'Ike', 'Mr. Mackey',
@@ -148,14 +153,34 @@ class Base(object):
             except Exception as ex:
                 logging.error(f'Failed to initialise StatsD client for {self.args.statsd}: {ex}')
 
+    @staticmethod
+    def _set_cookies(api: Api, cookies: str):
+        """
+        Args:
+            api: NuvlaAPI to set the cookies on
+            cookies: base64 encoded cookies
+        """
+        api.session.cookies = MozillaCookieJar()
+        cookies_bytes = base64.b64decode(cookies.encode('utf-8')).decode('utf-8')
+
+        # Cookie file is only used for logging in _really_load method
+        api.session.cookies._really_load(StringIO(cookies_bytes), "cookies.txt", ignore_discard=True, ignore_expires=True)
+
     def _init_nuvla_api(self):
         # true unless header authentication is used
-        reauthenticate = self.args.api_authn_header is None
+        cookies = os.getenv("JOB_COOKIES", "")
+
+        reauthenticate = self.args.api_authn_header is None and not cookies
+
         self.api = Api(endpoint=self.args.api_url, insecure=self.args.api_insecure,
                        persist_cookie=False, reauthenticate=reauthenticate,
                        authn_header=self.args.api_authn_header)
+
+        if cookies:
+            self._set_cookies(self.api, cookies)
+
         try:
-            if self.args.api_authn_header is None:
+            if reauthenticate:
                 if self.args.api_key and self.args.api_secret:
                     response = self.api.login_apikey(self.args.api_key, self.args.api_secret)
                 else:
@@ -167,6 +192,7 @@ class Base(object):
                 # session_id = self.api.current_session()
                 # self.api.operation(self.api.get(session_id), 'switch-group',
                 #                    {'claim': "group/nuvla-admin"})
+
         except ConnectionError as e:
             logging.error('Unable to connect to Nuvla endpoint {}! {}'.format(self.api.endpoint, e))
             exit(1)
