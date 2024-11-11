@@ -44,18 +44,18 @@ class DeploymentStateOldJobsDistribution(DeploymentStateJobsDistribution):
         return deployments_filtered
 
     def _get_ne_not_supporting_coe_resources(self, deployments: list):
-        ne_ids = [d['nuvlabox'] for d in deployments if d.get('nuvlabox')]
+        ne_ids = [d.data['nuvlabox'] for d in deployments if d.data.get('nuvlabox')]
         if len(ne_ids) > 0:
             filter_edges = f'id={ne_ids} and nuvlabox-engine-version!=null'
             resp = self.distributor.api.search(
-                'credential', filter=filter_edges, select='id, nuvlabox-engine-version', last=10000)
-            return {ne.id for ne in resp.resources if version_smaller(ne.get('nuvlabox-engine-version'), (2, 16, 2))}
+                'nuvlabox', filter=filter_edges, select='id, nuvlabox-engine-version', last=10000)
+            return {ne.id for ne in resp.resources if version_smaller(ne.data.get('nuvlabox-engine-version'), (2, 16, 2))}
         else:
             return set()
 
     def filter_deployments_ne_support_coe_resources(self, deployments: list):
         ne_ids = self._get_ne_not_supporting_coe_resources(deployments)
-        return [d for d in deployments if d.get('nuvlabox') is None or d.get('nuvlabox') in ne_ids]
+        return [d for d in deployments if d.data.get('nuvlabox') is None or d.data.get('nuvlabox') in ne_ids]
 
     @override
     def _publish_metric(self, name, value):
