@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 
 import argparse
-import base64
 import logging
 import os
 import random
@@ -9,7 +8,8 @@ import signal
 import stat
 import sys
 import threading
-from http.cookiejar import MozillaCookieJar
+from base64 import b64decode
+from http.cookiejar import LWPCookieJar
 from io import StringIO
 
 from nuvla.api import Api
@@ -160,11 +160,14 @@ class Base(object):
             api: NuvlaAPI to set the cookies on
             cookies: base64 encoded cookies
         """
-        api.session.cookies = MozillaCookieJar()
-        cookies_bytes = base64.b64decode(cookies.encode('utf-8')).decode('utf-8')
+        api.session.cookies = LWPCookieJar()
+        cookies_str = b64decode(cookies.encode('utf-8')).decode('utf-8')
 
         # Cookie file is only used for logging in _really_load method
-        api.session.cookies._really_load(StringIO(cookies_bytes), "cookies.txt", ignore_discard=True, ignore_expires=True)
+        api.session.cookies._really_load(StringIO(cookies_str),
+                                         "cookies.txt",
+                                         ignore_discard=True,
+                                         ignore_expires=True)
 
     def _init_nuvla_api(self):
         # true unless header authentication is used
