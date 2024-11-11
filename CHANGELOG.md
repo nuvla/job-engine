@@ -2,6 +2,13 @@
 
 ## Released
 
+## [4.7.1](https://github.com/nuvla/job-engine/compare/4.7.0...4.7.1) (2024-11-11)
+
+
+### Minor Changes
+
+* use LWPCookieJar format instead of MozillaCookieJar ([#405](https://github.com/nuvla/job-engine/issues/405)) ([7750e6b](https://github.com/nuvla/job-engine/commit/7750e6bf293e153415a10220f6a4125f64e75dd8))
+
 ## [4.7.0](https://github.com/nuvla/job-engine/compare/4.6.1...4.7.0) (2024-11-08)
 
 
