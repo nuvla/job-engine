@@ -2,6 +2,29 @@
 
 ## Released
 
+## [4.7.1](https://github.com/nuvla/job-engine/compare/4.7.0...4.7.1) (2024-11-11)
+
+
+### Minor Changes
+
+* use LWPCookieJar format instead of MozillaCookieJar ([#405](https://github.com/nuvla/job-engine/issues/405)) ([7750e6b](https://github.com/nuvla/job-engine/commit/7750e6bf293e153415a10220f6a4125f64e75dd8))
+
+## [4.7.0](https://github.com/nuvla/job-engine/compare/4.6.1...4.7.0) (2024-11-08)
+
+
+### Features
+
+* allow to provide cookies to authenticate to Nuvla ([#399](https://github.com/nuvla/job-engine/issues/399)) ([588cec1](https://github.com/nuvla/job-engine/commit/588cec139e5d55083d29192d895e06eb35e7728a))
+* **helm-oci-repos:** support of Helm charts from OCI repos ([#402](https://github.com/nuvla/job-engine/issues/402)) ([f8ad021](https://github.com/nuvla/job-engine/commit/f8ad0216e72e9acd2880f93b212fbc30f4acbede))
+
+
+### Bug Fixes
+
+* **bulk-actions:** Progress divide by zero fix ([#401](https://github.com/nuvla/job-engine/issues/401)) ([07e4cad](https://github.com/nuvla/job-engine/commit/07e4cadbe25c5e2255cdd282226cfff09451b448))
+* **BulkDeploymentSetApply:** Set api-endpoint attribute for deployments at update time ([#396](https://github.com/nuvla/job-engine/issues/396)) ([0b1e370](https://github.com/nuvla/job-engine/commit/0b1e37082080359ea751ab7c11d411e7d7a8a47c))
+* **k8s:** NE update - secure get of values from install params ([1a713ac](https://github.com/nuvla/job-engine/commit/1a713ac9b2bc5e0b66deeeee37cf6fcbae5b19d6))
+* **syntax-warn:** avoid syntax warning in the logs ([#400](https://github.com/nuvla/job-engine/issues/400)) ([899b3ed](https://github.com/nuvla/job-engine/commit/899b3edab41483f50745b2498fa99a4e02063c72))
+
 ## [4.6.1](https://github.com/nuvla/job-engine/compare/4.6.0...4.6.1) (2024-10-16)
 
 

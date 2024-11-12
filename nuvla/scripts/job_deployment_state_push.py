@@ -22,13 +22,15 @@ class PushJob(object):
 
 
 def set_api(nuvla_endpoint):
-    tmp_api = Api(endpoint=nuvla_endpoint, insecure=False, reauthenticate=True)
+    kwargs = dict(endpoint=nuvla_endpoint, insecure=False, reauthenticate=True, persist_cookie=False)
+    tmp_api = Api(**kwargs)
     # check SSL connection
     try:
         tmp_api.get("session")
     except requests.exceptions.SSLError:
         logging.warning("Setting {} with an insecure connection".format(nuvla_endpoint))
-        tmp_api = Api(endpoint=nuvla_endpoint, insecure=True, reauthenticate=True)
+        kwargs['insecure'] = True
+        tmp_api = Api(**kwargs)
 
     return tmp_api
 
