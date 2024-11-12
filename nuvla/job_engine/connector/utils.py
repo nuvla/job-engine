@@ -94,11 +94,20 @@ def join_stderr_stdout(process_result: CompletedProcess):
     return f'StdOut: \n{process_result.stdout} \n\nStdErr: \n{process_result.stderr}'
 
 
-def create_tmp_file(content):
-    file = NamedTemporaryFile(delete=True)
+def create_tmp_file(content, dir=None):
+    file = NamedTemporaryFile(delete=True, dir=dir)
     file.write(content.encode())
     file.flush()
     return file
+
+
+def close_file(fd):
+    """Close file descriptor if it exists and is a file."""
+    if fd and os.path.exists(fd.name):
+        try:
+            fd.close()
+        except FileNotFoundError:
+            pass
 
 
 def string_interpolate_env_vars(string: str, env: dict) -> str:
@@ -145,12 +154,20 @@ def run_in_tmp_dir(func):
     temporary directory before the function is executed and changed back after.
     """
     def wrapper(*args, **kwargs):
-        curr_dir = os.getcwd()
+        try:
+            curr_dir = os.getcwd()
+        except FileNotFoundError:
+            curr_dir = None
         with TemporaryDirectory() as dir_name:
             os.chdir(dir_name)
             kwargs.update({'work_dir': dir_name})
-            res = func(*args, **kwargs)
-            os.chdir(curr_dir)
+            try:
+                res = func(*args, **kwargs)
+            except Exception as ex:
+                log.exception('Error running in temp dir')
+                os.chdir(curr_dir or '/')
+                raise ex
+            os.chdir(curr_dir or '/')
             return res
     return wrapper
 
