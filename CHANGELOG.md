@@ -2,6 +2,14 @@
 
 ## Released
 
+## [4.8.1](https://github.com/nuvla/job-engine/compare/4.8.0...4.8.1) (2024-11-20)
+
+
+### Bug Fixes
+
+* **Deployment group:** Deploy on docker by default if both docker and kubernetes are available (temporary fix) ([bbdfac2](https://github.com/nuvla/job-engine/commit/bbdfac23b8e5212372cc27a8c963524a32eae1b1))
+* **update:** Added K8s nuvlaedge update operation parsing capabilities for helm params configuration ([#409](https://github.com/nuvla/job-engine/issues/409)) ([dedccc9](https://github.com/nuvla/job-engine/commit/dedccc9fe421c032bb71b1c4581c3b2dcfa77135))
+
 ## [4.8.0](https://github.com/nuvla/job-engine/compare/4.7.1...4.8.0) (2024-11-20)
 
 
