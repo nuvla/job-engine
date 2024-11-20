@@ -219,10 +219,6 @@ spec:
         variable_pattern = r'^(\w+\.)+\w+=\w+$'
         env_conf = self._get_env_by_pattern(envs, variable_pattern)
 
-        # Remove found envs from the dict to prevent errors when exporting the variables as no . are allowed
-        to_remove = [envs.index(env) for env in env_conf if env in envs]
-        [envs.pop(i) for i in to_remove]
-
         return env_conf
 
     def _env_to_vars(self, envs: list) -> list:
