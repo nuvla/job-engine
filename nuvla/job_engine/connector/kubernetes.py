@@ -190,16 +190,15 @@ class AppMgmtHelm(ConnectorCOE):
                                                   helm_repo_url, helm_repo_cred,
                                                   helm_absolute_url, chart_name,
                                                   version, namespace,
-                                                  chart_values_yaml)
+                                                  chart_values_yaml, work_dir)
         except Exception as ex:
             log.exception(f'Failed to {op} Helm chart: {ex}')
-            if 'cannot re-use a name' in ex.args[0]:
+            if isinstance(ex.args[0], str) and 'cannot re-use a name' in ex.args[0]:
                 args = list(ex.args)
                 args[0] = (args[0].strip() +
                            f'. Helm release: {helm_release}. '
                            f'Currently running: {self.helm.list(namespace)}')
                 ex.args = tuple(args)
-                raise ex
             raise ex
 
         objects = self.get_services(namespace, None)
@@ -215,7 +214,7 @@ class AppMgmtHelm(ConnectorCOE):
         try:
             return self._op_install_upgrade('upgrade', **kwargs)
         except Exception as ex:
-            if 'UPGRADE FAILED' in ex.args[0]:
+            if isinstance(ex.args[0], str) and 'UPGRADE FAILED' in ex.args[0]:
                 if 'has no deployed releases' in ex.args[0]:
                     log.warning('No release found. Run installation instead.')
                     return self._op_install_upgrade('install', **kwargs)
