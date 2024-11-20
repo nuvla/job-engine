@@ -221,7 +221,9 @@ spec:
 
         # Remove found envs from the dict to prevent errors when exporting the variables as no . are allowed
         for env in env_conf:
-            envs.pop(env.split('=')[0])
+            if env != '--set' and '=' in env:
+                envs.pop(env.split('=')[0])
+
 
         return env_conf
 
