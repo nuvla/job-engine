@@ -78,11 +78,14 @@ class BulkDeploymentSetApply(BulkAction):
 
     def _get_infra(self, target):
         nuvlabox = self.user_api.get(target).data
+        # TODO: use the subtype of deployment-set once available
         filter_subtype_infra = f'subtype={["swarm", "kubernetes"]}'
         filter_infra = f'parent="{nuvlabox["infrastructure-service-group"]}" ' \
                        f'and {filter_subtype_infra}'
         infras = self.user_api.search('infrastructure-service',
-                                      filter=filter_infra, select='id').resources
+                                      filter=filter_infra,
+                                      orderby='subtype:desc',
+                                      select='id').resources
         if len(infras) > 0:
             return infras[0].id
 
