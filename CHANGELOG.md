@@ -2,6 +2,19 @@
 
 ## Released
 
+## [4.8.0](https://github.com/nuvla/job-engine/compare/4.7.1...4.8.0) (2024-11-20)
+
+
+### Features
+
+* **deployment_set_automatic_update.pt:** New action support auto-update deployment group ([9839de3](https://github.com/nuvla/job-engine/commit/9839de33edc62fe495779385d98cf27e8649cc87))
+* **deployment_set_automatic_update.py:** New distribution ([9839de3](https://github.com/nuvla/job-engine/commit/9839de33edc62fe495779385d98cf27e8649cc87))
+
+
+### Bug Fixes
+
+* fix helm update failing after failed install; improve oci vs http install/upgrade command ([#408](https://github.com/nuvla/job-engine/issues/408)) ([1ca4553](https://github.com/nuvla/job-engine/commit/1ca4553e6ab5ac6fcee16dea137e3724de593bd1))
+
 ## [4.7.1](https://github.com/nuvla/job-engine/compare/4.7.0...4.7.1) (2024-11-11)
 
 
