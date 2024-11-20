@@ -193,7 +193,7 @@ spec:
         return cmd_res.stdout
 
     @staticmethod
-    def _get_env_by_pattern(envs: dict, pattern: str) -> list:
+    def _get_env_by_pattern(envs: list, pattern: str) -> list:
         env_conf = []
 
         for env_pair in envs:
@@ -207,7 +207,7 @@ spec:
         return env_conf
 
 
-    def _conf_to_vars(self, envs: dict) -> list:
+    def _conf_to_vars(self, envs: list) -> list:
         """
         Like env to vars, but parses helm chart values dot linked variables.
         Args:
@@ -220,14 +220,12 @@ spec:
         env_conf = self._get_env_by_pattern(envs, variable_pattern)
 
         # Remove found envs from the dict to prevent errors when exporting the variables as no . are allowed
-        for env in env_conf:
-            if env != '--set' and '=' in env:
-                envs.pop(env.split('=')[0])
-
+        to_remove = [envs.index(env) for env in env_conf if env in envs]
+        [envs.pop(i) for i in to_remove]
 
         return env_conf
 
-    def _env_to_vars(self, envs: dict) -> list:
+    def _env_to_vars(self, envs: list) -> list:
         """
         Parse the environment variables and convert them to helm --set vars.
         """
