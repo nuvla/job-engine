@@ -195,11 +195,11 @@ spec:
     @staticmethod
     def _get_env_by_pattern(envs: list, pattern: str) -> list:
         env_conf = []
-
+        compiled_pattern = re.compile(pattern)
         for env_pair in envs:
             log.debug('Environment pair: %s', env_pair)
             env_pair_mod = ''.join(env_pair.split())
-            re_result = re.match(pattern, env_pair_mod)
+            re_result = compiled_pattern.match(env_pair_mod)
             log.debug('Matching result: %s', re_result)
             if re_result:
                 env_conf.extend(['--set', env_pair_mod])
@@ -216,7 +216,7 @@ spec:
         Returns:
 
         """
-        variable_pattern = r'^(\w+\.)+\w+=\w+$'
+        variable_pattern = r'(\w+\.)+\w+=.*$'
         env_conf = self._get_env_by_pattern(envs, variable_pattern)
 
         return env_conf
@@ -226,7 +226,7 @@ spec:
         Parse the environment variables and convert them to helm --set vars.
         """
 
-        env_pair_pattern = r'^\w+=\w+$'
+        env_pair_pattern = r'\w+=.*$'
 
         set_vars = self._get_env_by_pattern(envs, env_pair_pattern)
         log.info('Environment arguments: %s', set_vars)
