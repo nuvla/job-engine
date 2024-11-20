@@ -264,14 +264,17 @@ class Job(dict):
             self._payload = json.loads(self.cimi_job.data['payload'])
         return self._payload
 
-    def get_user_api(self):
-        authn_info = self.payload['authn-info']
+    def get_api(self, authn_info):
         insecure = not self.api.session.verify
         return Api(endpoint=self.api.endpoint, insecure=insecure,
                    persist_cookie=False, reauthenticate=True,
                    authn_header=f'{authn_info["user-id"]} '
                                 f'{authn_info["active-claim"]} '
                                 f'{" ".join(authn_info["claims"])}')
+
+    def get_user_api(self):
+        authn_info = self.payload['authn-info']
+        return self.get_api(authn_info)
 
     @property
     def target_resource_href(self) -> str:
