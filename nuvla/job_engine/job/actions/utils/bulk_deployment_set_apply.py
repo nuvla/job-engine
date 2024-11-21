@@ -159,7 +159,7 @@ class BulkDeploymentSetApply(BulkAction):
             self._update_env_deployment(deployment_data, application)
             self._update_files(deployment_data, application)
             self._update_regs_creds_deployment(deployment_data, application)
-            deployment = self.dg_api.edit(deployment_id, deployment_data)
+            deployment = self.dg_owner_api.edit(deployment_id, deployment_data)
             action = 'update' if deployment.operations.get('update') else 'start'
             self.log.debug(f'{self.dep_set_id} - {action}ing deployment: {deployment_id}')
             return self.dg_api.operation(deployment, action,
