@@ -2,6 +2,14 @@
 
 ## Released
 
+## [4.8.2](https://github.com/nuvla/job-engine/compare/4.8.1...4.8.2) (2024-11-21)
+
+
+### Bug Fixes
+
+* **action_bulk_deployment_set_apply:** Take Operational Status files overrides into account when creating deployments of a DG ([e656cd9](https://github.com/nuvla/job-engine/commit/e656cd9af34c160dd86e900857bd23944e757a35))
+* **dg-permission-issues:** make api calls with the right permissions ([#410](https://github.com/nuvla/job-engine/issues/410)) ([e656cd9](https://github.com/nuvla/job-engine/commit/e656cd9af34c160dd86e900857bd23944e757a35))
+
 ## [4.8.1](https://github.com/nuvla/job-engine/compare/4.8.0...4.8.1) (2024-11-20)
 
 
