@@ -2,6 +2,13 @@
 
 ## Released
 
+## [4.8.3](https://github.com/nuvla/job-engine/compare/4.8.2...4.8.3) (2024-11-26)
+
+
+### Bug Fixes
+
+* **bulk_deployment_set_apply.py:** Avoid creating deployment without target credential ([#414](https://github.com/nuvla/job-engine/issues/414)) ([858dae1](https://github.com/nuvla/job-engine/commit/858dae166c4e6a8248b33786a3dc6bd1f19aa69d))
+
 ## [4.8.2](https://github.com/nuvla/job-engine/compare/4.8.1...4.8.2) (2024-11-21)
 
 
