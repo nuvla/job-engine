@@ -109,11 +109,15 @@ class BulkDeploymentSetApply(BulkAction):
                 return creds[0].id
 
     def _resolve_target(self, target):
+        cred = None
         if target:
             if target.startswith('credential/'):
-                return target
+                cred = target
             elif target.startswith('nuvlabox/'):
-                return self._get_cred(target)
+                cred = self._get_cred(target)
+        if cred is None:
+            raise RuntimeError(f"Credential not found {target}!")
+        return cred
 
     def _load_reset_deployment(self, deployment_id, application):
         application_href = f'{application["id"]}_{application["version"]}'
