@@ -43,7 +43,7 @@ def main():
 
     desired_replicas = 1
 
-    nuvla = Api(endpoint=nuvla_endpoint, insecure=True)
+    nuvla = Api(endpoint=nuvla_endpoint, insecure=True, persist_cookie=False)
     nuvla.login_password(username, password)
 
     nuvla_dpl = Deployment(nuvla)

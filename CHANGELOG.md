@@ -2,6 +2,65 @@
 
 ## Released
 
+## [4.8.3](https://github.com/nuvla/job-engine/compare/4.8.2...4.8.3) (2024-11-26)
+
+
+### Bug Fixes
+
+* **bulk_deployment_set_apply.py:** Avoid creating deployment without target credential ([#414](https://github.com/nuvla/job-engine/issues/414)) ([858dae1](https://github.com/nuvla/job-engine/commit/858dae166c4e6a8248b33786a3dc6bd1f19aa69d))
+
+## [4.8.2](https://github.com/nuvla/job-engine/compare/4.8.1...4.8.2) (2024-11-21)
+
+
+### Bug Fixes
+
+* **action_bulk_deployment_set_apply:** Take Operational Status files overrides into account when creating deployments of a DG ([e656cd9](https://github.com/nuvla/job-engine/commit/e656cd9af34c160dd86e900857bd23944e757a35))
+* **dg-permission-issues:** make api calls with the right permissions ([#410](https://github.com/nuvla/job-engine/issues/410)) ([e656cd9](https://github.com/nuvla/job-engine/commit/e656cd9af34c160dd86e900857bd23944e757a35))
+
+## [4.8.1](https://github.com/nuvla/job-engine/compare/4.8.0...4.8.1) (2024-11-20)
+
+
+### Bug Fixes
+
+* **Deployment group:** Deploy on docker by default if both docker and kubernetes are available (temporary fix) ([bbdfac2](https://github.com/nuvla/job-engine/commit/bbdfac23b8e5212372cc27a8c963524a32eae1b1))
+* **update:** Added K8s nuvlaedge update operation parsing capabilities for helm params configuration ([#409](https://github.com/nuvla/job-engine/issues/409)) ([dedccc9](https://github.com/nuvla/job-engine/commit/dedccc9fe421c032bb71b1c4581c3b2dcfa77135))
+
+## [4.8.0](https://github.com/nuvla/job-engine/compare/4.7.1...4.8.0) (2024-11-20)
+
+
+### Features
+
+* **deployment_set_automatic_update.pt:** New action support auto-update deployment group ([9839de3](https://github.com/nuvla/job-engine/commit/9839de33edc62fe495779385d98cf27e8649cc87))
+* **deployment_set_automatic_update.py:** New distribution ([9839de3](https://github.com/nuvla/job-engine/commit/9839de33edc62fe495779385d98cf27e8649cc87))
+
+
+### Bug Fixes
+
+* fix helm update failing after failed install; improve oci vs http install/upgrade command ([#408](https://github.com/nuvla/job-engine/issues/408)) ([1ca4553](https://github.com/nuvla/job-engine/commit/1ca4553e6ab5ac6fcee16dea137e3724de593bd1))
+
+## [4.7.1](https://github.com/nuvla/job-engine/compare/4.7.0...4.7.1) (2024-11-11)
+
+
+### Minor Changes
+
+* use LWPCookieJar format instead of MozillaCookieJar ([#405](https://github.com/nuvla/job-engine/issues/405)) ([7750e6b](https://github.com/nuvla/job-engine/commit/7750e6bf293e153415a10220f6a4125f64e75dd8))
+
+## [4.7.0](https://github.com/nuvla/job-engine/compare/4.6.1...4.7.0) (2024-11-08)
+
+
+### Features
+
+* allow to provide cookies to authenticate to Nuvla ([#399](https://github.com/nuvla/job-engine/issues/399)) ([588cec1](https://github.com/nuvla/job-engine/commit/588cec139e5d55083d29192d895e06eb35e7728a))
+* **helm-oci-repos:** support of Helm charts from OCI repos ([#402](https://github.com/nuvla/job-engine/issues/402)) ([f8ad021](https://github.com/nuvla/job-engine/commit/f8ad0216e72e9acd2880f93b212fbc30f4acbede))
+
+
+### Bug Fixes
+
+* **bulk-actions:** Progress divide by zero fix ([#401](https://github.com/nuvla/job-engine/issues/401)) ([07e4cad](https://github.com/nuvla/job-engine/commit/07e4cadbe25c5e2255cdd282226cfff09451b448))
+* **BulkDeploymentSetApply:** Set api-endpoint attribute for deployments at update time ([#396](https://github.com/nuvla/job-engine/issues/396)) ([0b1e370](https://github.com/nuvla/job-engine/commit/0b1e37082080359ea751ab7c11d411e7d7a8a47c))
+* **k8s:** NE update - secure get of values from install params ([1a713ac](https://github.com/nuvla/job-engine/commit/1a713ac9b2bc5e0b66deeeee37cf6fcbae5b19d6))
+* **syntax-warn:** avoid syntax warning in the logs ([#400](https://github.com/nuvla/job-engine/issues/400)) ([899b3ed](https://github.com/nuvla/job-engine/commit/899b3edab41483f50745b2498fa99a4e02063c72))
+
 ## [4.6.1](https://github.com/nuvla/job-engine/compare/4.6.0...4.6.1) (2024-10-16)
 
 
