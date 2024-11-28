@@ -71,6 +71,7 @@ class BulkAction(object):
             else:
                 logging.error(f'Unexpected status code {status}')
         except Exception as ex:
+            # errors hidden to user when no resource id
             if resource_id:
                 self.result[self.RESULT_BOOTSTRAP_EXCEPTIONS][resource_id] = repr(ex)
                 self.result[self.RESULT_FAILED].append(resource_id)
