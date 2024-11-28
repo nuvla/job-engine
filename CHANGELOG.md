@@ -2,6 +2,13 @@
 
 ## Released
 
+## [4.8.4](https://github.com/nuvla/job-engine/compare/4.8.3...4.8.4) (2024-11-28)
+
+
+### Bug Fixes
+
+* **dg-auto-update-acl:** make jobs created by auto update visible to the dg owner ([#417](https://github.com/nuvla/job-engine/issues/417)) ([dac2a9a](https://github.com/nuvla/job-engine/commit/dac2a9a1982e2ee42ec605e03bee2559a80006fb))
+
 ## [4.8.3](https://github.com/nuvla/job-engine/compare/4.8.2...4.8.3) (2024-11-26)
 
 
