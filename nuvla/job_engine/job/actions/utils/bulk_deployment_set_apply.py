@@ -30,7 +30,7 @@ class BulkDeploymentSetApply(BulkAction):
 
     @staticmethod
     def _is_edge_target(target):
-        return target and target.startwith('nuvlabox/')
+        return target and target.startswith('nuvlabox/')
 
     def _get_edge(self, target):
         edge = self.edges.get(target)
@@ -43,12 +43,12 @@ class BulkDeploymentSetApply(BulkAction):
         return edge
 
     def _throw_edge_offline(self, target):
-        if (BulkDeploymentSetApply._is_edge_target(target)
-                and not self._get_edge(target).get('online', False)):
-            raise RuntimeError(f'Edge is offline: {target}')
+        if BulkDeploymentSetApply._is_edge_target(target):
+            edge = self._get_edge(target)
+            if not edge.get('online', False):
+                raise RuntimeError(f'Edge is offline: {edge.get("name") or target}')
 
-    def _edge_credential(self, target):
-        edge = self._get_edge(target)
+    def _edge_credential(self, edge):
         cred = edge.get('credential')
         if cred == '':
             return None
@@ -60,14 +60,15 @@ class BulkDeploymentSetApply(BulkAction):
                 filter_cred = f'parent="{infra_id}" and {filter_cred_subtype}'
                 creds = self.dg_owner_api.search('credential', filter=filter_cred, select='id').resources
             cred = creds[0].id if len(creds) > 0 else ''
-            self.edges[target]['credential'] = cred
+            self.edges[edge.get('id')]['credential'] = cred
         return cred
 
     def _resolve_credential(self, target):
         if BulkDeploymentSetApply._is_edge_target(target):
-            cred = self._edge_credential(target)
+            edge = self._get_edge(target)
+            cred = self._edge_credential(edge)
             if cred is None:
-                raise RuntimeError(f'Credential for edge not found: {target}')
+                raise RuntimeError(f'Credential for edge not found: {edge.get("name") or target}')
             return cred
         else:
             return target

@@ -12,6 +12,7 @@ class BulkAction(object):
     RESULT_SUCCESS = 'SUCCESS'
     RESULT_QUEUED = 'QUEUED'
     RESULT_ACTIONS_CALLED = 'ACTIONS_CALLED'
+    RESULT_ACTIONS_CALL_FAILED = 'ACTIONS_CALL_FAILED'
     RESULT_ACTIONS_COUNT = 'ACTIONS_COUNT'
     RESULT_JOBS_DONE = 'JOBS_DONE'
     RESULT_JOBS_COUNT = 'JOBS_COUNT'
@@ -24,7 +25,8 @@ class BulkAction(object):
             self.RESULT_FAILED: [],
             self.RESULT_SUCCESS: [],
             self.RESULT_QUEUED: [],
-            self.RESULT_ACTIONS_CALLED: 0}
+            self.RESULT_ACTIONS_CALLED: 0,
+            self.RESULT_ACTIONS_CALL_FAILED: 0}
         self.todo = None
         self.progress = self.job.get('progress', 0)
         self.progress_increment = None
@@ -69,17 +71,22 @@ class BulkAction(object):
                 resource_id = response.data.get('resource-id')
                 self.result[self.RESULT_SUCCESS].append(resource_id)
             else:
-                logging.error(f'Unexpected status code {status}')
+                raise RuntimeError(f'Unexpected status code {status} for: {todo_el}')
+            self.result[self.RESULT_ACTIONS_CALLED] += 1
         except Exception as ex:
-            # errors hidden to user when no resource id
+            self.result[self.RESULT_ACTIONS_CALL_FAILED] += 1
             if resource_id:
                 self.result[self.RESULT_BOOTSTRAP_EXCEPTIONS][resource_id] = repr(ex)
                 self.result[self.RESULT_FAILED].append(resource_id)
+            else:
+                if self.result[self.RESULT_BOOTSTRAP_EXCEPTIONS].get('other'):
+                    self.result[self.RESULT_BOOTSTRAP_EXCEPTIONS]['other'].append(repr(ex))
+                else:
+                    self.result[self.RESULT_BOOTSTRAP_EXCEPTIONS]['other'] = [repr(ex)]
 
     def bulk_operation(self):
         for todo_el in self.todo[:]:
             self.try_action(todo_el)
-            self.result[self.RESULT_ACTIONS_CALLED] += 1
             self.progress += self.progress_increment
             self.job.update_job(status_message=json.dumps(self.result),
                                 progress=int(self.progress))
