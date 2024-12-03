@@ -75,14 +75,15 @@ class BulkAction(object):
             self.result[self.RESULT_ACTIONS_CALLED] += 1
         except Exception as ex:
             self.result[self.RESULT_ACTIONS_CALL_FAILED] += 1
+            ex_msg = str(ex)
             if resource_id:
-                self.result[self.RESULT_BOOTSTRAP_EXCEPTIONS][resource_id] = repr(ex)
+                self.result[self.RESULT_BOOTSTRAP_EXCEPTIONS][resource_id] = ex_msg
                 self.result[self.RESULT_FAILED].append(resource_id)
             else:
                 if self.result[self.RESULT_BOOTSTRAP_EXCEPTIONS].get('other'):
-                    self.result[self.RESULT_BOOTSTRAP_EXCEPTIONS]['other'].append(repr(ex))
+                    self.result[self.RESULT_BOOTSTRAP_EXCEPTIONS]['other'].append(ex_msg)
                 else:
-                    self.result[self.RESULT_BOOTSTRAP_EXCEPTIONS]['other'] = [repr(ex)]
+                    self.result[self.RESULT_BOOTSTRAP_EXCEPTIONS]['other'] = [ex_msg]
 
     def bulk_operation(self):
         for todo_el in self.todo[:]:

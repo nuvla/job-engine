@@ -4,29 +4,18 @@ import logging
 from ..utils.bulk_action import BulkAction
 
 
-class BulkDeploymentSetApply(BulkAction):
-    KEY_DEPLOYMENTS_TO_ADD = 'deployments-to-add'
-    KEY_DEPLOYMENTS_TO_UPDATE = 'deployments-to-update'
-    KEY_DEPLOYMENTS_TO_REMOVE = 'deployments-to-remove'
+def get_dg_owner_api(job):
+    authn_info = job.payload['dg-owner-authn-info']
+    return job.get_api(authn_info)
 
-    def __init__(self, job):
-        super().__init__(job)
-        self.dg_owner_api = self.get_dg_owner_api()
-        self.dg_api = self.get_dg_api()
-        self.dep_set_id = self.job['target-resource']['href']
-        self.action_name = None
-        self._log = None
-        self.operations = {self.KEY_DEPLOYMENTS_TO_ADD: self._add_deployment,
-                           self.KEY_DEPLOYMENTS_TO_UPDATE: self._update_deployment,
-                           self.KEY_DEPLOYMENTS_TO_REMOVE: self._remove_deployment}
-        self.api_endpoint = None
+def get_dg_api(job):
+    authn_info = job.payload['dg-authn-info']
+    return job.get_api(authn_info)
+
+class EdgeResolver:
+    def __init__(self, dg_owner_api):
         self.edges = {}
-
-    @property
-    def log(self):
-        if not self._log:
-            self._log = logging.getLogger(self.action_name)
-        return self._log
+        self.dg_owner_api = dg_owner_api
 
     @staticmethod
     def _is_edge_target(target):
@@ -41,12 +30,6 @@ class BulkDeploymentSetApply(BulkAction):
                 edge = {}
             self.edges[target] = edge
         return edge
-
-    def _throw_edge_offline(self, target):
-        if BulkDeploymentSetApply._is_edge_target(target):
-            edge = self._get_edge(target)
-            if not edge.get('online', False):
-                raise RuntimeError(f'Edge is offline: {edge.get("name") or target}')
 
     def _edge_credential(self, edge):
         cred = edge.get('credential')
@@ -63,8 +46,35 @@ class BulkDeploymentSetApply(BulkAction):
             self.edges[edge.get('id')]['credential'] = cred
         return cred
 
-    def _resolve_credential(self, target):
-        if BulkDeploymentSetApply._is_edge_target(target):
+    def _get_infra(self, edge):
+        # TODO: use the subtype of deployment-set once available
+        filter_subtype_infra = f'subtype={["swarm", "kubernetes"]}'
+        filter_infra = f'parent="{edge["infrastructure-service-group"]}" ' \
+                       f'and {filter_subtype_infra}'
+        infras = self.dg_owner_api.search('infrastructure-service',
+                                          filter=filter_infra,
+                                          orderby='subtype:desc',
+                                          select='id').resources
+        if len(infras) > 0:
+            return infras[0].id
+
+    def _get_cred(self, target):
+        infra_id = self._get_infra(target)
+        if infra_id:
+            filter_cred_subtype = f'subtype={["infrastructure-service-swarm", "infrastructure-service-kubernetes"]}'
+            filter_cred = f'parent="{infra_id}" and {filter_cred_subtype}'
+            creds = self.dg_owner_api.search('credential', filter=filter_cred, select='id').resources
+            if len(creds) > 0:
+                return creds[0].id
+
+    def throw_edge_offline(self, target):
+        if EdgeResolver._is_edge_target(target):
+            edge = self._get_edge(target)
+            if not edge.get('online', False):
+                raise RuntimeError(f'Edge is offline: {edge.get("name") or target}')
+
+    def resolve_credential(self, target):
+        if EdgeResolver._is_edge_target(target):
             edge = self._get_edge(target)
             cred = self._edge_credential(edge)
             if cred is None:
@@ -73,17 +83,33 @@ class BulkDeploymentSetApply(BulkAction):
         else:
             return target
 
+class BulkDeploymentSetApply(BulkAction):
+    KEY_DEPLOYMENTS_TO_ADD = 'deployments-to-add'
+    KEY_DEPLOYMENTS_TO_UPDATE = 'deployments-to-update'
+    KEY_DEPLOYMENTS_TO_REMOVE = 'deployments-to-remove'
+
+    def __init__(self, job):
+        super().__init__(job)
+        self.dg_owner_api = get_dg_owner_api(job)
+        self.dg_api = get_dg_api(job)
+        self.dep_set_id = self.job['target-resource']['href']
+        self.action_name = None
+        self._log = None
+        self.operations = {self.KEY_DEPLOYMENTS_TO_ADD: self._add_deployment,
+                           self.KEY_DEPLOYMENTS_TO_UPDATE: self._update_deployment,
+                           self.KEY_DEPLOYMENTS_TO_REMOVE: self._remove_deployment}
+        self.api_endpoint = None
+        self.edge_resolver = EdgeResolver(self.dg_owner_api)
+
+    @property
+    def log(self):
+        if not self._log:
+            self._log = logging.getLogger(self.action_name)
+        return self._log
+
     @staticmethod
     def _action_name_todo_el(operational_status, key):
         return [(key, el) for el in operational_status.get(key, [])]
-
-    def get_dg_owner_api(self):
-        authn_info = self.job.payload['dg-owner-authn-info']
-        return self.job.get_api(authn_info)
-
-    def get_dg_api(self):
-        authn_info = self.job.payload['dg-authn-info']
-        return self.job.get_api(authn_info)
 
     def get_todo(self):
         deployment_set = self.dg_api.get(self.dep_set_id)
@@ -132,27 +158,6 @@ class BulkDeploymentSetApply(BulkAction):
         if self.api_endpoint:
             deployment['api-endpoint'] = self.api_endpoint
 
-    def _get_infra(self, edge):
-        # TODO: use the subtype of deployment-set once available
-        filter_subtype_infra = f'subtype={["swarm", "kubernetes"]}'
-        filter_infra = f'parent="{edge["infrastructure-service-group"]}" ' \
-                       f'and {filter_subtype_infra}'
-        infras = self.dg_owner_api.search('infrastructure-service',
-                                          filter=filter_infra,
-                                          orderby='subtype:desc',
-                                          select='id').resources
-        if len(infras) > 0:
-            return infras[0].id
-
-    def _get_cred(self, target):
-        infra_id = self._get_infra(target)
-        if infra_id:
-            filter_cred_subtype = f'subtype={["infrastructure-service-swarm", "infrastructure-service-kubernetes"]}'
-            filter_cred = f'parent="{infra_id}" and {filter_cred_subtype}'
-            creds = self.dg_owner_api.search('credential', filter=filter_cred, select='id').resources
-            if len(creds) > 0:
-                return creds[0].id
-
     def _load_reset_deployment(self, deployment_id, application):
         application_href = f'{application["id"]}_{application["version"]}'
         module = self.dg_owner_api.get(application_href)
@@ -166,8 +171,8 @@ class BulkDeploymentSetApply(BulkAction):
     def _add_deployment(self, deployment_to_add):
         try:
             target = deployment_to_add['target']
-            self._throw_edge_offline(target)
-            credential = self._resolve_credential(target)
+            self.edge_resolver.throw_edge_offline(target)
+            credential = self.edge_resolver.resolve_credential(target)
             application = deployment_to_add["application"]
             application_href = f'{application["id"]}_{application["version"]}'
             app_set = deployment_to_add['app-set']
@@ -192,7 +197,7 @@ class BulkDeploymentSetApply(BulkAction):
         try:
             deployment_id = deployment_to_update[0]['id']
             target = deployment_to_update[1]['target']
-            self._throw_edge_offline(target)
+            self.edge_resolver.throw_edge_offline(target)
             self.log.info(f'{self.dep_set_id} - Update deployment: {deployment_id}')
             application = deployment_to_update[1]["application"]
             deployment_data = self._load_reset_deployment(deployment_id, application)
@@ -219,7 +224,7 @@ class BulkDeploymentSetApply(BulkAction):
                 return self.dg_api.delete(deployment_id)
             else:
                 target = deployment.data.get('nuvlabox')
-                self._throw_edge_offline(target)
+                self.edge_resolver.throw_edge_offline(target)
                 self.log.debug(f'{self.dep_set_id} - stopping/delete deployment: {deployment_id}')
                 return self.dg_api.operation(deployment, 'stop',
                                              data={'low-priority': True,
