@@ -3,6 +3,7 @@
 import logging
 from abc import abstractmethod
 from ...util import mapv
+from ..utils.bulk_deployment_set_apply import get_dg_owner_api
 
 
 class DeploymentSetRemove(object):
@@ -11,6 +12,7 @@ class DeploymentSetRemove(object):
         self.job = job
         self.api = job.api
         self.dep_set_id = self.job['target-resource']['href']
+        self.dg_owner_api = get_dg_owner_api(job)
 
     def _deployments_to_remove(self):
         filter_deployment_set = f'deployment-set="{self.dep_set_id}"'
@@ -31,7 +33,7 @@ class DeploymentSetRemove(object):
             logging.error(f'Failed to remove {deployment_id}: {repr(ex)}')
 
     def do_work(self):
-        logging.info(f'Start bulk deployment set remove {self.job.id}')
+        logging.info(f'Start deployment set remove {self.job.id}')
         mapv(self._remove_deployment, self._deployments_to_remove())
-        logging.info(f'End of bulk deployment set apply remove {self.job.id}')
+        logging.info(f'End of deployment set remove {self.job.id}')
         return 0

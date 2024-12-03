@@ -11,4 +11,4 @@ class DeploymentSetDeleteJob(DeploymentSetRemove):
         super().__init__(job)
 
     def _delete(self, deployment_id):
-        self.api.delete(deployment_id)
+        self.dg_owner_api.delete(deployment_id)
