@@ -32,14 +32,16 @@ class DeploymentStateOldJobsDistribution(DeploymentStateJobsDistribution):
         else:
             return set()
 
-    def _with_parent(self, deployments, with_parent):
+    def filter_deployments_without_parents(self, deployments):
         existing_parents = self._get_existing_parents(deployments)
-        for r in deployments:
-            p_id = r.data.get('parent')
+        deployments_filtered = []
+        for deployment in deployments:
+            p_id = deployment.data.get('parent')
             if p_id in existing_parents:
-                with_parent.append(r)
+                deployments_filtered.append(deployment)
             else:
-                logging.warning(f'Parent {p_id} is missing for {r.id}')
+                logging.warning(f'Parent {p_id} is missing for {deployment.id}')
+        return deployments_filtered
 
     @override
     def _publish_metric(self, name, value):
@@ -48,13 +50,12 @@ class DeploymentStateOldJobsDistribution(DeploymentStateJobsDistribution):
 
     @override
     def get_deployments(self):
-        filters = f"state='STARTED' and updated<'now-{self.COLLECT_PAST_SEC}s'"
+        filters = f"state='STARTED' and updated<'now-{self.COLLECT_PAST_SEC}s' and nuvlabox=null"
         select = 'id,execution-mode,nuvlabox,parent'
         deployments_resp = self.distributor.api.search('deployment', filter=filters, select=select)
         self._publish_metric('in_started', deployments_resp.count)
         logging.info(f'Deployments in STARTED: {deployments_resp.count}')
-        with_parent = []
-        self._with_parent(deployments_resp.resources, with_parent)
-        self._publish_metric('in_started_with_parent', len(with_parent))
-        logging.info(f'Deployments in STARTED with parent: {len(with_parent)}')
-        return with_parent
+        deployments_with_parents = self.filter_deployments_without_parents(deployments_resp.resources)
+        self._publish_metric('in_started_with_parent', len(deployments_with_parents))
+        logging.info(f'Deployments in STARTED with parent: {len(deployments_with_parents)}')
+        return deployments_with_parents
