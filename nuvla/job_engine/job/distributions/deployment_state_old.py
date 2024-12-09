@@ -2,7 +2,7 @@
 
 import logging
 
-from ..util import override, version_smaller
+from ..util import override
 from ..distributions import distribution
 from .deployment_state import DeploymentStateJobsDistribution
 

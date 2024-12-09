@@ -74,15 +74,3 @@ def status_message_from_exception():
 
 def mapv(func, iter1):
     list(map(func, iter1))
-
-
-version_regex = re.compile('^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*).*')
-
-def parse_version(version: str):
-    m = version_regex.match(version)
-    return tuple(int(i) for i in m.groups()) if m else None
-
-
-def version_smaller(version: str, ne_version: tuple):
-    v_tuple = parse_version(version)
-    return v_tuple is not None and v_tuple < ne_version
