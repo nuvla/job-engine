@@ -4,6 +4,7 @@ import unittest
 
 from nuvla.job_engine.job.util import status_message_from_exception
 
+
 class CustomException(Exception):
     pass
 
