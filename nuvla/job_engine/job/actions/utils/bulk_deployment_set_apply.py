@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 
 import logging
-from ..utils.bulk_action import BulkAction
+from .bulk_action import ActionCallException
+from ..utils.bulk_action import BulkAction, SkippedActionException
 
 
 def get_dg_owner_api(job):
@@ -71,14 +72,14 @@ class EdgeResolver:
         if EdgeResolver._is_edge_target(target):
             edge = self._get_edge(target)
             if not edge.get('online', False):
-                raise RuntimeError(f'Edge is offline: {edge.get("name") or target}')
+                raise SkippedActionException('Offline Edge', target, edge.get("name"))
 
     def resolve_credential(self, target):
         if EdgeResolver._is_edge_target(target):
             edge = self._get_edge(target)
             cred = self._edge_credential(edge)
             if cred is None:
-                raise RuntimeError(f'Credential for edge not found: {edge.get("name") or target}')
+                raise SkippedActionException('Edge credential not found', target, edge.get("name"))
             return cred
         else:
             return target
@@ -88,24 +89,17 @@ class BulkDeploymentSetApply(BulkAction):
     KEY_DEPLOYMENTS_TO_UPDATE = 'deployments-to-update'
     KEY_DEPLOYMENTS_TO_REMOVE = 'deployments-to-remove'
 
-    def __init__(self, job):
-        super().__init__(job)
+    def __init__(self, job, action_name):
+        super().__init__(job, action_name)
         self.dg_owner_api = get_dg_owner_api(job)
         self.dg_api = get_dg_api(job)
         self.dep_set_id = self.job['target-resource']['href']
-        self.action_name = None
         self._log = None
         self.operations = {self.KEY_DEPLOYMENTS_TO_ADD: self._add_deployment,
                            self.KEY_DEPLOYMENTS_TO_UPDATE: self._update_deployment,
                            self.KEY_DEPLOYMENTS_TO_REMOVE: self._remove_deployment}
         self.api_endpoint = None
         self.edge_resolver = EdgeResolver(self.dg_owner_api)
-
-    @property
-    def log(self):
-        if not self._log:
-            self._log = logging.getLogger(self.action_name)
-        return self._log
 
     @staticmethod
     def _action_name_todo_el(operational_status, key):
@@ -191,9 +185,10 @@ class BulkDeploymentSetApply(BulkAction):
                                           'parent-job': self.job.id})
         except Exception as ex:
             self.log.error(f'{self.dep_set_id} - Failed to add deployment {deployment_to_add}: {repr(ex)}')
-            raise ex
+            raise ActionCallException('Deployment add failed', message=str(ex), context=deployment_to_add)
 
     def _update_deployment(self, deployment_to_update):
+        deployment_id = None
         try:
             deployment_id = deployment_to_update[0]['id']
             target = deployment_to_update[1]['target']
@@ -213,7 +208,7 @@ class BulkDeploymentSetApply(BulkAction):
                                           'parent-job': self.job.id})
         except Exception as ex:
             self.log.error(f'{self.dep_set_id} - Failed to update deployment {deployment_to_update}: {repr(ex)}')
-            raise ex
+            raise ActionCallException('Deployment update failed', resource_id=deployment_id, message=str(ex), context=deployment_to_update)
 
     def _remove_deployment(self, deployment_id):
         try:
@@ -232,12 +227,12 @@ class BulkDeploymentSetApply(BulkAction):
                                                    'delete': True})
         except Exception as ex:
             self.log.error(f'{self.dep_set_id} - Failed to remove {deployment_id}: {repr(ex)}')
-            raise ex
+            raise ActionCallException('Deployment remove failed', resource_id=deployment_id, message=str(ex))
 
     def _get_operation(self, operation_name: str):
         func = self.operations.get(operation_name)
         if not func:
-            raise KeyError(f'Unknown deployment set operation name: {operation_name}')
+            raise ActionCallException('Unknown deployment set operation', context={'operation_name': operation_name})
         return func
 
     def todo_resource_id(self, todo_el):

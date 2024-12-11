@@ -5,8 +5,8 @@ from .bulk_action import BulkAction
 
 class NuvlaboxBulkJob(BulkAction, abc.ABC):
 
-    def __init__(self, job):
-        super().__init__(job)
+    def __init__(self, job, action_name):
+        super().__init__(job, action_name)
 
     def get_todo(self):
         return [ne.id
