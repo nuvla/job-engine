@@ -35,18 +35,26 @@ class BulkActionResult:
         self._running = []
         self._skip_reasons = {}
         self._fail_reasons = {}
+        self._jobs_count = 0
 
     def add_success_action(self, resource_id):
         self._success.append(resource_id)
 
     def add_queued_action(self, resource_id):
         self._queued.append(resource_id)
+        self._jobs_count += 1
 
-    def set_queued_actions(self, queued:list):
+    def set_queued_actions(self, queued: list):
         self._queued = queued
 
-    def set_running_actions(self, running:list):
+    def set_running_actions(self, running: list):
         self._running = running
+
+    def exist_in_success(self, resource_id):
+        return resource_id in self._success
+
+    def exist_in_fail_category_ids(self, category, resource_id):
+        return self._fail_reasons.get(category, {}).get('IDS', {}).get(resource_id) is not None
 
     @staticmethod
     def _unsuccessful_action(entry, category, resource_id, resource_name, message=None):
@@ -100,7 +108,7 @@ class BulkActionResult:
             'QUEUED': self._queued,
             'SKIP_REASONS': self._reasons_to_output_format(self._skip_reasons),
             'FAIL_REASONS': self._reasons_to_output_format(self._fail_reasons),
-        }
+            'JOBS_COUNT': self._jobs_count}
 
     def to_json(self):
         return json.dumps(self.to_dict())
@@ -108,17 +116,20 @@ class BulkActionResult:
     @classmethod
     def from_json(cls, json_string: str):
         data = json.loads(json_string)
-        obj = cls(data.get("ACTIONS_COUNT", 0))
-        obj._failed_count = data.get("FAILED_COUNT", 0)
-        obj._skipped_count = data.get("SKIPPED_COUNT", 0)
+        obj = cls(data.get('ACTIONS_COUNT', 0))
+        obj._failed_count = data.get('FAILED_COUNT', 0)
+        obj._skipped_count = data.get('SKIPPED_COUNT', 0)
         obj._success = data.get('SUCCESS', [])
-        obj._queued = data.get("QUEUED", [])
-        obj._running = data.get("RUNNING", [])
+        obj._queued = data.get('QUEUED', [])
+        obj._running = data.get('RUNNING', [])
+        obj._jobs_count = data.get('JOBS_COUNT', 0)
         obj._skip_reasons = cls._reasons_to_internal_format(data.get('SKIP_REASONS', []))
         obj._fail_reasons = cls._reasons_to_internal_format(data.get('FAIL_REASONS', []))
         return obj
 
+
 class BulkAction(object):
+    monitor_tag = 'monitor'
 
     def __init__(self, job, action_name):
         self.job = job
@@ -196,5 +207,7 @@ class BulkAction(object):
         self._push_result()
         self._set_progress_increment()
         self.bulk_operation()
-        if self.progress == 100:
+        if self.progress < 100:
+            self.job.update_job(tags=[self.monitor_tag])
+        else:
             self.job.update_job(state=JOB_SUCCESS, return_code=0)

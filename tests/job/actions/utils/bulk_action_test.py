@@ -20,7 +20,8 @@ class TestBulkActionResult(unittest.TestCase):
                              'SKIPPED_COUNT': 0,
                              'SKIP_REASONS': [],
                              'SUCCESS': [],
-                             'SUCCESS_COUNT': 0}
+                             'SUCCESS_COUNT': 0,
+                             'JOBS_COUNT': 0}
 
     def test_add_success_action(self):
         self.obj.add_success_action('nuvlabox/id-success-1')
@@ -61,7 +62,8 @@ class TestBulkActionResult(unittest.TestCase):
                                                       {'COUNT': 1,
                                                        'id': 'nuvlabox/a',
                                                        'name': 'nuvlabox a'}]}]
-        self.assertEqual(self.expected_obj, self.obj.to_dict(), 'nuvlabox/b count should be 2 and being sort as first in ids')
+        self.assertEqual(self.expected_obj, self.obj.to_dict(),
+                         'nuvlabox/b count should be 2 and being sort as first in ids')
 
         self.obj.skip_action('Offline Edges')
         self.expected_obj['SKIPPED_COUNT'] = 4
@@ -93,7 +95,8 @@ class TestBulkActionResult(unittest.TestCase):
                                              {'CATEGORY': 'Configuration',
                                               'COUNT': 1,
                                               'IDS': [{'COUNT': 1, 'id': 'unknown'}]}]
-        self.assertEqual(self.expected_obj, self.obj.to_dict(), 'new category is being added to skip and should be sorted')
+        self.assertEqual(self.expected_obj, self.obj.to_dict(),
+                         'new category is being added to skip and should be sorted')
 
     def test_fail_action(self):
         self.obj.fail_action('Some error', resource_id='deployment/a', message='some error detail')
@@ -104,6 +107,19 @@ class TestBulkActionResult(unittest.TestCase):
                                                        'id': 'deployment/a',
                                                        'message': 'some error detail'}]}]
         self.assertEqual(self.expected_obj, self.obj.to_dict())
+
+    def test_exist_in_fail_category_ids(self):
+        self.assertFalse(self.obj.exist_in_fail_category_ids('Job failed', 'deployment/a'))
+        self.obj.fail_action('Job failed', resource_id='deployment/a', message='some error detail')
+        self.assertTrue(self.obj.exist_in_fail_category_ids('Job failed', 'deployment/a'))
+        self.assertFalse(self.obj.exist_in_fail_category_ids('Job failed', 'deployment/b'))
+        self.obj.fail_action('Job failed', resource_id='deployment/b', message='some error detail')
+        self.assertTrue(self.obj.exist_in_fail_category_ids('Job failed', 'deployment/b'))
+
+    def test_exist_in_success(self):
+        self.assertFalse(self.obj.exist_in_success('deployment/a'))
+        self.obj.add_success_action('deployment/a')
+        self.assertTrue(self.obj.exist_in_success('deployment/a'))
 
     def test_from_json(self):
         data = {
@@ -116,6 +132,7 @@ class TestBulkActionResult(unittest.TestCase):
             'SUCCESS': ['deployment/s'],
             'QUEUED': ['deployment/y', 'deployment/z'],
             'RUNNING': ['deployment/x'],
+            'JOBS_COUNT': 4,
             'SKIP_REASONS': [{
                 'COUNT': 14,
                 'CATEGORY': 'Offline Edges',
@@ -145,7 +162,8 @@ class TestBulkActionResult(unittest.TestCase):
             }]
         }
         json_str = json.dumps(data)
-        self.assertEqual(data, BulkActionResult.from_json(json_str).to_dict(), 'from data to json and back, data should be equal')
+        self.assertEqual(data, BulkActionResult.from_json(json_str).to_dict(),
+                         'from data to json and back, data should be equal')
 
     def test_from_json_empty(self):
         BulkActionResult.from_json('{}')

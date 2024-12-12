@@ -69,9 +69,7 @@ class Executor(Base):
             if job.get('execution-mode', '').lower() == 'mixed':
                 status_message = 'Re-running job in pull mode after failed first attempt: ' \
                                  f'{status_message}'
-                job._edit_job_multi({'state': JOB_QUEUED,
-                                     'status-message': status_message,
-                                     'execution-mode': 'pull'})
+                job.update_job(state=JOB_QUEUED, status_message=status_message, execution_mode='pull')
                 retry_kazoo_queue_op(job.queue, 'consume')
             else:
                 job.update_job(state=JOB_FAILED, status_message=status_message, return_code=1)
