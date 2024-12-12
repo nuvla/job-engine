@@ -71,14 +71,16 @@ class EdgeResolver:
         if EdgeResolver._is_edge_target(target):
             edge = self._get_edge(target)
             if not edge.get('online', False):
-                raise SkippedActionException('Offline Edge', target, edge.get("name"))
+                raise SkippedActionException(
+                    'Offline Edge', resource_id=target, resource_name=edge.get('name'))
 
     def resolve_credential(self, target):
         if EdgeResolver._is_edge_target(target):
             edge = self._get_edge(target)
             cred = self._edge_credential(edge)
             if cred is None:
-                raise SkippedActionException('Edge credential not found', target, edge.get("name"))
+                raise SkippedActionException(
+                    'Edge credential not found', resource_id=target, resource_name=edge.get('name'))
             return cred
         else:
             return target
@@ -166,7 +168,7 @@ class BulkDeploymentSetApply(BulkAction):
             target = deployment_to_add['target']
             self.edge_resolver.throw_edge_offline(target)
             credential = self.edge_resolver.resolve_credential(target)
-            application = deployment_to_add["application"]
+            application = deployment_to_add['application']
             application_href = f'{application["id"]}_{application["version"]}'
             app_set = deployment_to_add['app-set']
             deployment_id = self._create_deployment(credential, application_href, app_set)
@@ -195,7 +197,7 @@ class BulkDeploymentSetApply(BulkAction):
             target = deployment_to_update[1]['target']
             self.edge_resolver.throw_edge_offline(target)
             self.log.info(f'{self.dep_set_id} - Update deployment: {deployment_id}')
-            application = deployment_to_update[1]["application"]
+            application = deployment_to_update[1]['application']
             deployment_data = self._load_reset_deployment(deployment_id, application)
             self._update_api_endpoint(deployment_data)
             self._update_env_deployment(deployment_data, application)

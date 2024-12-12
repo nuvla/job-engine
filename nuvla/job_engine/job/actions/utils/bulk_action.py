@@ -174,7 +174,7 @@ class BulkAction(object):
             response = self.action(todo_el)
             status = response.data.get('status')
             if status == 202:
-                self.result.set_queued_actions(resource_id)
+                self.result.add_queued_action(resource_id)
                 queued = True
             elif status == 200:
                 self.result.add_success_action(resource_id)
