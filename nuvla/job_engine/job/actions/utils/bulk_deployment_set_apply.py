@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 
-import logging
-from .bulk_action import ActionCallException
+from .bulk_action import ActionCallException, ActionException
 from ..utils.bulk_action import BulkAction, SkippedActionException
 
 
@@ -183,6 +182,8 @@ class BulkDeploymentSetApply(BulkAction):
             return self.dg_api.operation(deployment, 'start',
                                          {'low-priority': True,
                                           'parent-job': self.job.id})
+        except ActionException as ex:
+            raise ex
         except Exception as ex:
             self.log.error(f'{self.dep_set_id} - Failed to add deployment {deployment_to_add}: {repr(ex)}')
             raise ActionCallException('Deployment add failed', message=str(ex), context=deployment_to_add)
