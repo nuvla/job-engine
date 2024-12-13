@@ -87,9 +87,17 @@ class BulkDeploymentSetApply(BulkAction):
             deployment['api-endpoint'] = self.api_endpoint
 
     def _get_infra(self, target):
+        deployment_set = self.dg_api.get(self.dep_set_id)
+        dg_subtype = deployment_set.data.get('subtype')
         nuvlabox = self.dg_owner_api.get(target).data
-        # TODO: use the subtype of deployment-set once available
-        filter_subtype_infra = f'subtype={["swarm", "kubernetes"]}'
+        if dg_subtype in ["docker-swarm", "docker-compose"]:
+          infra_subtypes = ["swarm"]
+        elif dg_subtype == "kubernetes":
+          infra_subtypes = ["kubernetes"]
+        else:
+          # TODO: once subtype of deployment-set has been back-filled for existing DGs throw an error instead
+          infra_subtypes = ["swarm", "kubernetes"]
+        filter_subtype_infra = f'subtype={infra_subtypes}'
         filter_infra = f'parent="{nuvlabox["infrastructure-service-group"]}" ' \
                        f'and {filter_subtype_infra}'
         infras = self.dg_owner_api.search('infrastructure-service',
