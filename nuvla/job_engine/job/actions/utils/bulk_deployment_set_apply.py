@@ -14,6 +14,7 @@ class BulkDeploymentSetApply(BulkAction):
         self.dg_owner_api = self.get_dg_owner_api()
         self.dg_api = self.get_dg_api()
         self.dep_set_id = self.job['target-resource']['href']
+        self.dep_set = self.dg_api.get(self.dep_set_id)
         self.action_name = None
         self._log = None
         self.operations = {self.KEY_DEPLOYMENTS_TO_ADD: self._add_deployment,
@@ -40,10 +41,9 @@ class BulkDeploymentSetApply(BulkAction):
         return self.job.get_api(authn_info)
 
     def get_todo(self):
-        deployment_set = self.dg_api.get(self.dep_set_id)
-        operational_status = self.dg_api.operation(deployment_set, 'operational-status').data
+        operational_status = self.dg_api.operation(self.dep_set, 'operational-status').data
         self.log.info(f'{self.dep_set_id} - Operational status: {operational_status}')
-        self.api_endpoint = deployment_set.data.get('api-endpoint')
+        self.api_endpoint = self.dep_set.data.get('api-endpoint')
         todo = (self._action_name_todo_el(operational_status, self.KEY_DEPLOYMENTS_TO_ADD) +
                 self._action_name_todo_el(operational_status, self.KEY_DEPLOYMENTS_TO_UPDATE) +
                 self._action_name_todo_el(operational_status, self.KEY_DEPLOYMENTS_TO_REMOVE))
@@ -87,8 +87,7 @@ class BulkDeploymentSetApply(BulkAction):
             deployment['api-endpoint'] = self.api_endpoint
 
     def _get_infra(self, target):
-        deployment_set = self.dg_api.get(self.dep_set_id)
-        dg_subtype = deployment_set.data.get('subtype')
+        dg_subtype = self.dep_set.data.get('subtype')
         nuvlabox = self.dg_owner_api.get(target).data
         if dg_subtype in ["docker-swarm", "docker-compose"]:
           infra_subtypes = ["swarm"]
