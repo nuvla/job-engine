@@ -6,35 +6,34 @@ from ...job import JOB_SUCCESS
 
 
 class ActionException(Exception):
-    def __init__(self, category, *args, **kwargs):
-        super().__init__(category, args, kwargs)
-        self.category = category
+    def __init__(self, reason, *args, **kwargs):
+        super().__init__(reason, args, kwargs)
+        self.reason = reason
         self.resource_id = kwargs.get('resource_id')
         self.resource_name = kwargs.get('resource_name')
         self.message = kwargs.get('message')
 
 
 class SkippedActionException(ActionException):
-    def __init__(self, category, *args, **kwargs):
-        super().__init__(category, *args, **kwargs)
+    def __init__(self, reason, *args, **kwargs):
+        super().__init__(reason, *args, **kwargs)
 
 
 class ActionCallException(ActionException):
-    def __init__(self, category, *args, **kwargs):
-        super().__init__(category, *args, **kwargs)
+    def __init__(self, reason, *args, **kwargs):
+        super().__init__(reason, *args, **kwargs)
         self.context = kwargs.get('context')
 
 
 class BulkActionResult:
     def __init__(self, actions_count: int):
-        self._actions_count = actions_count
+        self._total_actions = actions_count
         self._failed_count = 0
         self._skipped_count = 0
         self._success = []
         self._queued = []
         self._running = []
-        self._skip_reasons = {}
-        self._fail_reasons = {}
+        self._error_reasons = {}
         self._jobs_count = 0
 
     def add_success_action(self, resource_id):
@@ -53,62 +52,61 @@ class BulkActionResult:
     def exist_in_success(self, resource_id):
         return resource_id in self._success
 
-    def exist_in_fail_category_ids(self, category, resource_id):
-        return self._fail_reasons.get(category, {}).get('IDS', {}).get(resource_id) is not None
+    def exist_in_fail_reason_ids(self, reason, resource_id):
+        return self._error_reasons.get(reason, {}).get('data', {}).get(resource_id) is not None
 
-    @staticmethod
-    def _unsuccessful_action(entry, category, resource_id, resource_name, message=None):
-        if category not in entry:
-            entry[category] = {'COUNT': 0, 'IDS': {}}
-        entry[category]['COUNT'] += 1
-        if resource_id not in entry[category]['IDS']:
-            entry[category]['IDS'][resource_id] = {'id': resource_id, 'COUNT': 0}
-        entry[category]['IDS'][resource_id]['COUNT'] += 1
+    def _unsuccessful_action(self, reason, category, resource_id, resource_name, message=None):
+        if reason not in self._error_reasons:
+            self._error_reasons[reason] = {'count': 0, 'data': {}, 'category': category}
+        self._error_reasons[reason]['count'] += 1
+        if resource_id not in self._error_reasons[reason]['data']:
+            self._error_reasons[reason]['data'][resource_id] = {'id': resource_id, 'count': 0}
+        self._error_reasons[reason]['data'][resource_id]['count'] += 1
         if resource_name:
-            entry[category]['IDS'][resource_id]['name'] = resource_name
+            self._error_reasons[reason]['data'][resource_id]['name'] = resource_name
         if message:
-            entry[category]['IDS'][resource_id]['message'] = message
+            self._error_reasons[reason]['data'][resource_id]['message'] = message
 
-    def skip_action(self, category: str, resource_id='unknown', resource_name=None):
+    def skip_action(self, reason: str, resource_id='unknown', resource_name=None):
         self._skipped_count += 1
-        self._unsuccessful_action(self._skip_reasons, category, resource_id, resource_name)
+        self._unsuccessful_action(reason, 'skipped',  resource_id, resource_name)
 
-    def fail_action(self, category: str, resource_id='unknown', resource_name=None, message=None):
+    def fail_action(self, reason: str, resource_id='unknown', resource_name=None, message=None):
         self._failed_count += 1
-        self._unsuccessful_action(self._fail_reasons, category, resource_id, resource_name, message)
+        self._unsuccessful_action(reason, 'failed', resource_id, resource_name, message)
 
     @staticmethod
-    def _reasons_to_output_format(reasons):
+    def _error_reasons_to_output_format(reasons):
         return [{
-            'CATEGORY': category,
-            'COUNT': cat_data['COUNT'],
-            'IDS': sorted(cat_data['IDS'].values(), key=lambda d: d['COUNT'], reverse=True)}
-            for category, cat_data in
-            sorted(reasons.items(), key=lambda item: item[1]['COUNT'], reverse=True)]
+            'reason': reason,
+            'count': cat_data['count'],
+            'category': cat_data['category'],
+            'data': sorted(cat_data['data'].values(), key=lambda d: d['count'], reverse=True)}
+            for reason, cat_data in
+            sorted(reasons.items(), key=lambda item: item[1]['count'], reverse=True)]
 
     @staticmethod
-    def _reasons_to_internal_format(reasons):
+    def _error_reasons_to_internal_format(reasons):
         reasons_internal_format = {}
         for reason in reasons:
-            ids = {id_data['id']: id_data for id_data in reason.get('IDS', [])}
-            reason['IDS'] = ids
-            reasons_internal_format[reason['CATEGORY']] = reason
+            ids = {id_data['id']: id_data for id_data in reason.get('data', [])}
+            reason['data'] = ids
+            reasons_internal_format[reason['reason']] = reason
         return reasons_internal_format
 
     def to_dict(self):
         return {
-            'ACTIONS_COUNT': self._actions_count,
-            'FAILED_COUNT': self._failed_count,
-            'SKIPPED_COUNT': self._skipped_count,
-            'SUCCESS': self._success,
-            'SUCCESS_COUNT': len(self._success),
-            'QUEUED_COUNT': len(self._queued),
-            'RUNNING_COUNT': len(self._running),
-            'RUNNING': self._running,
-            'QUEUED': self._queued,
-            'SKIP_REASONS': self._reasons_to_output_format(self._skip_reasons),
-            'FAIL_REASONS': self._reasons_to_output_format(self._fail_reasons),
-            'JOBS_COUNT': self._jobs_count}
+            'total_actions': self._total_actions,
+            'failed_count': self._failed_count,
+            'skipped_count': self._skipped_count,
+            'success': self._success,
+            'success_count': len(self._success),
+            'queued_count': len(self._queued),
+            'running_count': len(self._running),
+            'running': self._running,
+            'queued': self._queued,
+            'error_reasons': self._error_reasons_to_output_format(self._error_reasons),
+            'jobs_count': self._jobs_count}
 
     def to_json(self):
         return json.dumps(self.to_dict())
@@ -116,15 +114,14 @@ class BulkActionResult:
     @classmethod
     def from_json(cls, json_string: str):
         data = json.loads(json_string)
-        obj = cls(data.get('ACTIONS_COUNT', 0))
-        obj._failed_count = data.get('FAILED_COUNT', 0)
-        obj._skipped_count = data.get('SKIPPED_COUNT', 0)
-        obj._success = data.get('SUCCESS', [])
-        obj._queued = data.get('QUEUED', [])
-        obj._running = data.get('RUNNING', [])
-        obj._jobs_count = data.get('JOBS_COUNT', 0)
-        obj._skip_reasons = cls._reasons_to_internal_format(data.get('SKIP_REASONS', []))
-        obj._fail_reasons = cls._reasons_to_internal_format(data.get('FAIL_REASONS', []))
+        obj = cls(data.get('total_actions', 0))
+        obj._failed_count = data.get('failed_count', 0)
+        obj._skipped_count = data.get('skipped_count', 0)
+        obj._success = data.get('success', [])
+        obj._queued = data.get('queued', [])
+        obj._running = data.get('running', [])
+        obj._jobs_count = data.get('jobs_count', 0)
+        obj._error_reasons = cls._error_reasons_to_internal_format(data.get('error_reasons', []))
         return obj
 
 
@@ -184,10 +181,10 @@ class BulkAction(object):
             else:
                 raise ActionCallException(f'Unexpected action response status {status}', context=todo_el)
         except SkippedActionException as ex:
-            self.result.skip_action(ex.category, ex.resource_id, ex.resource_name)
+            self.result.skip_action(ex.reason, ex.resource_id, ex.resource_name)
             self.log.error(repr(ex))
         except ActionCallException as ex:
-            self.result.fail_action(ex.category, ex.resource_id, ex.resource_name, ex.message)
+            self.result.fail_action(ex.reason, ex.resource_id, ex.resource_name, ex.message)
             self.log.error(repr(ex))
         except Exception as ex:
             self.result.fail_action(str(ex), resource_id)
