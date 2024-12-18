@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
+from pyexpat.errors import messages
 
-from .bulk_action import ActionCallException, ActionException
-from ..utils.bulk_action import BulkAction, SkippedActionException
+from .bulk_action import ActionCallException, ActionException, BulkAction, SkippedActionException
 
 
 def get_dg_owner_api(job):
@@ -26,8 +26,8 @@ class EdgeResolver:
         if not edge:
             try:
                 edge = self.dg_owner_api.get(target).data
-            except Exception:
-                edge = {}
+            except Exception as ex:
+                raise SkippedActionException('Edge not found', resource_id=target, message=str(ex))
             self.edges[target] = edge
         return edge
 

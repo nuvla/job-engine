@@ -67,9 +67,9 @@ class BulkActionResult:
         if message:
             self._error_reasons[reason]['data'][resource_id]['message'] = message
 
-    def skip_action(self, reason: str, resource_id='unknown', resource_name=None):
+    def skip_action(self, reason: str, resource_id='unknown', resource_name=None, message=None):
         self._skipped_count += 1
-        self._unsuccessful_action(reason, 'skipped',  resource_id, resource_name)
+        self._unsuccessful_action(reason, 'skipped',  resource_id, resource_name, message)
 
     def fail_action(self, reason: str, resource_id='unknown', resource_name=None, message=None):
         self._failed_count += 1
@@ -181,7 +181,7 @@ class BulkAction(object):
             else:
                 raise ActionCallException(f'Unexpected action response status {status}', context=todo_el)
         except SkippedActionException as ex:
-            self.result.skip_action(ex.reason, ex.resource_id, ex.resource_name)
+            self.result.skip_action(ex.reason, ex.resource_id, ex.resource_name, ex.message)
             self.log.error(repr(ex))
         except ActionCallException as ex:
             self.result.fail_action(ex.reason, ex.resource_id, ex.resource_name, ex.message)
