@@ -13,8 +13,8 @@ log = logging.getLogger(action_name)
 
 @action(action_name)
 class MonitorBulkJob(object):
-    category_job_failed = 'Job failed'
-    category_job_canceled = 'Job canceled'
+    job_failed_reason = 'Job failed'
+    job_canceled_reason = 'Job canceled'
 
     def __init__(self, job):
         self.job = job
@@ -72,11 +72,11 @@ class MonitorBulkJob(object):
             if state == JOB_SUCCESS and not self.result.exist_in_success(resource_id):
                 self.result.add_success_action(resource_id)
             if state == JOB_FAILED and not self.result.exist_in_fail_reason_ids(
-                    self.category_job_failed, resource_id):
-                self.result.fail_action(self.category_job_failed, resource_id)
+                    self.job_failed_reason, resource_id):
+                self.result.fail_action(self.job_failed_reason, resource_id)
             if state == JOB_CANCELED and not self.result.exist_in_fail_reason_ids(
-                    self.category_job_canceled, resource_id):
-                self.result.fail_action(self.category_job_canceled, resource_id)
+                    self.job_canceled_reason, resource_id):
+                self.result.fail_action(self.job_canceled_reason, resource_id)
 
     def build_update_job_body(self):
         update_job_body = {'progress': self.progress,
