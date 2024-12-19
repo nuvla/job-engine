@@ -2,6 +2,18 @@
 
 ## Released
 
+## [4.9.1](https://github.com/nuvla/job-engine/compare/4.9.0...4.9.1) (2024-12-19)
+
+
+### Bug Fixes
+
+* **Action service_image_state:** Removed, deprecated ([672c3f1](https://github.com/nuvla/job-engine/commit/672c3f11d30cb4cf61a27ae8bc8b70ee6d94a614))
+* **Bulk job monitoring:** Refactor and change monitor data format to enhance UI/UX ([a131336](https://github.com/nuvla/job-engine/commit/a131336f99d6b8dabaa73018c729d69c05fc5ab7))
+* **Bulk job monitoring:** Timeout reduced from 1 day to 1 hour ([a131336](https://github.com/nuvla/job-engine/commit/a131336f99d6b8dabaa73018c729d69c05fc5ab7))
+* **Deployment Group:** Do not launch actions for offline edges ([#419](https://github.com/nuvla/job-engine/issues/419)) ([a131336](https://github.com/nuvla/job-engine/commit/a131336f99d6b8dabaa73018c729d69c05fc5ab7))
+* **Distribution service_image_state:** Removed, deprecated ([672c3f1](https://github.com/nuvla/job-engine/commit/672c3f11d30cb4cf61a27ae8bc8b70ee6d94a614))
+* **wrong_infra_selected:** filter infra services based on DG subtype ([#421](https://github.com/nuvla/job-engine/issues/421)) ([00d1c01](https://github.com/nuvla/job-engine/commit/00d1c01a530c7dff972f4572e54508f89f5d0672))
+
 ## [4.9.0](https://github.com/nuvla/job-engine/compare/4.8.3...4.9.0) (2024-12-09)
 
 
