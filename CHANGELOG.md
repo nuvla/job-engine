@@ -2,6 +2,18 @@
 
 ## Released
 
+## [4.9.0](https://github.com/nuvla/job-engine/compare/4.8.3...4.9.0) (2024-12-09)
+
+
+### Features
+
+* **deployment_state:** only distribute deployment_state_60 to deployments not deployed on NuvlaEdge ([#416](https://github.com/nuvla/job-engine/issues/416)) ([5d81f94](https://github.com/nuvla/job-engine/commit/5d81f9454c2c2817855438bc4116c874fd17b812))
+
+
+### Bug Fixes
+
+* **dg-auto-update-acl:** make jobs created by auto update visible to the dg owner ([#417](https://github.com/nuvla/job-engine/issues/417)) ([dac2a9a](https://github.com/nuvla/job-engine/commit/dac2a9a1982e2ee42ec605e03bee2559a80006fb))
+
 ## [4.8.3](https://github.com/nuvla/job-engine/compare/4.8.2...4.8.3) (2024-11-26)
 
 
