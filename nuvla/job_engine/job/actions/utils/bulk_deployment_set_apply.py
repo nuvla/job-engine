@@ -1,18 +1,106 @@
 # -*- coding: utf-8 -*-
+from pyexpat.errors import messages
 
-import logging
-from ..utils.bulk_action import BulkAction
+from .bulk_action import ActionCallException, ActionException, BulkAction, SkippedActionException
 
+
+def get_dg_owner_api(job):
+    authn_info = job.payload['dg-owner-authn-info']
+    return job.get_api(authn_info)
+
+def get_dg_api(job):
+    authn_info = job.payload['dg-authn-info']
+    return job.get_api(authn_info)
+
+class EdgeResolver:
+    def __init__(self, dg_owner_api, dg_subtype):
+        self.edges = {}
+        self.dg_owner_api = dg_owner_api
+        self.dg_subtype = dg_subtype
+
+    @staticmethod
+    def _is_edge_target(target):
+        return target and target.startswith('nuvlabox/')
+
+    def _get_edge(self, target):
+        edge = self.edges.get(target)
+        if not edge:
+            try:
+                edge = self.dg_owner_api.get(target).data
+            except Exception as ex:
+                raise SkippedActionException('Edge not found', resource_id=target, message=str(ex))
+            self.edges[target] = edge
+        return edge
+
+    def _edge_credential(self, edge):
+        cred = edge.get('credential')
+        if cred == '':
+            return None
+        else:
+            infra_id = self._get_infra(edge)
+            creds = []
+            if infra_id:
+                filter_cred_subtype = f'subtype={["infrastructure-service-swarm", "infrastructure-service-kubernetes"]}'
+                filter_cred = f'parent="{infra_id}" and {filter_cred_subtype}'
+                creds = self.dg_owner_api.search('credential', filter=filter_cred, select='id').resources
+            cred = creds[0].id if len(creds) > 0 else ''
+            self.edges[edge.get('id')]['credential'] = cred
+        return cred
+
+    def _get_infra(self, edge):
+        if self.dg_subtype in ["docker-swarm", "docker-compose"]:
+            infra_subtypes = ["swarm"]
+        elif self.dg_subtype == "kubernetes":
+            infra_subtypes = ["kubernetes"]
+        else:
+            # TODO: once subtype of deployment-set has been back-filled for existing DGs throw an error instead
+            infra_subtypes = ["swarm", "kubernetes"]
+        filter_subtype_infra = f'subtype={infra_subtypes}'
+        filter_infra = f'parent="{edge["infrastructure-service-group"]}" ' \
+                       f'and {filter_subtype_infra}'
+        infras = self.dg_owner_api.search('infrastructure-service',
+                                          filter=filter_infra,
+                                          orderby='subtype:desc',
+                                          select='id').resources
+        if len(infras) > 0:
+            return infras[0].id
+
+    def _get_cred(self, target):
+        infra_id = self._get_infra(target)
+        if infra_id:
+            filter_cred_subtype = f'subtype={["infrastructure-service-swarm", "infrastructure-service-kubernetes"]}'
+            filter_cred = f'parent="{infra_id}" and {filter_cred_subtype}'
+            creds = self.dg_owner_api.search('credential', filter=filter_cred, select='id').resources
+            if len(creds) > 0:
+                return creds[0].id
+
+    def throw_edge_offline(self, target):
+        if EdgeResolver._is_edge_target(target):
+            edge = self._get_edge(target)
+            if not edge.get('online', False):
+                raise SkippedActionException(
+                    'Offline Edge', resource_id=target, resource_name=edge.get('name'))
+
+    def resolve_credential(self, target):
+        if EdgeResolver._is_edge_target(target):
+            edge = self._get_edge(target)
+            cred = self._edge_credential(edge)
+            if cred is None:
+                raise SkippedActionException(
+                    'Edge credential not found', resource_id=target, resource_name=edge.get('name'))
+            return cred
+        else:
+            return target
 
 class BulkDeploymentSetApply(BulkAction):
     KEY_DEPLOYMENTS_TO_ADD = 'deployments-to-add'
     KEY_DEPLOYMENTS_TO_UPDATE = 'deployments-to-update'
     KEY_DEPLOYMENTS_TO_REMOVE = 'deployments-to-remove'
 
-    def __init__(self, job):
-        super().__init__(job)
-        self.dg_owner_api = self.get_dg_owner_api()
-        self.dg_api = self.get_dg_api()
+    def __init__(self, job, action_name):
+        super().__init__(job, action_name)
+        self.dg_owner_api = get_dg_owner_api(job)
+        self.dg_api = get_dg_api(job)
         self.dep_set_id = self.job['target-resource']['href']
         self.dep_set = self.dg_api.get(self.dep_set_id)
         self.action_name = None
@@ -21,24 +109,12 @@ class BulkDeploymentSetApply(BulkAction):
                            self.KEY_DEPLOYMENTS_TO_UPDATE: self._update_deployment,
                            self.KEY_DEPLOYMENTS_TO_REMOVE: self._remove_deployment}
         self.api_endpoint = None
-
-    @property
-    def log(self):
-        if not self._log:
-            self._log = logging.getLogger(self.action_name)
-        return self._log
+        self.edge_resolver = EdgeResolver(self.dg_owner_api,
+                                          self.dep_set.data.get('subtype'))
 
     @staticmethod
     def _action_name_todo_el(operational_status, key):
         return [(key, el) for el in operational_status.get(key, [])]
-
-    def get_dg_owner_api(self):
-        authn_info = self.job.payload['dg-owner-authn-info']
-        return self.job.get_api(authn_info)
-
-    def get_dg_api(self):
-        authn_info = self.job.payload['dg-authn-info']
-        return self.job.get_api(authn_info)
 
     def get_todo(self):
         operational_status = self.dg_api.operation(self.dep_set, 'operational-status').data
@@ -86,46 +162,6 @@ class BulkDeploymentSetApply(BulkAction):
         if self.api_endpoint:
             deployment['api-endpoint'] = self.api_endpoint
 
-    def _get_infra(self, target):
-        dg_subtype = self.dep_set.data.get('subtype')
-        nuvlabox = self.dg_owner_api.get(target).data
-        if dg_subtype in ["docker-swarm", "docker-compose"]:
-          infra_subtypes = ["swarm"]
-        elif dg_subtype == "kubernetes":
-          infra_subtypes = ["kubernetes"]
-        else:
-          # TODO: once subtype of deployment-set has been back-filled for existing DGs throw an error instead
-          infra_subtypes = ["swarm", "kubernetes"]
-        filter_subtype_infra = f'subtype={infra_subtypes}'
-        filter_infra = f'parent="{nuvlabox["infrastructure-service-group"]}" ' \
-                       f'and {filter_subtype_infra}'
-        infras = self.dg_owner_api.search('infrastructure-service',
-                                          filter=filter_infra,
-                                          orderby='subtype:desc',
-                                          select='id').resources
-        if len(infras) > 0:
-            return infras[0].id
-
-    def _get_cred(self, target):
-        infra_id = self._get_infra(target)
-        if infra_id:
-            filter_cred_subtype = f'subtype={["infrastructure-service-swarm", "infrastructure-service-kubernetes"]}'
-            filter_cred = f'parent="{infra_id}" and {filter_cred_subtype}'
-            creds = self.dg_owner_api.search('credential', filter=filter_cred, select='id').resources
-            if len(creds) > 0:
-                return creds[0].id
-
-    def _resolve_target(self, target):
-        cred = None
-        if target:
-            if target.startswith('credential/'):
-                cred = target
-            elif target.startswith('nuvlabox/'):
-                cred = self._get_cred(target)
-        if cred is None:
-            raise RuntimeError(f"Credential not found {target}!")
-        return cred
-
     def _load_reset_deployment(self, deployment_id, application):
         application_href = f'{application["id"]}_{application["version"]}'
         module = self.dg_owner_api.get(application_href)
@@ -139,8 +175,9 @@ class BulkDeploymentSetApply(BulkAction):
     def _add_deployment(self, deployment_to_add):
         try:
             target = deployment_to_add['target']
-            credential = self._resolve_target(target)
-            application = deployment_to_add["application"]
+            self.edge_resolver.throw_edge_offline(target)
+            credential = self.edge_resolver.resolve_credential(target)
+            application = deployment_to_add['application']
             application_href = f'{application["id"]}_{application["version"]}'
             app_set = deployment_to_add['app-set']
             deployment_id = self._create_deployment(credential, application_href, app_set)
@@ -156,15 +193,20 @@ class BulkDeploymentSetApply(BulkAction):
             return self.dg_api.operation(deployment, 'start',
                                          {'low-priority': True,
                                           'parent-job': self.job.id})
+        except ActionException as ex:
+            raise ex
         except Exception as ex:
             self.log.error(f'{self.dep_set_id} - Failed to add deployment {deployment_to_add}: {repr(ex)}')
-            raise ex
+            raise ActionCallException('Deployment add failed', message=str(ex), context=deployment_to_add)
 
     def _update_deployment(self, deployment_to_update):
+        deployment_id = None
         try:
             deployment_id = deployment_to_update[0]['id']
+            target = deployment_to_update[1]['target']
+            self.edge_resolver.throw_edge_offline(target)
             self.log.info(f'{self.dep_set_id} - Update deployment: {deployment_id}')
-            application = deployment_to_update[1]["application"]
+            application = deployment_to_update[1]['application']
             deployment_data = self._load_reset_deployment(deployment_id, application)
             self._update_api_endpoint(deployment_data)
             self._update_env_deployment(deployment_data, application)
@@ -178,7 +220,7 @@ class BulkDeploymentSetApply(BulkAction):
                                           'parent-job': self.job.id})
         except Exception as ex:
             self.log.error(f'{self.dep_set_id} - Failed to update deployment {deployment_to_update}: {repr(ex)}')
-            raise ex
+            raise ActionCallException('Deployment update failed', resource_id=deployment_id, message=str(ex), context=deployment_to_update)
 
     def _remove_deployment(self, deployment_id):
         try:
@@ -188,6 +230,8 @@ class BulkDeploymentSetApply(BulkAction):
                 self.log.debug(f'{self.dep_set_id} - deleted deployment: {deployment_id}')
                 return self.dg_api.delete(deployment_id)
             else:
+                target = deployment.data.get('nuvlabox')
+                self.edge_resolver.throw_edge_offline(target)
                 self.log.debug(f'{self.dep_set_id} - stopping/delete deployment: {deployment_id}')
                 return self.dg_api.operation(deployment, 'stop',
                                              data={'low-priority': True,
@@ -195,12 +239,12 @@ class BulkDeploymentSetApply(BulkAction):
                                                    'delete': True})
         except Exception as ex:
             self.log.error(f'{self.dep_set_id} - Failed to remove {deployment_id}: {repr(ex)}')
-            raise ex
+            raise ActionCallException('Deployment remove failed', resource_id=deployment_id, message=str(ex))
 
     def _get_operation(self, operation_name: str):
         func = self.operations.get(operation_name)
         if not func:
-            raise KeyError(f'Unknown deployment set operation name: {operation_name}')
+            raise ActionCallException('Unknown deployment set operation', context={'operation_name': operation_name})
         return func
 
     def todo_resource_id(self, todo_el):

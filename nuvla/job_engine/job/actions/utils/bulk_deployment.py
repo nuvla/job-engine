@@ -5,8 +5,8 @@ from .bulk_action import BulkAction
 
 class DeploymentBulkJob(BulkAction, abc.ABC):
 
-    def __init__(self, job):
-        super().__init__(job)
+    def __init__(self, job, action_name):
+        super().__init__(job, action_name)
 
     def get_todo(self):
         return [deployment.id
