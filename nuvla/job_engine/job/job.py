@@ -207,7 +207,7 @@ class Job(dict):
     def add_nested_jobs(self, nested_jobs):
         self._add_resources_to_list('nested-jobs', nested_jobs, False)
 
-    def update_job(self, state=None, return_code=None, status_message=None, progress: int = None):
+    def update_job(self, state=None, return_code=None, status_message=None, progress: int = None, execution_mode=None, tags=None):
         attributes = {}
 
         if state is not None:
@@ -221,6 +221,12 @@ class Job(dict):
 
         if progress is not None:
             attributes['progress'] = progress
+
+        if execution_mode is not None:
+            attributes['execution-mode'] = execution_mode
+
+        if tags is not None:
+            attributes['tags'] = tags
 
         if attributes:
             self._edit_job_multi(attributes)
