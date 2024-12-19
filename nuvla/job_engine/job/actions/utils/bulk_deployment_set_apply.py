@@ -13,9 +13,10 @@ def get_dg_api(job):
     return job.get_api(authn_info)
 
 class EdgeResolver:
-    def __init__(self, dg_owner_api):
+    def __init__(self, dg_owner_api, dg_subtype):
         self.edges = {}
         self.dg_owner_api = dg_owner_api
+        self.dg_subtype = dg_subtype
 
     @staticmethod
     def _is_edge_target(target):
@@ -47,8 +48,14 @@ class EdgeResolver:
         return cred
 
     def _get_infra(self, edge):
-        # TODO: use the subtype of deployment-set once available
-        filter_subtype_infra = f'subtype={["swarm", "kubernetes"]}'
+        if self.dg_subtype in ["docker-swarm", "docker-compose"]:
+            infra_subtypes = ["swarm"]
+        elif self.dg_subtype == "kubernetes":
+            infra_subtypes = ["kubernetes"]
+        else:
+            # TODO: once subtype of deployment-set has been back-filled for existing DGs throw an error instead
+            infra_subtypes = ["swarm", "kubernetes"]
+        filter_subtype_infra = f'subtype={infra_subtypes}'
         filter_infra = f'parent="{edge["infrastructure-service-group"]}" ' \
                        f'and {filter_subtype_infra}'
         infras = self.dg_owner_api.search('infrastructure-service',
@@ -95,22 +102,24 @@ class BulkDeploymentSetApply(BulkAction):
         self.dg_owner_api = get_dg_owner_api(job)
         self.dg_api = get_dg_api(job)
         self.dep_set_id = self.job['target-resource']['href']
+        self.dep_set = self.dg_api.get(self.dep_set_id)
+        self.action_name = None
         self._log = None
         self.operations = {self.KEY_DEPLOYMENTS_TO_ADD: self._add_deployment,
                            self.KEY_DEPLOYMENTS_TO_UPDATE: self._update_deployment,
                            self.KEY_DEPLOYMENTS_TO_REMOVE: self._remove_deployment}
         self.api_endpoint = None
-        self.edge_resolver = EdgeResolver(self.dg_owner_api)
+        self.edge_resolver = EdgeResolver(self.dg_owner_api,
+                                          self.dep_set.data.get('subtype'))
 
     @staticmethod
     def _action_name_todo_el(operational_status, key):
         return [(key, el) for el in operational_status.get(key, [])]
 
     def get_todo(self):
-        deployment_set = self.dg_api.get(self.dep_set_id)
-        operational_status = self.dg_api.operation(deployment_set, 'operational-status').data
+        operational_status = self.dg_api.operation(self.dep_set, 'operational-status').data
         self.log.info(f'{self.dep_set_id} - Operational status: {operational_status}')
-        self.api_endpoint = deployment_set.data.get('api-endpoint')
+        self.api_endpoint = self.dep_set.data.get('api-endpoint')
         todo = (self._action_name_todo_el(operational_status, self.KEY_DEPLOYMENTS_TO_ADD) +
                 self._action_name_todo_el(operational_status, self.KEY_DEPLOYMENTS_TO_UPDATE) +
                 self._action_name_todo_el(operational_status, self.KEY_DEPLOYMENTS_TO_REMOVE))
