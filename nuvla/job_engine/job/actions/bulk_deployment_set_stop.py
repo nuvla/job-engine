@@ -6,12 +6,13 @@ from ..actions import action
 from .utils.bulk_action import BulkAction
 from .utils.bulk_deployment_set_apply import EdgeResolver, get_dg_api, get_dg_owner_api
 
+action_name = 'bulk_deployment_set_stop'
 
-@action('bulk_deployment_set_stop')
+@action(action_name)
 class BulkDeploymentSetStopJob(BulkAction):
 
     def __init__(self, job):
-        super().__init__(job)
+        super().__init__(job, action_name)
         self.dep_set_id = self.job['target-resource']['href']
         self.dg_owner_api = get_dg_owner_api(job)
         self.dg_api = get_dg_api(job)
