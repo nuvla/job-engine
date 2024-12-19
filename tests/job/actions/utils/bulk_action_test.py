@@ -170,7 +170,6 @@ class TestBulkActionResult(unittest.TestCase):
                 }]
         }
         json_str = json.dumps(data)
-        print(json_str)
         self.assertEqual(data, BulkActionResult.from_json(json_str).to_dict(),
                          'from data to json and back, data should be equal')
 
