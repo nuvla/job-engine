@@ -71,10 +71,10 @@ class MonitorBulkJob(object):
             state = job.data['state']
             if state == JOB_SUCCESS and not self.result.exist_in_success(resource_id):
                 self.result.add_success_action(resource_id)
-            if state == JOB_FAILED and not self.result.exist_in_fail_category_ids(
+            if state == JOB_FAILED and not self.result.exist_in_fail_reason_ids(
                     self.category_job_failed, resource_id):
                 self.result.fail_action(self.category_job_failed, resource_id)
-            if state == JOB_CANCELED and not self.result.exist_in_fail_category_ids(
+            if state == JOB_CANCELED and not self.result.exist_in_fail_reason_ids(
                     self.category_job_canceled, resource_id):
                 self.result.fail_action(self.category_job_canceled, resource_id)
 
