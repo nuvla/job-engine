@@ -2,6 +2,13 @@
 
 ## Released
 
+## [4.9.2](https://github.com/nuvla/job-engine/compare/4.9.1...4.9.2) (2024-12-24)
+
+
+### Bug Fixes
+
+* **Dockerfile:** Upgrade kubectl from 1.31 to 1.32 ([#423](https://github.com/nuvla/job-engine/issues/423)) ([263ff27](https://github.com/nuvla/job-engine/commit/263ff2716b87c593faba9ab72226572403b608b0))
+
 ## [4.9.1](https://github.com/nuvla/job-engine/compare/4.9.0...4.9.1) (2024-12-19)
 
 
