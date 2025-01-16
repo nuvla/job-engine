@@ -62,13 +62,9 @@ jobs:
           poetry build --no-interaction --format=wheel
 
       - name: Generate server requirements
-        run: >
-          poetry export
-          -f requirements.txt
-          -o dist/requirements.txt
-          --without-hashes
-          --without-urls
-          --with server
+        run: |
+          poetry self add poetry-plugin-export
+          poetry export -f requirements.txt -o dist/requirements.txt --without-hashes --without-urls --with server
 
       - name: Save wheel
         uses: actions/upload-artifact@v4
