@@ -99,9 +99,12 @@ jobs:
           virtualenvs-create: true
           virtualenvs-in-project: true
 
-      - name: Generate server requirements
+      - name: Ensure export plugin
         run: |
           poetry self add poetry-plugin-export
+
+      - name: Generate server requirements
+        run: |
           mkdir -p dist
           poetry export -f requirements.txt -o dist/requirements.txt --without-hashes --without-urls --with server
 
