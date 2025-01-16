@@ -48,10 +48,14 @@ jobs:
           virtualenvs-create: true
           virtualenvs-in-project: true
 
-      - name: Generate test requirements
+      - name: Ensure export plugin
         run: |
           poetry self add poetry-plugin-export
-          poetry export -f requirements.txt -o dist/requirements.txt --without-hashes --without-urls --with server
+
+      - name: Generate server requirements
+        run: |
+          mkdir -p dist
+          poetry export -f requirements.txt -o requirements.test.txt --without-hashes --without-urls --with server --with test
 
       - name: Install TOX
         run: |
