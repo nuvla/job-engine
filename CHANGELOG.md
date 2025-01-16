@@ -2,6 +2,73 @@
 
 ## Released
 
+## [4.9.2](https://github.com/nuvla/job-engine/compare/4.9.1...4.9.2) (2024-12-24)
+
+
+### Bug Fixes
+
+* **Dockerfile:** Upgrade kubectl from 1.31 to 1.32 ([#423](https://github.com/nuvla/job-engine/issues/423)) ([263ff27](https://github.com/nuvla/job-engine/commit/263ff2716b87c593faba9ab72226572403b608b0))
+
+## [4.9.1](https://github.com/nuvla/job-engine/compare/4.9.0...4.9.1) (2024-12-19)
+
+
+### Bug Fixes
+
+* **Action service_image_state:** Removed, deprecated ([672c3f1](https://github.com/nuvla/job-engine/commit/672c3f11d30cb4cf61a27ae8bc8b70ee6d94a614))
+* **Bulk job monitoring:** Refactor and change monitor data format to enhance UI/UX ([a131336](https://github.com/nuvla/job-engine/commit/a131336f99d6b8dabaa73018c729d69c05fc5ab7))
+* **Bulk job monitoring:** Timeout reduced from 1 day to 1 hour ([a131336](https://github.com/nuvla/job-engine/commit/a131336f99d6b8dabaa73018c729d69c05fc5ab7))
+* **Deployment Group:** Do not launch actions for offline edges ([#419](https://github.com/nuvla/job-engine/issues/419)) ([a131336](https://github.com/nuvla/job-engine/commit/a131336f99d6b8dabaa73018c729d69c05fc5ab7))
+* **Distribution service_image_state:** Removed, deprecated ([672c3f1](https://github.com/nuvla/job-engine/commit/672c3f11d30cb4cf61a27ae8bc8b70ee6d94a614))
+* **wrong_infra_selected:** filter infra services based on DG subtype ([#421](https://github.com/nuvla/job-engine/issues/421)) ([00d1c01](https://github.com/nuvla/job-engine/commit/00d1c01a530c7dff972f4572e54508f89f5d0672))
+
+## [4.9.0](https://github.com/nuvla/job-engine/compare/4.8.3...4.9.0) (2024-12-09)
+
+
+### Features
+
+* **deployment_state:** only distribute deployment_state_60 to deployments not deployed on NuvlaEdge ([#416](https://github.com/nuvla/job-engine/issues/416)) ([5d81f94](https://github.com/nuvla/job-engine/commit/5d81f9454c2c2817855438bc4116c874fd17b812))
+
+
+### Bug Fixes
+
+* **dg-auto-update-acl:** make jobs created by auto update visible to the dg owner ([#417](https://github.com/nuvla/job-engine/issues/417)) ([dac2a9a](https://github.com/nuvla/job-engine/commit/dac2a9a1982e2ee42ec605e03bee2559a80006fb))
+
+## [4.8.3](https://github.com/nuvla/job-engine/compare/4.8.2...4.8.3) (2024-11-26)
+
+
+### Bug Fixes
+
+* **bulk_deployment_set_apply.py:** Avoid creating deployment without target credential ([#414](https://github.com/nuvla/job-engine/issues/414)) ([858dae1](https://github.com/nuvla/job-engine/commit/858dae166c4e6a8248b33786a3dc6bd1f19aa69d))
+
+## [4.8.2](https://github.com/nuvla/job-engine/compare/4.8.1...4.8.2) (2024-11-21)
+
+
+### Bug Fixes
+
+* **action_bulk_deployment_set_apply:** Take Operational Status files overrides into account when creating deployments of a DG ([e656cd9](https://github.com/nuvla/job-engine/commit/e656cd9af34c160dd86e900857bd23944e757a35))
+* **dg-permission-issues:** make api calls with the right permissions ([#410](https://github.com/nuvla/job-engine/issues/410)) ([e656cd9](https://github.com/nuvla/job-engine/commit/e656cd9af34c160dd86e900857bd23944e757a35))
+
+## [4.8.1](https://github.com/nuvla/job-engine/compare/4.8.0...4.8.1) (2024-11-20)
+
+
+### Bug Fixes
+
+* **Deployment group:** Deploy on docker by default if both docker and kubernetes are available (temporary fix) ([bbdfac2](https://github.com/nuvla/job-engine/commit/bbdfac23b8e5212372cc27a8c963524a32eae1b1))
+* **update:** Added K8s nuvlaedge update operation parsing capabilities for helm params configuration ([#409](https://github.com/nuvla/job-engine/issues/409)) ([dedccc9](https://github.com/nuvla/job-engine/commit/dedccc9fe421c032bb71b1c4581c3b2dcfa77135))
+
+## [4.8.0](https://github.com/nuvla/job-engine/compare/4.7.1...4.8.0) (2024-11-20)
+
+
+### Features
+
+* **deployment_set_automatic_update.pt:** New action support auto-update deployment group ([9839de3](https://github.com/nuvla/job-engine/commit/9839de33edc62fe495779385d98cf27e8649cc87))
+* **deployment_set_automatic_update.py:** New distribution ([9839de3](https://github.com/nuvla/job-engine/commit/9839de33edc62fe495779385d98cf27e8649cc87))
+
+
+### Bug Fixes
+
+* fix helm update failing after failed install; improve oci vs http install/upgrade command ([#408](https://github.com/nuvla/job-engine/issues/408)) ([1ca4553](https://github.com/nuvla/job-engine/commit/1ca4553e6ab5ac6fcee16dea137e3724de593bd1))
+
 ## [4.7.1](https://github.com/nuvla/job-engine/compare/4.7.0...4.7.1) (2024-11-11)
 
 

@@ -6,6 +6,7 @@ from ..distributions import distribution
 from ..distribution import DistributionBase
 from ..util import override
 from ..job import JOB_RUNNING, JOB_QUEUED
+from ..actions.utils.bulk_action import BulkAction
 
 
 @distribution('monitor_bulk_jobs')
@@ -14,7 +15,7 @@ class MonitorBulkJobsDistributor(DistributionBase):
 
     def __init__(self, distributor):
         super(MonitorBulkJobsDistributor, self).__init__(self.DISTRIBUTION_NAME, distributor)
-        self.collect_interval = 60
+        self.collect_interval = 30
         self._start_distribution()
 
     def job_exists(self, job):
@@ -28,9 +29,9 @@ class MonitorBulkJobsDistributor(DistributionBase):
         return jobs.count > 0
 
     def get_bulk_jobs_running(self):
-        filter_bulk_jobs = (f'action^="bulk" '
+        filter_bulk_jobs = ('action^="bulk" '
                             f'and state="{JOB_RUNNING}"'
-                            f'and progress>=20')
+                            f'and tags="{BulkAction.monitor_tag}"')
         return self.distributor.api.search(
             'job',
             last=10000,

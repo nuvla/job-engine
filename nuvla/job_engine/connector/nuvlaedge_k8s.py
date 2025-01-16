@@ -193,23 +193,42 @@ spec:
         return cmd_res.stdout
 
     @staticmethod
-    def _env_to_vars(envs: dict) -> list:
+    def _get_env_by_pattern(envs: list, pattern: str) -> list:
+        env_conf = []
+        compiled_pattern = re.compile(pattern)
+        for env_pair in envs:
+            log.debug('Environment pair: %s', env_pair)
+            env_pair_mod = ''.join(env_pair.split())
+            re_result = compiled_pattern.match(env_pair_mod)
+            log.debug('Matching result: %s', re_result)
+            if re_result:
+                env_conf.extend(['--set', env_pair_mod])
+                log.debug('Current env vars: %s', env_conf)
+        return env_conf
+
+
+    def _conf_to_vars(self, envs: list) -> list:
+        """
+        Like env to vars, but parses helm chart values dot linked variables.
+        Args:
+            envs: the environment variables to parse
+
+        Returns:
+
+        """
+        variable_pattern = r'(\w+\.)+\w+=.*$'
+        env_conf = self._get_env_by_pattern(envs, variable_pattern)
+
+        return env_conf
+
+    def _env_to_vars(self, envs: list) -> list:
         """
         Parse the environment variables and convert them to helm --set vars.
         """
 
-        env_pair_pattern = r'^\w+=\w+$'
+        env_pair_pattern = r'\w+=.*$'
 
-        set_vars = []
-        for env_pair in envs:
-            log.debug('Environment pair: %s', env_pair)
-            env_pair_mod = ''.join(env_pair.split())
-            re_result = re.match(env_pair_pattern, env_pair_mod)
-            log.debug('Matching result: %s', re_result)
-            if re_result:
-                set_vars.extend(['--set ', env_pair_mod])
-                log.debug('Current env vars: %s', set_vars)
-
+        set_vars = self._get_env_by_pattern(envs, env_pair_pattern)
         log.info('Environment arguments: %s', set_vars)
 
         return set_vars
@@ -287,6 +306,17 @@ spec:
 
         cmd.extend(
             self._env_to_vars(install_params.get('environment', {})))
+
+        cmd.extend(
+            # Allows configuration for helm deployments via env variables
+            # Mostly for development and testing purposes. Example:
+            # env: {
+            #  "nuvlaedge.image.image": "main"
+            #}
+            # Into a cmd line flag: --set nuvlaedge.image.image=main
+            # This variable is removed after its use to avoid conflicts with env exports (no . are allowed)
+            self._conf_to_vars(install_params.get('environment', {}))
+        )
 
         if any(param is None for param in cmd):
             msg = ('Some params of the helm command are not defined. Cannot '

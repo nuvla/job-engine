@@ -26,7 +26,7 @@ class DeploymentSetAutomaticUpdateJobsDistribution(DistributionBase):
                 filter=filter_and(['state=["STARTED","UPDATED","PARTIALLY-STARTED","PARTIALLY-UPDATED"]',
                                    'auto-update=true',
                                    'next-refresh<="now"']),
-                select='id',
+                select='id,owner',
                 last=10000).resources
         except Exception as ex:
             logging.error(f'Failed to search for auto-update dgs: {ex}')
@@ -48,7 +48,9 @@ class DeploymentSetAutomaticUpdateJobsDistribution(DistributionBase):
         logging.info(f'Auto-update DGs count: {len(auto_update_dgs)}')
         for resource in auto_update_dgs:
             job = {'action': self.DISTRIBUTION_NAME,
-                   'target-resource': {'href': resource.id}}
+                   'target-resource': {'href': resource.id},
+                   'acl': {'view-acl': [resource.data['owner']],
+                           'owners': ['group/nuvla-admin']}}
             if self.job_exists(job):
                 continue
             yield job

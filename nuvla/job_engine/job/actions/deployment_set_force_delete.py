@@ -12,4 +12,4 @@ class DeploymentSetForceDeleteJob(DeploymentSetRemove):
 
     def _delete(self, deployment_id):
         deployment = self.api.get(deployment_id)
-        self.api.operation(deployment, 'force-delete')
+        self.dg_owner_api.operation(deployment, 'force-delete')
