@@ -14,9 +14,9 @@ class BulkDeploymentSetStopJob(BulkAction):
     def __init__(self, job):
         super().__init__(job, action_name)
         self.dep_set_id = self.job['target-resource']['href']
-        self.dep_set = self.dg_api.get(self.dep_set_id)
         self.dg_owner_api = get_dg_owner_api(job)
         self.dg_api = get_dg_api(job)
+        self.dep_set = self.dg_api.get(self.dep_set_id)
         self.edge_resolver = EdgeResolver(self.dg_owner_api, self.dep_set.data.get('subtype'))
 
     def get_todo(self):
