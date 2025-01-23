@@ -48,15 +48,14 @@ jobs:
           virtualenvs-create: true
           virtualenvs-in-project: true
 
-      - name: Generate test requirements
-        run: >
-          poetry export
-          -f requirements.txt
-          -o requirements.test.txt
-          --without-hashes
-          --without-urls
-          --with test
-          --with server
+      - name: Ensure export plugin
+        run: |
+          poetry self add poetry-plugin-export
+
+      - name: Generate server requirements
+        run: |
+          mkdir -p dist
+          poetry export -f requirements.txt -o requirements.test.txt --without-hashes --without-urls --with server --with test
 
       - name: Install TOX
         run: |
@@ -104,20 +103,19 @@ jobs:
           virtualenvs-create: true
           virtualenvs-in-project: true
 
+      - name: Ensure export plugin
+        run: |
+          poetry self add poetry-plugin-export
+
+      - name: Generate server requirements
+        run: |
+          mkdir -p dist
+          poetry export -f requirements.txt -o dist/requirements.txt --without-hashes --without-urls --with server
+
       - name: Build Package
         run: |
           poetry build --format=wheel --no-interaction
           cp ./dist/*.whl ./dist/nuvla_job_engine-latest-py3-none-any.whl
-
-      - name: Generate server requirements
-        run: >
-          poetry export
-          -f requirements.txt
-          -o dist/requirements.txt
-          --without-hashes
-          --without-urls
-          --with server
-
 
       - name: Save wheel
         uses: actions/upload-artifact@v4
