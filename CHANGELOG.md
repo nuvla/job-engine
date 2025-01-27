@@ -2,6 +2,20 @@
 
 ## Released
 
+## [4.10.0](https://github.com/nuvla/job-engine/compare/4.9.2...4.10.0) (2025-01-27)
+
+
+### Features
+
+* Added cleanup of volumes and images on deployment stop action ([#425](https://github.com/nuvla/job-engine/issues/425)) ([a5b7ff1](https://github.com/nuvla/job-engine/commit/a5b7ff1701dbab69f626010ad9e31b77a47c1e70))
+
+
+### Bug Fixes
+
+* **BulkDeploymentSetStop:** missing param to EdgeResolver in dg stop action ([#427](https://github.com/nuvla/job-engine/issues/427)) ([1d55c29](https://github.com/nuvla/job-engine/commit/1d55c290841fbbe798a0d31cff3789f0e9d1a4cf))
+* **BulkDeploymentSetStop:** missing param to EdgeResolver in dg stop action ([#429](https://github.com/nuvla/job-engine/issues/429)) ([e08e762](https://github.com/nuvla/job-engine/commit/e08e762af6480b00b56c15afe14a4090f37db4ae))
+* **CI:** Fixed poetry deprecated plugin. Manual installation required ([#426](https://github.com/nuvla/job-engine/issues/426)) ([a8fb4b0](https://github.com/nuvla/job-engine/commit/a8fb4b08fd8874417da3ce21990201c292ba8364))
+
 ## [4.9.2](https://github.com/nuvla/job-engine/compare/4.9.1...4.9.2) (2024-12-24)
 
 
