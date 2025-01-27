@@ -157,7 +157,7 @@ class DockerCompose(ConnectorCOE):
                 cmd.append('--volumes')
 
             if remove_images:
-                cmd.append('--rmi')
+                cmd.append('--rmi=all')
 
             cmd = self.build_cmd_line(cmd)
             return join_stderr_stdout(self._execute_clean_command(cmd, env=env))
