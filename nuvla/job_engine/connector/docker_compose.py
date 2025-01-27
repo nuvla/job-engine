@@ -142,8 +142,8 @@ class DockerCompose(ConnectorCOE):
         project_name = kwargs['name']
         docker_compose = kwargs['docker_compose']
         env = kwargs.get('env')
-        remove_images = kwargs.get('remove_images', False)
-        remove_volumes = kwargs.get('remove_volumes', False)
+        remove_images = kwargs.get('remove-images', False)
+        remove_volumes = kwargs.get('remove-volumes', False)
 
         with TemporaryDirectory() as tmp_dir_name:
             compose_file_path = f'{tmp_dir_name}/{docker_compose_filename}'
