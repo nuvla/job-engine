@@ -142,6 +142,8 @@ class DockerCompose(ConnectorCOE):
         project_name = kwargs['name']
         docker_compose = kwargs['docker_compose']
         env = kwargs.get('env')
+        remove_images = kwargs.get('remove-images', False)
+        remove_volumes = kwargs.get('remove-volumes', False)
 
         with TemporaryDirectory() as tmp_dir_name:
             compose_file_path = f'{tmp_dir_name}/{docker_compose_filename}'
@@ -149,8 +151,15 @@ class DockerCompose(ConnectorCOE):
             compose_file.write(docker_compose)
             compose_file.close()
 
-            cmd = self.build_cmd_line(
-                ['-p', project_name, '-f', compose_file_path, 'down'])
+            cmd = ['-p', project_name, '-f', compose_file_path, 'down']
+
+            if remove_volumes:
+                cmd.append('--volumes')
+
+            if remove_images:
+                cmd.append('--rmi=all')
+
+            cmd = self.build_cmd_line(cmd)
             return join_stderr_stdout(self._execute_clean_command(cmd, env=env))
 
     update = start

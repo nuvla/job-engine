@@ -35,10 +35,16 @@ class DeploymentStopJob(DeploymentBase):
     def _get_action_params(self, deployment: dict) -> dict:
         env = get_env(deployment)
         docker_compose = Deployment.module_content(deployment)['docker-compose']
-        return {
+
+        args = {
             **self._get_action_params_base(deployment),
-            **dict(env=env, docker_compose=docker_compose)
+            **dict(env=env, docker_compose=docker_compose),
         }
+
+        # Payload could be empty or NoneType
+        if self.job.payload:
+            args.update(self.job.payload)
+        return args
 
     def _get_action_params_helm(self, deployment: dict) -> dict:
         return self._get_action_params_base(deployment)
