@@ -183,8 +183,8 @@ class AppMgmtHelm(ConnectorCOE):
         # FIXME: check how to handle the secrets during upgrade.
         if registries_auth and op != 'upgrade':
             self.helm.k8s.create_namespace(namespace, exists_ok=True)
-            self.helm.k8s.add_secret_image_registries_auths(registries_auth,
-                                                            namespace)
+            self.helm.k8s.create_secret_image_registries_auths(
+                registries_auth, namespace, work_dir)
         try:
             result = self.helm.op_install_upgrade(op, helm_release,
                                                   helm_repo_url, helm_repo_cred,

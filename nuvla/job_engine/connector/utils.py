@@ -180,7 +180,7 @@ def from_base64(s: str, encoding='utf-8') -> str:
     return base64.b64decode(s.encode(encoding)).decode(encoding)
 
 
-def generate_registry_config(registries_auth: list):
+def generate_registry_config(registries_auth: list) -> str:
     auths = {}
     for registry_auth in registries_auth:
         auth = to_base64(
