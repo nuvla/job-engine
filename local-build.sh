@@ -3,6 +3,8 @@
 IMAGE_ORG=${1:-local}
 IMAGE_REPO=${2:-job}
 
+rm -rf dist/
+
 # Export plugin will be removed from default poetry, we need to install it manually from pip
 poetry self add poetry-plugin-export
 

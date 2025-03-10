@@ -33,8 +33,11 @@ def get_kubernetes_local_endpoint():
     return ''
 
 
+REGISTRIES_AUTHS_SECRET_NAME = 'registries-credentials'
+
+
 def k8s_secret_image_registries_auths(registries_auth: list,
-                                      secret_name='registries-credentials'):
+                                      secret_name=REGISTRIES_AUTHS_SECRET_NAME) -> dict:
     config = generate_registry_config(registries_auth)
     return {'apiVersion': 'v1',
             'kind': 'Secret',
@@ -112,6 +115,8 @@ class Kubernetes:
         return 'Kubernetes-cli'
 
     def kubeconfig(self) -> str:
+        if self._kube_config_file is None:
+            raise ValueError('kubeconfig file is not defined.')
         return self._kube_config_file.name
 
     def connect(self):
@@ -153,6 +158,20 @@ users:
         return ['kubectl', '--kubeconfig', self.kubeconfig()] \
             + cmd
 
+    @should_connect
+    def run_command(self, command: list, stdin=None, **kwargs) -> CompletedProcess:
+        """Execute a kubectl command
+
+        Args:
+            command (list): command to be provided to kubectl
+
+        Returns:
+            CompletedProcess: the result of the command
+        """
+        cmd = self.build_cmd_line(command)
+        log.debug('Command line to run: %s', cmd)
+        return execute_cmd(cmd, input=stdin, **kwargs)
+
     @staticmethod
     def create_object_name(job_name, k=5):
         """
@@ -160,7 +179,6 @@ users:
         """
         return job_name + "-" + ''.join(random.choices(string.digits, k=k))
 
-    @should_connect
     def apply_manifest(self, manifest: str, namespace: str = None) -> CompletedProcess:
         """
         Runs `manifest` in a temporary directory.
@@ -173,13 +191,30 @@ users:
             cmd = ['apply', '-f', manifest_path]
             if namespace:
                 cmd = ['-n', namespace] + cmd
-            cmd_exec = self.build_cmd_line(cmd)
-            result = execute_cmd(cmd_exec)
+            result = self.run_command(cmd)
             log.debug('The result of applying manifest: %s', result)
 
         return result
 
-    @should_connect
+    def _patch_service_account(self, namespace: str, patch_data: str) -> CompletedProcess:
+        return self.run_command(['patch', 'serviceaccount', 'default',
+                                '-n', namespace,
+                                '-p', patch_data])
+
+    def patch_service_account_pull_secret(self, namespace: str,
+                                          secret_name: str = REGISTRIES_AUTHS_SECRET_NAME):
+        res = self._patch_service_account(namespace,
+            f'{{"imagePullSecrets": [{{"name": "{secret_name}"}}]}}')
+        log.info('Service account in namespace %s patched with secret: %s',
+                 namespace, secret_name)
+        return res
+
+    def setup_registries_auths(self, namespace: str, registries_auth: list, work_dir):
+        self.create_namespace(namespace, exists_ok=True)
+        self.patch_service_account_pull_secret(namespace)
+        self.create_secret_image_registries_auths(
+            registries_auth, namespace, work_dir)
+
     def apply_manifest_with_context(self, manifest: str, namespace, env: dict,
                                     files: List[dict],
                                     registries_auth: list) -> CompletedProcess:
@@ -193,18 +228,16 @@ users:
                 {'nuvla.deployment-group.uuid': env['NUVLA_DEPLOYMENT_GROUP_UUID']})
 
         with TemporaryDirectory() as dir_name:
-            self._create_deployment_context(dir_name,
-                                            namespace,
-                                            manifest,
-                                            files,
-                                            registries_auth,
-                                            common_labels)
+            if registries_auth:
+                # NB! We don't create the registries authn secret via kustomize,
+                # but directly because applying the manifest adds the content of
+                # the secret to the annotations.
+                self.setup_registries_auths(namespace, registries_auth, dir_name)
+            self._create_deployment_context(dir_name, namespace, manifest,
+                                            files, common_labels)
 
-            cmd_deploy = self.build_cmd_line(['apply', '-k', dir_name])
+            return self.run_command(['apply', '-k', dir_name])
 
-            return execute_cmd(cmd_deploy)
-
-    @should_connect
     def read_job_log(self, job_name: str) -> CompletedProcess:
         """
         Read the log of a kubernetes batch job.
@@ -217,11 +250,9 @@ users:
         return self._get_workload_log(self.K8S_JOB + job_name)
 
     def _get_workload_log(self, workload_name: str) -> CompletedProcess:
-        read_log_cmd = self.build_cmd_line(['logs', workload_name])
-        log_result = execute_cmd(read_log_cmd)
-        log.debug('The logs of %s: %s', workload_name,
-                  log_result.stdout)
-        return log_result
+        res = self.run_command(['logs', workload_name])
+        log.debug('The logs of %s: %s', workload_name, res.stdout)
+        return res
 
     @staticmethod
     def get_all_namespaces_from_manifest(manifest: str) -> set:
@@ -235,10 +266,30 @@ users:
             log.error('Failed to extract namespaces from manifest: %s', ex)
         return namespaces
 
-    @staticmethod
-    def _create_deployment_context(directory_path, namespace, manifest,
-                                   files, registries_auth: list,
-                                   common_labels: Dict[str, str] = None):
+    def create_secret_image_registries_auths(
+        self, registries_auth: list, namespace: str, work_dir: str
+    ) -> CompletedProcess:
+        try:
+            cmd = ['delete', 'secret', 'docker-registry',
+                   REGISTRIES_AUTHS_SECRET_NAME]
+            if namespace:
+                cmd += ['--namespace', namespace]
+            self.run_command(cmd)
+        except Exception:
+            pass
+        config = generate_registry_config(registries_auth)
+        config_fn = os.path.join(work_dir, 'config.json')
+        with open(config_fn, 'w', encoding='utf-8') as fd:
+            fd.write(config)
+        cmd = ['create', 'secret', 'docker-registry',
+                REGISTRIES_AUTHS_SECRET_NAME,
+                f'--from-file=.dockerconfigjson={config_fn}']
+        if namespace:
+            cmd += ['--namespace', namespace]
+        return self.run_command(cmd)
+
+    def _create_deployment_context(self, directory_path, namespace, manifest,
+                                   files: list, common_labels: Dict[str, str] = None):
         manifest_fn = 'manifest.yml'
         with open(os.path.join(directory_path, manifest_fn), 'w') as fd:
             fd.write(manifest)
@@ -258,29 +309,18 @@ users:
         kustomization_data = {'namespace': namespace,
                               'commonLabels': common_labels,
                               'resources': [manifest_fn, namespace_fn]}
-        if registries_auth:
-            secret_registries_fn = store_k8s_secret_registries_auths_file(
-                    registries_auth, directory_path=directory_path)
-            kustomization_data.setdefault('resources', []) \
-                .append(secret_registries_fn)
+
         log.debug('Kustomization data: %s', kustomization_data)
         store_as_yaml(kustomization_data, 'kustomization.yml',
                       directory_path)
 
-    @should_connect
     def delete_namespace(self, namespace: str) -> CompletedProcess:
-        cmd = self.build_cmd_line(['delete', 'namespace', namespace])
-        log.debug('Command line to delete namespace: %s', cmd)
-        return execute_cmd(cmd)
+        return self.run_command(['delete', 'namespace', namespace])
 
-    @should_connect
     def delete_all_resources_by_label(self, label: str) -> CompletedProcess:
-        cmd = self.build_cmd_line(
+        return self.run_command(
             ['delete', 'all', '--all-namespaces', '-l', label])
-        log.debug('Command line to delete all resources by label: %s', cmd)
-        return execute_cmd(cmd)
 
-    @should_connect
     def get_namespace_objects(self, namespace, objects: list):
         if not namespace:
             msg = 'Namespace is not provided.'
@@ -289,11 +329,9 @@ users:
 
         what = objects and ','.join(objects) or 'all'
 
-        cmd_stop = self.build_cmd_line(['-n', namespace, 'get', what,
-                                        '-o', 'json'])
-
         try:
-            return execute_cmd(cmd_stop).stdout
+            return self.run_command(
+                ['-n', namespace, 'get', what, '-o', 'json']).stdout
         except Exception as ex:
             if 'NotFound' in ex.args[0] if len(ex.args) > 0 else '':
                 return f'Namespace "{namespace}" not found.'
@@ -308,12 +346,12 @@ users:
         utc_timestamp = datetime.utcfromtimestamp(time_now)
         return utc_timestamp.strftime(cls.TIMESTAMP_FMT_UTC)
 
-    def _build_logs_cmd(self,
-                        namespace: str,
-                        pod_unique_id: str,
-                        container_name: str,
-                        since: datetime,
-                        tail_lines: int) -> list:
+    def _build_logs_cmd_args(self,
+                             namespace: str,
+                             pod_unique_id: str,
+                             container_name: str,
+                             since: datetime,
+                             tail_lines: int) -> list:
 
         container_opts = [f'pod/{pod_unique_id}',
                           f'--container={container_name}']
@@ -324,9 +362,8 @@ users:
         if since:
             list_opts_log.extend(['--since-time', since.isoformat()])
 
-        return self.build_cmd_line(['logs'] + container_opts + list_opts_log)
+        return ['logs'] + container_opts + list_opts_log
 
-    @should_connect
     def _get_container_logs(self,
                             namespace,
                             pod: dict,
@@ -350,18 +387,18 @@ users:
             container_name = container['name']
             log.debug('Working with container: %s', container_name)
 
-            cmd = self._build_logs_cmd(namespace,
-                                       pod_unique_id,
-                                       container_name,
-                                       since,
-                                       tail_lines)
+            cmd = self._build_logs_cmd_args(namespace,
+                                            pod_unique_id,
+                                            container_name,
+                                            since,
+                                            tail_lines)
             log.debug('Logs command line: %s', ' '.join(cmd))
 
             pod_container = f'pod/{pod_unique_id}->{container_name}'
 
             try:
                 # FIXME: Only stdout is used. We should also handle stderr.
-                container_logs = execute_cmd(cmd).stdout
+                container_logs = self.run_command(cmd).stdout
             except Exception as ex:
                 log.error('Failed getting logs from %s: %s', pod_container, ex)
                 continue
@@ -441,7 +478,7 @@ users:
 
     @should_connect
     def _get_pods_cronjob(self, namespace, obj_name) -> list:
-        # Find Jobs associated with the CronJob and get its name.
+        """Finds Jobs associated with the CronJob and get its name."""
         kind_top_level = 'CronJob'
         pods_owner_kind = 'Job'
         jobs = self._exec_stdout_json(['get', pods_owner_kind,
@@ -452,8 +489,8 @@ users:
             kind_top_level,
             obj_name)
         if len(jobs_owned_by_cronjob) < 1:
-            log.error(f'Failed to find {pods_owner_kind} owned by '
-                      f'{kind_top_level}/{obj_name}.')
+            log.error('Failed to find %s owned by %s/%s.',
+                      pods_owner_kind, kind_top_level, obj_name)
             return []
 
         jobs_names = [x['metadata']['name'] for x in jobs_owned_by_cronjob]
@@ -506,8 +543,8 @@ users:
         valid_replica_set = self.valid_replica_set(owned_rep_sets)
 
         if len(valid_replica_set) < 1:
-            log.error(f'Failed to find {pods_owner_kind} owned by '
-                      f'{kind_top_level}/{obj_name}.')
+            log.error('Failed to find %s owned by %s/%s.',
+                      pods_owner_kind, kind_top_level, obj_name)
             return []
         if len(valid_replica_set) > 1:
             msg = f'There can only be single {pods_owner_kind}. ' \
@@ -574,7 +611,6 @@ users:
          'DaemonSet',
          'Pod']
 
-    @should_connect
     def log(self, component: str, since: datetime, num_lines: int,
             namespace: str = None) -> str:
         """
@@ -647,29 +683,26 @@ users:
         object_info['replicas.desired'] = str(replicas_desired)
         object_info['replicas.running'] = str(replicas_running)
 
-    @should_connect
     def _get_objects_in_namespace(self, object_kinds: List[str],
                                   namespace: str) -> list:
         objects = ','.join(object_kinds)
-        cmd = self.build_cmd_line(
-            ['get', objects, '--namespace', namespace, '-o', 'json'])
-        return json.loads(execute_cmd(cmd).stdout).get('items', [])
+        cmd = ['get', objects, '--namespace', namespace, '-o', 'json']
+        res = self.run_command(cmd).stdout
+        return json.loads(res).get('items', [])
 
-    @should_connect
     def _get_objects_by_deployment_uuid(self, deployment_uuid: str,
                                         object_kinds: List[str] = None) -> list:
         objects = ','.join(object_kinds)
-        cmd = self.build_cmd_line(
-            ['get', objects, '--all-namespaces', '-o', 'json',
-             '-l', f'nuvla.deployment.uuid={deployment_uuid}'])
-        kube_objects = json.loads(execute_cmd(cmd).stdout).get('items', [])
+        cmd = ['get', objects, '--all-namespaces', '-o', 'json',
+               '-l', f'nuvla.deployment.uuid={deployment_uuid}']
+        res = self.run_command(cmd).stdout
+        kube_objects = json.loads(res).get('items', [])
 
         return [self._extract_object_info(kube_resource)
                 for kube_resource in kube_objects]
 
     DEFAULT_OBJECTS = ['deployments', 'services']
 
-    @should_connect
     def get_objects(self, deployment_uuid, object_kinds: List[str]) -> List[dict]:
 
         object_kinds = object_kinds or self.DEFAULT_OBJECTS
@@ -695,10 +728,8 @@ users:
                       objects, deployment_uuid)
         return objects
 
-    @should_connect
     def version(self) -> dict:
-        cmd = self.build_cmd_line(['version', '-o', 'json'])
-        version = execute_cmd(cmd, timeout=5).stdout
+        version = self.run_command(['version', '-o', 'json'], timeout=5).stdout
         return json.loads(version)
 
     NAMESPACE_FILE = '/var/run/secrets/kubernetes.io/serviceaccount/namespace'
@@ -716,6 +747,7 @@ users:
             self._namespace = self._get_namespace_local()
         return self._namespace
 
+    @should_connect
     def _wait_workload_succeeded(self, workload_name, namespace: str, timeout_min=5):
         """
         Check that a workload `workload_name` has completed.
@@ -746,7 +778,6 @@ users:
             time.sleep(1)
         return True
 
-    @should_connect
     def wait_job_succeeded(self, job_name, namespace, timeout_min=5):
         """
         Check that a job `job_name` has completed.
@@ -758,25 +789,12 @@ users:
                                       namespace,
                                       timeout_min)
 
-    @should_connect
     def create_namespace(self, namespace: str, exists_ok=False) -> CompletedProcess:
-        cmd = self.build_cmd_line(['create', 'namespace', namespace])
-        log.debug('Command line to create namespace: %s', cmd)
+        cmd = ['create', 'namespace', namespace]
         try:
-            return execute_cmd(cmd)
+            return self.run_command(cmd)
         except Exception as ex:
             if exists_ok and 'AlreadyExists' in ex.args[0]:
                 log.warning(f'Namespace {namespace} already exists.')
                 return CompletedProcess(cmd, 1, None, ex.args[0])
             raise ex
-
-    @should_connect
-    def add_secret_image_registries_auths(self, registries_auths: list,
-                                          namespace=None) -> CompletedProcess:
-        secret_data = k8s_secret_image_registries_auths(registries_auths)
-        cmd_base = ['apply', '-f', '-']
-        if namespace:
-            cmd_base = ['-n', namespace, ] + cmd_base
-        cmd = self.build_cmd_line(cmd_base)
-        log.debug('Command line to add secret image registries auths: %s', cmd)
-        return execute_cmd(cmd, input=yaml.dump(secret_data))
