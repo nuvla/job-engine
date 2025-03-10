@@ -2,6 +2,13 @@
 
 ## Released
 
+## [4.10.1](https://github.com/nuvla/job-engine/compare/4.10.0...4.10.1) (2025-03-10)
+
+
+### Bug Fixes
+
+* **k8s registries creds:** create registries creds for the whole namespace ([#430](https://github.com/nuvla/job-engine/issues/430)) ([111de81](https://github.com/nuvla/job-engine/commit/111de8131a47ddc9c032aa28c35329a44abe08dd))
+
 ## [4.10.0](https://github.com/nuvla/job-engine/compare/4.9.2...4.10.0) (2025-01-27)
 
 
