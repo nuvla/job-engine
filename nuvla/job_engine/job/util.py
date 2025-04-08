@@ -52,11 +52,14 @@ def assure_path_exists(path):
         os.makedirs(dir)
 
 
-def retry_kazoo_queue_op(queue, function_name):
-    while not getattr(queue, function_name)():
-        random_wait(0.1, 5)
-        logging.warning(
-            'retry_kazoo_queue_op: Retrying {} on {}.'.format(function_name, queue.get()))
+def kazoo_check_processing_element(queue, function_name):
+    processing_element = queue.processing_element
+    if processing_element:
+        getattr(queue, function_name)()
+        logging.info('')
+    else:
+        logging.error('No processing element! Element was already released or consumed.')
+
 
 
 def status_message_from_exception():

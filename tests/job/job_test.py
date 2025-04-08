@@ -26,9 +26,9 @@ class TestJob(unittest.TestCase):
         job.engine_version = '2.0.0'
         job.Job.get_cimi_job = Mock(return_value=CimiResource({}))
         job.Job.update_job = Mock()
-        job.retry_kazoo_queue_op = Mock()
+        job.kazoo_check_processing_element = Mock()
         jb = job.Job(None, queue)
-        job.retry_kazoo_queue_op.assert_called_once_with(queue, "consume")
+        job.kazoo_check_processing_element.assert_called_once_with(queue, "consume")
         jb.update_job.assert_called_once()
         assert jb.nothing_to_do is True
 
@@ -37,9 +37,9 @@ class TestJob(unittest.TestCase):
         job.engine_version = '3.2.1'
         job.Job.get_cimi_job = Mock(return_value=CimiResource({'version': '1.2.3'}))
         job.Job.update_job = Mock()
-        job.retry_kazoo_queue_op = Mock()
+        job.kazoo_check_processing_element = Mock()
         jb = job.Job(None, queue)
-        job.retry_kazoo_queue_op.assert_called_once_with(queue, "consume")
+        job.kazoo_check_processing_element.assert_called_once_with(queue, "consume")
         jb.update_job.assert_called_once()
         assert jb.nothing_to_do is True
 
@@ -48,10 +48,10 @@ class TestJob(unittest.TestCase):
         job.engine_version = '3.2.1'
         job.Job.get_cimi_job = Mock(return_value=CimiResource({'version': '1'}))
         job.Job.update_job = Mock()
-        job.retry_kazoo_queue_op = Mock()
+        job.kazoo_check_processing_element = Mock()
         jb = job.Job(None, queue)
         jb.update_job.assert_called_once()
-        job.retry_kazoo_queue_op.assert_called_once_with(queue, "consume")
+        job.kazoo_check_processing_element.assert_called_once_with(queue, "consume")
         assert jb.nothing_to_do is True
 
         # The job version might only indicate the major number.
@@ -68,33 +68,33 @@ class TestJob(unittest.TestCase):
             job.engine_version = v
             job.Job.get_cimi_job = Mock(return_value=CimiResource({'version': v}))
             job.Job.update_job = Mock()
-            job.retry_kazoo_queue_op = Mock()
+            job.kazoo_check_processing_element = Mock()
             jb = job.Job(None, queue)
             jb.update_job.assert_not_called()
-            job.retry_kazoo_queue_op.assert_not_called()
+            job.kazoo_check_processing_element.assert_not_called()
             assert jb.nothing_to_do is False
 
         # Job's version is higher that engine's.
         # Job is put back to the queue.
         job.engine_version = '0.0.1'
         job.Job.get_cimi_job = Mock(return_value=CimiResource({'version': '0.0.2'}))
-        job.retry_kazoo_queue_op = Mock()
+        job.kazoo_check_processing_element = Mock()
         jb = job.Job(None, queue)
-        job.retry_kazoo_queue_op.assert_called_once_with(queue, "release")
+        job.kazoo_check_processing_element.assert_called_once_with(queue, "release")
         assert jb.nothing_to_do is True
 
         job.engine_version = '0.0.1.dev'
         job.Job.get_cimi_job = Mock(return_value=CimiResource({'version': '0.0.2'}))
-        job.retry_kazoo_queue_op = Mock()
+        job.kazoo_check_processing_element = Mock()
         jb = job.Job(None, queue)
-        job.retry_kazoo_queue_op.assert_called_once_with(queue, "release")
+        job.kazoo_check_processing_element.assert_called_once_with(queue, "release")
         assert jb.nothing_to_do is True
 
         job.engine_version = '7.6.5'
         job.Job.get_cimi_job = Mock(return_value=CimiResource({'version': '8.0.1'}))
-        job.retry_kazoo_queue_op = Mock()
+        job.kazoo_check_processing_element = Mock()
         jb = job.Job(None, queue)
-        job.retry_kazoo_queue_op.assert_called_once_with(queue, "release")
+        job.kazoo_check_processing_element.assert_called_once_with(queue, "release")
         assert jb.nothing_to_do is True
 
     @patch.object(job.Job, 'get_cimi_job',

@@ -135,7 +135,8 @@ class Base(object):
             from kazoo.client import KazooClient, KazooRetry
             self.kz = KazooClient(','.join(self.args.zk_hosts),
                                   connection_retry=KazooRetry(max_tries=-1),
-                                  command_retry=KazooRetry(max_tries=-1), timeout=30.0)
+                                  command_retry=KazooRetry(max_tries=-1),
+                                  timeout=30.0)
             self.kz.start()
 
     def _init_statsd(self):

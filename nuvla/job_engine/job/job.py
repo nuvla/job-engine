@@ -6,7 +6,7 @@ import re
 import time
 
 from nuvla.api import Api, NuvlaError, ConnectionError
-from nuvla.job_engine.job.util import retry_kazoo_queue_op
+from nuvla.job_engine.job.util import kazoo_check_processing_element
 
 from .version import version as engine_version
 
@@ -39,6 +39,11 @@ class NonexistentJobError(Exception):
 class JobUpdateError(Exception):
     def __init__(self, reason):
         super(JobUpdateError, self).__init__(reason)
+        self.reason = reason
+
+class JobRetrievedInFinalState(Exception):
+    def __init__(self, reason):
+        super(JobRetrievedInFinalState, self).__init__(reason)
         self.reason = reason
 
 
@@ -79,27 +84,26 @@ class Job(dict):
                 if isinstance(self.id, bytes):
                     self.id = self.id.decode()
 
+                logging.info('Got new {}.'.format(self.id ))
                 self.cimi_job = self.get_cimi_job(self.id)
                 dict.__init__(self, self.cimi_job.data)
                 self._job_version_check()
                 if self.is_in_final_state():
-                    retry_kazoo_queue_op(self.queue, 'consume')
-                    log.warning('Newly retrieved {} already in final state! Removed from queue.'
-                                .format(self.id))
                     self.nothing_to_do = True
+                    raise JobRetrievedInFinalState(f'Newly retrieved {self.id} already in final state! Removed from queue.')
                 elif self.get('state') == JOB_RUNNING:
                     # could happen when updating job and cimi server is down!
                     # let job actions decide what to do with it.
                     log.warning('Newly retrieved {} in running state!'.format(self.id))
                 self.is_bulk = self._is_bulk()
         except NonexistentJobError as e:
-            retry_kazoo_queue_op(self.queue, 'consume')
+            kazoo_check_processing_element(self.queue, 'consume')
             log.warning('Newly retrieved {} does not exist in cimi; '.format(self.id) +
                         'Message: {}; Removed from queue: success.'.format(e.reason))
             self.nothing_to_do = True
         except Exception as e:
             timeout = 30
-            retry_kazoo_queue_op(self.queue, 'release')
+            kazoo_check_processing_element(self.queue, 'release')
             log.error(
                 'Fatal error when trying to retrieve {}! Put it back in queue. '.format(self.id) +
                 'Will go back to work after {}s.'.format(timeout))
@@ -128,13 +132,13 @@ class Job(dict):
             evm_str = '.'.join(map(str, self._engine_version_min))
             msg = f"Job version {job_version_str} is smaller than min supported {evm_str}"
             log.warning(msg)
-            retry_kazoo_queue_op(self.queue, 'consume')
+            kazoo_check_processing_element(self.queue, 'consume')
             self.update_job(state=JOB_FAILED, status_message=msg)
             self.nothing_to_do = True
         elif job_version > self._engine_version:
             log.debug(f"Job version {job_version_str} is higher than engine's {engine_version}. "
                       "Putting job back to the queue.")
-            retry_kazoo_queue_op(self.queue, 'release')
+            kazoo_check_processing_element(self.queue, 'release')
             self.nothing_to_do = True
 
     def get_cimi_job(self, job_uri):
@@ -231,22 +235,13 @@ class Job(dict):
         if attributes:
             self._edit_job_multi(attributes)
 
-    def consume_when_final_state(self):
-        if self.is_in_final_state():
-            retry_kazoo_queue_op(self.queue, 'consume')
-            log.info('Reached final state: {} removed from queue.'.format(self.id))
-
     def __edit(self, attributes):
         try:
             response = self.api.edit(self.id, attributes)
         except (NuvlaError, ConnectionError):
-            retry_kazoo_queue_op(self.queue, 'release')
-            reason = 'Failed to update following attributes "{}" for {}! ' \
-                     'Put it back in queue.'.format(attributes, self.id)
-            raise JobUpdateError(reason)
+            raise JobUpdateError(f'Failed to update following attributes "{attributes}" for {self.id}! ')
         else:
             self.update(response.data)
-            self.consume_when_final_state()
 
     def _edit_job(self, attribute_name, attribute_value):
         self.__edit({attribute_name: attribute_value})
