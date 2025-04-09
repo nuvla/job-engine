@@ -1,16 +1,13 @@
 # -*- coding: utf-8 -*-
 
 import json
-import logging
-import re
 import time
+import logging
 from nuvla.api import Api, NuvlaError, ConnectionError
 
-from .version import version as engine_version
+from .version import Version, JobVersionBiggerThanEngine, JobVersionIsNoMoreSupported
 
 log = logging.getLogger('job')
-
-VER_TRIM_RE = re.compile(r'\.?[^.0-9]+[0-9]*$')
 
 JOB_SUCCESS = 'SUCCESS'
 JOB_QUEUED = 'QUEUED'
@@ -19,12 +16,6 @@ JOB_FAILED = 'FAILED'
 JOB_CANCELED = 'CANCELED'
 
 STATES = (JOB_QUEUED, JOB_RUNNING, JOB_FAILED, JOB_SUCCESS, JOB_CANCELED)
-
-def version_to_tuple(ver: str) -> tuple:
-    ver_ = list(map(int, VER_TRIM_RE.sub('', ver).split('.')))
-    if len(ver_) < 2:
-        return ver_[0], 0, 0
-    return tuple(ver_)
 
 class JobNotFoundError(Exception):
     pass
@@ -36,12 +27,6 @@ class JobRetrievedInFinalState(Exception):
     pass
 
 class UnexpectedJobRetrieveError(Exception):
-    pass
-
-class JobVersionBiggerThanEngine(Exception):
-    pass
-
-class JobVersionIsNoMoreSupported(Exception):
     pass
 
 class Job(dict):
@@ -56,18 +41,6 @@ class Job(dict):
         self._context = None
         self._payload = None
 
-        self._engine_version = None
-        self._engine_version_min = None
-
-        if engine_version:
-            self._engine_version = version_to_tuple(engine_version)
-            if self._engine_version[0] < 2:
-                self._engine_version_min = (0, 0, 1)
-            elif self._engine_version[0] == 4:
-                # For job-engine 4.x, we support jobs with version 2.x and 3.x
-                self._engine_version_min = (self._engine_version[0] - 2, 0, 0)
-            else:
-                self._engine_version_min = (self._engine_version[0] - 1, 0, 0)
         self._init()
 
     def _init(self):
@@ -84,39 +57,25 @@ class Job(dict):
                 log.warning('Newly retrieved {} in running state!'.format(self.id))
         except (JobNotFoundError,
                 JobVersionBiggerThanEngine,
-                JobVersionIsNoMoreSupported) as e:
+                JobVersionIsNoMoreSupported,
+                JobRetrievedInFinalState) as e:
             raise e
-        except Exception:
+        except Exception as e:
             logging.error(f'Fatal error when trying to retrieve {self.id}!')
             raise UnexpectedJobRetrieveError()
 
     def _job_version_check(self):
-        """Skips the job by setting `self.nothing_to_do = True` when the job's
-        version is outside of the engine's supported closed range [M-1, M.m.P].
-        Where M is major version from semantic version definition M.m.P.
-        The job will be removed from the queue and set as failed if the job's
-        version is strictly lower than M-1.
-        The job will be skipped if its version is strictly greater engine's M.m.P.
-        (This can happen for a short while during upgrades when jobs distribution
-        gets upgraded before the job engine.)
-        """
         job_version_str = str(self.get('version', '0.0.1'))
-        job_version = version_to_tuple(job_version_str)
-
-        if self._engine_version is None:
-            log.warning("Job-Engine version is not known. Ignoring version checks")
-            return
-
-        if job_version < self._engine_version_min:
-            evm_str = '.'.join(map(str, self._engine_version_min))
-            msg = f"Job version {job_version_str} is smaller than min supported {evm_str}"
+        try:
+            Version.job_version_check(job_version_str)
+        except JobVersionIsNoMoreSupported as e:
+            msg = f"Job version {job_version_str} is smaller than min supported {Version.engine_version_min_support_str}"
             log.warning(msg)
             self.update_job(state=JOB_FAILED, status_message=msg)
-            raise JobVersionIsNoMoreSupported()
-        elif job_version > self._engine_version:
-            log.debug(f"Job version {job_version_str} is higher than engine's {engine_version}. "
-                      "Putting job back to the queue.")
-            raise JobVersionBiggerThanEngine()
+            raise e
+        except JobVersionBiggerThanEngine as e:
+            log.debug(f"Job version {job_version_str} is higher than engine's {Version.engine_version_str}.")
+            raise e
 
     def get_cimi_job(self, job_uri):
         wait_time = 2

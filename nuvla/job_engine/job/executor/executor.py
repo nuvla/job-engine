@@ -6,7 +6,7 @@ from requests.adapters import HTTPAdapter
 
 from .. import JobRetrievedInFinalState, UnexpectedJobRetrieveError
 from ..actions import get_action, ActionNotImplemented
-from ..actions.utils.bulk_action import BulkAction, UnfinishedBulkActionToMonitor
+from ..actions.utils.bulk_action import UnfinishedBulkActionToMonitor
 from ..base import Base
 from ..job import Job, JobUpdateError, \
     JOB_FAILED, JOB_SUCCESS, JOB_QUEUED, JOB_RUNNING, JobNotFoundError, JobVersionBiggerThanEngine, \
@@ -72,7 +72,6 @@ class Executor(Base):
             raise ActionRunException()
 
     def process_job(self):
-        job = None
         job_id = None
         try:
             job_id = self.queue.get(timeout=5).decode()
@@ -85,13 +84,14 @@ class Executor(Base):
             state = JOB_SUCCESS if return_code == 0 else JOB_FAILED
             job.update_job(state=state, return_code=return_code)
             logging.info(f'Finished {job_id} with return_code {return_code}.')
+            kazoo_check_processing_element(self.queue, 'consume')
         except (ActionNotImplemented,
                 JobRetrievedInFinalState,
                 UnfinishedBulkActionToMonitor,
                 JobNotFoundError,
                 JobVersionIsNoMoreSupported,
                 ActionRunException):
-            pass
+            kazoo_check_processing_element(self.queue, 'consume')
         except (JobUpdateError,
                 JobVersionBiggerThanEngine,
                 UnexpectedJobRetrieveError):
@@ -99,7 +99,7 @@ class Executor(Base):
         except Exception as e:
             logging.error(f'Unexpected exception occurred during process of {job_id}: {repr(e)}')
             kazoo_check_processing_element(self.queue, 'release')
-        kazoo_check_processing_element(self.queue, 'consume')
+
 
     def _process_jobs(self):
         while not Executor.stop_event.is_set():
