@@ -2,6 +2,13 @@
 
 ## Released
 
+## [4.10.2](https://github.com/nuvla/job-engine/compare/4.10.1...4.10.2) (2025-04-09)
+
+
+### Bug Fixes
+
+* don't create namespace if already defined in user manifests ([#432](https://github.com/nuvla/job-engine/issues/432)) ([36e7afa](https://github.com/nuvla/job-engine/commit/36e7afad4a4769e5e18b44519c45acb51af2f41f))
+
 ## [4.10.1](https://github.com/nuvla/job-engine/compare/4.10.0...4.10.1) (2025-04-04)
 
 
