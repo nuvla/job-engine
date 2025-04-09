@@ -56,7 +56,7 @@ def kazoo_check_processing_element(queue, function_name):
     processing_element = queue.processing_element
     if processing_element:
         getattr(queue, function_name)()
-        logging.info('')
+        logging.info(f'Queue {function_name} {processing_element}.')
     else:
         logging.error('No processing element! Element was already released or consumed.')
 

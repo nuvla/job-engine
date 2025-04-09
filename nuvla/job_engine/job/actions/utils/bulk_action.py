@@ -125,6 +125,9 @@ class BulkActionResult:
         return obj
 
 
+class UnfinishedBulkActionToMonitor(Exception):
+    pass
+
 class BulkAction(object):
     monitor_tag = 'monitor'
 
@@ -206,5 +209,6 @@ class BulkAction(object):
         self.bulk_operation()
         if self.progress < 100:
             self.job.update_job(tags=[self.monitor_tag])
-        else:
-            self.job.update_job(state=JOB_SUCCESS, return_code=0)
+            self.log.info(f'Unfinished bulk action to monitor removed from queue {job_id}.')
+            raise UnfinishedBulkActionToMonitor()
+        return 0

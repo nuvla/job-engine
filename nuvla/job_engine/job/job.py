@@ -4,9 +4,7 @@ import json
 import logging
 import re
 import time
-
 from nuvla.api import Api, NuvlaError, ConnectionError
-from nuvla.job_engine.job.util import kazoo_check_processing_element
 
 from .version import version as engine_version
 
@@ -22,39 +20,36 @@ JOB_CANCELED = 'CANCELED'
 
 STATES = (JOB_QUEUED, JOB_RUNNING, JOB_FAILED, JOB_SUCCESS, JOB_CANCELED)
 
-
 def version_to_tuple(ver: str) -> tuple:
     ver_ = list(map(int, VER_TRIM_RE.sub('', ver).split('.')))
     if len(ver_) < 2:
         return ver_[0], 0, 0
     return tuple(ver_)
 
-
-class NonexistentJobError(Exception):
-    def __init__(self, reason):
-        super(NonexistentJobError, self).__init__(reason)
-        self.reason = reason
-
+class JobNotFoundError(Exception):
+    pass
 
 class JobUpdateError(Exception):
-    def __init__(self, reason):
-        super(JobUpdateError, self).__init__(reason)
-        self.reason = reason
+    pass
 
 class JobRetrievedInFinalState(Exception):
-    def __init__(self, reason):
-        super(JobRetrievedInFinalState, self).__init__(reason)
-        self.reason = reason
+    pass
 
+class UnexpectedJobRetrieveError(Exception):
+    pass
+
+class JobVersionBiggerThanEngine(Exception):
+    pass
+
+class JobVersionIsNoMoreSupported(Exception):
+    pass
 
 class Job(dict):
 
-    def __init__(self, api, queue, nuvlaedge_shared_path=None):
+    def __init__(self, id, api, nuvlaedge_shared_path=None):
         super(Job, self).__init__()
-        self.nothing_to_do = False
-        self.id = None
+        self.id = id
         self.cimi_job = None
-        self.queue = queue
         self.api = api
         self.nuvlaedge_shared_path = nuvlaedge_shared_path
 
@@ -77,39 +72,23 @@ class Job(dict):
 
     def _init(self):
         try:
-            self.id = self.queue.get(timeout=5)
-            if self.id is None:
-                self.nothing_to_do = True
-            else:
-                if isinstance(self.id, bytes):
-                    self.id = self.id.decode()
-
-                logging.info('Got new {}.'.format(self.id ))
-                self.cimi_job = self.get_cimi_job(self.id)
-                dict.__init__(self, self.cimi_job.data)
-                self._job_version_check()
-                if self.is_in_final_state():
-                    self.nothing_to_do = True
-                    raise JobRetrievedInFinalState(f'Newly retrieved {self.id} already in final state! Removed from queue.')
-                elif self.get('state') == JOB_RUNNING:
-                    # could happen when updating job and cimi server is down!
-                    # let job actions decide what to do with it.
-                    log.warning('Newly retrieved {} in running state!'.format(self.id))
-                self.is_bulk = self._is_bulk()
-        except NonexistentJobError as e:
-            kazoo_check_processing_element(self.queue, 'consume')
-            log.warning('Newly retrieved {} does not exist in cimi; '.format(self.id) +
-                        'Message: {}; Removed from queue: success.'.format(e.reason))
-            self.nothing_to_do = True
-        except Exception as e:
-            timeout = 30
-            kazoo_check_processing_element(self.queue, 'release')
-            log.error(
-                'Fatal error when trying to retrieve {}! Put it back in queue. '.format(self.id) +
-                'Will go back to work after {}s.'.format(timeout))
-            log.exception(e)
-            time.sleep(timeout)
-            self.nothing_to_do = True
+            self.cimi_job = self.get_cimi_job(self.id)
+            dict.__init__(self, self.cimi_job.data)
+            self._job_version_check()
+            if self.is_in_final_state():
+                log.warning(f'Retrieved {self.id} already in final state!')
+                raise JobRetrievedInFinalState()
+            elif self.get('state') == JOB_RUNNING:
+                # could happen when updating job and cimi server is down!
+                # let job actions decide what to do with it.
+                log.warning('Newly retrieved {} in running state!'.format(self.id))
+        except (JobNotFoundError,
+                JobVersionBiggerThanEngine,
+                JobVersionIsNoMoreSupported) as e:
+            raise e
+        except Exception:
+            logging.error(f'Fatal error when trying to retrieve {self.id}!')
+            raise UnexpectedJobRetrieveError()
 
     def _job_version_check(self):
         """Skips the job by setting `self.nothing_to_do = True` when the job's
@@ -132,14 +111,12 @@ class Job(dict):
             evm_str = '.'.join(map(str, self._engine_version_min))
             msg = f"Job version {job_version_str} is smaller than min supported {evm_str}"
             log.warning(msg)
-            kazoo_check_processing_element(self.queue, 'consume')
             self.update_job(state=JOB_FAILED, status_message=msg)
-            self.nothing_to_do = True
+            raise JobVersionIsNoMoreSupported()
         elif job_version > self._engine_version:
             log.debug(f"Job version {job_version_str} is higher than engine's {engine_version}. "
                       "Putting job back to the queue.")
-            kazoo_check_processing_element(self.queue, 'release')
-            self.nothing_to_do = True
+            raise JobVersionBiggerThanEngine()
 
     def get_cimi_job(self, job_uri):
         wait_time = 2
@@ -156,13 +133,11 @@ class Job(dict):
                     time.sleep(wait_time)
                 else:
                     raise e
-        raise NonexistentJobError(reason)
+        logging.error(f'Retrieved {self.id} not found! Message: {reason}')
+        raise JobNotFoundError()
 
     def is_in_final_state(self):
         return self.get('state') in (JOB_SUCCESS, JOB_FAILED, JOB_CANCELED)
-
-    def _is_bulk(self):
-        return self.get('action', '').startswith("bulk")
 
     def set_progress(self, progress: int):
         self._edit_job('progress', progress)
@@ -239,7 +214,8 @@ class Job(dict):
         try:
             response = self.api.edit(self.id, attributes)
         except (NuvlaError, ConnectionError):
-            raise JobUpdateError(f'Failed to update following attributes "{attributes}" for {self.id}! ')
+            logging.error(f'Failed to update following attributes "{attributes}" for {self.id}!')
+            raise JobUpdateError()
         else:
             self.update(response.data)
 
