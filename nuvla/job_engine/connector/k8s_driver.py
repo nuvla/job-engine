@@ -290,16 +290,28 @@ users:
 
     def _create_deployment_context(self, directory_path, namespace, manifest,
                                    files: list, common_labels: Dict[str, str] = None):
+        resources = []
+
         manifest_fn = 'manifest.yml'
         with open(os.path.join(directory_path, manifest_fn), 'w') as fd:
             fd.write(manifest)
+        resources.append(manifest_fn)
 
-        namespace_data = {'apiVersion': 'v1',
-                          'kind': 'Namespace',
-                          'metadata': {'name': namespace}}
-        log.debug('Namespace data: %s', namespace_data)
-        namespace_fn = 'namespace.yml'
-        store_as_yaml(namespace_data, namespace_fn, directory_path)
+        namespace_kind = False
+        for doc in yaml.safe_load_all(manifest):
+            kind_name = doc.get('kind')
+            if kind_name and kind_name == 'Namespace':
+                namespace_kind = True
+        if namespace_kind:
+            log.debug('Namespace already defined in manifest.')
+        else:
+            namespace_data = {'apiVersion': 'v1',
+                              'kind': 'Namespace',
+                              'metadata': {'name': namespace}}
+            log.debug('Namespace data: %s', namespace_data)
+            namespace_fn = 'namespace.yml'
+            store_as_yaml(namespace_data, namespace_fn, directory_path)
+            resources.append(namespace_fn)
 
         if files:
             store_files(files, dir_path=directory_path)
@@ -308,7 +320,7 @@ users:
         # otherwise we will get them deployed into the namespace of the job.
         kustomization_data = {'namespace': namespace,
                               'commonLabels': common_labels,
-                              'resources': [manifest_fn, namespace_fn]}
+                              'resources': resources}
 
         log.debug('Kustomization data: %s', kustomization_data)
         store_as_yaml(kustomization_data, 'kustomization.yml',
