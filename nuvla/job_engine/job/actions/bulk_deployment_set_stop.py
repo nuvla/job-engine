@@ -37,8 +37,3 @@ class BulkDeploymentSetStopJob(BulkAction):
 
     def action(self, deployment_id):
         return self._stop_deployment(deployment_id)
-
-    def do_work(self):
-        logging.info(f'Start bulk deployment set stop {self.job.id}')
-        self.run()
-        logging.info(f'End of bulk deployment set apply stop {self.job.id}')

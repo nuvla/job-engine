@@ -2,7 +2,6 @@
 import abc
 import json
 import logging
-from ...job import JOB_SUCCESS
 
 
 class ActionException(Exception):
@@ -201,7 +200,8 @@ class BulkAction(object):
             self.job.update_job(status_message=self.result.to_json(),
                                 progress=int(self.progress))
 
-    def run(self):
+    def do_work(self):
+        logging.info(f'Start {self.action_name} {self.job.id}')
         self.todo = self.get_todo()
         self.result = BulkActionResult(actions_count=len(self.todo))
         self._push_result()
@@ -209,6 +209,7 @@ class BulkAction(object):
         self.bulk_operation()
         if self.progress < 100:
             self.job.update_job(tags=[self.monitor_tag])
-            self.log.info(f'Unfinished bulk action to monitor removed from queue {job_id}.')
+            self.log.info(f'Unfinished bulk action to monitor removed from queue {self.job.id}.')
             raise UnfinishedBulkActionToMonitor()
+        logging.info(f'End of {self.action_name} {self.job.id}')
         return 0
