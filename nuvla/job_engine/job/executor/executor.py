@@ -71,13 +71,13 @@ class Executor(Base):
             logging.error(f'Failed to process {job.id}, with error: {status_message}')
             raise ActionRunException()
 
-    def process_job(self):
+    def _process_job(self):
         job_id = None
         try:
             job_id = self.queue.get(timeout=5).decode()
             logging.info('Got new {}.'.format(job_id))
             job = Job(job_id, self.api, self.args.nuvlaedge_fs)
-            logging.info(f'Process job {job.id} with action {job.get("action")}.')
+            logging.info(f'Process {job_id} with action {job.get("action")}.')
             action_instance = self.get_action_instance(job)
             job.set_state(JOB_RUNNING)
             return_code = action_instance.do_work()
@@ -87,10 +87,10 @@ class Executor(Base):
             kazoo_check_processing_element(self.queue, 'consume')
         except (ActionNotImplemented,
                 JobRetrievedInFinalState,
-                UnfinishedBulkActionToMonitor,
                 JobNotFoundError,
                 JobVersionIsNoMoreSupported,
-                ActionRunException):
+                ActionRunException,
+                UnfinishedBulkActionToMonitor):
             kazoo_check_processing_element(self.queue, 'consume')
         except (JobUpdateError,
                 JobVersionBiggerThanEngine,
@@ -98,12 +98,12 @@ class Executor(Base):
             kazoo_check_processing_element(self.queue, 'release')
         except Exception as e:
             logging.error(f'Unexpected exception occurred during process of {job_id}: {repr(e)}')
-            kazoo_check_processing_element(self.queue, 'release')
+            kazoo_check_processing_element(self.queue, 'consume')
 
 
     def _process_jobs(self):
         while not Executor.stop_event.is_set():
-            self.process_job()
+            self._process_job()
         logging.info(f'Executor {self.name} properly stopped.')
         sys.exit(0)
 

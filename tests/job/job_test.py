@@ -8,7 +8,7 @@ import nuvla.job_engine.job.version as version
 from nuvla.api.models import CimiResource
 
 
-class TestJob(unittest.TestCase):
+class JobTestCase(unittest.TestCase):
     @patch('nuvla.job_engine.job.job.Version')
     @patch('nuvla.job_engine.job.Job.update_job')
     @patch('nuvla.job_engine.job.Job.get_cimi_job', return_value=CimiResource({}))

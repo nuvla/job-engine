@@ -61,7 +61,7 @@ class Job(dict):
                 JobRetrievedInFinalState) as e:
             raise e
         except Exception as e:
-            logging.error(f'Fatal error when trying to retrieve {self.id}!')
+            logging.error(f'Fatal error when trying to retrieve {self.id}!: {repr(e)}')
             raise UnexpectedJobRetrieveError()
 
     def _job_version_check(self):
