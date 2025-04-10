@@ -2,7 +2,6 @@
 
 import sys
 import logging
-from requests.adapters import HTTPAdapter
 
 from .. import JobRetrievedInFinalState, UnexpectedJobRetrieveError
 from ..actions import get_action, ActionNotImplemented
@@ -12,8 +11,6 @@ from ..job import Job, JobUpdateError, \
     JOB_FAILED, JOB_SUCCESS, JOB_QUEUED, JOB_RUNNING, JobNotFoundError, JobVersionBiggerThanEngine, \
     JobVersionIsNoMoreSupported
 from ..util import override, kazoo_check_processing_element, status_message_from_exception
-
-CONNECTION_POOL_SIZE = 4
 
 
 class LocalOneJobQueue(object):
@@ -34,10 +31,6 @@ class Executor(Base):
     def __init__(self):
         super(Executor, self).__init__()
         self.queue = None
-        api_http_adapter = HTTPAdapter(pool_maxsize=CONNECTION_POOL_SIZE,
-                                       pool_connections=CONNECTION_POOL_SIZE)
-        self.api.session.mount('http://', api_http_adapter)
-        self.api.session.mount('https://', api_http_adapter)
 
     def _set_command_specific_options(self, parser):
         parser.add_argument('--job-id', dest='job_id', metavar='ID',
@@ -57,7 +50,7 @@ class Executor(Base):
         return action(job)
 
     @staticmethod
-    def action_run(job, action_instance):
+    def try_action_run(job, action_instance):
         try:
             return action_instance.do_work()
         except Exception:
@@ -71,16 +64,14 @@ class Executor(Base):
             logging.error(f'Failed to process {job.id}, with error: {status_message}')
             raise ActionRunException()
 
-    def _process_job(self):
-        job_id = None
+    def _process_job(self, job_id: str):
         try:
-            job_id = self.queue.get(timeout=5).decode()
             logging.info('Got new {}.'.format(job_id))
             job = Job(job_id, self.api, self.args.nuvlaedge_fs)
             logging.info(f'Process {job_id} with action {job.get("action")}.')
             action_instance = self.get_action_instance(job)
             job.set_state(JOB_RUNNING)
-            return_code = action_instance.do_work()
+            return_code = self.try_action_run(job, action_instance)
             state = JOB_SUCCESS if return_code == 0 else JOB_FAILED
             job.update_job(state=state, return_code=return_code)
             logging.info(f'Finished {job_id} with return_code {return_code}.')
@@ -103,7 +94,11 @@ class Executor(Base):
 
     def _process_jobs(self):
         while not Executor.stop_event.is_set():
-            self._process_job()
+            # queue timeout 5s to give a chance to exit the job executor
+            # if no job is being received
+            job_id =  self.queue.get(timeout=5)
+            if job_id:
+                self._process_job(job_id.decode())
         logging.info(f'Executor {self.name} properly stopped.')
         sys.exit(0)
 

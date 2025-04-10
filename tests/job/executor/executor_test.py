@@ -55,7 +55,7 @@ class ExecutorTestCase(unittest.TestCase):
     @patch.object(Job, '__init__', side_effect=Exception('Simulate exception'))
     def test_process_job_unexpected_error(self, _mock_job):
         with self.assertLogs(level='DEBUG') as lc:
-            self.executor._process_job()
+            self.executor._process_job(job_id)
             self.assertEqual(
                 ['INFO:root:Got new job/1.',
                  "ERROR:root:Unexpected exception occurred during process of job/1: Exception('Simulate exception')",
@@ -66,7 +66,7 @@ class ExecutorTestCase(unittest.TestCase):
     @patch.object(Job, 'get_cimi_job', side_effect=Exception('Simulate exception'))
     def test_process_job_unexpected_job_retrieve_error(self, mock_get_cimi_job):
         with self.assertLogs(level='DEBUG') as lc:
-            self.executor._process_job()
+            self.executor._process_job(job_id)
             self.assertEqual(
                 ['INFO:root:Got new job/1.',
                  "ERROR:root:Fatal error when trying to retrieve job/1!: Exception('Simulate "
@@ -81,7 +81,7 @@ class ExecutorTestCase(unittest.TestCase):
         response.status_code = 404
         self.executor.api.get.side_effect = NuvlaError('', response)
         with self.assertLogs(level='DEBUG') as lc:
-            self.executor._process_job()
+            self.executor._process_job(job_id)
             self.assertEqual(
                 ['INFO:root:Got new job/1.',
                  'WARNING:job:Retrieve of job/1 failed. Attempt: 0 Will retry in 2s.',
@@ -96,7 +96,7 @@ class ExecutorTestCase(unittest.TestCase):
         mock_job_instance = MockJob(job_id)
         mock_job.return_value = mock_job_instance
         with self.assertLogs(level='DEBUG') as lc:
-            self.executor._process_job()
+            self.executor._process_job(job_id)
             self.assertEqual(['INFO:root:Got new job/1.',
                               'INFO:root:Process job/1 with action action-that-not-exist.',
                               'ERROR:root:Not implemented action job/1: action-that-not-exist',
