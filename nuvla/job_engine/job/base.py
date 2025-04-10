@@ -5,7 +5,6 @@ import logging
 import os
 import random
 import signal
-import stat
 import sys
 import threading
 from base64 import b64decode
@@ -15,9 +14,11 @@ from io import StringIO
 from nuvla.api import Api
 from requests.exceptions import ConnectionError
 from statsd import StatsClient
+from requests.adapters import HTTPAdapter
 
 STATSD_PORT = 8125
 TMP_COOKIE_FILE = '/tmp/nuvla-cookies/cookies.txt'
+CONNECTION_POOL_SIZE = 4
 
 names = ['Cartman', 'Kenny', 'Stan', 'Kyle', 'Butters', 'Token', 'Timmy',
          'Wendy', 'M. Garrison', 'Chef', 'Randy', 'Ike', 'Mr. Mackey',
@@ -135,7 +136,8 @@ class Base(object):
             from kazoo.client import KazooClient, KazooRetry
             self.kz = KazooClient(','.join(self.args.zk_hosts),
                                   connection_retry=KazooRetry(max_tries=-1),
-                                  command_retry=KazooRetry(max_tries=-1), timeout=30.0)
+                                  command_retry=KazooRetry(max_tries=-1),
+                                  timeout=30.0)
             self.kz.start()
 
     def _init_statsd(self):
@@ -199,6 +201,11 @@ class Base(object):
         except ConnectionError as e:
             logging.error('Unable to connect to Nuvla endpoint {}! {}'.format(self.api.endpoint, e))
             exit(1)
+
+        api_http_adapter = HTTPAdapter(pool_maxsize=CONNECTION_POOL_SIZE,
+                                        pool_connections=CONNECTION_POOL_SIZE)
+        self.api.session.mount('http://', api_http_adapter)
+        self.api.session.mount('https://', api_http_adapter)
 
     def execute(self):
         self.name = self.args.name if self.args.name is not None else names[

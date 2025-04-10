@@ -260,8 +260,3 @@ class BulkDeploymentSetApply(BulkAction):
         action_name, data = todo_el
         func = self._get_operation(action_name)
         return func(data)
-
-    def do_work(self):
-        self.log.info(f'Start bulk deployment set apply {self.action_name} {self.job.id}')
-        self.run()
-        self.log.info(f'End of bulk deployment set apply {self.action_name} {self.job.id}')

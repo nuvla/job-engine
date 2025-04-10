@@ -40,7 +40,7 @@ class NBUpdateJob(object):
         else:
             raise Exception('Cannot find any reference to an existing NuvlaBox target release')
 
-        self.job.update_job(status_message=r)
+        self.job.set_status_message(r)
 
         return e_code
     

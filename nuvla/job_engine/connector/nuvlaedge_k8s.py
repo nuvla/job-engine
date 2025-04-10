@@ -520,20 +520,19 @@ spec:
                 log.debug(
                     'The credential ID to be added is already present: %s',
                     credential_id)
-                self.job.update_job(
-                    status_message=json.dumps('SSH public key already present'))
+                self.job.set_status_message(json.dumps('SSH public key already present'))
                 return 1
         elif action == self.ACTION_REVOKE:
             if credential_id not in ssh_keys:
                 msg = 'The credential ID to be revoked is not in the list'
                 log.debug(
                     '%s: %s', msg, credential_id)
-                self.job.update_job(status_message=msg)
+                self.job.set_status_message(msg)
                 return 1
         else:
             msg = f'SSH keys management action {action} is not supported'
             log.error(msg)
-            self.job.update_job(status_message=msg)
+            self.job.set_status_message(msg)
             return 1
 
         nuvlaedge_status = self.api.get(NE_STATUS_COLLECTION).data
@@ -545,8 +544,7 @@ spec:
             self._update_results(credential_id, ssh_keys, action)
             return 0
 
-        self.job.update_job(
-            status_message='The SSH public key add/revoke has failed.')
+        self.job.set_status_message('The SSH public key add/revoke has failed.')
         return 2
 
 

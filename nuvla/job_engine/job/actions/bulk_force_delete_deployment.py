@@ -16,8 +16,3 @@ class DeploymentBulkForceDeleteJob(DeploymentBulkJob):
         return self.user_api.operation(resource,
                                        'force-delete', {'low-priority': True,
                                                         'parent-job': self.job.id})
-
-    def do_work(self):
-        logging.info(f'Start bulk deployment force delete {self.job.id}')
-        self.run()
-        logging.info(f'End of bulk deployment force delete {self.job.id}')
