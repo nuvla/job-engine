@@ -2,6 +2,7 @@
 
 import sys
 import logging
+from nuvla.api import Api
 
 from .. import JobRetrievedInFinalState, UnexpectedJobRetrieveError
 from ..actions import get_action, ActionNotImplemented
@@ -64,32 +65,33 @@ class Executor(Base):
             logging.error(f'Failed to process {job.id}, with error: {status_message}')
             raise ActionRunException()
 
-    def process_job(self, job_id: str):
+    @classmethod
+    def process_job(cls, api: Api, queue, nuvlaedge_shared_path, job_id: str):
         try:
             logging.info('Got new {}.'.format(job_id))
-            job = Job(job_id, self.api, self.args.nuvlaedge_fs)
+            job = Job(job_id, api, nuvlaedge_shared_path)
             logging.info(f'Process {job_id} with action {job.get("action")}.')
-            action_instance = self.get_action_instance(job)
+            action_instance = cls.get_action_instance(job)
             job.set_state(JOB_RUNNING)
-            return_code = self.try_action_run(job, action_instance)
+            return_code = cls.try_action_run(job, action_instance)
             state = JOB_SUCCESS if return_code == 0 else JOB_FAILED
             job.update_job(state=state, return_code=return_code)
             logging.info(f'Finished {job_id} with return_code {return_code}.')
-            kazoo_check_processing_element(self.queue, 'consume')
+            kazoo_check_processing_element(queue, 'consume')
         except (ActionNotImplemented,
                 JobRetrievedInFinalState,
                 JobNotFoundError,
                 JobVersionIsNoMoreSupported,
                 ActionRunException,
                 UnfinishedBulkActionToMonitor):
-            kazoo_check_processing_element(self.queue, 'consume')
+            kazoo_check_processing_element(queue, 'consume')
         except (JobUpdateError,
                 JobVersionBiggerThanEngine,
                 UnexpectedJobRetrieveError):
-            kazoo_check_processing_element(self.queue, 'release')
+            kazoo_check_processing_element(queue, 'release')
         except Exception as e:
             logging.error(f'Unexpected exception occurred during process of {job_id}: {repr(e)}')
-            kazoo_check_processing_element(self.queue, 'consume')
+            kazoo_check_processing_element(queue, 'consume')
 
 
     def process_jobs(self):
@@ -98,7 +100,7 @@ class Executor(Base):
             # if no job is being received
             job_id =  self.queue.get(timeout=5)
             if job_id:
-                self.process_job(job_id.decode())
+                self.process_job(self.api, self.queue, self.args.nuvlaedge_fs, job_id.decode())
         logging.info(f'Executor {self.name} properly stopped.')
         sys.exit(0)
 
