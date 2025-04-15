@@ -64,7 +64,7 @@ class Executor(Base):
             logging.error(f'Failed to process {job.id}, with error: {status_message}')
             raise ActionRunException()
 
-    def _process_job(self, job_id: str):
+    def process_job(self, job_id: str):
         try:
             logging.info('Got new {}.'.format(job_id))
             job = Job(job_id, self.api, self.args.nuvlaedge_fs)
@@ -92,13 +92,13 @@ class Executor(Base):
             kazoo_check_processing_element(self.queue, 'consume')
 
 
-    def _process_jobs(self):
+    def process_jobs(self):
         while not Executor.stop_event.is_set():
             # queue timeout 5s to give a chance to exit the job executor
             # if no job is being received
             job_id =  self.queue.get(timeout=5)
             if job_id:
-                self._process_job(job_id.decode())
+                self.process_job(job_id.decode())
         logging.info(f'Executor {self.name} properly stopped.')
         sys.exit(0)
 
@@ -107,4 +107,4 @@ class Executor(Base):
         logging.info('I am executor {}.'.format(self.name))
         job_id = self.args.job_id
         self.queue = LocalOneJobQueue(job_id) if job_id else self.kz.LockingQueue('/job')
-        self._process_jobs()
+        self.process_jobs()

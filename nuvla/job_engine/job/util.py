@@ -55,8 +55,10 @@ def assure_path_exists(path):
 def kazoo_check_processing_element(queue, function_name):
     processing_element = queue.processing_element
     if processing_element:
-        getattr(queue, function_name)()
-        logging.info(f'Queue {function_name} {processing_element}.')
+        if getattr(queue, function_name)():
+            logging.info(f'Queue {function_name} {processing_element}.')
+        else:
+            logging.error(f'Queue {function_name} {processing_element} failed!')
     else:
         logging.error('No processing element! Element was already released or consumed.')
 
