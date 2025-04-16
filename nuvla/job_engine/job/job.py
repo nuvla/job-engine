@@ -69,12 +69,12 @@ class Job(dict):
         try:
             Version.job_version_check(job_version_str)
         except JobVersionIsNoMoreSupported as e:
-            msg = f"Job v{job_version_str} is not supported by Job engine v{Version.engine_version_str}"
+            msg = f"Job v{job_version_str} is not supported by Job engine v{Version.engine_version}"
             log.warning(msg)
             self.update_job(state=JOB_FAILED, status_message=msg)
             raise e
         except JobVersionNotYetSupported as e:
-            log.debug(f"Job v{job_version_str} is higher than what support Job engine v{Version.engine_version_str}.")
+            log.debug(f"Job v{job_version_str} is higher than what support Job engine v{Version.engine_version}.")
             raise e
 
     def get_cimi_job(self, job_uri):

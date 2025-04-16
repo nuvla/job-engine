@@ -13,7 +13,7 @@ class JobTestCase(unittest.TestCase):
     @patch('nuvla.job_engine.job.Job.update_job')
     @patch('nuvla.job_engine.job.Job.get_cimi_job', return_value=CimiResource({}))
     def test_raise_JobVersionIsNoMoreSupported(self, _mock_get_cimi_job, _mock_update_job, mock_version):
-        mock_version.engine_version_str = '4.5.2'
+        mock_version.engine_version = '4.5.2'
         mock_version.job_version_check.side_effect=version.JobVersionIsNoMoreSupported
         with self.assertRaises(version.JobVersionIsNoMoreSupported):
             job.Job('foo', None)
