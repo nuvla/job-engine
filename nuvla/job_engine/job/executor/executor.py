@@ -11,7 +11,7 @@ from ..base import Base
 from ..job import Job, JobUpdateError, \
     JOB_FAILED, JOB_SUCCESS, JOB_QUEUED, JOB_RUNNING, JobNotFoundError, JobVersionBiggerThanEngine, \
     JobVersionIsNoMoreSupported
-from ..util import override, kazoo_check_processing_element, status_message_from_exception
+from ..util import override, kazoo_execute_action_if_needed, status_message_from_exception
 
 
 class LocalOneJobQueue(object):
@@ -77,21 +77,21 @@ class Executor(Base):
             state = JOB_SUCCESS if return_code == 0 else JOB_FAILED
             job.update_job(state=state, return_code=return_code)
             logging.info(f'Finished {job_id} with return_code {return_code}.')
-            kazoo_check_processing_element(queue, 'consume')
+            kazoo_execute_action_if_needed(queue, 'consume')
         except (ActionNotImplemented,
                 JobRetrievedInFinalState,
                 JobNotFoundError,
                 JobVersionIsNoMoreSupported,
                 ActionRunException,
                 UnfinishedBulkActionToMonitor):
-            kazoo_check_processing_element(queue, 'consume')
+            kazoo_execute_action_if_needed(queue, 'consume')
         except (JobUpdateError,
                 JobVersionBiggerThanEngine,
                 UnexpectedJobRetrieveError):
-            kazoo_check_processing_element(queue, 'release')
+            kazoo_execute_action_if_needed(queue, 'release')
         except Exception as e:
             logging.error(f'Unexpected exception occurred during process of {job_id}: {repr(e)}')
-            kazoo_check_processing_element(queue, 'consume')
+            kazoo_execute_action_if_needed(queue, 'consume')
 
 
     def process_jobs(self):

@@ -52,7 +52,7 @@ def assure_path_exists(path):
         os.makedirs(dir)
 
 
-def kazoo_check_processing_element(queue, function_name):
+def kazoo_execute_action_if_needed(queue, function_name):
     processing_element = queue.processing_element
     if processing_element:
         if getattr(queue, function_name)():
