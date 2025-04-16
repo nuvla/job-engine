@@ -14,8 +14,3 @@ class DeploymentBulkDeleteJob(DeploymentBulkJob):
 
     def deployment_action(self, resource):
         return self.user_api.delete(resource.id)
-
-    def do_work(self):
-        logging.info(f'Start bulk deployment delete {self.job.id}')
-        self.run()
-        logging.info(f'End of bulk deployment delete {self.job.id}')

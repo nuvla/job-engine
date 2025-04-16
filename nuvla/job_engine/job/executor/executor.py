@@ -2,38 +2,36 @@
 
 import sys
 import logging
+from nuvla.api import Api
 
-from requests.adapters import HTTPAdapter
-
+from .. import JobRetrievedInFinalState, UnexpectedJobRetrieveError
 from ..actions import get_action, ActionNotImplemented
-from ..actions.utils.bulk_action import BulkAction
+from ..actions.utils.bulk_action import UnfinishedBulkActionToMonitor
 from ..base import Base
 from ..job import Job, JobUpdateError, \
-    JOB_FAILED, JOB_SUCCESS, JOB_QUEUED, JOB_RUNNING
-from ..util import override, retry_kazoo_queue_op, status_message_from_exception
-
-
-CONNECTION_POOL_SIZE = 4
+    JOB_FAILED, JOB_SUCCESS, JOB_QUEUED, JOB_RUNNING, JobNotFoundError, JobVersionNotYetSupported, \
+    JobVersionIsNoMoreSupported
+from ..util import override, kazoo_execute_action_if_needed, status_message_from_exception
 
 
 class LocalOneJobQueue(object):
 
     def __init__(self, job_id):
-        self.job_id = job_id
+        self.processing_element = job_id
 
-    def get(self, *args, **kwargs):
-        return self.job_id
+    def get(self, *_args, **_kwargs):
+        return self.processing_element.encode()
 
-    def noop(self):
-        return True
+    consume = Base.stop_event.set
+    release = Base.stop_event.set
 
-    consume = noop
-    release = noop
-
+class ActionRunException(Exception):
+    pass
 
 class Executor(Base):
     def __init__(self):
         super(Executor, self).__init__()
+        self.queue = None
 
     def _set_command_specific_options(self, parser):
         parser.add_argument('--job-id', dest='job_id', metavar='ID',
@@ -46,74 +44,69 @@ class Executor(Base):
         action_name = job.get('action')
         action = get_action(action_name)
         if not action:
-            raise ActionNotImplemented(action_name)
+            msg = f'Not implemented action {job.id}: {action_name}'
+            logging.error(msg)
+            job.update_job(state=JOB_FAILED, status_message=msg)
+            raise ActionNotImplemented()
         return action(job)
 
-    @classmethod
-    def process_job(cls, job):
+    @staticmethod
+    def try_action_run(job, action_instance):
         try:
-            action_instance = cls.get_action_instance(job)
-            job.set_state(JOB_RUNNING)
-            return_code = action_instance.do_work()
-        except ActionNotImplemented as e:
-            logging.error('Action "{}" not implemented'.format(str(e)))
-            # Consume not implemented action to avoid queue
-            # to be filled with not implemented actions
-            msg = f'Not implemented action {job.id}'
-            status_message = '{}: {}'.format(msg, str(e))
-            job.update_job(state=JOB_FAILED, status_message=status_message)
-        except JobUpdateError as e:
-            logging.error('{} update error: {}'.format(job.id, str(e)))
+            return action_instance.do_work()
         except Exception:
             status_message = status_message_from_exception()
             if job.get('execution-mode', '').lower() == 'mixed':
                 status_message = 'Re-running job in pull mode after failed first attempt: ' \
                                  f'{status_message}'
                 job.update_job(state=JOB_QUEUED, status_message=status_message, execution_mode='pull')
-                retry_kazoo_queue_op(job.queue, 'consume')
             else:
                 job.update_job(state=JOB_FAILED, status_message=status_message, return_code=1)
             logging.error(f'Failed to process {job.id}, with error: {status_message}')
-        else:
-            if isinstance(action_instance, BulkAction):
-                retry_kazoo_queue_op(job.queue, 'consume')
-                logging.info(f'Bulk job removed from queue {job.id}.')
-            else:
-                state = JOB_SUCCESS if return_code == 0 else JOB_FAILED
-                job.update_job(state=state, return_code=return_code)
-                logging.info('Finished {} with return_code {}.'.format(job.id, return_code))
+            raise ActionRunException()
 
-    def _process_jobs(self, queue):
-        is_single_job_only = isinstance(queue, LocalOneJobQueue)
-        api_http_adapter = HTTPAdapter(pool_maxsize=CONNECTION_POOL_SIZE,
-                                       pool_connections=CONNECTION_POOL_SIZE)
-        self.api.session.mount('http://', api_http_adapter)
-        self.api.session.mount('https://', api_http_adapter)
+    @classmethod
+    def process_job(cls, api: Api, queue, nuvlaedge_shared_path, job_id: str):
+        try:
+            logging.info('Got new {}.'.format(job_id))
+            job = Job(job_id, api, nuvlaedge_shared_path)
+            logging.info(f'Process {job_id} with action {job.get("action")}.')
+            action_instance = cls.get_action_instance(job)
+            job.set_state(JOB_RUNNING)
+            return_code = cls.try_action_run(job, action_instance)
+            state = JOB_SUCCESS if return_code == 0 else JOB_FAILED
+            job.update_job(state=state, return_code=return_code)
+            logging.info(f'Finished {job_id} with return_code {return_code}.')
+            kazoo_execute_action_if_needed(queue, 'consume')
+        except (ActionNotImplemented,
+                JobRetrievedInFinalState,
+                JobNotFoundError,
+                JobVersionIsNoMoreSupported,
+                ActionRunException,
+                UnfinishedBulkActionToMonitor):
+            kazoo_execute_action_if_needed(queue, 'consume')
+        except (JobUpdateError,
+                JobVersionNotYetSupported,
+                UnexpectedJobRetrieveError):
+            kazoo_execute_action_if_needed(queue, 'release')
+        except Exception as e:
+            logging.error(f'Unexpected exception occurred during process of {job_id}: {repr(e)}')
+            kazoo_execute_action_if_needed(queue, 'consume')
 
+
+    def process_jobs(self):
         while not Executor.stop_event.is_set():
-            job = Job(self.api, queue, self.args.nuvlaedge_fs)
-
-            if job.nothing_to_do:
-                if is_single_job_only:
-                    break
-                else:
-                    continue
-
-            logging.info('Got new {}.'.format(job.id))
-
-            self.process_job(job)
-
-            if is_single_job_only:
-                break
-
+            # queue timeout 5s to give a chance to exit the job executor
+            # if no job is being received
+            job_id =  self.queue.get(timeout=5)
+            if job_id:
+                self.process_job(self.api, self.queue, self.args.nuvlaedge_fs, job_id.decode())
         logging.info(f'Executor {self.name} properly stopped.')
         sys.exit(0)
 
     @override
     def do_work(self):
         logging.info('I am executor {}.'.format(self.name))
-
         job_id = self.args.job_id
-        queue = LocalOneJobQueue(job_id) if job_id else self.kz.LockingQueue('/job')
-
-        self._process_jobs(queue)
+        self.queue = LocalOneJobQueue(job_id) if job_id else self.kz.LockingQueue('/job')
+        self.process_jobs()

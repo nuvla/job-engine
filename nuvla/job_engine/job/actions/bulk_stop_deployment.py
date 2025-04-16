@@ -17,8 +17,3 @@ class DeploymentBulkStopJob(DeploymentBulkJob):
                                        'stop',
                                        {'low-priority': True,
                                         'parent-job': self.job.id})
-
-    def do_work(self):
-        logging.info(f'Start bulk deployment stop {self.job.id}')
-        self.run()
-        logging.info(f'End of bulk deployment stop {self.job.id}')
