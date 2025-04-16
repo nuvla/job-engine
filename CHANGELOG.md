@@ -2,6 +2,23 @@
 
 ## Released
 
+## [5.0.0](https://github.com/nuvla/job-engine/compare/4.10.1...5.0.0) (2025-04-16)
+
+
+### ⚠ BREAKING CHANGES
+
+* Signatures of Executor's methods and Job have changed
+
+### Bug Fixes
+
+* don't create namespace if already defined in user manifests ([#432](https://github.com/nuvla/job-engine/issues/432)) ([36e7afa](https://github.com/nuvla/job-engine/commit/36e7afad4a4769e5e18b44519c45acb51af2f41f))
+
+
+### Code Refactoring
+
+* Refactor executor, job and add tests ([#435](https://github.com/nuvla/job-engine/issues/435)) ([d406034](https://github.com/nuvla/job-engine/commit/d406034af26f43598fc734104b9f2d844d87e28a))
+* Signatures of Executor's methods and Job have changed ([d406034](https://github.com/nuvla/job-engine/commit/d406034af26f43598fc734104b9f2d844d87e28a))
+
 ## [4.10.1](https://github.com/nuvla/job-engine/compare/4.10.0...4.10.1) (2025-04-04)
 
 
