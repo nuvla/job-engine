@@ -9,7 +9,7 @@ from ..actions import get_action, ActionNotImplemented
 from ..actions.utils.bulk_action import UnfinishedBulkActionToMonitor
 from ..base import Base
 from ..job import Job, JobUpdateError, \
-    JOB_FAILED, JOB_SUCCESS, JOB_QUEUED, JOB_RUNNING, JobNotFoundError, JobVersionBiggerThanEngine, \
+    JOB_FAILED, JOB_SUCCESS, JOB_QUEUED, JOB_RUNNING, JobNotFoundError, JobVersionNotYetSupported, \
     JobVersionIsNoMoreSupported
 from ..util import override, kazoo_execute_action_if_needed, status_message_from_exception
 
@@ -86,7 +86,7 @@ class Executor(Base):
                 UnfinishedBulkActionToMonitor):
             kazoo_execute_action_if_needed(queue, 'consume')
         except (JobUpdateError,
-                JobVersionBiggerThanEngine,
+                JobVersionNotYetSupported,
                 UnexpectedJobRetrieveError):
             kazoo_execute_action_if_needed(queue, 'release')
         except Exception as e:

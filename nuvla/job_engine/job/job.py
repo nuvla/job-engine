@@ -5,7 +5,7 @@ import time
 import logging
 from nuvla.api import Api, NuvlaError, ConnectionError
 
-from .version import Version, JobVersionBiggerThanEngine, JobVersionIsNoMoreSupported
+from .version import Version, JobVersionNotYetSupported, JobVersionIsNoMoreSupported
 
 log = logging.getLogger('job')
 
@@ -56,7 +56,7 @@ class Job(dict):
                 # let job actions decide what to do with it.
                 log.warning('Newly retrieved {} in running state!'.format(self.id))
         except (JobNotFoundError,
-                JobVersionBiggerThanEngine,
+                JobVersionNotYetSupported,
                 JobVersionIsNoMoreSupported,
                 JobRetrievedInFinalState) as e:
             raise e
@@ -69,12 +69,12 @@ class Job(dict):
         try:
             Version.job_version_check(job_version_str)
         except JobVersionIsNoMoreSupported as e:
-            msg = f"Job version {job_version_str} is smaller than min supported {Version.engine_version_min_support_str}"
+            msg = f"Job v{job_version_str} is not supported by Job engine v{Version.engine_version_str}"
             log.warning(msg)
             self.update_job(state=JOB_FAILED, status_message=msg)
             raise e
-        except JobVersionBiggerThanEngine as e:
-            log.debug(f"Job version {job_version_str} is higher than engine's {Version.engine_version_str}.")
+        except JobVersionNotYetSupported as e:
+            log.debug(f"Job v{job_version_str} is higher than what support Job engine v{Version.engine_version_str}.")
             raise e
 
     def get_cimi_job(self, job_uri):

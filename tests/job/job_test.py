@@ -13,19 +13,19 @@ class JobTestCase(unittest.TestCase):
     @patch('nuvla.job_engine.job.Job.update_job')
     @patch('nuvla.job_engine.job.Job.get_cimi_job', return_value=CimiResource({}))
     def test_raise_JobVersionIsNoMoreSupported(self, _mock_get_cimi_job, _mock_update_job, mock_version):
+        mock_version.engine_version_str = '4.5.2'
         mock_version.job_version_check.side_effect=version.JobVersionIsNoMoreSupported
-        mock_version.engine_version_min_support_str = '1.0.0'
         with self.assertRaises(version.JobVersionIsNoMoreSupported):
             job.Job('foo', None)
         job.Job.update_job.assert_called_once_with(
             state='FAILED',
-            status_message='Job version 0.0.1 is smaller than min supported 1.0.0')
+            status_message='Job v0.0.1 is not supported by Job engine v4.5.2')
 
-    @patch.object(version.Version, 'job_version_check', side_effect=version.JobVersionBiggerThanEngine)
+    @patch.object(version.Version, 'job_version_check', side_effect=version.JobVersionNotYetSupported)
     @patch('nuvla.job_engine.job.Job.update_job')
     @patch('nuvla.job_engine.job.Job.get_cimi_job', return_value=CimiResource({}))
-    def test_raise_JobVersionBiggerThanEngine(self, _mock_get_cimi_job, mock_update_job, _mock_job_version_check):
-        with self.assertRaises(version.JobVersionBiggerThanEngine):
+    def test_raise_JobVersionNotYetSupported(self, _mock_get_cimi_job, mock_update_job, _mock_job_version_check):
+        with self.assertRaises(version.JobVersionNotYetSupported):
             job.Job('foo', None)
         mock_update_job.assert_not_called()
 
@@ -50,8 +50,9 @@ class JobTestCase(unittest.TestCase):
             job.Job('foo', mock_api)
         self.assertEqual(mock_api.get.call_count, 2)
 
+    @patch.object(version.Version, 'job_version_check')
     @patch('time.sleep')
-    def test_get_cimi_job_RetrySuccessfully(self, _mock):
+    def test_get_cimi_job_RetrySuccessfully(self, _mock_job_version_check, _mock_sleep):
         mock_api = Mock()
         response =  Mock()
         response.status_code = 404
