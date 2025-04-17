@@ -2,6 +2,13 @@
 
 ## Released
 
+## [5.0.2](https://github.com/nuvla/job-engine/compare/5.0.1...5.0.2) (2025-04-17)
+
+
+### Bug Fixes
+
+* **executor.py:** UnfinishedBulkActionToMonitor should finish execution without setting job to FAILED ([06d4a0b](https://github.com/nuvla/job-engine/commit/06d4a0bf96e8b73f5e96ace15de63b2fa39983d1))
+
 ## [5.0.1](https://github.com/nuvla/job-engine/compare/5.0.0...5.0.1) (2025-04-17)
 
 
