@@ -59,6 +59,8 @@ class Executor(Base):
     def try_action_run(job, action_instance):
         try:
             return action_instance.do_work()
+        except UnfinishedBulkActionToMonitor as e:
+            raise e
         except Exception:
             status_message = status_message_from_exception()
             if job.get('execution-mode', '').lower() == 'mixed':
