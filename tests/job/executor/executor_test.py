@@ -7,6 +7,8 @@ from nuvla.job_engine.job.job import Job, JobNotFoundError
 from nuvla.job_engine.job.actions import ActionNotImplemented
 from nuvla.api import NuvlaError
 
+from nuvla.job_engine.job.actions.utils.bulk_action import UnfinishedBulkActionToMonitor
+
 job_id = 'job/1'
 
 
@@ -106,3 +108,12 @@ class ExecutorTestCase(unittest.TestCase):
             state='FAILED',
             status_message='Not implemented action job/1: action-that-not-exist')
         self.executor.queue.consume.assert_called_once()
+
+    @patch('nuvla.job_engine.job.executor.executor.Job')
+    @patch.object(Executor, 'get_action_instance')
+    def test_process_job_action_bulk_action_monitor(self,
+                                                    mock_get_action_instance,
+                                                    mock_job):
+        mock_get_action_instance.return_value.do_work.side_effect = UnfinishedBulkActionToMonitor
+        self.executor.process_job(Mock(), self.executor.queue, Mock(), job_id)
+        mock_job.update_job.assert_not_called()
