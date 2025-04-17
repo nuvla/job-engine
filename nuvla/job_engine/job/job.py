@@ -65,7 +65,7 @@ class Job(dict):
             raise UnexpectedJobRetrieveError()
 
     def _job_version_check(self):
-        job_version_str = str(self.get('version', '0.0.1'))
+        job_version_str = str(self.get('version', '0'))
         try:
             Version.job_version_check(job_version_str)
         except JobVersionIsNoMoreSupported as e:

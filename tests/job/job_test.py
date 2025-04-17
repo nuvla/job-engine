@@ -19,7 +19,7 @@ class JobTestCase(unittest.TestCase):
             job.Job('foo', None)
         job.Job.update_job.assert_called_once_with(
             state='FAILED',
-            status_message='Job v0.0.1 is not supported by Job engine v4.5.2')
+            status_message='Job v0 is not supported by Job engine v4.5.2')
 
     @patch.object(version.Version, 'job_version_check', side_effect=version.JobVersionNotYetSupported)
     @patch('nuvla.job_engine.job.Job.update_job')

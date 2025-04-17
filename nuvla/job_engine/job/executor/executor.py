@@ -22,8 +22,13 @@ class LocalOneJobQueue(object):
     def get(self, *_args, **_kwargs):
         return self.processing_element.encode()
 
-    consume = Base.stop_event.set
-    release = Base.stop_event.set
+    @staticmethod
+    def _stop():
+        Base.stop_event.set()
+        return True
+
+    consume = _stop
+    release = _stop
 
 class ActionRunException(Exception):
     pass
