@@ -2,6 +2,14 @@
 
 ## Released
 
+## [5.0.1](https://github.com/nuvla/job-engine/compare/5.0.0...5.0.1) (2025-04-17)
+
+
+### Bug Fixes
+
+* **executor.py:** Avoid log error on LocalOneJobQueue consume and release ([64b84c7](https://github.com/nuvla/job-engine/commit/64b84c7d0114cf5b23abb8553dfd2ef4b1c9066b))
+* **job.py:** Version is now a simple number ([64b84c7](https://github.com/nuvla/job-engine/commit/64b84c7d0114cf5b23abb8553dfd2ef4b1c9066b))
+
 ## [5.0.0](https://github.com/nuvla/job-engine/compare/4.10.1...5.0.0) (2025-04-16)
 
 
