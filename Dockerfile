@@ -6,7 +6,6 @@ ARG DOCKER_VERSION=25-cli
 FROM docker:${DOCKER_VERSION} AS docker
 FROM ${BASE_IMAGE}
 
-ARG KUBECTL_VERSION=1.32
 ARG HELM_VERSION=3.14
 ARG GIT_BRANCH
 ARG GIT_COMMIT_ID
@@ -28,8 +27,20 @@ COPY --from=docker /usr/local/bin/docker /usr/bin/docker
 # Need scp (openssh) for docker-machine to transfer files to machines.
 RUN apk --no-cache add gettext bash openssl openssh curl ca-certificates \
     "helm~${HELM_VERSION}"
-RUN apk --no-cache add --repository https://dl-cdn.alpinelinux.org/alpine/edge/community \
-    "kubectl~${KUBECTL_VERSION}"
+
+# Kubectl CLI
+RUN set -eux; \
+    apkArch="$(apk --print-arch)"; \
+    case "$apkArch" in \
+        x86_64)  kubectlArch='amd64' ;; \
+        armv7)   kubectlArch='arm' ;; \
+        aarch64) kubectlArch='arm64' ;; \
+        *) echo >&2 "error: unsupported architecture ($apkArch) for kubectl"; exit 1 ;;\
+    esac; \
+    kubectlVersion=$(curl -Ls https://dl.k8s.io/release/stable.txt); \
+    curl -LO https://dl.k8s.io/release/${kubectlVersion}/bin/linux/${kubectlArch}/kubectl && \
+    chmod +x ./kubectl && \
+    mv ./kubectl /usr/local/bin/kubectl
 
 # Docker Compose
 RUN set -eux; \
