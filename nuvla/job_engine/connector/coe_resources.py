@@ -12,7 +12,8 @@ class MissingFieldException(Exception):
 
 
 class DockerCoeResources:
-    def __init__(self):
+    def __init__(self, api):
+        self.api = api
         self.docker_client = docker.from_env()
 
     def _unsupported_action_job_response(self, action: str):
@@ -56,7 +57,7 @@ class DockerCoeResources:
             return func
 
         try:
-            job_response = func(resource_action['id'])
+            job_response = func(resource_action)
 
         except Exception as e:
             return self._new_job_response(False, -1, str(e))
@@ -80,7 +81,8 @@ class DockerCoeResources:
             if field not in resource_action:
                 raise MissingFieldException(field)
 
-    def _remove_image(self, image_id) -> dict:
+    def _remove_image(self, resource_action) -> dict:
+        image_id = resource_action['id']
         try:
             response = self.docker_client.api.remove_image(image_id)
         except docker.errors.APIError as e:
@@ -102,7 +104,18 @@ class DockerCoeResources:
 
         return self._new_job_response(True, 200, "")
 
-    def _pull_image(self, image_id):
+    def _pull_image(self, resource_action):
+        image_id = resource_action['id']
+        credential_id = resource_action['credential']
+        if credential_id:
+            credential = self.api.get(credential_id).data
+            infra_service_id = credential['parent']
+            infra_service = self.api.get(infra_service_id).data
+            try:
+                self.docker_client.api.login(credential['username'], credential['password'], None, infra_service['endpoint'])
+            except docker.errors.APIError as e:
+                return self._get_job_response_from_server_error(e)
+
         try:
             response = self.docker_client.api.pull(image_id)
         except docker.errors.APIError as e:
@@ -117,7 +130,8 @@ class DockerCoeResources:
 
         return self._new_job_response(True, 200, f"Image {self._clean_id(image_id)} successful pulled")
 
-    def _remove_container(self, container_id):
+    def _remove_container(self, resource_action):
+        container_id = resource_action['id']
         try:
             self.docker_client.api.remove_container(container_id)
 
@@ -126,7 +140,8 @@ class DockerCoeResources:
 
         return self._new_job_response(True, 204, f"Container {self._clean_id(container_id)} removed successfully")
 
-    def _remove_volume(self, volume_id):
+    def _remove_volume(self, resource_action):
+        volume_id = resource_action['id']
         try:
             self.docker_client.api.remove_volume(volume_id)
         except docker.errors.APIError as e:
@@ -134,7 +149,8 @@ class DockerCoeResources:
 
         return self._new_job_response(True, 204, f"Volume {self._clean_id(volume_id)} removed successfully")
 
-    def _remove_network(self, network_id):
+    def _remove_network(self, resource_action):
+        network_id = resource_action['id']
         try:
             self.docker_client.api.remove_network(network_id)
         except docker.errors.APIError as e:
