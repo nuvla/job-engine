@@ -55,6 +55,8 @@ class DockerCoeResources:
 
         self._check_missing_fields(resource_action)
 
+        log.info("Handle resource {}.".format(resource_action))
+
         func = self._get_action_func(resource_action, action_factory)
         if isinstance(func, dict):
             return func
