@@ -4,6 +4,9 @@ import re
 import docker
 import docker.errors
 
+import logging
+
+log = logging.getLogger('coe_resources')
 
 class MissingFieldException(Exception):
     def __init__(self, field):
@@ -107,12 +110,16 @@ class DockerCoeResources:
     def _pull_image(self, resource_action):
         image_id = resource_action['id']
         credential_id = resource_action['credential']
+        log.info("Pull image {} with credentials {}.".format(image_id, credential_id))
         if credential_id:
             credential = self.job.context[credential_id]
+            log.info("Credential retrieved: {}.".format(credential))
             infra_service_id = credential['parent']
             infra_service = self.job.context[infra_service_id]
+            log.info("Infra service retrieved: {}.".format(infra_service))
             try:
-                self.docker_client.api.login(credential['username'], credential['password'], None, infra_service['endpoint'])
+                login_response = self.docker_client.api.login(credential['username'], credential['password'], None, infra_service['endpoint'])
+                log.info("Login result: {}.".format(login_response))
             except docker.errors.APIError as e:
                 return self._get_job_response_from_server_error(e)
 
