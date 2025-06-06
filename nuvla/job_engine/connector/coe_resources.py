@@ -12,8 +12,8 @@ class MissingFieldException(Exception):
 
 
 class DockerCoeResources:
-    def __init__(self, api):
-        self.api = api
+    def __init__(self, job):
+        self.job = job
         self.docker_client = docker.from_env()
 
     def _unsupported_action_job_response(self, action: str):
@@ -108,9 +108,9 @@ class DockerCoeResources:
         image_id = resource_action['id']
         credential_id = resource_action['credential']
         if credential_id:
-            credential = self.api.get(credential_id).data
+            credential = self.job.context[credential_id]
             infra_service_id = credential['parent']
-            infra_service = self.api.get(infra_service_id).data
+            infra_service = self.job.context[infra_service_id]
             try:
                 self.docker_client.api.login(credential['username'], credential['password'], None, infra_service['endpoint'])
             except docker.errors.APIError as e:

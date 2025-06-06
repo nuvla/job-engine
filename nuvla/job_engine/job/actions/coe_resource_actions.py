@@ -38,7 +38,7 @@ class COEResourceActionsJob:
         }
         for coe, actions in actions.items():
             if coe == "docker":
-                connector: DockerCoeResources = DockerCoeResources(self.api)
+                connector: DockerCoeResources = DockerCoeResources(self.job)
                 result: list[dict] = connector.handle_resources(actions)
                 docker_success = any([r["success"] for r in result])
                 results["docker"].extend(result)
