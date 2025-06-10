@@ -114,7 +114,7 @@ class DockerCoeResources:
 
     def _pull_image(self, resource_action):
         image_id = resource_action['id']
-        credential_id = resource_action['credential'] if 'credential' in resource_action else None
+        credential_id = resource_action.get('credential')
         log.info("Pull image {} with credentials {}.".format(image_id, credential_id))
         if credential_id:
             credential = self.job.context[credential_id]
