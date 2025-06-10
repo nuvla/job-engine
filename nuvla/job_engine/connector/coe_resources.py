@@ -117,16 +117,28 @@ class DockerCoeResources:
         credential_id = resource_action.get('credential')
         log.info("Pull image {} with credentials {}.".format(image_id, credential_id))
         if credential_id:
-            credential = self.job.context[credential_id]
-            log.info("Credential retrieved: {}.".format(credential))
-            infra_service_id = credential['parent']
-            infra_service = self.job.context[infra_service_id]
-            log.info("Infra service retrieved: {}.".format(infra_service))
-            try:
-                login_response = self.docker_client.api.login(credential['username'], credential['password'], None, infra_service['endpoint'])
-                log.info("Login result: {}.".format(login_response))
-            except docker.errors.APIError as e:
-                return self._get_job_response_from_server_error(e)
+            credential = self.job.context.get(credential_id)
+            if credential:
+                log.info("Credential retrieved: {}.".format(credential))
+                infra_service_id = credential.get('parent')
+                if infra_service_id:
+                    infra_service = self.job.context.get(infra_service_id)
+                    if infra_service:
+                        log.info("Infra service retrieved: {}.".format(infra_service))
+                        try:
+                            if 'username' in credential and 'password' in credential and 'endpoint' in infra_service:
+                                login_response = self.docker_client.api.login(credential['username'], credential['password'], None, infra_service['endpoint'])
+                                log.info("Login result: {}.".format(login_response))
+                            else:
+                                log.warning("username, password or endpoint not specified")
+                        except docker.errors.APIError as e:
+                            return self._get_job_response_from_server_error(e)
+                    else:
+                        log.warning("infra_service not found in job context")
+                else:
+                    log.warning("credential parent not found")
+            else:
+                log.warning("credential not found in job context")
 
         try:
             response = self.docker_client.api.pull(image_id)
