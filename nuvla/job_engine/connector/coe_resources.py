@@ -5,6 +5,7 @@ import docker
 import docker.errors
 
 import logging
+import traceback
 
 log = logging.getLogger('coe_resources')
 
@@ -65,6 +66,8 @@ class DockerCoeResources:
             job_response = func(resource_action)
 
         except Exception as e:
+            log.error("An error occurred in _handle_resource: " + repr(e))
+            traceback.print_exc()
             return self._new_job_response(False, -1, str(e))
 
         return job_response
