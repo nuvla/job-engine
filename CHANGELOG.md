@@ -2,6 +2,18 @@
 
 ## Released
 
+## [5.1.0](https://github.com/nuvla/job-engine/compare/5.0.2...5.1.0) (2025-06-10)
+
+
+### Features
+
+* **coe_resources.py:** Support for docker pull image from private registries ([#441](https://github.com/nuvla/job-engine/issues/441)) ([b0eca48](https://github.com/nuvla/job-engine/commit/b0eca48fae6b8fc96416be6dfd46d3c46510ae90))
+
+
+### Bug Fixes
+
+* **Dockerfile:** Install stable Kubectl CLI from dl.k8s.io instead of apk package ([b0eca48](https://github.com/nuvla/job-engine/commit/b0eca48fae6b8fc96416be6dfd46d3c46510ae90))
+
 ## [5.0.2](https://github.com/nuvla/job-engine/compare/5.0.1...5.0.2) (2025-04-17)
 
 
