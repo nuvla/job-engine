@@ -101,6 +101,24 @@ class Kubernetes:
                 f'user_key_md5={md5sum(from_base64(self._key_base64))})')
 
     @staticmethod
+    def find_kubernetes_from_creds(path_to_k8s_creds: str, **kwargs):
+        """
+        Check if the provided path contains the Kubernetes credentials.
+        """
+        files = ['cert.pem', 'key.pem', 'ca.pem']
+        if all(os.path.isfile(f'{path_to_k8s_creds}/{file}') for file in files):
+            return Kubernetes.from_path_to_k8s_creds(path_to_k8s_creds, **kwargs)
+
+        if kwargs.get('ca', "") and kwargs.get('cert', "") and kwargs.get('key', ""):
+            # If the credentials are provided directly, create a Kubernetes instance.
+            kwargs['ca'] = from_base64(kwargs['ca'])
+            kwargs['cert'] = from_base64(kwargs['cert'])
+            kwargs['key'] = from_base64(kwargs['key'])
+            return Kubernetes(**kwargs)
+
+        raise ValueError("The provided path does not contain valid Kubernetes credentials. And they are not provided directly.")
+
+    @staticmethod
     def from_path_to_k8s_creds(path_to_k8s_creds: str, **kwargs):
         params = {
             'cert': get_pem_content(path_to_k8s_creds, 'cert'),
