@@ -101,32 +101,21 @@ class Kubernetes:
                 f'user_key_md5={md5sum(from_base64(self._key_base64))})')
 
     @staticmethod
-    def find_kubernetes_from_creds(path_to_k8s_creds: str, **kwargs):
-        """
-        Check if the provided path contains the Kubernetes credentials.
-        """
-        files = ['cert.pem', 'key.pem', 'ca.pem']
-        if all(os.path.isfile(f'{path_to_k8s_creds}/{file}') for file in files):
-            return Kubernetes.from_path_to_k8s_creds(path_to_k8s_creds, **kwargs)
-
-        if kwargs.get('ca', "") and kwargs.get('cert', "") and kwargs.get('key', ""):
-            # If the credentials are provided directly, create a Kubernetes instance.
-            kwargs['ca'] = from_base64(kwargs['ca'])
-            kwargs['cert'] = from_base64(kwargs['cert'])
-            kwargs['key'] = from_base64(kwargs['key'])
-            return Kubernetes(**kwargs)
-
-        raise ValueError("The provided path does not contain valid Kubernetes credentials. And they are not provided directly.")
-
-    @staticmethod
     def from_path_to_k8s_creds(path_to_k8s_creds: str, **kwargs):
-        params = {
-            'cert': get_pem_content(path_to_k8s_creds, 'cert'),
-            'key': get_pem_content(path_to_k8s_creds, 'key'),
-            'ca': get_pem_content(path_to_k8s_creds, 'ca'),
-            'endpoint': get_kubernetes_local_endpoint()}
-        params.update(kwargs)
-        return Kubernetes(**params)
+        try:
+            params = {
+                'cert': get_pem_content(path_to_k8s_creds, 'cert'),
+                'key': get_pem_content(path_to_k8s_creds, 'key'),
+                'ca': get_pem_content(path_to_k8s_creds, 'ca'),
+                'endpoint': get_kubernetes_local_endpoint()}
+            kwargs.update(params)
+        except Exception as e:
+            log.warning('k8s creds not found on disk: %s' % e)
+            kwargs['ca'] = from_base64(kwargs.get('ca', ''))
+            kwargs['cert'] = from_base64(kwargs.get('cert', ''))
+            kwargs['key'] = from_base64(kwargs.get('key', ''))
+            log.info("Setting endpoint to '%s'", kwargs.get('endpoint', ''))
+        return Kubernetes(**kwargs)
 
     @property
     def connector_type(self):
@@ -158,8 +147,10 @@ users:
     client-certificate-data: {self._cert_base64}
     client-key-data: {self._key_base64}
 """
-        log.debug('Kubeconfig: %s', kube_config)
+        log.info('Kubeconfig: %s', kube_config)
         self._kube_config_file = create_tmp_file(kube_config)
+        with open("/tmp/creds.yml", 'w') as f:
+            f.write(kube_config)
 
     def clear_connection(self, _connect_result):
         if self._kube_config_file:

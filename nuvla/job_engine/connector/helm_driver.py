@@ -23,7 +23,7 @@ class Helm:
     def __init__(self, path_to_k8s_creds: str, **kwargs):
         # If this is not a NuvlaEdge, the path_to_k8s_creds comes as a default CLI arg in the Executor base class.
         # Thus, to differentiate
-        self.k8s = Kubernetes.find_kubernetes_from_creds(path_to_k8s_creds, **kwargs)
+        self.k8s = Kubernetes.from_path_to_k8s_creds(path_to_k8s_creds, **kwargs)
         log.debug(self.k8s)
 
     @property
