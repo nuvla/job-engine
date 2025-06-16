@@ -111,9 +111,6 @@ class Kubernetes:
             kwargs.update(params)
         except Exception as e:
             log.warning('k8s creds not found on disk: %s' % e)
-            kwargs['ca'] = from_base64(kwargs.get('ca', ''))
-            kwargs['cert'] = from_base64(kwargs.get('cert', ''))
-            kwargs['key'] = from_base64(kwargs.get('key', ''))
             log.info("Setting endpoint to '%s'", kwargs.get('endpoint', ''))
         return Kubernetes(**kwargs)
 
@@ -147,10 +144,8 @@ users:
     client-certificate-data: {self._cert_base64}
     client-key-data: {self._key_base64}
 """
-        log.info('Kubeconfig: %s', kube_config)
+        log.debug('Kubeconfig: %s', kube_config)
         self._kube_config_file = create_tmp_file(kube_config)
-        with open("/tmp/creds.yml", 'w') as f:
-            f.write(kube_config)
 
     def clear_connection(self, _connect_result):
         if self._kube_config_file:
