@@ -8,7 +8,7 @@ from urllib.parse import urlparse
 from nuvla.job_engine.connector.connector import should_connect
 from nuvla.job_engine.connector.k8s_driver import Kubernetes
 from nuvla.job_engine.connector.utils import (execute_cmd, create_tmp_file,
-                                              close_file)
+                                              close_file, from_base64)
 
 log = logging.getLogger('helm_driver')
 
@@ -21,6 +21,8 @@ class Helm:
     DOCKER_IO_HELM_AUTHN_URL = 'https://index.docker.io/v1/'
 
     def __init__(self, path_to_k8s_creds: str, **kwargs):
+        # If this is not a NuvlaEdge, the path_to_k8s_creds comes as a default CLI arg in the Executor base class.
+        # Thus, to differentiate
         self.k8s = Kubernetes.from_path_to_k8s_creds(path_to_k8s_creds, **kwargs)
         log.debug(self.k8s)
 

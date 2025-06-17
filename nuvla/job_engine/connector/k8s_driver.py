@@ -102,13 +102,17 @@ class Kubernetes:
 
     @staticmethod
     def from_path_to_k8s_creds(path_to_k8s_creds: str, **kwargs):
-        params = {
-            'cert': get_pem_content(path_to_k8s_creds, 'cert'),
-            'key': get_pem_content(path_to_k8s_creds, 'key'),
-            'ca': get_pem_content(path_to_k8s_creds, 'ca'),
-            'endpoint': get_kubernetes_local_endpoint()}
-        params.update(kwargs)
-        return Kubernetes(**params)
+        try:
+            params = {
+                'cert': get_pem_content(path_to_k8s_creds, 'cert'),
+                'key': get_pem_content(path_to_k8s_creds, 'key'),
+                'ca': get_pem_content(path_to_k8s_creds, 'ca'),
+                'endpoint': get_kubernetes_local_endpoint()}
+            kwargs.update(params)
+        except Exception as e:
+            log.warning('k8s creds not found on disk: %s' % e)
+            log.info("Setting endpoint to '%s'", kwargs.get('endpoint', ''))
+        return Kubernetes(**kwargs)
 
     @property
     def connector_type(self):

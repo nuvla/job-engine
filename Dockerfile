@@ -6,13 +6,13 @@ ARG DOCKER_VERSION=25-cli
 FROM docker:${DOCKER_VERSION} AS docker
 FROM ${BASE_IMAGE}
 
-ARG HELM_VERSION=3.14
+ARG HELM_VERSION=3.18.2
 ARG GIT_BRANCH
 ARG GIT_COMMIT_ID
 ARG GIT_DIRTY
 ARG GIT_BUILD_TIME
 ARG IMAGE_NAME
-ARG PACKAGE_TAG=3.9.4
+ARG PACKAGE_TAG=5.1.0
 
 LABEL git.branch=${GIT_BRANCH}
 LABEL git.commit.id=${GIT_COMMIT_ID}
@@ -25,8 +25,24 @@ COPY --from=docker /usr/local/bin/docker /usr/bin/docker
 #                   /usr/local/libexec/docker/cli-plugins/docker-compose
 
 # Need scp (openssh) for docker-machine to transfer files to machines.
-RUN apk --no-cache add gettext bash openssl openssh curl ca-certificates \
-    "helm~${HELM_VERSION}"
+RUN apk --no-cache add gettext bash openssl openssh curl ca-certificates
+
+# Helm CLI
+RUN set -eux; \
+    apkArch="$(apk --print-arch)"; \
+    case "$apkArch" in \
+        x86_64)  helmArch='amd64' ;; \
+        armv7)   helmArch='arm' ;; \
+        aarch64) helmArch='arm64' ;; \
+        *) echo >&2 "error: unsupported architecture ($apkArch) for Helm"; exit 1 ;; \
+    esac; \
+    curl -fsSL -o helm.tar.gz "https://get.helm.sh/helm-v${HELM_VERSION}-linux-${helmArch}.tar.gz"; \
+    tar -zxvf helm.tar.gz --strip-components=1 -C /usr/local/bin "linux-${helmArch}/helm"; \
+    chmod +x /usr/local/bin/helm; \
+    rm -rf helm.tar.gz
+
+
+
 
 # Kubectl CLI
 RUN set -eux; \
