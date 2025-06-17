@@ -2,6 +2,14 @@
 
 ## Released
 
+## [5.1.1](https://github.com/nuvla/job-engine/compare/5.1.0...5.1.1) (2025-06-17)
+
+
+### Bug Fixes
+
+* **distributor.py:** Recreate thread when exception is thrown in distribution ([#445](https://github.com/nuvla/job-engine/issues/445)) ([9b32214](https://github.com/nuvla/job-engine/commit/9b3221406b03733cf69af25d86d423241f384b51))
+* Improve Helm and Kubernetes credentials usage on Clouds and NuvlaEdge ([#444](https://github.com/nuvla/job-engine/issues/444)) ([9c86db0](https://github.com/nuvla/job-engine/commit/9c86db02298f484a3031f4b3de83c79f114eb0e0))
+
 ## [5.1.0](https://github.com/nuvla/job-engine/compare/5.0.2...5.1.0) (2025-06-10)
 
 
