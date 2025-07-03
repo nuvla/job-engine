@@ -2,6 +2,13 @@
 
 ## Released
 
+## [5.1.2](https://github.com/nuvla/job-engine/compare/5.1.1...5.1.2) (2025-07-03)
+
+
+### Bug Fixes
+
+* **nuvlabox_offline.py:** Catch exception and add more info logging ([f61c5c6](https://github.com/nuvla/job-engine/commit/f61c5c60b031499a69eb26c99355e6b8a39ef9ea))
+
 ## [5.1.1](https://github.com/nuvla/job-engine/compare/5.1.0...5.1.1) (2025-06-17)
 
 
