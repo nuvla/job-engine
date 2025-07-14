@@ -238,12 +238,10 @@ class AppMgmtHelm(ConnectorCOE):
             raise ex
 
     def stop(self, **kwargs) -> str:
-        deployment = kwargs['deployment']
-        app_content = Deployment.module_content(deployment)
-        chart_values_yaml = app_content.get('helm-chart-values')
+        helm_chart_values = kwargs.get('module_content', {}).get('helm-chart-values')
 
         namespace = kwargs['name']
-        namespace = self._override_namespace(namespace, chart_values_yaml)
+        namespace = self._override_namespace(namespace, helm_chart_values)
         helm_release = self._helm_release_name(namespace)
         try:
             result = self.helm.uninstall(helm_release, namespace)
