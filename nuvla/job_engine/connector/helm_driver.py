@@ -8,7 +8,7 @@ from urllib.parse import urlparse
 from nuvla.job_engine.connector.connector import should_connect
 from nuvla.job_engine.connector.k8s_driver import Kubernetes
 from nuvla.job_engine.connector.utils import (execute_cmd, create_tmp_file,
-                                              close_file, from_base64)
+                                              close_file)
 
 log = logging.getLogger('helm_driver')
 

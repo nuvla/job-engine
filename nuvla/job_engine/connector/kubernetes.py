@@ -4,6 +4,8 @@ import logging
 from datetime import datetime
 from typing import List, Tuple, Any
 
+import yaml
+
 from nuvla.api.resources import Deployment
 
 from .connector import ConnectorCOE
@@ -143,10 +145,10 @@ class AppMgmtHelm(ConnectorCOE):
         self.helm = Helm(ne_db, **kwargs)
 
     @staticmethod
-    def helm_release_name(string: str):
+    def _helm_release_name(string: str):
         return 'release-' + string
 
-    def get_helm_release(self, helm_release, namespace) -> dict:
+    def _get_helm_release(self, helm_release, namespace) -> dict:
         release = {}
         releases = self.helm.list(namespace, release=release)
         if releases:
@@ -155,13 +157,24 @@ class AppMgmtHelm(ConnectorCOE):
                     f'namespace {namespace}.')
         return release
 
+    NAMESPACE_OVERRIDE_KEY = 'nuvlaNamespaceOverrride'
+
+    def _override_namespace(self, namespace: str, values_yaml: str) -> str:
+        try:
+            values = yaml.safe_load(values_yaml) or {}
+            namespace_override = values.get(self.NAMESPACE_OVERRIDE_KEY)
+            if namespace_override:
+                log.debug("Namespace override detected: %s", namespace_override)
+                return namespace_override
+        except Exception as e:
+            log.error("Failed to parse values_yaml for namespace override: %s", e)
+
+        return namespace
+
     @run_in_tmp_dir
     def _op_install_upgrade(self, op: str, **kwargs) \
             -> Tuple[str, List[dict], dict]:
         deployment = kwargs['deployment']
-        namespace = kwargs['name']
-        helm_release = self.helm_release_name(namespace)
-
         helm_repo_cred = kwargs.get('helm_repo_cred')
         helm_repo_url = kwargs.get('helm_repo_url')
         work_dir = kwargs.get('work_dir', '.')
@@ -171,6 +184,10 @@ class AppMgmtHelm(ConnectorCOE):
         version = app_content.get('helm-chart-version')
         helm_absolute_url = app_content.get('helm-absolute-url')
         chart_values_yaml = app_content.get('helm-chart-values')
+
+        namespace = kwargs['name']
+        namespace = self._override_namespace(namespace, chart_values_yaml)
+        helm_release = self._helm_release_name(namespace)
 
         env = kwargs.get('env')
 
@@ -203,7 +220,7 @@ class AppMgmtHelm(ConnectorCOE):
 
         objects = self.get_services(namespace, None)
 
-        release = self.get_helm_release(helm_release, namespace)
+        release = self._get_helm_release(helm_release, namespace)
 
         return result.stdout, objects, release
 
@@ -222,7 +239,7 @@ class AppMgmtHelm(ConnectorCOE):
 
     def stop(self, **kwargs) -> str:
         namespace = kwargs['name']
-        helm_release = self.helm_release_name(namespace)
+        helm_release = self._helm_release_name(namespace)
         try:
             result = self.helm.uninstall(helm_release, namespace)
         except Exception as ex:
