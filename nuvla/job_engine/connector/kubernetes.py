@@ -157,7 +157,7 @@ class AppMgmtHelm(ConnectorCOE):
                     f'namespace {namespace}.')
         return release
 
-    NAMESPACE_OVERRIDE_KEY = 'nuvlaNamespaceOverrride'
+    NAMESPACE_OVERRIDE_KEY = 'nuvlaNamespaceOverride'
 
     def _override_namespace(self, namespace: str, values_yaml: str) -> str:
         try:
