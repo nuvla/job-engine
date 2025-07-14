@@ -145,10 +145,10 @@ class AppMgmtHelm(ConnectorCOE):
         self.helm = Helm(ne_db, **kwargs)
 
     @staticmethod
-    def _helm_release_name(string: str):
+    def helm_release_name(string: str):
         return 'release-' + string
 
-    def _get_helm_release(self, helm_release, namespace) -> dict:
+    def get_helm_release(self, helm_release, namespace) -> dict:
         release = {}
         releases = self.helm.list(namespace, release=release)
         if releases:
@@ -187,7 +187,7 @@ class AppMgmtHelm(ConnectorCOE):
 
         namespace = kwargs['name']
         namespace = self._override_namespace(namespace, chart_values_yaml)
-        helm_release = self._helm_release_name(namespace)
+        helm_release = self.helm_release_name(namespace)
 
         env = kwargs.get('env')
 
@@ -220,7 +220,7 @@ class AppMgmtHelm(ConnectorCOE):
 
         objects = self.get_services(namespace, None)
 
-        release = self._get_helm_release(helm_release, namespace)
+        release = self.get_helm_release(helm_release, namespace)
 
         return result.stdout, objects, release
 
@@ -242,7 +242,7 @@ class AppMgmtHelm(ConnectorCOE):
 
         namespace = kwargs['name']
         namespace = self._override_namespace(namespace, helm_chart_values)
-        helm_release = self._helm_release_name(namespace)
+        helm_release = self.helm_release_name(namespace)
         try:
             result = self.helm.uninstall(helm_release, namespace)
         except Exception as ex:
@@ -265,9 +265,15 @@ class AppMgmtHelm(ConnectorCOE):
 
         :param deployment_uuid: Deployment UUID
         :param _: this parameter is ignored.
-        :param kwargs: this parameter is ignored.
+        :param kwargs: 'deployment' key is expected.
         :return: list of dicts
         """
+        if 'deployment' in kwargs:
+            app_content = Deployment.module_content(kwargs['deployment'])
+            chart_values_yaml = app_content.get('helm-chart-values')
+            namespace = self._override_namespace(None, chart_values_yaml)
+        else:
+            namespace = None
         objects = ['deployments',
                    'services']
-        return self.helm.k8s.get_objects(deployment_uuid, objects)
+        return self.helm.k8s.get_objects(deployment_uuid, objects, namespace=namespace)
