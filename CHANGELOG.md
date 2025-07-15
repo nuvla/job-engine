@@ -2,6 +2,13 @@
 
 ## Released
 
+## [5.1.3](https://github.com/nuvla/job-engine/compare/5.1.2...5.1.3) (2025-07-15)
+
+
+### Bug Fixes
+
+* **helm:** support user defined namespace with nuvlaNamespaceOverride value ([#450](https://github.com/nuvla/job-engine/issues/450)) ([f2fd6df](https://github.com/nuvla/job-engine/commit/f2fd6dfb99c7c95c224938e8e0d0fe0f319077db))
+
 ## [5.1.2](https://github.com/nuvla/job-engine/compare/5.1.1...5.1.2) (2025-07-03)
 
 
