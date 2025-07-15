@@ -719,7 +719,7 @@ users:
 
     DEFAULT_OBJECTS = ['deployments', 'services']
 
-    def get_objects(self, deployment_uuid, object_kinds: List[str]) -> List[dict]:
+    def get_objects(self, deployment_uuid, object_kinds: List[str], namespace=None) -> List[dict]:
 
         object_kinds = object_kinds or self.DEFAULT_OBJECTS
 
@@ -732,7 +732,7 @@ users:
 
         log.warning(f'No objects found by deployment UUID label: {deployment_uuid}')
 
-        namespace = deployment_uuid
+        namespace = namespace or deployment_uuid
 
         kube_objects = self._get_objects_in_namespace(object_kinds, namespace)
         objects = [self._extract_object_info(kube_resource)

@@ -38,7 +38,7 @@ class DeploymentStopJob(DeploymentBase):
 
         args = {
             **self._get_action_params_base(deployment),
-            **dict(env=env, docker_compose=docker_compose),
+            **dict(env=env, docker_compose=docker_compose)
         }
 
         # Payload could be empty or NoneType
@@ -47,7 +47,10 @@ class DeploymentStopJob(DeploymentBase):
         return args
 
     def _get_action_params_helm(self, deployment: dict) -> dict:
-        return self._get_action_params_base(deployment)
+        return {
+            **self._get_action_params_base(deployment),
+            **dict(module_content=Deployment.module_content(deployment))
+        }
 
     def _get_action_kwargs(self, deployment: dict) -> dict:
         # TODO: Getting action params should be based on the connector

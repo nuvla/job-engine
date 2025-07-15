@@ -4,6 +4,8 @@ import logging
 from datetime import datetime
 from typing import List, Tuple, Any
 
+import yaml
+
 from nuvla.api.resources import Deployment
 
 from .connector import ConnectorCOE
@@ -155,13 +157,24 @@ class AppMgmtHelm(ConnectorCOE):
                     f'namespace {namespace}.')
         return release
 
+    NAMESPACE_OVERRIDE_KEY = 'nuvlaNamespaceOverride'
+
+    def _override_namespace(self, namespace: str, values_yaml: str) -> str:
+        try:
+            values = yaml.safe_load(values_yaml) or {}
+            namespace_override = values.get(self.NAMESPACE_OVERRIDE_KEY)
+            if namespace_override:
+                log.debug("Namespace override detected: %s", namespace_override)
+                return namespace_override
+        except Exception as e:
+            log.error("Failed to parse values_yaml for namespace override: %s", e)
+
+        return namespace
+
     @run_in_tmp_dir
     def _op_install_upgrade(self, op: str, **kwargs) \
             -> Tuple[str, List[dict], dict]:
         deployment = kwargs['deployment']
-        namespace = kwargs['name']
-        helm_release = self.helm_release_name(namespace)
-
         helm_repo_cred = kwargs.get('helm_repo_cred')
         helm_repo_url = kwargs.get('helm_repo_url')
         work_dir = kwargs.get('work_dir', '.')
@@ -171,6 +184,10 @@ class AppMgmtHelm(ConnectorCOE):
         version = app_content.get('helm-chart-version')
         helm_absolute_url = app_content.get('helm-absolute-url')
         chart_values_yaml = app_content.get('helm-chart-values')
+
+        namespace = kwargs['name']
+        namespace = self._override_namespace(namespace, chart_values_yaml)
+        helm_release = self.helm_release_name(namespace)
 
         env = kwargs.get('env')
 
@@ -221,7 +238,10 @@ class AppMgmtHelm(ConnectorCOE):
             raise ex
 
     def stop(self, **kwargs) -> str:
+        helm_chart_values = kwargs.get('module_content', {}).get('helm-chart-values')
+
         namespace = kwargs['name']
+        namespace = self._override_namespace(namespace, helm_chart_values)
         helm_release = self.helm_release_name(namespace)
         try:
             result = self.helm.uninstall(helm_release, namespace)
@@ -245,9 +265,15 @@ class AppMgmtHelm(ConnectorCOE):
 
         :param deployment_uuid: Deployment UUID
         :param _: this parameter is ignored.
-        :param kwargs: this parameter is ignored.
+        :param kwargs: 'deployment' key is expected.
         :return: list of dicts
         """
+        if 'deployment' in kwargs:
+            app_content = Deployment.module_content(kwargs['deployment'])
+            chart_values_yaml = app_content.get('helm-chart-values')
+            namespace = self._override_namespace(None, chart_values_yaml)
+        else:
+            namespace = None
         objects = ['deployments',
                    'services']
-        return self.helm.k8s.get_objects(deployment_uuid, objects)
+        return self.helm.k8s.get_objects(deployment_uuid, objects, namespace=namespace)

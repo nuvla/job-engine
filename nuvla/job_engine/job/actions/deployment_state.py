@@ -31,6 +31,10 @@ class DeploymentStateJob(DeploymentBase):
         connector_module = get_connector_module(connector_name)
         connector = initialize_connector(connector_module, self.job,
                                          self.deployment)
+
+        if connector_name == CONNECTOR_KIND_HELM:
+            kwargs['deployment'] = self.deployment.data
+
         services = connector.get_services(Deployment.uuid(self.deployment),
                                           get_env(self.deployment.data),
                                           **kwargs)
