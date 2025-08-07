@@ -2,6 +2,13 @@
 
 ## Released
 
+## [5.1.4](https://github.com/nuvla/job-engine/compare/5.1.3...5.1.4) (2025-08-07)
+
+
+### Bug Fixes
+
+* allow to set K8s namespace via env var ([#452](https://github.com/nuvla/job-engine/issues/452)) ([a0e0a0c](https://github.com/nuvla/job-engine/commit/a0e0a0cf2b975e35aeff8ff80aacda7be8da2984))
+
 ## [5.1.3](https://github.com/nuvla/job-engine/compare/5.1.2...5.1.3) (2025-07-15)
 
 

@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "nuvla-job-engine"
-version = "5.1.3"
+version = "5.1.4"
 description = "Nuvla Job Engine."
 license = "Apache-2.0"
 authors = ["SixSq SA <support@sixsq.com>"]
