@@ -61,8 +61,8 @@ class AppMgmtK8s(ConnectorCOE):
         deployment_uuid = kwargs['name']
         registries_auth = kwargs['registries_auth']
 
-        # By default, the namespace is the deployment UUID.  If the manifest
-        # contains a custom namespace, it will be used instead.
+        # By default, the namespace is the deployment UUID. 
+        # Custom namespace handling is managed by the Kubernetes driver. 
         namespace = deployment_uuid
         result = join_stderr_stdout(
             self.k8s.apply_manifest_with_context(manifest, namespace, env,
