@@ -225,6 +225,16 @@ users:
         if env:
             manifest = string_interpolate_env_vars(manifest, env)
 
+        custom_namespaces = self._get_all_namespaces_from_manifest(manifest)
+        log.debug('Namespaces from manifest: %s', custom_namespaces)
+        if len(custom_namespaces) > 1:
+            msg = (f'Only single namespace allowed in manifest. Found:'
+                   f' {custom_namespaces}')
+            log.error(msg)
+            raise ValueError(msg)
+        if custom_namespaces:
+            namespace = list(custom_namespaces)[0]
+
         common_labels = {'nuvla.application.name': namespace,
                          'nuvla.deployment.uuid': env['NUVLA_DEPLOYMENT_UUID']}
         if 'NUVLA_DEPLOYMENT_GROUP_UUID' in env:
@@ -259,7 +269,7 @@ users:
         return res
 
     @staticmethod
-    def get_all_namespaces_from_manifest(manifest: str) -> set:
+    def _get_all_namespaces_from_manifest(manifest: str) -> set:
         namespaces = set()
         try:
             for doc in yaml.safe_load_all(manifest):

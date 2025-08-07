@@ -61,18 +61,9 @@ class AppMgmtK8s(ConnectorCOE):
         deployment_uuid = kwargs['name']
         registries_auth = kwargs['registries_auth']
 
-        custom_namespaces = Kubernetes.get_all_namespaces_from_manifest(manifest)
-        log.debug('Namespaces from manifest: %s', custom_namespaces)
-        if len(custom_namespaces) > 1:
-            msg = (f'Only single namespace allowed in manifest. Found:'
-                   f' {custom_namespaces}')
-            log.error(msg)
-            raise ValueError(msg)
-        if custom_namespaces:
-            namespace = list(custom_namespaces)[0]
-        else:
-            namespace = deployment_uuid
-
+        # By default, the namespace is the deployment UUID. 
+        # Custom namespace handling is managed by the Kubernetes driver. 
+        namespace = deployment_uuid
         result = join_stderr_stdout(
             self.k8s.apply_manifest_with_context(manifest, namespace, env,
                                                  files, registries_auth))
