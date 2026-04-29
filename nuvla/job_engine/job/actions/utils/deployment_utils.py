@@ -23,9 +23,11 @@ from ....connector import (docker_stack,
 from ....connector.connector import ConnectorCOE
 from ....connector.k8s_driver import get_kubernetes_local_endpoint
 from ....connector.utils import LOCAL
+from .mm3_client import Mm3Client, Mm3ClientError
 
 CONNECTOR_KIND_HELM = 'helm'
 APP_SUBTYPE_HELM = 'application_helm'
+MEC_PARAM_APP_INSTANCE_ID = 'mec.app-instance-id'
 
 
 def get_connector_name(deployment: Union[dict, CimiResource]):
@@ -185,6 +187,65 @@ class DeploymentBase(object):
                   persist_cookie=False, reauthenticate=True)
         api.login_apikey(creds['api-key'], creds['api-secret'])
         return Deployment(api)
+
+    def is_mec_job(self):
+        return bool(self.job.get('mepm-endpoint') and self.job.get('mec-operation-type'))
+
+    def mec_operation_type(self):
+        return self.job.get('mec-operation-type')
+
+    def mepm_endpoint(self):
+        return self.job.get('mepm-endpoint')
+
+    def mm3_client(self):
+        return Mm3Client(self.mepm_endpoint(), verify=self.api.session.verify)
+
+    def get_mec_app_instance_id(self):
+        try:
+            param = self.api_dpl._get_parameter(self.deployment_id, MEC_PARAM_APP_INSTANCE_ID, None)
+        except ResourceNotFound:
+            return None
+        return getattr(param, 'value', None) or param.data.get('value')
+
+    def set_mec_app_instance_id(self, app_instance_id):
+        self.create_update_deployment_parameter(
+            deployment_id=self.deployment_id,
+            user_id=Deployment.owner(self.deployment),
+            param_name=MEC_PARAM_APP_INSTANCE_ID,
+            param_value=app_instance_id,
+            update=True)
+
+    def get_mec_change_state_to(self):
+        request_params = self.job.get('mec-request-params') or {}
+        value = request_params.get('changeStateTo')
+        return value.upper() if isinstance(value, str) else value
+
+    def instantiate_mec_application(self):
+        deployment_module = self.deployment.data.get('module')
+        module_id = deployment_module.get('href') if isinstance(deployment_module, dict) else deployment_module
+        payload = {
+            'app-instance-id': self.deployment_id,
+            'deployment-id': self.deployment_id,
+            'mec-host-id': self.job.get('mec-host-id'),
+            'module-id': module_id,
+            'grant-id': (self.job.get('mec-request-params') or {}).get('grantId')
+        }
+        response = self.mm3_client().create_app_instance(payload)
+        app_instance_id = response.get('id')
+        if not app_instance_id:
+            raise Mm3ClientError('Mm3 create-app-instance response did not include an id')
+        self.set_mec_app_instance_id(app_instance_id)
+        self.job.set_status_message(f'Mm3 instantiate succeeded via {self.mepm_endpoint()}')
+
+    def operate_mec_application(self):
+        southbound_app_instance_id = self.get_mec_app_instance_id()
+        if not southbound_app_instance_id:
+            raise Mm3ClientError(f'MEC app instance id not found for {self.deployment_id}')
+        target_state = self.get_mec_change_state_to()
+        if target_state not in ('STARTED', 'STOPPED'):
+            raise Mm3ClientError(f'Unsupported MEC operate target state: {target_state}')
+        self.mm3_client().operate_app_instance(southbound_app_instance_id, target_state)
+        self.job.set_status_message(f'Mm3 operate {target_state} succeeded via {self.mepm_endpoint()}')
 
     def private_registries_auth(self):
         registries_credentials = self.deployment.data.get('registries-credentials')
@@ -393,6 +454,17 @@ class DeploymentBaseStartUpdate(DeploymentBase, ABC):
                 raise ValueError(msg)
 
     def action_on_application(self):
+        if self.is_mec_job():
+            match self.mec_operation_type():
+                case 'INSTANTIATE':
+                    self.instantiate_mec_application()
+                    self.job.set_progress(90)
+                    return
+                case 'OPERATE':
+                    self.operate_mec_application()
+                    self.job.set_progress(90)
+                    return
+
         deployment = self.deployment.data
         connector_name = get_connector_name(deployment)
         connector = self._get_connector(deployment, connector_name)

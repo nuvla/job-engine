@@ -7,6 +7,7 @@ from nuvla.api.resources import Deployment, Credential
 from .utils.deployment_utils import (DeploymentBase,
                                      get_connector_name,
                                      get_env)
+from .utils.mm3_client import Mm3ClientError
 from ..util import override
 from ..actions import action
 
@@ -67,6 +68,26 @@ class DeploymentStopJob(DeploymentBase):
                 raise ValueError(msg)
 
     def stop_application(self):
+        if self.is_mec_job():
+            match self.mec_operation_type():
+                case 'TERMINATE':
+                    southbound_app_instance_id = self.get_mec_app_instance_id()
+                    if not southbound_app_instance_id:
+                        raise Mm3ClientError(f'MEC app instance id not found for {self.deployment_id}')
+                    self.mm3_client().delete_app_instance(southbound_app_instance_id)
+                    self.job.set_status_message(f'Mm3 terminate succeeded via {self.mepm_endpoint()}')
+                    return
+                case 'OPERATE':
+                    southbound_app_instance_id = self.get_mec_app_instance_id()
+                    if not southbound_app_instance_id:
+                        raise Mm3ClientError(f'MEC app instance id not found for {self.deployment_id}')
+                    target_state = self.get_mec_change_state_to()
+                    if target_state not in ('STARTED', 'STOPPED'):
+                        raise Mm3ClientError(f'Unsupported MEC operate target state: {target_state}')
+                    self.mm3_client().operate_app_instance(southbound_app_instance_id, target_state)
+                    self.job.set_status_message(f'Mm3 operate {target_state} succeeded via {self.mepm_endpoint()}')
+                    return
+
         deployment = self.deployment.data
         connector = self._get_connector(deployment,
                                         get_connector_name(deployment))
@@ -89,7 +110,10 @@ class DeploymentStopJob(DeploymentBase):
 
         self.try_delete_deployment_credentials(self.deployment_id)
 
-        self.api_dpl.set_state_stopped(self.deployment_id)
+        if self.is_mec_job() and self.mec_operation_type() == 'TERMINATE':
+            self.api_dpl.nuvla.edit(self.deployment_id, {'state': 'CREATED'})
+        else:
+            self.api_dpl.set_state_stopped(self.deployment_id)
 
         return 0
 
