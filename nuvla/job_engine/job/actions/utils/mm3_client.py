@@ -2,6 +2,10 @@ import requests
 
 
 DEFAULT_TIMEOUT = 30
+DEFAULT_HEADERS = {'X-Nuvla-Mm3-Caller': 'job-engine'}
+MM3_LIFECYCLE_BASE_PATH = '/mm3/app_lcm/v1'
+MM3_LIFECYCLE_APP_INSTANCES_PATH = f'{MM3_LIFECYCLE_BASE_PATH}/app_instances'
+MM3_LIFECYCLE_OP_OCCS_PATH = f'{MM3_LIFECYCLE_BASE_PATH}/app_lcm_op_occs'
 
 
 class Mm3ClientError(RuntimeError):
@@ -19,6 +23,7 @@ class Mm3Client:
         response = requests.request(method,
                                     url,
                                     json=payload,
+                                    headers=DEFAULT_HEADERS,
                                     timeout=self.timeout,
                                     verify=self.verify)
         if response.status_code < 200 or response.status_code >= 300:
@@ -34,15 +39,15 @@ class Mm3Client:
         return response.json()
 
     def create_app_instance(self, payload: dict):
-        return self._request('post', '/mm3/app-instances', payload)
+        return self._request('post', MM3_LIFECYCLE_APP_INSTANCES_PATH, payload)
 
     def get_app_instance(self, app_instance_id: str):
-        return self._request('get', f'/mm3/app-instances/{app_instance_id}')
+        return self._request('get', f'{MM3_LIFECYCLE_APP_INSTANCES_PATH}/{app_instance_id}')
 
     def delete_app_instance(self, app_instance_id: str):
-        return self._request('delete', f'/mm3/app-instances/{app_instance_id}')
+        return self._request('delete', f'{MM3_LIFECYCLE_APP_INSTANCES_PATH}/{app_instance_id}')
 
     def operate_app_instance(self, app_instance_id: str, change_state_to: str):
         return self._request('post',
-                             f'/mm3/app-instances/{app_instance_id}/operate',
+                             f'{MM3_LIFECYCLE_APP_INSTANCES_PATH}/{app_instance_id}/operate',
                              {'changeStateTo': change_state_to})

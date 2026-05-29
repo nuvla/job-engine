@@ -28,6 +28,7 @@ from .mm3_client import Mm3Client, Mm3ClientError
 CONNECTOR_KIND_HELM = 'helm'
 APP_SUBTYPE_HELM = 'application_helm'
 MEC_PARAM_APP_INSTANCE_ID = 'mec.app-instance-id'
+MEC_PARAM_OPERATION_ID = 'mec.operation-id'
 
 
 def get_connector_name(deployment: Union[dict, CimiResource]):
@@ -215,6 +216,28 @@ class DeploymentBase(object):
             param_value=app_instance_id,
             update=True)
 
+    def set_mec_operation_id(self, operation_id):
+        self.create_update_deployment_parameter(
+            deployment_id=self.deployment_id,
+            user_id=Deployment.owner(self.deployment),
+            param_name=MEC_PARAM_OPERATION_ID,
+            param_value=operation_id,
+            update=True)
+
+    @staticmethod
+    def extract_mec_operation_id(response):
+        if not isinstance(response, dict):
+            return None
+        return response.get('operationId') or \
+            response.get('lifecycleOperationOccurrenceId') or \
+            response.get('operation-id')
+
+    def persist_mec_operation_id(self, operation_id):
+        if not operation_id:
+            return
+        self.set_mec_operation_id(operation_id)
+        self.job._edit_job_multi({'mec-southbound-operation-id': operation_id})
+
     def get_mec_change_state_to(self):
         request_params = self.job.get('mec-request-params') or {}
         value = request_params.get('changeStateTo')
@@ -235,6 +258,7 @@ class DeploymentBase(object):
         if not app_instance_id:
             raise Mm3ClientError('Mm3 create-app-instance response did not include an id')
         self.set_mec_app_instance_id(app_instance_id)
+        self.persist_mec_operation_id(self.extract_mec_operation_id(response))
         self.job.set_status_message(f'Mm3 instantiate succeeded via {self.mepm_endpoint()}')
 
     def operate_mec_application(self):
@@ -244,7 +268,8 @@ class DeploymentBase(object):
         target_state = self.get_mec_change_state_to()
         if target_state not in ('STARTED', 'STOPPED'):
             raise Mm3ClientError(f'Unsupported MEC operate target state: {target_state}')
-        self.mm3_client().operate_app_instance(southbound_app_instance_id, target_state)
+        response = self.mm3_client().operate_app_instance(southbound_app_instance_id, target_state)
+        self.persist_mec_operation_id(self.extract_mec_operation_id(response))
         self.job.set_status_message(f'Mm3 operate {target_state} succeeded via {self.mepm_endpoint()}')
 
     def private_registries_auth(self):
@@ -492,7 +517,8 @@ class DeploymentBaseStartUpdate(DeploymentBase, ABC):
 
     @override
     def handle_deployment(self):
-        self.create_user_output_params()
+        if not self.is_mec_job():
+            self.create_user_output_params()
         self.action_on_application()
 
     def action_on_deployment(self):
@@ -502,6 +528,11 @@ class DeploymentBaseStartUpdate(DeploymentBase, ABC):
         self.job.set_progress(10)
 
         self.try_handle_raise_exception()
+
+        if self.is_mec_job():
+            # For MEC jobs, the southbound Mm3 callback is the source of truth
+            # for the final deployment state (STARTED/STOPPED/CREATED).
+            return 0
 
         self.api_dpl.set_state_started(self.deployment_id)
 

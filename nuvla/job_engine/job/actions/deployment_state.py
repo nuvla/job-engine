@@ -22,7 +22,14 @@ class DeploymentStateJob(DeploymentBase):
     def __init__(self, job):
         super().__init__(job, log)
 
+    def is_mec_deployment(self):
+        return Deployment.subtype(self.deployment) == 'application_mec'
+
     def get_application_state(self):
+        if self.is_mec_deployment():
+            self.job.set_status_message('Skipping generic deployment_state for MEC deployment')
+            return
+
         kwargs = {}
         if Deployment.is_compatibility_docker_compose(self.deployment):
             kwargs['compose_file'] = Deployment.module_content(self.deployment)['docker-compose']
