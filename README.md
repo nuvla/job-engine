@@ -6,7 +6,35 @@ This repository contains the code and configuration for the Job engine,
 packaged as a Docker container. 
 
 Nuvla job engine use cimi job resource and zookeeper as a locking queue. 
-It's done in a way to be horizontally scalled on different nodes.
+It's done in a way to be horizontally scaled on different nodes.
+
+## ETSI MEC support
+
+The `etsi-mec` branch adds execution support for MEC application lifecycle
+operations initiated by the [Nuvla API server](https://github.com/nuvla/api-server).
+
+When a MEC lifecycle operation is requested (instantiate, terminate, start, stop),
+the job engine:
+
+1. Resolves the target **MEPM** from the deployment context.
+2. Executes the operation on the backing Nuvla deployment (start, stop, state sync).
+3. Reports results back to the API server over the **Mm3** interface
+   (`/mm3/app_lcm/v1/...`).
+
+The Mm3 client lives in `nuvla/job_engine/job/actions/utils/mm3_client.py`.
+MEC-specific deployment handling is in `deployment_utils.py`, `deployment_state.py`,
+and `deployment_stop.py`.
+
+### Running MEC tests
+
+```bash
+pytest tests/job/actions/deployment_mec_test.py tests/job/actions/mm3_client_test.py -v
+```
+
+### Related repositories
+
+- [nuvla/api-server](https://github.com/nuvla/api-server) (`etsi-mec` branch) — MEO APIs and MEPM management
+- [nuvla/ui](https://github.com/nuvla/ui) (`etsi-mec` branch) — MEC administration and deployment UI
 
 ## Artifacts
 
@@ -111,7 +139,7 @@ docker build --build-arg="PACKAGE_TAG=${JOB_ENGINE_VERSION}" -t local/job:${JOB_
 
 ## Copyright
 
-Copyright &copy; 2019-2024, SixSq SA
+Copyright &copy; 2019-2026, SixSq SA
 
 ## License
 
