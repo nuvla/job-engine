@@ -216,6 +216,7 @@ class TestDeploymentMecFlow(unittest.TestCase):
         obj = DeploymentStartJob.__new__(DeploymentStartJob)
         obj.job = MagicMock()
         obj.deployment_id = 'deployment/test-1'
+        obj._action = 'start_deployment'
         obj.log = MagicMock()
         obj.try_handle_raise_exception = MagicMock()
         obj.is_mec_job = MagicMock(return_value=True)
@@ -230,6 +231,7 @@ class TestDeploymentMecFlow(unittest.TestCase):
         obj = DeploymentStartJob.__new__(DeploymentStartJob)
         obj.job = MagicMock()
         obj.deployment_id = 'deployment/test-1'
+        obj._action = 'start_deployment'
         obj.log = MagicMock()
         obj.try_handle_raise_exception = MagicMock()
         obj.is_mec_job = MagicMock(return_value=False)
